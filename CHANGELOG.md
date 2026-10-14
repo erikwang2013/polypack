@@ -6,10 +6,16 @@ Notable changes are recorded here; since v1.0.0, tags and releases follow `vX.Y.
 
 ## [Unreleased]
 
-## [1.1.0] — 2026-10-15
+## [1.2.0] — 2026-10-15
 
 ### Added
 - **M1 桌面与 Web 交付**（2026-10-15）：`poly init` 示例应用脚手架（React 19 + vite 7 真构建）；`poly build` 多端构建（真 triple 探测、内容寻址缓存 **二跑 100% 命中**、DAG 双支线并行）与**真实打包**（Linux 真出 deb（含 Pax 派生六尺寸图标）/ AppDir / Web 静态包 + SRI 清单）；`poly dev` 整页重载热预览（Chrome 真浏览器证据）；`poly clean` 与保留策略（LRU）；五态 CLI 表情（Pax 情绪映射）；英文版图示合入 README.en。**200 测试全绿、clippy `-D warnings` 零告警。**
+
+*M1 Desktop & Web delivered: poly init/build/dev/clean, the five-packager matrix, and four-target contracts — 200 tests green.*
+
+## [1.1.0] — 2026-10-15
+
+### Added
 - **M0 地基交付**（2026-10-15）：9 crate Rust 工作区（依赖方向约束测试）；`poly doctor`（6 探测器 + L1 覆盖矩阵，人读与 `--json`）；`polypack.toml` schema（serde + JSON Schema 导出，严格模式）与 TargetSpec 注册表（L1 七目标）；诊断框架（稳定错误码 + BuildEvent 事件流）；三宿主 CI 工作流（远端执行待账单恢复）；供应链检查（cargo-deny 四项通过 + cargo-audit 0 漏洞）。**56 测试全绿、clippy `-D warnings` 零告警。**
 - Pax 单形态动效：五种表情各自带专属动态（哭=泪滴下落、惊恐=发抖加汗滴、疑惑=问号浮动、眨眼=睁闭眼循环、笑=浮动），联系表逐格动画且相位错开
 - Pax 全身化：联系表改为全身像（六腿 + 包裹 + 双钳）；`pax-mark.svg` 徽章补蟹腿；图示右下角角标同步更新
