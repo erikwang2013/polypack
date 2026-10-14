@@ -137,7 +137,8 @@ fn failure_path_prints_crying_face() {
     )
     .expect("改坏 main.rs");
 
-    let out = poly(&["build", "--target", "linux"], project.path());
+    // 不带 --target：显式 linux 在非 Linux 宿主是结构性不可达错误，会让本测在各宿主原地通过
+    let out = poly(&["build"], project.path());
     assert!(
         !out.status.success(),
         "编译失败应非零退出: {}",

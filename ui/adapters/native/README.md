@@ -61,8 +61,9 @@ traversalSnapshot(engine.graph); // 快照断言用；reachableFrom / hasNoDeadE
 零运行时依赖：`node --test` 即可跑；`render.test.js` 需 `npm install`（react/react-dom 为 devDeps），
 未安装时 skip 不 fail（CI 三宿主一致性；只吞「react 未安装」一类失败，本包加载错误照常炸出）。
 
-**CI 接入（待 infra）**：`.github/workflows/` 尚未跑 `node --test`，本套测试当前只在本地门禁；
-接入形态：`cd ui/adapters/native && node --test`（三宿主同命令，无 npm install 亦绿）。
+**CI**：`.github/workflows/rust-ci.yml` 三宿主跑 `working-directory: ui/adapters/native` + `node --test`。
+CI 不装依赖（不引 npm registry 网络依赖）：31 项 react-free 测试直接 import `src/` 守回归，
+5 项代理渲染 skip 不 fail；本机 `npm install` 后 36 项全真跑。
 
 ## 阻塞清单（宿主/设备，不伪造证据）
 
