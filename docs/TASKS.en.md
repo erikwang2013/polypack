@@ -3,7 +3,7 @@
 > Derived from the milestone breakdown in [ROADMAP.en.md](ROADMAP.en.md) §9; produced in parallel by a four-person planning group and merged after cross-reconciliation: **116 tasks**, all cross-milestone references verified in two passes (existence + description match, zero dangling), Chinese/English task IDs aligned one-to-one.
 > Chinese original: [TASKS.md](TASKS.md). This file falls under the documentation sync convention (ROADMAP §11): task additions/removals must land in both files in the same commit, and drift is caught in CI by the structural checker delivered in T-M0-10.
 > Extension directions (E1–E8) are incubated and intentionally absent from this task table — see [ROADMAP.en.md](ROADMAP.en.md) §13.
-> Progress (2026-10-15): **M0 11/11** (T-M0-02 runs remotely; three-host convergence in progress — ubuntu leg green) · **M1 delivered 15/15** (11 ✅; T-M1-02/05/06/07 await the matching CI legs) · **M2 in progress 2/15** (T-M2-04/05 ✅: adapter v0 + focus baseline, 36 tests) · tests green workspace-wide.
+> Progress (2026-10-15): **M0 11/11** · **M1 delivered 15/15** (11 ✅; the matching CI legs for T-M1-02/05/06/07 are green — remaining tool-level notes live in the task entries) · **M2 in progress 2/15** (T-M2-04/05 ✅: adapter v0 + focus baseline, 36 tests) · **CI green on all three hosts** (rust-ci#38654820649: ubuntu 201 / macos-14 194 / windows-2022 192 tests passed — the differences are exactly the per-host gating surface; docs-check and the ui test step are green too).
 
 ## Team roster
 
