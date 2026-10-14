@@ -243,6 +243,7 @@ polypack/
 ├── docs/
 │   ├── ROADMAP.md         # 详细规划（里程碑、风险、支持矩阵）
 │   ├── TASKS.md           # 任务计划（116 任务 / 283 人日）
+│   ├── FARM.md            # 远程农场：发起地 / 构建地（部署、凭据与签名验证）
 │   ├── assets/            # 本文档内嵌的全部 SVG（含 Pax）
 │   └── diagrams/          # 图示源文件（JSON IR）与重建流水线
 └── tools/
@@ -286,7 +287,9 @@ polypack/
 | M7 | 穿戴（Wear OS / watchOS 伴生 / Fitbit / Garmin / Zepp，实验） |
 | M8 | WASM 插件 SDK、远程构建农场、商店发布流水线、生态 GA |
 
-完整规划（含逐平台支持细节、风险与对策）见 **[docs/ROADMAP.md](docs/ROADMAP.md)**；任务级分解（113 任务 / 279.5 人日，含角色、依赖、验收标准与排期备注）见 **[docs/TASKS.md](docs/TASKS.md)**。
+完整规划（含逐平台支持细节、风险与对策）见 **[docs/ROADMAP.md](docs/ROADMAP.md)**；任务级分解（116 任务 / 283 人日，含角色、依赖、验收标准与排期备注）见 **[docs/TASKS.md](docs/TASKS.md)**。
+
+跨宿主构建（Linux 发起 → macOS worker 出 IPA）的部署方式、凭据模型与签名验证指引见 **[docs/FARM.md](docs/FARM.md)**。
 
 ## 许可
 

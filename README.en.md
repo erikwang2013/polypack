@@ -245,6 +245,7 @@ polypack/
 ├── docs/
 │   ├── ROADMAP.en.md      # detailed plan (milestones, risks, support matrix)
 │   ├── TASKS.en.md        # task plan (116 tasks / 283 person-days)
+│   ├── FARM.en.md         # remote farm: origin / build site (deployment, credentials, signature checks)
 │   ├── assets/            # every SVG embedded in this document (incl. Pax)
 │   └── diagrams/          # diagram sources (JSON IR) + rebuild pipeline
 └── tools/
@@ -288,7 +289,9 @@ Incubated extension directions (SBOM / monorepo / incremental releases / OTA / s
 | M7 | wearables (Wear OS / watchOS companion / Fitbit / Garmin / Zepp, experimental) |
 | M8 | WASM plugin SDK, remote build farm, store publishing pipelines, ecosystem GA |
 
-The complete plan (per-platform support detail, risks, and mitigations) lives in **[docs/ROADMAP.en.md](docs/ROADMAP.en.md)**; the task-level breakdown (113 tasks / 279.5 person-days, with roles, dependencies, acceptance criteria, and scheduling notes) is in **[docs/TASKS.en.md](docs/TASKS.en.md)**.
+The complete plan (per-platform support detail, risks, and mitigations) lives in **[docs/ROADMAP.en.md](docs/ROADMAP.en.md)**; the task-level breakdown (116 tasks / 283 person-days, with roles, dependencies, acceptance criteria, and scheduling notes) is in **[docs/TASKS.en.md](docs/TASKS.en.md)**.
+
+Cross-host builds (Linux origin → macOS worker produces an IPA) — deployment, credential model, and signature verification — are documented in **[docs/FARM.en.md](docs/FARM.en.md)**.
 
 ## License
 
