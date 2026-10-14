@@ -143,7 +143,10 @@ fn msi_plan_is_wix_v3_with_tree_shortcut_and_ui() {
         "resources/index.html",
         "RUNTIME-DEPENDENCIES.txt",
     ] {
-        let source = format!("Source=\"{}\"", root.join(rel).display());
+        // 与产物同构：Source 由目录遍历逐段 `dir.join(file_name)` 拼出，测试也逐段 join；
+        // 整串 `root.join("resources/index.html")` 在 Windows 上会产出混合分隔符而不匹配。
+        let abs = rel.split('/').fold(root.clone(), |p, seg| p.join(seg));
+        let source = format!("Source=\"{}\"", abs.display());
         assert!(wxs.contains(&source), "wxs 缺少文件条目 {source}：\n{wxs}");
     }
 

@@ -159,7 +159,8 @@ fn identical_rebuild_hits_cache_and_core_binary_runs() {
         "--json 的 stdout 不得混入人读总结行"
     );
 
-    // 核心产物：路径 = <root>/core/target/<host-triple>/release/<crate 名>，执行即自报名 + 版本
+    // 核心产物：路径 = <root>/core/target/<host-triple>/release/<crate 名><EXE_SUFFIX>
+    // （Windows 上是 `.exe`），执行即自报名 + 版本
     let manifest = std::fs::read_to_string(project.path().join("core/Cargo.toml"))
         .expect("读生成的 core/Cargo.toml");
     let name = package_field(&manifest, "name");
@@ -169,7 +170,7 @@ fn identical_rebuild_hits_cache_and_core_binary_runs() {
         .join("core/target")
         .join(host_triple())
         .join("release")
-        .join(&name);
+        .join(format!("{name}{}", std::env::consts::EXE_SUFFIX));
     assert!(artifact.is_file(), "核心产物缺失：{}", artifact.display());
     let run = Command::new(&artifact).output().expect("核心产物可执行");
     assert!(run.status.success(), "核心产物退出码 {}", run.status);

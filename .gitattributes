@@ -1,0 +1,6 @@
+# 全仓 LF 检出：三宿主 CI 一致性。
+# windows runner 的 autocrlf 会把文本夹具/金样检出成 CRLF，破坏按 `\n` 字面量的
+# 替换与比对（config.rs 的 [ui] 段删除即此坑；R4 修复）。二进制不参与转换。
+* text=auto eol=lf
+*.png binary
+*.ico binary

@@ -50,11 +50,13 @@ pub fn write_min_crate(root: &Path, dir: &str, name: &str) {
     .expect("写 fixture main.rs");
 }
 
-/// 读取 `tests/fixtures` 下的夹具。
+/// 读取 `tests/fixtures` 下的夹具（行尾归一化为 LF）。
 pub fn fixture(name: &str) -> String {
     let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("tests/fixtures")
         .join(name);
     std::fs::read_to_string(&path)
         .unwrap_or_else(|err| panic!("读取夹具 {} 失败: {err}", path.display()))
+        // Windows 检出（autocrlf）是 CRLF：测试按 `\n` 字面量做替换与断言，先归一化
+        .replace("\r\n", "\n")
 }

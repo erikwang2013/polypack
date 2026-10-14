@@ -1,4 +1,9 @@
 //! T-M1-15 验收（产物侧）：`[retention].artifact_builds` 超限后按 LRU 自动淘汰产物快照。
+//!
+//! 整份文件是 **Linux 宿主专属**（口径同 tests/package.rs）：用例用 `poly build --target linux`
+//! 造快照，而显式目标在非 Linux 宿主上结构性不可达（`Registry::resolve_all` → `Unreachable`）。
+//! 保留 / 淘汰机制本身与宿主无关，由 ubuntu 腿完整覆盖。
+#![cfg(target_os = "linux")]
 
 use std::path::{Path, PathBuf};
 use std::process::Command;
