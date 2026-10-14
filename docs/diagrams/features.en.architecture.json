@@ -1,0 +1,43 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "PolyPack Capability Map",
+    "subtitle": "Five capability families — all driven by the Rust core, re-skinned per platform by React adapters",
+    "quality_profile": "showcase"
+  },
+  "layout": {
+    "mode": "grid",
+    "cols": 3,
+    "origin": [60, 120],
+    "gapX": 45,
+    "gapY": 66,
+    "cellW": 230,
+    "cellH": 64
+  },
+  "components": [
+    { "id": "targets", "type": "backend", "label": "Target registry", "sublabel": "50+ TargetSpecs · declarative", "row": 0, "col": 0, "size": [200, 64] },
+    { "id": "one_command", "type": "backend", "label": "One command, many targets", "sublabel": "poly release covers all", "row": 0, "col": 1, "size": [200, 64] },
+    { "id": "variants", "type": "frontend", "label": "OS variants", "sublabel": "GrapheneOS · KaiOS · HarmonyOS", "row": 0, "col": 2, "size": [200, 64] },
+    { "id": "toolchain", "type": "backend", "label": "Toolchain management", "sublabel": "auto-probe · install SDKs", "row": 1, "col": 0, "size": [200, 64] },
+    { "id": "cache", "type": "database", "label": "Content-addressed cache", "sublabel": "incremental · reproducible", "row": 1, "col": 1, "size": [200, 64] },
+    { "id": "farm", "type": "cloud", "label": "Remote build farm", "sublabel": "macOS worker pool", "row": 1, "col": 2, "size": [200, 64] },
+    { "id": "tokens", "type": "frontend", "label": "@polypack/ui", "sublabel": "tokens + headless primitives", "row": 2, "col": 0, "size": [200, 64] },
+    { "id": "components", "type": "frontend", "label": "Platform component adaptation", "sublabel": "Material · HIG · HarmonyOS", "row": 2, "col": 1, "size": [200, 64] },
+    { "id": "preview", "type": "frontend", "label": "Hot preview", "sublabel": "poly dev · live reload", "row": 2, "col": 2, "size": [200, 64] },
+    { "id": "keystore", "type": "security", "label": "Key vault", "sublabel": "Keychain/Vault · references", "row": 3, "col": 0, "size": [200, 64] },
+    { "id": "signing", "type": "security", "label": "Sign · notarize · harden", "sublabel": "notarize · AVB", "row": 3, "col": 1, "size": [200, 64] },
+    { "id": "stores", "type": "backend", "label": "Store pipelines", "sublabel": "Play · ASC · AGC · mini-programs", "row": 3, "col": 2, "size": [200, 64] },
+    { "id": "plugins", "type": "messagebus", "label": "WASM plugins", "sublabel": "custom targets · sandboxed", "row": 4, "col": 0, "size": [200, 64] },
+    { "id": "ci", "type": "cloud", "label": "CI integrations", "sublabel": "Actions / GitLab", "row": 4, "col": 1, "size": [200, 64] },
+    { "id": "diag", "type": "backend", "label": "Diagnostics", "sublabel": "build explanations · failure localization", "row": 4, "col": 2, "size": [200, 64] }
+  ],
+  "boundaries": [
+    { "kind": "region", "label": "1 · Targets & coverage", "wraps": ["targets", "one_command", "variants"] },
+    { "kind": "region", "label": "2 · Build & cache", "wraps": ["toolchain", "cache", "farm"] },
+    { "kind": "region", "label": "3 · Cross-platform UI", "wraps": ["tokens", "components", "preview"] },
+    { "kind": "region", "label": "4 · Signing & publishing", "wraps": ["keystore", "signing", "stores"] },
+    { "kind": "region", "label": "5 · Ecosystem & operations", "wraps": ["plugins", "ci", "diag"] }
+  ],
+  "connections": []
+}

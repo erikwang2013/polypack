@@ -1,0 +1,18 @@
+{
+  "target": "windows",
+  "builder": "windows-wix",
+  "signing": "windows-authenticode",
+  "verifiers": ["signtool-verify"],
+  "artifacts": [
+    {
+      "format": "msi",
+      "extension": "msi",
+      "entries": ["*.exe", "index.html", "RUNTIME-DEPENDENCIES.txt"]
+    },
+    {
+      "format": "bare-product",
+      "extension": null,
+      "entries": ["dist/index.html", "dist/manifest.webmanifest", "core/*"]
+    }
+  ]
+}

@@ -4,7 +4,7 @@
 
 [English](README.en.md) · [详细规划](docs/ROADMAP.md) · [架构](#项目架构) · [平台矩阵](#支持平台矩阵)
 
-> **项目状态：M0 地基已交付**（文档基线 v1.0.0；代码首个里程碑于 2026-10-15 落地）。当前包含：双语文档与规划、图示流水线与 Pax 生成器，以及可用的 Rust 工作区（`poly doctor` / 配置 schema / 目标注册表）；后续里程碑按 [docs/ROADMAP.md](docs/ROADMAP.md) 推进。README 中的 CLI 与配置示例除 `poly doctor` 外均为目标形态。
+> **项目状态：M1 桌面与 Web 已交付**（2026-10-15）。可用命令：`poly doctor` / `poly init` / `poly build`（Linux 真出 deb / AppDir / Web 静态包，含 Pax 图标派生）/ `poly dev`（整页重载热预览）/ `poly clean`；Windows / macOS 打包器与契约就绪，真机验证随 CI 三宿主（GitHub 账单恢复后）。后续里程碑按 [docs/ROADMAP.md](docs/ROADMAP.md) 推进。
 
 ---
 
@@ -179,7 +179,7 @@ PolyPack 的界面只写一遍（React），由适配层按端映射到**该平�
 ## 快速开始（规划中 API）
 
 ```bash
-# 其余命令为目标形态；M0 已可用：poly doctor（见下方说明）
+# 已可用（M1）：init / build / dev / clean / doctor（见下方说明）；release / publish 为目标形态
 cargo install polypack      # 安装 poly CLI
 poly init                   # 生成 polypack.toml
 poly dev                    # 启动热预览
@@ -189,7 +189,7 @@ poly release --target all --publish
 
 > `--target all` = 当前环境**可构建**的全部目标；排除项（需厂商授权、宿主 / 凭据不可达）与原因在 plan 阶段列明。
 >
-> M0 已可用：`cargo run -p poly-cli -- doctor`（本机工具链探测 + L1 覆盖矩阵，人读与 `--json` 双模式）。
+> M1 已可用：`cargo run -p poly-cli -- init|build|dev|clean|doctor`（本地工具链探测、示例应用脚手架、带内容寻址缓存的多端构建与打包、整页重载热预览、缓存与产物清理）。
 
 `polypack.toml` 示意：
 

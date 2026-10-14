@@ -75,6 +75,13 @@ pub enum BuildEvent {
         /// 是否命中。
         hit: bool,
     },
+    /// 非阻断告警（阶段继续执行）：降级路径、淘汰、缺失项说明。
+    Warning {
+        /// 阶段名。
+        stage: String,
+        /// 告警文本。
+        message: String,
+    },
 }
 
 /// 事件接收端。
@@ -117,6 +124,7 @@ impl<W: Write> EventSink for HumanSink<W> {
             BuildEvent::Cached { key, hit } => {
                 format!("• 缓存：{key} → {}", if *hit { "命中" } else { "未命中" })
             }
+            BuildEvent::Warning { stage, message } => format!("⚠ {stage}：{message}"),
         };
         let _ = writeln!(self.out, "{line}");
     }

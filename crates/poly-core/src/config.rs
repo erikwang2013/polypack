@@ -93,7 +93,13 @@ pub struct UiSection {
     pub framework: String,
     /// 入口文件路径。
     pub entry: String,
+    /// PWA `theme_color`（缺省用 Pax 品牌橙，见 [`DEFAULT_THEME_COLOR`]）。
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub theme_color: Option<String>,
 }
+
+/// PWA manifest 的缺省主题色：Pax 品牌橙（`docs/assets/pax-mark.svg` 底色）。
+pub const DEFAULT_THEME_COLOR: &str = "#ea580c";
 
 /// `[core]` 段。
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
@@ -214,6 +220,7 @@ impl PolypackConfig {
     /// - 目标选择交由 `Registry::resolve_all`（`--target all` 语义见 ROADMAP §4.3）：
     ///   `All` 时不可达目标进 `excluded` 并附原因，显式目标不可达即失败；
     /// - 配置 `[targets.*]` 出现注册表未知的目标即失败（`poly::E_TGT_0001`）；
+    /// - `[targets.<id>].format` 覆盖注册表默认格式（M1 唯一可覆盖字段，见函数内 shortcut）；
     /// - 入选目标的 `TargetSpec.signing` 映射为 `job.secrets` 的 `CredentialRef`（按档案名去重）。
     ///   M0 占位来源固定为 `CredentialSource::Keyring`；M1 按 `[targets.*]` 与 profile 解析
     ///   真实来源（Vault / CI 环境变量注入），届时 `CredentialSource` 的非 Keyring 分支才会出现。
@@ -236,9 +243,36 @@ impl PolypackConfig {
             }
         }
 
-        let resolved = registry
+        let mut resolved = registry
             .resolve_all(request, hosts_available, false)
             .map_err(target_error)?;
+
+        // 配置覆盖格式：`[targets.<id>].format` 是产品真值源（§3.4「目标即配置」），覆盖
+        // 注册表默认（如 linux 默认 appimage → `format = "deb"`）。值合法性由打包器
+        // `check_format` 把关（错误码更清楚），这里只管把它接上。
+        // shortcut: M1 只开放 `format` 一个覆盖字段，其余仍以注册表为准；M2 再扩字段。
+        for spec in &mut resolved.selected {
+            let Some(value) = self
+                .targets
+                .get(&spec.id)
+                .and_then(|section| section.get("format"))
+            else {
+                continue;
+            };
+            let Some(format) = value.as_str() else {
+                return Err(Diagnostic::error(
+                    codes::E_TGT_0003,
+                    format!(
+                        "[targets.{}].format 必须是字符串（当前是 {}）",
+                        spec.id,
+                        value.type_str()
+                    ),
+                )
+                .with_hint("写成 format = \"deb\" 这样的字面量；可选值见 poly doctor 的目标矩阵")
+                .into());
+            };
+            spec.package.format = format.to_string();
+        }
 
         let mut secrets: Vec<CredentialRef> = Vec::new();
         for spec in &resolved.selected {

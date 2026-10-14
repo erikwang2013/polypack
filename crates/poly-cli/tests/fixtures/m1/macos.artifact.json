@@ -1,0 +1,26 @@
+{
+  "target": "macos",
+  "builder": "macos-dmg",
+  "signing": "apple-codesign",
+  "verifiers": ["codesign-verify", "stapler-validate"],
+  "artifacts": [
+    {
+      "format": "dmg",
+      "extension": "dmg",
+      "entries": [
+        "*.app/Contents/Info.plist",
+        "*.app/Contents/PkgInfo",
+        "*.app/Contents/MacOS/*",
+        "*.app/Contents/Resources/index.html",
+        "*.app/Contents/Resources/*.icns",
+        "*.app/Contents/Resources/RUNTIME-DEPENDENCIES.txt",
+        "Applications"
+      ]
+    },
+    {
+      "format": "bare-product",
+      "extension": null,
+      "entries": ["dist/index.html", "dist/manifest.webmanifest", "core/*"]
+    }
+  ]
+}

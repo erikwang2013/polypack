@@ -1,0 +1,194 @@
+//! `Packager` 契约（ROADMAP §4.1）与产物 / 计划类型。
+//!
+//! 两段式：`plan()` 只生成脚本文本与外部命令（只读输入，不写盘、不执行工具），
+//! 供契约测试断言与 `poly plan` 预演；`package()` 落盘脚本、执行命令并汇总 [`Artifact`]。
+//! 宿主工具缺失时 `package()` 返回 [`BundleError::ToolMissing`]，绝不静默降级。
+
+use std::path::PathBuf;
+
+use poly_targets::TargetSpec;
+
+use crate::error::BundleError;
+use crate::inputs::BundleInputs;
+
+/// 产物形态（AppDir / 静态站点为目录）。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ArtifactKind {
+    /// 单文件产物（msi / nsis / dmg / deb / AppImage）。
+    File,
+    /// 目录产物（AppDir / 静态站点）。
+    Directory,
+}
+
+/// 一次打包的产物。
+///
+/// 可被 `poly-core` package 阶段直接消费：`format` → `BuildEvent::Packaged.format`，
+/// `bytes` → `BuildEvent::Packaged.bytes`。
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Artifact {
+    /// 目标 id（`TargetSpec.id`）。
+    pub target: String,
+    /// 实际产物格式（`msi` / `nsis` / `dmg` / `deb` / `appimage` / `appdir` / `static-site`）。
+    pub format: String,
+    /// 产物路径（文件或目录）。
+    pub path: PathBuf,
+    /// 产物体积（文件大小；目录为树内文件字节总和）。
+    pub bytes: u64,
+    /// 产物形态。
+    pub kind: ArtifactKind,
+    /// 宿主运行时依赖 / 阻塞说明（写入构建报告与产物说明）。
+    pub notes: Vec<String>,
+}
+
+/// 一条外部命令。
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Command {
+    /// 可执行名（按 PATH 解析）。
+    pub program: String,
+    /// 参数列表。
+    pub args: Vec<String>,
+    /// 工作目录。
+    pub cwd: Option<PathBuf>,
+}
+
+impl Command {
+    /// 构造命令。
+    pub fn new(
+        program: impl Into<String>,
+        args: impl IntoIterator<Item = impl Into<String>>,
+    ) -> Self {
+        Self {
+            program: program.into(),
+            args: args.into_iter().map(Into::into).collect(),
+            cwd: None,
+        }
+    }
+
+    /// 指定工作目录。
+    pub fn in_dir(mut self, cwd: impl Into<PathBuf>) -> Self {
+        self.cwd = Some(cwd.into());
+        self
+    }
+
+    /// 展示形态（报告 / 断言用；参数含空格时加引号）。
+    pub fn line(&self) -> String {
+        let mut out = String::new();
+        if let Some(cwd) = &self.cwd {
+            out.push_str(&format!("(cd {} && ", cwd.display()));
+        }
+        out.push_str(&self.program);
+        for arg in &self.args {
+            out.push(' ');
+            if arg.contains(' ') {
+                out.push('"');
+                out.push_str(arg);
+                out.push('"');
+            } else {
+                out.push_str(arg);
+            }
+        }
+        if self.cwd.is_some() {
+            out.push(')');
+        }
+        out
+    }
+}
+
+/// 计划中待落盘的脚本 / 配置文本。
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ScriptFile {
+    /// 目标路径。
+    pub path: PathBuf,
+    /// 文本内容。
+    pub contents: String,
+}
+
+/// 因工具缺失被跳过的可选步骤（如实记录，不伪装完成）。
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Skipped {
+    /// 缺失的工具。
+    pub tool: String,
+    /// 跳过原因 / 建议。
+    pub reason: String,
+}
+
+/// 打包计划：脚本 + 外部命令 + 跳过项。
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct BundlePlan {
+    /// 待落盘的脚本（.wxs / .nsi / control / desktop …）。
+    pub scripts: Vec<ScriptFile>,
+    /// 待执行的外部命令（按序）。
+    pub commands: Vec<Command>,
+    /// 被跳过的可选步骤。
+    pub skipped: Vec<Skipped>,
+}
+
+impl BundlePlan {
+    /// 空计划。
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// 追加一个脚本。
+    #[must_use]
+    pub fn with_script(mut self, path: impl Into<PathBuf>, contents: impl Into<String>) -> Self {
+        self.scripts.push(ScriptFile {
+            path: path.into(),
+            contents: contents.into(),
+        });
+        self
+    }
+
+    /// 追加一条命令。
+    #[must_use]
+    pub fn with_command(mut self, command: Command) -> Self {
+        self.commands.push(command);
+        self
+    }
+
+    /// 记录一个跳过项。
+    #[must_use]
+    pub fn skipping(mut self, tool: impl Into<String>, reason: impl Into<String>) -> Self {
+        self.skipped.push(Skipped {
+            tool: tool.into(),
+            reason: reason.into(),
+        });
+        self
+    }
+}
+
+/// 打包器契约（ROADMAP §4.1）。
+pub trait Packager: Send + Sync {
+    /// 目标 id（`TargetSpec.id`，如 `windows` / `linux`）。
+    fn id(&self) -> &'static str;
+    /// 产物格式（如 `msi` / `deb`；同一目标可有多个打包器）。
+    fn format(&self) -> &'static str;
+    /// 生成打包计划：只读取输入元数据，不写文件系统、不执行外部工具。
+    fn plan(&self, inputs: &BundleInputs, spec: &TargetSpec) -> Result<BundlePlan, BundleError>;
+    /// 执行打包：落盘脚本 → 执行命令 → 汇总产物。
+    fn package(&self, inputs: &BundleInputs, spec: &TargetSpec) -> Result<Artifact, BundleError>;
+}
+
+/// 内建打包器集合（M1：msi / nsis / dmg / deb / appimage / static-site）。
+pub fn builtin() -> Vec<Box<dyn Packager>> {
+    vec![
+        Box::new(crate::packagers::windows::WixMsi),
+        Box::new(crate::packagers::windows::Nsis),
+        Box::new(crate::packagers::dmg::Dmg),
+        Box::new(crate::packagers::linux::Deb),
+        Box::new(crate::packagers::linux::AppImage),
+        Box::new(crate::packagers::web::StaticSite),
+    ]
+}
+
+/// 按（目标 id，产物格式）查找内建打包器。
+pub fn find(target_id: &str, format: &str) -> Option<Box<dyn Packager>> {
+    builtin()
+        .into_iter()
+        .find(|p| p.id() == target_id && p.format() == format)
+}
+
+/// 目标声明的默认打包器（按 `TargetSpec.package.format` 查找）。
+pub fn for_spec(spec: &TargetSpec) -> Option<Box<dyn Packager>> {
+    find(&spec.id, &spec.package.format)
+}

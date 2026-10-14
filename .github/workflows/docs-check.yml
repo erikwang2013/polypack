@@ -36,5 +36,5 @@ jobs:
       - name: SVG XML validation
         run: |
           sudo apt-get update -qq && sudo apt-get install -y -qq libxml2-utils
-          for f in docs/assets/*.svg; do xmllint --noout "$f"; done
+          for f in docs/assets/*.svg docs/assets/en/*.svg; do xmllint --noout "$f"; done
           echo "all SVGs valid"

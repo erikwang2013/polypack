@@ -47,6 +47,20 @@ pub mod codes {
     pub const E_PLAN_0001: Code = Code::new("poly::E_PLAN_0001");
     /// 缺少凭据引用。
     pub const E_PLAN_0002: Code = Code::new("poly::E_PLAN_0002");
+    /// 流水线 DAG 定义非法（节点重名 / 依赖缺失 / 成环）。
+    pub const E_PLAN_0003: Code = Code::new("poly::E_PLAN_0003");
+    /// 核心 crate 编译失败。
+    pub const E_COMPILE_0001: Code = Code::new("poly::E_COMPILE_0001");
+    /// UI 构建（vite / 内建静态打包）失败。
+    pub const E_WEB_0001: Code = Code::new("poly::E_WEB_0001");
+    /// PWA manifest 生成失败（缺图标资产 / 入口 HTML 不合法）。
+    pub const E_WEB_0002: Code = Code::new("poly::E_WEB_0002");
+    /// 构建缓存读写失败。
+    pub const E_CACHE_0001: Code = Code::new("poly::E_CACHE_0001");
+    /// `poly init` 落盘失败（目标文件已存在 / 写入失败）。
+    pub const E_INIT_0001: Code = Code::new("poly::E_INIT_0001");
+    /// `poly dev` 失败（端口占用 / 监听失败）。
+    pub const E_DEV_0001: Code = Code::new("poly::E_DEV_0001");
     /// IO 错误。
     pub const E_IO_0001: Code = Code::new("poly::E_IO_0001");
 }

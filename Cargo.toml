@@ -10,6 +10,8 @@ license = "Apache-2.0"
 repository = "https://github.com/erikwang2013/polypack"
 
 [workspace.dependencies]
+poly-bundle = { path = "crates/poly-bundle" }
+poly-cache = { path = "crates/poly-cache" }
 poly-core = { path = "crates/poly-core" }
 poly-targets = { path = "crates/poly-targets" }
 poly-toolchain = { path = "crates/poly-toolchain" }
@@ -19,6 +21,7 @@ toml = "0.8"
 thiserror = "2"
 clap = { version = "4", features = ["derive"] }
 schemars = "0.8"
+blake3 = "1"
 
 [workspace.lints.rust]
 unsafe_code = "forbid"

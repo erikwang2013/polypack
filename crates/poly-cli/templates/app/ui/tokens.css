@@ -1,0 +1,66 @@
+/* 设计 token 占位：与 @polypack/ui 的最小 token 集同形（颜色 / 间距 / 字号）。
+   @polypack/ui 包落地后（ROADMAP §6），本文件替换为其构建产物。 */
+:root {
+  --poly-color-brand: #ea580c;
+  --poly-color-brand-strong: #9a3412;
+  --poly-color-accent: #0e7490;
+  --poly-color-surface: #fff7ed;
+  --poly-color-text: #0f172a;
+  --poly-color-muted: #64748b;
+  --poly-space-1: 4px;
+  --poly-space-2: 8px;
+  --poly-space-3: 16px;
+  --poly-space-4: 24px;
+  --poly-font-body: 16px;
+  --poly-font-small: 14px;
+  --poly-radius: 12px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  background: var(--poly-color-surface);
+  color: var(--poly-color-text);
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: var(--poly-font-body);
+}
+
+.card {
+  padding: var(--poly-space-4);
+  background: #ffffff;
+  border: 1px solid var(--poly-color-brand-strong);
+  border-radius: var(--poly-radius);
+  text-align: center;
+  max-width: 420px;
+}
+
+.mark {
+  display: block;
+  margin: 0 auto var(--poly-space-2);
+}
+
+.muted {
+  color: var(--poly-color-muted);
+  font-size: var(--poly-font-small);
+}
+
+button {
+  margin: var(--poly-space-3) 0;
+  padding: var(--poly-space-2) var(--poly-space-3);
+  font-size: var(--poly-font-body);
+  color: #ffffff;
+  background: var(--poly-color-brand);
+  border: none;
+  border-radius: var(--poly-radius);
+  cursor: pointer;
+}
+
+button:hover {
+  background: var(--poly-color-brand-strong);
+}

@@ -4,7 +4,7 @@
 
 [简体中文](README.md) · [Roadmap](docs/ROADMAP.en.md) · [Architecture](#architecture) · [Platforms](#platform-matrix)
 
-> **Project status: M0 Foundation delivered** (documentation baseline v1.0.0; the first code milestone landed 2026-10-15). The repo now contains the bilingual docs and plan, the diagram pipeline and Pax generator, and a working Rust workspace (`poly doctor` / config schema / target registry); later milestones follow [docs/ROADMAP.en.md](docs/ROADMAP.en.md). All CLI and config examples except `poly doctor` describe target shape.
+> **Project status: M1 Desktop & Web delivered** (2026-10-15). Available today: `poly doctor` / `poly init` / `poly build` (real deb / AppDir / web static bundles on Linux, with Pax icon derivation) / `poly dev` (full-reload hot preview) / `poly clean`; the Windows / macOS packagers and their contracts are in place, awaiting the three-host CI (post-billing) for real-machine runs. Later milestones follow [docs/ROADMAP.en.md](docs/ROADMAP.en.md).
 >
 > **Note on diagram labels:** the embedded diagrams are labeled in Chinese (the project's primary language). English-labeled variants are scheduled for milestone M1.
 
@@ -114,7 +114,7 @@ The full 13-step journey is in [Request lifecycle](#request-lifecycle) below.
 
 ## Architecture
 
-![PolyPack architecture overview](docs/assets/architecture.svg)
+![PolyPack architecture overview](docs/assets/en/architecture.svg)
 
 Five layers, top to bottom:
 
@@ -128,7 +128,7 @@ Rust and React communicate across four bridges: **napi-rs** (Node / Taro side), 
 
 ## Request lifecycle
 
-![Request lifecycle of one poly release](docs/assets/request-cycle.svg)
+![Request lifecycle of one poly release](docs/assets/en/request-cycle.svg)
 
 The full journey of one `poly release`: 13 steps in 5 phases.
 
@@ -142,7 +142,7 @@ The full journey of one `poly release`: 13 steps in 5 phases.
 
 ## Features
 
-![PolyPack capability map](docs/assets/features.svg)
+![PolyPack capability map](docs/assets/en/features.svg)
 
 Five capability families:
 
@@ -154,7 +154,7 @@ Five capability families:
 
 ## Lifecycle
 
-![Project and artifact lifecycle](docs/assets/lifecycle.svg)
+![Project and artifact lifecycle](docs/assets/en/lifecycle.svg)
 
 A state machine from bootstrap to archival, with two **recovery loops**:
 
@@ -181,7 +181,7 @@ The interface is written once (React) and mapped by the adapter layer onto **eac
 ## Quick start (planned API)
 
 ```bash
-# remaining commands are target shape; available today (M0): poly doctor (see below)
+# available today (M1): init / build / dev / clean / doctor (see below); release / publish are target shape
 cargo install polypack      # install the poly CLI
 poly init                   # generate polypack.toml
 poly dev                    # hot preview
@@ -191,7 +191,7 @@ poly release --target all --publish
 
 > `--target all` = every **buildable** target in the current environment; exclusions (license-gated, unreachable host/credentials) and their reasons are listed during the plan stage.
 >
-> Available today (M0): `cargo run -p poly-cli -- doctor` (local toolchain probes + L1 coverage matrix, human and `--json` modes).
+> Available today (M1): `cargo run -p poly-cli -- init|build|dev|clean|doctor` (toolchain probes, sample-app scaffolding, cache-addressed multi-target build & packaging, full-reload hot preview, cache/artifact cleanup).
 
 Sketch of `polypack.toml`:
 

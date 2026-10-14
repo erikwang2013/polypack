@@ -13,6 +13,8 @@ name = "poly"
 path = "src/main.rs"
 
 [dependencies]
+poly-bundle.workspace = true
+poly-cache.workspace = true
 poly-core.workspace = true
 poly-targets.workspace = true
 poly-toolchain.workspace = true

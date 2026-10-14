@@ -3,8 +3,12 @@
  * render-diagrams.mjs — PolyPack 文档图示流水线
  *
  * 输入:  docs/diagrams/<name>.<type>.json   (Archify JSON IR)
+ *        docs/diagrams/<name>.en.<type>.json (英文标签副本, 与中文同结构)
  * 输出:  docs/assets/<name>.svg            (GitHub README 可直接嵌入的独立 SVG)
+ *        docs/assets/en/<name>.svg         (英文版)
  *        docs/diagrams/build/<name>.html   (Archify 交互式产物, 供本地探索, 不提交)
+ *
+ * 中英对账: 同名图示的节点 id 集合必须一致 (仅标签语言不同), 不一致即失败。
  *
  * 步骤: 1) archify validate  2) archify deliver (渲染 + 产物校验 + 原子提交)
  *       3) 从产物 HTML 中提取内嵌 SVG, 按官方导出管线烘焙为独立 SVG:
@@ -28,6 +32,7 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const ARCHIFY = process.env.ARCHIFY_BIN || '/home/erik/.claude/skills/archify/bin/archify.mjs';
 const SRC = path.join(ROOT, 'docs', 'diagrams');
 const OUT = path.join(ROOT, 'docs', 'assets');
+const EN_OUT = path.join(OUT, 'en');
 const BUILD = path.join(SRC, 'build');
 const PAX_MARK = path.join(OUT, 'pax-mark.svg'); // 角标单一源: tools/build-pax.mjs 生成
 const BRAND = !process.argv.includes('--no-brand');
@@ -142,16 +147,20 @@ function applyBrand(svg) {
 
 /* ── 主流程 ── */
 fs.mkdirSync(OUT, { recursive: true });
+fs.mkdirSync(EN_OUT, { recursive: true });
 fs.mkdirSync(BUILD, { recursive: true });
 
 const sources = fs.readdirSync(SRC).filter((f) => /\.(architecture|sequence|dataflow|lifecycle|workflow)\.json$/.test(f)).sort();
 if (sources.length === 0) { console.error('docs/diagrams/ 下没有图示源文件'); process.exit(1); }
 
 let failed = 0;
+const rendered = new Map(); // 图示基名 → svg 文本（中英结构对账用）
 for (const file of sources) {
   const full = path.join(SRC, file);
   const type = file.match(/\.([a-z]+)\.json$/)[1];
   const base = file.replace(new RegExp(`\\.${type}\\.json$`), '');
+  const en = base.endsWith('.en');
+  const name = en ? base.slice(0, -3) : base;
   const ir = JSON.parse(fs.readFileSync(full, 'utf8'));
   const quality = ir.meta?.quality_profile;
   const qualityArgs = quality ? ['--quality', quality] : [];
@@ -163,18 +172,20 @@ for (const file of sources) {
     process.stdout.write('deliver…  ');
     execFileSync('node', [ARCHIFY, 'deliver', type, full, htmlPath, '--json', ...qualityArgs], { stdio: 'pipe' });
     const svg = applyBrand(extractStandaloneSvg(fs.readFileSync(htmlPath, 'utf8')));
-    const svgPath = path.join(OUT, `${base}.svg`);
+    const svgPath = path.join(en ? EN_OUT : OUT, `${name}.svg`);
+    const rel = path.relative(ROOT, svgPath);
+    rendered.set(base, svg);
     if (CHECK) {
       const existing = fs.existsSync(svgPath) ? fs.readFileSync(svgPath, 'utf8') : null;
       if (existing === svg) {
-        console.log(`ok   docs/assets/${base}.svg`);
+        console.log(`ok   ${rel}`);
       } else {
         failed += 1;
-        console.error(`DRIFT docs/assets/${base}.svg — 运行 node tools/render-diagrams.mjs 重新生成`);
+        console.error(`DRIFT ${rel} — 运行 node tools/render-diagrams.mjs 重新生成`);
       }
     } else {
       fs.writeFileSync(svgPath, svg);
-      console.log(`OK  → docs/assets/${base}.svg (${(svg.length / 1024).toFixed(1)} KiB)`);
+      console.log(`OK  → ${rel} (${(svg.length / 1024).toFixed(1)} KiB)`);
     }
   } catch (err) {
     failed += 1;
@@ -183,5 +194,24 @@ for (const file of sources) {
     console.error(out || err.message);
   }
 }
+/* ── 中英结构对账: 同名图示节点 id 集合必须一致（仅标签语言不同）── */
+function nodeIds(svg) {
+  return [...new Set([...svg.matchAll(/id="node-([^"]+)"/g)].map((m) => m[1]))].sort();
+}
+for (const [base, svg] of rendered) {
+  if (!base.endsWith('.en')) continue;
+  const name = base.slice(0, -3);
+  const zhSvg = rendered.get(name);
+  if (!zhSvg) continue;
+  const zh = nodeIds(zhSvg);
+  const enIds = nodeIds(svg);
+  if (zh.join(',') === enIds.join(',')) {
+    console.log(`ok   中英节点一致 · ${name} (${zh.length} 节点)`);
+  } else {
+    failed += 1;
+    console.error(`DRIFT ${name} 中英节点不一致: zh=[${zh.join(',')}] en=[${enIds.join(',')}]`);
+  }
+}
+
 console.log(failed ? `\n${failed} 个图示未通过` : CHECK ? `\n全部 ${sources.length} 个图示与磁盘一致` : `\n全部 ${sources.length} 个图示已生成到 docs/assets/`);
 process.exit(failed ? 1 : 0);

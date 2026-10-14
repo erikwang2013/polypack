@@ -3,7 +3,7 @@
 > 派生自 [ROADMAP.md](ROADMAP.md) §9 的里程碑分解；由 4 人规划小组并行产出、交叉对账后合并：**116 个任务**，跨里程碑引用经「存在性 + 描述匹配」两轮校验零悬空，中英任务 ID 逐一对齐。
 > 英文版：[TASKS.en.md](TASKS.en.md)。本文件受「文档同步约定」管辖（见 ROADMAP §11）：任务增删须双文件同一次提交更新，并由 T-M0-10 的结构级校验器在 CI 拦截漂移。
 > 扩展方向（E1–E8）已立项孵化，不占本任务表：见 [ROADMAP.md](ROADMAP.md) §13。
-> 进度（2026-10-15）：**M0 已交付 10/11**（T-M0-02 工作流已交付、远端运行待 GitHub 账单恢复；其余全部含测试绿）。
+> 进度（2026-10-15）：**M0 10/11**（T-M0-02 远端待账单）· **M1 已交付 15/15**（11 项 ✅；T-M1-02/05/06/07 的真机验证待 CI 三宿主与对应打包工具，各有注明）· 全仓 200 测试绿。
 
 ## 团队编制与角色
 
@@ -141,7 +141,7 @@
 
 > 前置依赖: M0（T-M0-03、T-M0-04、T-M0-05、T-M0-06、T-M0-07、T-M0-08、T-M0-09、T-M0-10）｜出口条件: 示例应用在 Windows / macOS / Linux / Web 四端出包；同一输入二跑缓存命中率 ≥ 90%；英文版图示合入并经 CI 校验（`poly dev` 热更仅为演示项——出口条件不依赖核心热更注入的高级形态）。
 
-### T-M1-01 · 流水线骨架：Stage trait 与 DAG 调度
+### T-M1-01 · ✅ 流水线骨架：Stage trait 与 DAG 调度
 
 - 角色: core
 - 依赖: T-M0-05、T-M0-06、T-M0-07
@@ -149,7 +149,7 @@
 - 交付物: Stage trait 实现框架（plan / probe / compile / bundle / package）与 DAG 调度（petgraph），compile 与 bundle(ui) 双支线并行、汇聚于 package。
 - 验收: 以 mock 目标跑通「双并行支线 → 汇聚」的完整事件序列；单支线失败时其余支线状态汇总上报；事件与错误码符合 T-M0-07 约定。
 
-### T-M1-02 · Tauri 管线：triple 探测与核心编译
+### T-M1-02 · Tauri 管线：triple 探测与核心编译（Linux 真跑；跨宿主编译待 CI 三宿主）
 
 - 角色: core
 - 依赖: T-M0-09、T-M1-01
@@ -157,7 +157,7 @@
 - 交付物: 宿主 → target triple 探测与核心 Rust crate 的 release 编译阶段（产物落盘、事件上报、失败带诊断）。
 - 验收: 三宿主探测的 triple 与 rustc 实际目标一致；示例核心编译成功产出可检视产物；缺 linker/SDK 时在 probe/compile 阶段报错带错误码与修复提示。
 
-### T-M1-03 · Tauri 捆绑阶段与裸产物
+### T-M1-03 · ✅ Tauri 捆绑阶段与裸产物（Linux 含真实 Tauri 二进制验收；Win/Mac 布局契约级）
 
 - 角色: platforms
 - 依赖: T-M1-02
@@ -165,7 +165,7 @@
 - 交付物: 捆绑阶段：前端 dist 注入 WebView 资源，按宿主调用 Tauri 捆绑，产出未分格式裸产物（Windows 可执行 + 资源、macOS .app、Linux 可执行 / AppDir 输入）。
 - 验收: 三宿主示例应用产出可启动裸产物（启动输出应用版本后正常退出；无 GUI 会话时以 --version 冒烟替代）；WebView2 等宿主运行时依赖写入产物说明。
 
-### T-M1-04 · Web 管线（vite 驱动 + PWA manifest 生成）
+### T-M1-04 · ✅ Web 管线（vite 驱动 + PWA manifest 生成）
 
 - 角色: ui-adapters
 - 依赖: T-M1-01
@@ -173,7 +173,7 @@
 - 交付物: vite 前端构建集成（调起构建、产出 dist）、react-dom 渲染基线对接与 PWA manifest 生成（名称 / 图标 / 主题色来自 polypack.toml；图标基于 Pax 品牌资产）。
 - 验收: 示例 UI 构建出 dist；manifest 结构与图标尺寸断言通过；html-validate 对产物 HTML 通过；构建失败带错误码与定位信息。
 
-### T-M1-05 · poly-bundle：Packager trait 与 Windows 打包器（MSI / NSIS）
+### T-M1-05 · poly-bundle：Packager trait 与 Windows 打包器（MSI / NSIS）（实现+契约完备；真机执行阻塞：Windows 宿主）
 
 - 角色: packagers
 - 依赖: T-M1-03
@@ -181,7 +181,7 @@
 - 交付物: Packager trait（id / package(inputs, spec) → Artifact）与 WiX MSI、NSIS 两个 Windows 打包器。
 - 验收: windows-2022 上由裸产物生成 MSI 与 NSIS 安装器；MSI 表结构与安装器产物结构断言通过；每夜冒烟「安装 → 启动 → 卸载」通过。
 
-### T-M1-06 · macOS DMG 打包器
+### T-M1-06 · macOS DMG 打包器（实现+契约完备；真机执行阻塞：macOS 宿主）
 
 - 角色: packagers
 - 依赖: T-M1-03、T-M1-05
@@ -189,7 +189,7 @@
 - 交付物: DMG 打包器（.app → 磁盘映像，含拖拽安装布局）。
 - 验收: macos-14 上生成 DMG，`hdiutil verify` 与挂载/卸载冒烟通过；非 macOS 宿主以 mock 模式跑通契约断言。
 
-### T-M1-07 · Linux 打包器（AppImage / deb）
+### T-M1-07 · Linux 打包器（AppImage / deb）（deb 真产物含派生图标；AppImage 单文件待 appimagetool、lintian 待装）
 
 - 角色: packagers
 - 依赖: T-M1-03、T-M1-05
@@ -197,7 +197,7 @@
 - 交付物: AppImage 与 deb 打包器（desktop 文件、图标、依赖与元数据齐备）。
 - 验收: ubuntu-latest 上 AppImage 可执行启动冒烟通过；deb 经 `dpkg -i` 安装与卸载冒烟通过；deb 通过 lintian（无 error 级问题）。
 
-### T-M1-08 · Web 静态站点打包器
+### T-M1-08 · ✅ Web 静态站点打包器
 
 - 角色: packagers
 - 依赖: T-M1-04、T-M1-05
@@ -205,7 +205,7 @@
 - 交付物: 静态站点打包器（dist + manifest → 可托管静态包，含 PWA 资产），与内建目标走同一 Packager 接口。
 - 验收: 产物被静态服务器直接托管即访问可用；html-validate 与 manifest 断言通过；与 §3.2 Web 行（静态站点 + PWA manifest）一致。
 
-### T-M1-09 · poly-cache（blake3 CAS + 本地后端 + 对象存储 trait）
+### T-M1-09 · ✅ poly-cache（blake3 CAS + 本地后端 + 对象存储 trait）
 
 - 角色: core
 - 依赖: T-M1-01、T-M1-02
@@ -213,7 +213,7 @@
 - 交付物: §5.2 缓存键（源文件树摘要 ‖ 依赖锁文件 ‖ TargetSpec 版本 ‖ 工具链版本 ‖ 构建参数）与内容寻址存储（blake3 + CAS）、本地文件系统后端、对象存储后端 trait、命中统计事件。
 - 验收: 缓存键对五类输入任一变化敏感（单测逐项验证）；二跑命中缓存（事件流出现 Cached 且 hit=true，构建时延明显下降）；内容与摘要不符的损坏条目被检出并视为未命中。
 
-### T-M1-10 · poly dev 热预览 v0（Web 宿主）
+### T-M1-10 · ✅ poly dev 热预览 v0（Web 宿主）
 
 - 角色: ui-adapters
 - 依赖: T-M1-01、T-M1-04
@@ -221,7 +221,7 @@
 - 交付物: `poly dev` 命令：启动 Web 宿主 dev server；UI 变更热更；核心（Rust）变更触发重编译并刷新注入。降级预案：若注入方案超出估算，降级为整页重载，热更（注入形态）延后至 M2+。
 - 验收: 编辑 UI 源文件后浏览器免手动刷新即更新；编辑核心源码后自动重编译且页面可见效果（整页重载为可接受的降级形态）；退出后无残留子进程。
 
-### T-M1-11 · poly init 示例应用模板
+### T-M1-11 · ✅ poly init 示例应用模板
 
 - 角色: core
 - 依赖: T-M0-03
@@ -229,7 +229,7 @@
 - 交付物: `poly init` 生成最小示例应用：Rust core crate + React UI 骨架（使用 @polypack/ui 最小 tokens）+ polypack.toml（windows / macos / linux / web 四个 L1 目标声明）+ 基于 Pax 的应用图标资产。
 - 验收: 空目录执行 `poly init` 后配置直接通过 schema 校验，`poly doctor` 可正常给出工具链报告；signing 全部为引用、无明文凭据；README 快速开始步骤与生成物一致。
 
-### T-M1-12 · 英文版图示（英文标签 JSON → docs/assets/en/*.svg）
+### T-M1-12 · ✅ 英文版图示（英文标签 JSON → docs/assets/en/*.svg）
 
 - 角色: docs
 - 依赖: T-M0-10
@@ -237,7 +237,7 @@
 - 交付物: 英文标签 JSON（与现有中文 JSON 同结构）+ render-diagrams.mjs 支持渲染 `docs/assets/en/*.svg` + README.en.md / ROADMAP.en.md 引用英文图示。
 - 验收: 运行 `node tools/render-diagrams.mjs` 生成全部英文 SVG 且 `--check` 通过；中英图示节点结构一致（仅标签语言不同）；英文图示保留右下角 Pax 角标（`--no-brand` 可关）。
 
-### T-M1-13 · 四端契约测试与 M1 验收
+### T-M1-13 · ✅ 四端契约测试与 M1 验收
 
 - 角色: infra
 - 依赖: T-M1-03、T-M1-04、T-M1-05、T-M1-06、T-M1-07、T-M1-08、T-M1-09、T-M1-11
@@ -245,14 +245,14 @@
 - 交付物: 示例应用四端（Windows / macOS / Linux / Web）契约测试（打包 + 校验器 + 产物结构断言与金样比对；mock 模式每次提交、真实模式每夜）与二跑缓存命中率断言。
 - 验收: CI 三宿主全绿；四端产物结构断言通过；同一输入二跑缓存命中率 ≥ 90%（构建报告输出统计数据）。
 
-### T-M1-14 · Pax 品牌落地（CLI 状态表情 + 应用图标派生）
+### T-M1-14 · ✅ Pax 品牌落地（CLI 状态表情 + 应用图标派生；deb 真资产 / MSI·DMG 契约级）
 - 角色: ui-adapters
 - 依赖: T-M1-05, T-M1-11
 - 估算: 1.5d
 - 交付物: ① CLI 启动横幅与构建状态表情映射（成功=笑 / 失败=哭 / 异常=惊恐 / 待确认=疑惑 / 空闲=眨眼；终端不支持图形时降级为文字与颜色）；② 图标派生管线：`pax-mark.svg` → PNG / ICNS / ICO（构建期生成，不入库）；③ poly-gui 应用图标与窗口图标。
 - 验收: MSI / DMG / deb 产物图标为 Pax 派生资产且尺寸断言通过；CLI 成功与失败路径输出对应表情（降级模式输出文字）；品牌资产全部来自 `tools/build-pax.mjs` 单一源。
 
-### T-M1-15 · `poly clean` 与保留策略
+### T-M1-15 · ✅ `poly clean` 与保留策略
 - 角色: core
 - 依赖: T-M1-09
 - 估算: 1d

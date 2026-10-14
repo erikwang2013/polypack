@@ -355,3 +355,77 @@ fn to_job_unreachable_explicit_target_fails_with_e_tgt_0002() {
     assert_eq!(err.diagnostic.code, codes::E_TGT_0002);
     assert!(err.diagnostic.hint.is_some(), "错误必须带修复提示");
 }
+
+/// `[targets.<id>].format` 覆盖注册表默认格式（§3.4「目标即配置」）：内建 linux 默认
+/// appimage，配置写 deb 后 `JobSpec` 里就是 deb；未声明的目标仍用注册表默认。
+#[test]
+fn to_job_applies_target_format_override() {
+    let config = PolypackConfig::parse(
+        "[package]\nname = \"my-app\"\nversion = \"1.2.0\"\n\
+         [ui]\nframework = \"react\"\nentry = \"ui/index.html\"\n\
+         [core]\ncrate = \"core\"\n\
+         [targets.linux]\nformat = \"deb\"\n",
+    )
+    .expect("配置合法");
+    let registry = Registry::builtin();
+
+    let job = config
+        .to_job(
+            &registry,
+            &TargetRequest::All,
+            Profile::Local,
+            &[Host::Linux],
+        )
+        .expect("linux 宿主上应解析成功");
+    let format_of = |id: &str| {
+        job.targets
+            .iter()
+            .find(|target| target.id == id)
+            .unwrap_or_else(|| panic!("{id} 应入选"))
+            .package
+            .format
+            .clone()
+    };
+    assert_eq!(format_of("linux"), "deb", "配置覆盖注册表默认 appimage");
+    assert_eq!(format_of("web"), "static-site", "未声明的目标不受影响");
+}
+
+/// 值形态的边界：`format` 非字符串 → `poly::E_TGT_0003`；值非法（非已知格式）**不在这里拦**
+/// ——由打包器 `check_format` 把关（错误码更清楚）。
+#[test]
+fn to_job_format_override_validates_shape_only() {
+    let registry = Registry::builtin();
+    let with = |targets: &str| {
+        PolypackConfig::parse(&format!(
+            "[package]\nname = \"my-app\"\nversion = \"1.2.0\"\n\
+             [ui]\nframework = \"react\"\nentry = \"ui/index.html\"\n\
+             [core]\ncrate = \"core\"\n{targets}"
+        ))
+        .expect("配置合法")
+    };
+
+    let error = with("[targets.linux]\nformat = 1\n")
+        .to_job(
+            &registry,
+            &TargetRequest::All,
+            Profile::Local,
+            &[Host::Linux],
+        )
+        .expect_err("非字符串 format 应报错");
+    assert_eq!(error.diagnostic.code, codes::E_TGT_0003);
+
+    let job = with("[targets.linux]\nformat = \"not-a-format\"\n")
+        .to_job(
+            &registry,
+            &TargetRequest::All,
+            Profile::Local,
+            &[Host::Linux],
+        )
+        .expect("未知格式值放行到打包器再判");
+    assert!(
+        job.targets
+            .iter()
+            .any(|t| t.package.format == "not-a-format"),
+        "字面量原样透传"
+    );
+}

@@ -3,7 +3,7 @@
 use poly_core::{BuildEvent, Code, Diagnostic, EventSink, HumanSink, JsonSink, Severity, codes};
 
 /// 全部已登记错误码：新增码时同步登记，使格式与唯一性校验保持全覆盖。
-const ALL_CODES: [Code; 9] = [
+const ALL_CODES: [Code; 16] = [
     codes::E_CFG_0001,
     codes::E_CFG_0002,
     codes::E_TGT_0001,
@@ -12,6 +12,13 @@ const ALL_CODES: [Code; 9] = [
     codes::E_PROBE_0001,
     codes::E_PLAN_0001,
     codes::E_PLAN_0002,
+    codes::E_PLAN_0003,
+    codes::E_COMPILE_0001,
+    codes::E_WEB_0001,
+    codes::E_WEB_0002,
+    codes::E_CACHE_0001,
+    codes::E_INIT_0001,
+    codes::E_DEV_0001,
     codes::E_IO_0001,
 ];
 

@@ -1,6 +1,13 @@
 //! `poly` 命令行入口（ROADMAP §4.1）。
 
+mod build;
+mod clean;
+mod dev;
 mod doctor;
+mod init;
+mod mood;
+mod package;
+mod project;
 
 use clap::{Parser, Subcommand};
 
@@ -22,13 +29,36 @@ struct Cli {
 enum Command {
     /// 探测本机工具链并输出报告。
     Doctor(doctor::Args),
+    /// 生成示例应用骨架（poly init [目录]）。
+    Init(init::Args),
+    /// 按 polypack.toml 构建（compile 与 bundle(ui) 双支线，带内容寻址缓存）。
+    Build(build::Args),
+    /// 启动 Web 宿主热预览（整页重载形态）。
+    Dev(dev::Args),
+    /// 清理构建缓存与产物快照（默认 dry-run）。
+    Clean(clean::Args),
 }
 
 fn main() -> std::process::ExitCode {
     let cli = Cli::parse();
+    // 启动横幅与结束表情只走人读通道（T-M1-14）：--json 的 stdout 必须是纯 JSON Lines
+    if !cli.json {
+        println!("{}", mood::banner(mood::color_enabled()));
+    }
     let result = match cli.command {
         Command::Doctor(args) => doctor::run(&args, cli.json),
+        Command::Init(args) => init::run(&args, cli.json),
+        Command::Build(args) => build::run(&args, cli.json),
+        Command::Dev(args) => dev::run(&args, cli.json),
+        Command::Clean(args) => clean::run(&args, cli.json),
     };
+    if !cli.json {
+        let (face, text) = match &result {
+            Ok(code) => mood::for_run(*code, mood::warnings()),
+            Err(_) => (mood::Mood::Cry, "失败（见上方错误）".to_string()),
+        };
+        println!("{}", mood::line(face, &text, mood::color_enabled()));
+    }
     match result {
         Ok(code) => std::process::ExitCode::from(code as u8),
         Err(diagnostic) => {

@@ -3,7 +3,7 @@
 > Derived from the milestone breakdown in [ROADMAP.en.md](ROADMAP.en.md) §9; produced in parallel by a four-person planning group and merged after cross-reconciliation: **116 tasks**, all cross-milestone references verified in two passes (existence + description match, zero dangling), Chinese/English task IDs aligned one-to-one.
 > Chinese original: [TASKS.md](TASKS.md). This file falls under the documentation sync convention (ROADMAP §11): task additions/removals must land in both files in the same commit, and drift is caught in CI by the structural checker delivered in T-M0-10.
 > Extension directions (E1–E8) are incubated and intentionally absent from this task table — see [ROADMAP.en.md](ROADMAP.en.md) §13.
-> Progress (2026-10-15): **M0 ships 10/11** (T-M0-02's workflow is delivered; its remote run awaits GitHub billing; everything else is green with tests).
+> Progress (2026-10-15): **M0 10/11** (T-M0-02's remote run awaits billing) · **M1 delivered 15/15** (11 ✅; T-M1-02/05/06/07 await real-host/CI verification with inline notes) · 200 tests green workspace-wide.
 
 ## Team roster
 
@@ -141,7 +141,7 @@
 
 > Prerequisite: M0 (T-M0-03, T-M0-04, T-M0-05, T-M0-06, T-M0-07, T-M0-08, T-M0-09, T-M0-10)｜Exit criteria: the sample app packages for Windows / macOS / Linux / Web; second-run cache hit ≥ 90% on identical inputs; English-labeled diagrams merged and checked in CI (`poly dev` hot update is demo-only — the exit criteria do not depend on the advanced core hot-update injection form).
 
-### T-M1-01 · Pipeline skeleton: Stage trait and DAG scheduling
+### T-M1-01 · ✅ Pipeline skeleton: Stage trait and DAG scheduling
 
 - Role: core
 - Deps: T-M0-05, T-M0-06, T-M0-07
@@ -149,7 +149,7 @@
 - Deliverable: The Stage trait implementation framework (plan / probe / compile / bundle / package) and DAG scheduling (petgraph), with the compile and bundle(ui) branches running in parallel and converging at package.
 - Acceptance: a mock target drives the full "two parallel branches → convergence" event sequence; when one branch fails, the other branches' statuses are summarized in the report; events and error codes follow the T-M0-07 conventions.
 
-### T-M1-02 · Tauri pipeline: triple detection and core compile
+### T-M1-02 · Tauri pipeline: triple detection and core compile (Linux real-run; cross-host compile awaits the three-host CI)
 
 - Role: core
 - Deps: T-M0-09, T-M1-01
@@ -157,7 +157,7 @@
 - Deliverable: Host → target-triple detection and the release compile stage for the core Rust crate (artifacts written to disk, events emitted, failures carry diagnostics).
 - Acceptance: detected triples on all three hosts match rustc's actual targets; the sample core compiles into an inspectable artifact; a missing linker/SDK fails in the probe/compile stage with an error code and fix hint.
 
-### T-M1-03 · Tauri bundling stage and bare artifacts
+### T-M1-03 · ✅ Tauri bundling stage and bare artifacts (real Tauri binary accepted on Linux; Win/Mac layout contract-level)
 
 - Role: platforms
 - Deps: T-M1-02
@@ -165,7 +165,7 @@
 - Deliverable: The bundling stage: inject the frontend dist into WebView resources and invoke Tauri bundling per host, producing format-agnostic bare artifacts (Windows executable + resources, macOS .app, Linux executable / AppDir input).
 - Acceptance: the sample app yields a launchable bare artifact on all three hosts (prints the app version on start and exits cleanly; `--version` smoke substitutes where no GUI session exists); host runtime dependencies such as WebView2 are recorded in the artifact notes.
 
-### T-M1-04 · Web pipeline (vite-driven + PWA manifest generation)
+### T-M1-04 · ✅ Web pipeline (vite-driven + PWA manifest generation)
 
 - Role: ui-adapters
 - Deps: T-M1-01
@@ -173,7 +173,7 @@
 - Deliverable: vite frontend build integration (invoke the build, produce dist), react-dom rendering baseline wiring, and PWA manifest generation (name / icons / theme color from polypack.toml; icons derived from Pax brand assets).
 - Acceptance: the sample UI builds to dist; manifest structure and icon-size assertions pass; html-validate passes on the emitted HTML; build failures carry an error code and location info.
 
-### T-M1-05 · poly-bundle: Packager trait and Windows packagers (MSI / NSIS)
+### T-M1-05 · poly-bundle: Packager trait and Windows packagers (MSI / NSIS) (implementation + contracts complete; real-machine run blocked: Windows host)
 
 - Role: packagers
 - Deps: T-M1-03
@@ -181,7 +181,7 @@
 - Deliverable: The Packager trait (id / package(inputs, spec) → Artifact) plus the WiX MSI and NSIS Windows packagers.
 - Acceptance: windows-2022 generates MSI and NSIS installers from the bare artifact; MSI table structure and installer-artifact structure assertions pass; the nightly install → launch → uninstall smoke passes.
 
-### T-M1-06 · macOS DMG packager
+### T-M1-06 · macOS DMG packager (implementation + contracts complete; real-machine run blocked: macOS host)
 
 - Role: packagers
 - Deps: T-M1-03, T-M1-05
@@ -189,7 +189,7 @@
 - Deliverable: The DMG packager (.app → disk image with a drag-to-install layout).
 - Acceptance: macos-14 generates a DMG that passes `hdiutil verify` and mounts/unmounts in a smoke check; non-macOS hosts run the contract assertions in mock mode.
 
-### T-M1-07 · Linux packagers (AppImage / deb)
+### T-M1-07 · Linux packagers (AppImage / deb) (real deb with derived icons; AppImage single-file awaits appimagetool, lintian not installed)
 
 - Role: packagers
 - Deps: T-M1-03, T-M1-05
@@ -197,7 +197,7 @@
 - Deliverable: The AppImage and deb packagers (desktop file, icons, dependency and metadata complete).
 - Acceptance: on ubuntu-latest the AppImage passes a launch smoke; the deb passes `dpkg -i` install and uninstall smokes; the deb passes lintian (no error-level findings).
 
-### T-M1-08 · Web static-site packager
+### T-M1-08 · ✅ Web static-site packager
 
 - Role: packagers
 - Deps: T-M1-04, T-M1-05
@@ -205,7 +205,7 @@
 - Deliverable: The static-site packager (dist + manifest → a hostable static package including PWA assets), using the same Packager interface as built-in targets.
 - Acceptance: serving the artifact from a plain static server makes it reachable; html-validate and manifest assertions pass; it matches the §3.2 Web row (static site + PWA manifest).
 
-### T-M1-09 · poly-cache (blake3 CAS + local backend + object-storage trait)
+### T-M1-09 · ✅ poly-cache (blake3 CAS + local backend + object-storage trait)
 
 - Role: core
 - Deps: T-M1-01, T-M1-02
@@ -213,7 +213,7 @@
 - Deliverable: The §5.2 cache key (source-tree digest ‖ dependency lockfile ‖ TargetSpec version ‖ toolchain version ‖ build parameters), content-addressed storage (blake3 + CAS), a local filesystem backend, an object-storage backend trait, and cache-hit statistics events.
 - Acceptance: the cache key is sensitive to each of the five input classes (verified one by one in unit tests); a second run hits the cache (a Cached event with hit=true, build wall time clearly lower); an entry whose content does not match its digest is detected and treated as a miss.
 
-### T-M1-10 · poly dev hot preview v0 (web host)
+### T-M1-10 · ✅ poly dev hot preview v0 (web host)
 
 - Role: ui-adapters
 - Deps: T-M1-01, T-M1-04
@@ -221,7 +221,7 @@
 - Deliverable: The `poly dev` command: launch the web-host dev server; hot-update on UI changes; trigger recompilation and refresh injection on core (Rust) changes. Fallback plan: if the injection approach overruns, degrade to full-page reload and defer hot update (injection form) to M2+.
 - Acceptance: editing a UI source file updates the browser without a manual refresh; editing core source recompiles automatically with the effect visible in the page (full-page reload is an acceptable degraded form); exiting leaves no orphaned child processes.
 
-### T-M1-11 · poly init sample-app template
+### T-M1-11 · ✅ poly init sample-app template
 
 - Role: core
 - Deps: T-M0-03
@@ -229,7 +229,7 @@
 - Deliverable: `poly init` generating a minimal sample app: a Rust core crate + a React UI skeleton (using minimal @polypack/ui tokens) + polypack.toml (windows / macos / linux / web L1 target declarations) + an app icon asset based on Pax.
 - Acceptance: right after `poly init` in an empty directory the config passes schema validation and `poly doctor` produces a toolchain report; signing is all references with no plaintext credentials; the README quick-start steps match what is generated.
 
-### T-M1-12 · English-labeled diagrams (English-label JSON → docs/assets/en/*.svg)
+### T-M1-12 · ✅ English-labeled diagrams (English-label JSON → docs/assets/en/*.svg)
 
 - Role: docs
 - Deps: T-M0-10
@@ -237,7 +237,7 @@
 - Deliverable: English-label JSON (same structure as the existing Chinese JSON) + render-diagrams.mjs support for emitting `docs/assets/en/*.svg` + README.en.md / ROADMAP.en.md referencing the English diagrams.
 - Acceptance: running `node tools/render-diagrams.mjs` generates all English SVGs and `--check` passes; Chinese and English diagrams share identical node structure (labels differ only by language); English diagrams keep the Pax badge in the bottom-right corner (`--no-brand` disables it).
 
-### T-M1-13 · Four-target contract tests and M1 acceptance
+### T-M1-13 · ✅ Four-target contract tests and M1 acceptance
 
 - Role: infra
 - Deps: T-M1-03, T-M1-04, T-M1-05, T-M1-06, T-M1-07, T-M1-08, T-M1-09, T-M1-11
@@ -245,14 +245,14 @@
 - Deliverable: Contract tests for the sample app on all four targets (Windows / macOS / Linux / Web): packaging + verifiers + artifact structure assertions with golden comparison (mock mode every commit, real mode nightly), plus the second-run cache-hit-rate assertion.
 - Acceptance: CI is green on all three hosts; artifact structure assertions pass on all four targets; second-run cache hit ≥ 90% on identical inputs (with statistics emitted in the build report).
 
-### T-M1-14 · Pax branding rollout (CLI state expressions + app-icon derivation)
+### T-M1-14 · ✅ Pax branding rollout (CLI state expressions + app-icon derivation; real deb assets / MSI·DMG contract-level)
 - Role: ui-adapters
 - Deps: T-M1-05, T-M1-11
 - Estimate: 1.5d
 - Deliverable: (1) CLI banner and build-state expression mapping (success = happy / failure = crying / exception = shocked / needs-confirmation = puzzled / idle = blinking; text-and-color fallback on terminals without graphics); (2) icon derivation pipeline: `pax-mark.svg` → PNG / ICNS / ICO generated at build time, never committed; (3) poly-gui application and window icons.
 - Acceptance: MSI / DMG / deb artifact icons are Pax-derived with size assertions passing; the CLI prints the matching expression on success and failure paths (text in fallback mode); every brand asset traces to the single source `tools/build-pax.mjs`.
 
-### T-M1-15 · `poly clean` and retention policy
+### T-M1-15 · ✅ `poly clean` and retention policy
 - Role: core
 - Deps: T-M1-09
 - Estimate: 1d

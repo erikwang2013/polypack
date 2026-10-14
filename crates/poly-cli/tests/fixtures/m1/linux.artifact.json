@@ -1,0 +1,36 @@
+{
+  "target": "linux",
+  "builder": "linux-appimage",
+  "signing": "linux-repo-gpg",
+  "verifiers": ["lintian", "rpmlint"],
+  "artifacts": [
+    {
+      "format": "appimage",
+      "extension": "appimage",
+      "entries": [
+        "AppRun",
+        "*.desktop",
+        "*.png",
+        "usr/share/applications/*.desktop",
+        "usr/share/doc/*/RUNTIME-DEPENDENCIES.txt"
+      ]
+    },
+    {
+      "format": "deb",
+      "extension": "deb",
+      "entries": [
+        "usr/bin/*",
+        "usr/lib/*",
+        "usr/share/applications/*.desktop",
+        "usr/share/icons/hicolor/256x256/apps/*",
+        "usr/share/doc/*/copyright",
+        "usr/share/doc/*/RUNTIME-DEPENDENCIES.txt"
+      ]
+    },
+    {
+      "format": "bare-product",
+      "extension": null,
+      "entries": ["dist/index.html", "dist/manifest.webmanifest", "core/*"]
+    }
+  ]
+}

@@ -1,0 +1,34 @@
+{
+  "target": "web",
+  "builder": "web-static",
+  "signing": null,
+  "verifiers": ["html-validate", "sri-check"],
+  "artifacts": [
+    {
+      "format": "static-site",
+      "extension": null,
+      "entries": ["index.html", "manifest.webmanifest", "integrity.json"],
+      "manifest_keys": [
+        "name",
+        "start_url",
+        "display",
+        "icons",
+        "theme_color",
+        "background_color"
+      ]
+    },
+    {
+      "format": "bare-product",
+      "extension": null,
+      "entries": ["dist/index.html", "dist/manifest.webmanifest"],
+      "manifest_keys": [
+        "name",
+        "start_url",
+        "display",
+        "icons",
+        "theme_color",
+        "background_color"
+      ]
+    }
+  ]
+}

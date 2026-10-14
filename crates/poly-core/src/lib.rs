@@ -2,14 +2,19 @@
 //!
 //! 依赖方向（ROADMAP §4.1）：`poly-core` → `poly-targets` / `poly-toolchain` / `poly-cache`。
 
+pub mod compile;
 pub mod config;
 pub mod diagnostics;
 pub mod events;
 pub mod job;
+pub mod pipeline;
 pub mod plan;
+pub mod web;
 
-pub use config::{CONFIG_SCHEMA, ConfigError, ConfigJobError, PolypackConfig};
+pub use compile::{CompileResult, CompileStage, compile_core, host_triple};
+pub use config::{CONFIG_SCHEMA, ConfigError, ConfigJobError, DEFAULT_THEME_COLOR, PolypackConfig};
 pub use diagnostics::{Code, Diagnostic, Severity, codes};
 pub use events::{BuildEvent, EventSink, HumanSink, JsonSink};
 pub use job::{Budget, CredentialRef, CredentialSource, JobSpec, Profile, TimeBudgets};
-pub use plan::{Plan, Stage, StageContext, StageError, StageOutcome};
+pub use plan::{Plan, Project, Stage, StageContext, StageError, StageNode, StageOutcome};
+pub use web::{UiBuild, UiEngine, build_ui, detect_engine, ui_dir, write_manifest};

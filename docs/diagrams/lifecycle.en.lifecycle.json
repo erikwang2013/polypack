@@ -1,0 +1,43 @@
+{
+  "schema_version": 1,
+  "diagram_type": "lifecycle",
+  "meta": {
+    "title": "Project & Artifact Lifecycle",
+    "subtitle": "From bootstrap to archival — the state machine of build jobs and published artifacts",
+    "output": "docs/diagrams/build/lifecycle.en.html",
+    "viewBox": [980, 640],
+    "quality_profile": "showcase"
+  },
+  "lanes": [
+    { "id": "main", "label": "Project stages" },
+    { "id": "waiting", "label": "Waiting · paused" },
+    { "id": "exceptions", "label": "Recovery loops" },
+    { "id": "terminal", "label": "Terminal" }
+  ],
+  "states": [
+    { "id": "init", "type": "start", "label": "Bootstrap", "sublabel": "poly init · manifest generated", "lane": "main", "col": 0, "step": "01", "tag": "entry" },
+    { "id": "dev", "type": "active", "label": "Dev iteration", "sublabel": "poly dev · hot preview", "lane": "main", "col": 1, "step": "02" },
+    { "id": "build", "type": "active", "label": "Build", "sublabel": "cross-compile + UI bundle", "lane": "main", "col": 2, "step": "03" },
+    { "id": "verify", "type": "decision", "label": "Sign & verify", "sublabel": "notarization · integrity", "lane": "main", "col": 3, "step": "04" },
+    { "id": "release", "type": "success", "label": "Release", "sublabel": "stores / self-hosted", "lane": "main", "col": 4, "step": "05" },
+    { "id": "failed", "type": "failure", "label": "Build failed", "sublabel": "compile / verify errors", "lane": "exceptions", "col": 0, "tag": "retryable" },
+    { "id": "keys", "type": "waiting", "label": "Awaiting keys", "sublabel": "Keychain/Vault unlock", "lane": "waiting", "col": 1, "tag": "pause" },
+    { "id": "review", "type": "waiting", "label": "In review", "sublabel": "store / mini-program review", "lane": "waiting", "col": 2, "tag": "pause" },
+    { "id": "rejected", "type": "failure", "label": "Review rejected", "sublabel": "fix and resubmit", "lane": "terminal", "col": 1 },
+    { "id": "archived", "type": "neutral", "label": "Archived / EOL", "sublabel": "maintenance ended", "lane": "terminal", "col": 2 }
+  ],
+  "transitions": [
+    { "id": "init-dev", "from": "init", "to": "dev", "variant": "default" },
+    { "id": "dev-build", "from": "dev", "to": "build", "label": "poly build", "variant": "emphasis", "labelAt": [325, 202] },
+    { "id": "build-verify", "from": "build", "to": "verify", "label": "artifacts ready", "variant": "default", "labelAt": [479, 202] },
+    { "id": "verify-release", "from": "verify", "to": "release", "label": "verified", "variant": "emphasis", "labelAt": [633, 202] },
+    { "id": "verify-keys", "from": "verify", "to": "keys", "label": "missing creds", "variant": "security", "fromSide": "bottom", "toSide": "top", "route": "straight", "labelAt": [498, 233] },
+    { "id": "keys-verify", "from": "keys", "to": "verify", "label": "unlocked", "variant": "default", "fromSide": "top", "toSide": "bottom", "route": "straight", "labelAt": [600, 233] },
+    { "id": "build-failed", "from": "build", "to": "failed", "label": "compile / verify failed", "variant": "security", "fromSide": "bottom", "toSide": "top", "route": "straight", "labelAt": [330, 230] },
+    { "id": "failed-build", "from": "failed", "to": "build", "label": "fixed, retry", "variant": "default", "fromSide": "top", "toSide": "bottom", "route": "straight", "labelAt": [462, 250] },
+    { "id": "release-review", "from": "release", "to": "review", "label": "submit review", "variant": "default", "fromSide": "bottom", "toSide": "top", "route": "drop", "labelAt": [735, 233] },
+    { "id": "review-rejected", "from": "review", "to": "rejected", "label": "rejected", "variant": "security", "fromSide": "bottom", "toSide": "top", "via": [[689, 396], [556, 396]], "labelAt": [620, 378] },
+    { "id": "rejected-dev", "from": "rejected", "to": "dev", "label": "rebuilt after fixes", "variant": "default", "fromSide": "left", "toSide": "bottom", "via": [[24, 479], [24, 240], [248, 240]], "labelAt": [136, 240] },
+    { "id": "release-archived", "from": "release", "to": "archived", "label": "end of life", "variant": "default", "fromSide": "right", "toSide": "top", "via": [[790, 157], [790, 408], [689, 408]], "labelAt": [834, 280] }
+  ]
+}
