@@ -17,7 +17,7 @@ use std::process::Command;
 use poly_bundle::error::{BundleError, codes};
 use poly_bundle::inputs::{BundleInputs, Icon, IconKind, ProductInfo};
 use poly_bundle::packager::{Packager, builtin, find};
-use poly_bundle::packagers::linux::{AppImage, Deb};
+use poly_bundle::packagers::linux::{AppImage, Deb, deb_arch};
 use poly_targets::{Host, PackageSpec, TargetSpec};
 
 const FAKE_CORE: &str = r#"#!/bin/sh
@@ -116,6 +116,15 @@ fn deb_package_builds_and_verifies_with_dpkg_deb() {
         .plan(&inputs, &spec("deb"))
         .expect("deb 计划（不执行外部工具）");
 
+    // 宿主 arch 口径：与打包器同一推导（x86_64 → amd64、aarch64 → arm64），
+    // 否则 macOS 腿（Apple Silicon 的 Homebrew dpkg-deb）真跑时会误报。
+    let arch = deb_arch();
+    if cfg!(target_arch = "x86_64") {
+        assert_eq!(arch, "amd64", "x86_64 宿主须映射为 amd64");
+    } else if cfg!(target_arch = "aarch64") {
+        assert_eq!(arch, "arm64", "aarch64 宿主须映射为 arm64");
+    }
+
     // 计划契约：control 内容 + dpkg-deb 命令组装。
     let control = plan
         .scripts
@@ -125,7 +134,7 @@ fn deb_package_builds_and_verifies_with_dpkg_deb() {
     for field in [
         "Package: pax-notes\n",
         "Version: 1.2.3\n",
-        "Architecture: amd64\n",
+        &format!("Architecture: {arch}\n"),
         "Maintainer: PolyPack\n",
         "Installed-Size: ",
         "Section: utils\n",
@@ -142,7 +151,7 @@ fn deb_package_builds_and_verifies_with_dpkg_deb() {
         lines[0]
     );
     assert!(
-        lines[0].ends_with("pax-notes_1.2.3_amd64.deb"),
+        lines[0].ends_with(&format!("pax-notes_1.2.3_{arch}.deb")),
         "{}",
         lines[0]
     );
@@ -161,14 +170,17 @@ fn deb_package_builds_and_verifies_with_dpkg_deb() {
     assert_eq!(artifact.target, "linux");
     assert!(artifact.bytes > 0, "产物为空");
     assert!(
-        artifact.path.ends_with("pax-notes_1.2.3_amd64.deb"),
+        artifact
+            .path
+            .ends_with(format!("pax-notes_1.2.3_{arch}.deb")),
         "产物路径：{}",
         artifact.path.display()
     );
     let evidence = artifact.notes.join("\n");
     assert!(
-        evidence
-            .contains("dpkg-deb --info: Package: pax-notes, Version: 1.2.3, Architecture: amd64"),
+        evidence.contains(&format!(
+            "dpkg-deb --info: Package: pax-notes, Version: 1.2.3, Architecture: {arch}"
+        )),
         "校验证据：{evidence}"
     );
 

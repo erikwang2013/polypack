@@ -165,7 +165,10 @@ impl Packager for AppImage {
 }
 
 /// deb `Architecture` 字段（本机打包；交叉打包由 T-M2+ 的 triple 决定）。
-fn deb_arch() -> &'static str {
+///
+/// 公开给契约测试按**同一口径**推导期望值（x86_64 → amd64、aarch64 → arm64 …），
+/// 避免测试写死宿主 arch 而在 Apple Silicon 上误报。
+pub fn deb_arch() -> &'static str {
     match std::env::consts::ARCH {
         "x86_64" => "amd64",
         "aarch64" => "arm64",

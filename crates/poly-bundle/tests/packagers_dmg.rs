@@ -122,7 +122,8 @@ fn plan_emits_hdiutil_create_and_verify() {
     let readme = plan
         .scripts
         .iter()
-        .find(|s| s.path.to_string_lossy().ends_with("dmg-stage/README.txt"))
+        // Path::ends_with 按组件比较，Windows 的 `\` 分隔符同样成立。
+        .find(|s| s.path.ends_with("dmg-stage/README.txt"))
         .expect("暂存目录内 README");
     assert!(
         readme.contents.contains("拖入 Applications"),
@@ -171,6 +172,11 @@ fn format_guard_rejects_mismatched_spec() {
 
 #[test]
 fn package_fails_with_tool_missing_on_host_without_hdiutil() {
+    // 暂存要先建 `Applications -> /Applications` 符号链接：非 Unix 宿主会先报
+    // ToolMissing("symlink")（而非 hdiutil），故本断言只在 Unix 宿主成立。
+    if common::skip_unless_unix("DMG 暂存布局的符号链接") {
+        return;
+    }
     let inputs = inputs("package");
     if exec::tool_present("hdiutil") {
         eprintln!("SKIP: 宿主已有 hdiutil（macOS），ToolMissing 契约仅适用于无工具宿主");
