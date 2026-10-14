@@ -3,6 +3,7 @@
 > 派生自 [ROADMAP.md](ROADMAP.md) §9 的里程碑分解；由 4 人规划小组并行产出、交叉对账后合并：**116 个任务**，跨里程碑引用经「存在性 + 描述匹配」两轮校验零悬空，中英任务 ID 逐一对齐。
 > 英文版：[TASKS.en.md](TASKS.en.md)。本文件受「文档同步约定」管辖（见 ROADMAP §11）：任务增删须双文件同一次提交更新，并由 T-M0-10 的结构级校验器在 CI 拦截漂移。
 > 扩展方向（E1–E8）已立项孵化，不占本任务表：见 [ROADMAP.md](ROADMAP.md) §13。
+> 进度（2026-10-15）：**M0 已交付 10/11**（T-M0-02 工作流已交付、远端运行待 GitHub 账单恢复；其余全部含测试绿）。
 
 ## 团队编制与角色
 
@@ -49,7 +50,7 @@
 
 > 前置依赖: 无｜出口条件: `poly doctor` 正确报告本机缺失工具链；schema 覆盖 L1 全部字段；CI 三宿主（ubuntu-latest / macos-14 / windows-2022）全绿；文档同步校验器（图示 / Pax / 双语结构校验）在 CI 中生效。
 
-### T-M0-01 · Cargo workspace 骨架与依赖方向约束
+### T-M0-01 · ✅ Cargo workspace 骨架与依赖方向约束
 
 - 角色: core
 - 依赖: —
@@ -57,7 +58,7 @@
 - 交付物: 含 9 个 crate 空壳的 Cargo workspace（poly-cli / poly-core / poly-targets / poly-toolchain / poly-bundle / poly-sign / poly-publish / poly-cache / poly-plugin）+ 依赖方向约束的检查脚本。
 - 验收: `cargo check --workspace` 全绿；人为引入反向依赖（如 poly-core 依赖 poly-bundle）时检查失败并指出违规方向。
 
-### T-M0-02 · 三宿主 CI 与 Rust 构建缓存
+### T-M0-02 · 三宿主 CI 与 Rust 构建缓存（工作流已交付；远端待账单恢复验证）
 
 - 角色: infra
 - 依赖: T-M0-01
@@ -65,7 +66,7 @@
 - 交付物: ubuntu-latest / macos-14 / windows-2022 三宿主 CI 工作流（fmt + clippy + test），带 Rust 构建缓存（cargo registry 与 target 目录）。
 - 验收: 三宿主全绿；二次运行恢复缓存命中（构建时延较冷启动明显下降）。
 
-### T-M0-03 · polypack.toml schema（serde + JSON Schema 导出）
+### T-M0-03 · ✅ polypack.toml schema（serde + JSON Schema 导出）
 
 - 角色: core
 - 依赖: T-M0-01
@@ -73,7 +74,7 @@
 - 交付物: `polypack.toml` 的 serde 模型（[package] / [ui] / [core] / [targets.*] / [publish]）、解析校验与 JSON Schema 导出。
 - 验收: 覆盖 README 示例配置的全部键；非法配置（未知键、类型错误）报错带稳定错误码；导出的 JSON Schema 可校验仓库内示例配置；序列化往返单测通过。
 
-### T-M0-04 · TargetSpec DSL 与目标注册表
+### T-M0-04 · ✅ TargetSpec DSL 与目标注册表
 
 - 角色: core
 - 依赖: T-M0-03
@@ -81,7 +82,7 @@
 - 交付物: TargetSpec 结构（§4.3 全字段：id / tier / hosts / runtime / bridge / ui / package / signing / verify / publish / experimental / notes）与 TargetRegistry::resolve 接口。
 - 验收: 全字段解析与序列化往返一致；非法 tier（超出 1–7）与未知 runtime 枚举报错带错误码；注册表解析未知 id 时返回诊断而非 panic。
 
-### T-M0-05 · L1 七目标 TargetSpec 声明
+### T-M0-05 · ✅ L1 七目标 TargetSpec 声明
 
 - 角色: platforms
 - 依赖: T-M0-04
@@ -89,7 +90,7 @@
 - 交付物: Android / iOS / HarmonyOS / Windows / macOS / Linux / Web 七个 L1 目标的完整声明（运行时、桥、UI 适配、打包格式、签名引用、校验器、发布渠道、备注），逐列对齐 §3.2。
 - 验收: 七目标均可被注册表解析；声明与 §3.2 明细表逐列一致（比对脚本或测试）；每目标至少 1 个校验器与 1 个发布渠道，凭据只以引用出现。
 
-### T-M0-06 · JobSpec 与 plan 阶段（DAG 骨架）
+### T-M0-06 · ✅ JobSpec 与 plan 阶段（DAG 骨架）
 
 - 角色: core
 - 依赖: T-M0-04
@@ -97,7 +98,7 @@
 - 交付物: JobSpec 结构（§4.2：profile / targets / stages / cache_policy / secrets 引用 / 产物预算）与 plan 阶段（装载 polypack.toml → JobSpec），含 plan → probe → compile → bundle → package 阶段图骨架。
 - 验收: 未知目标、循环依赖、缺凭据引用三类错误均在 plan 阶段快速失败（不进入编译），各带稳定错误码与修复提示。
 
-### T-M0-07 · 诊断框架（错误码体系 + --json 事件流）
+### T-M0-07 · ✅ 诊断框架（错误码体系 + --json 事件流）
 
 - 角色: core
 - 依赖: T-M0-06
@@ -105,7 +106,7 @@
 - 交付物: `poly::E_<模块>_<编号>` 错误码体系（错误码 + 原因 + 修复提示）、§4.2 BuildEvent 事件总线与序列化、`poly build --json` 全量事件流输出。
 - 验收: 任意失败路径输出稳定错误码与 hint；`--json` 输出可被 JSON 解析器逐行消费；事件变体定义覆盖 §4.2 全部枚举（M0 至少可触发 Planned / Failed）；错误码以快照测试锁定。
 
-### T-M0-08 · poly doctor（探测报告骨架）
+### T-M0-08 · ✅ poly doctor（探测报告骨架）
 
 - 角色: core
 - 依赖: T-M0-01
@@ -113,7 +114,7 @@
 - 交付物: `poly doctor` 命令、Probe trait（locate / install）与探测报告渲染（终端人读 + 机器可读）。
 - 验收: 未注册探测器的环境项报告「未探测」而非崩溃；报告对每项工具链给出「就绪 / 缺失 / 版本」三态；退出码区分「全部就绪」与「存在缺失」。
 
-### T-M0-09 · L1 宿主工具链探测器
+### T-M0-09 · ✅ L1 宿主工具链探测器
 
 - 角色: platforms
 - 依赖: T-M0-08
@@ -129,7 +130,7 @@
 - 交付物: 文档同步校验器并接入 CI：1) 为 `tools/render-diagrams.mjs` 增加 `--check` 模式（重渲染并与磁盘 SVG 比对，漂移即非零退出，语义对齐 `tools/build-pax.mjs --check`）；2) 运行 `tools/build-pax.mjs --check`（Pax 资产无漂移）；3) 新增结构级双文档校验，对 README、ROADMAP 与任务分解文档（TASKS）的中英文档对分别校验 H2/H3 标题数一致、任务 ID 集合逐一相同、Markdown 表格行数一致（不做全文翻译比对）。
 - 验收: 手改 `docs/assets/*.svg` 而不重渲染时 CI 失败并指出漂移文件；单侧增删标题 / 任务 / 表格行时双文档校验失败并指出不一致项；既有文档对（README、ROADMAP）基线通过；全部检查通过时 CI 绿。
 
-### T-M0-11 · 供应链检查（cargo-deny / cargo-audit / 锁文件约束）
+### T-M0-11 · ✅ 供应链检查（cargo-deny / cargo-audit / 锁文件约束）
 - 角色: release-sec
 - 依赖: T-M0-01, T-M0-02
 - 估算: 1d

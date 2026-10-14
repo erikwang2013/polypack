@@ -1,0 +1,36 @@
+# T-M0-03 夹具：全段配置（对齐 README 示例配置的全部键 + [retention]）。
+schema = 1
+
+[package]
+name = "my-app"
+version = "1.2.0"
+
+[ui]
+framework = "react"
+entry = "ui/src/main.tsx"
+
+[core]
+crate = "crates/app-core"
+
+[targets.android]
+min-sdk = 24
+signing = "android-keystore"
+
+[targets.ios]
+bundle-id = "dev.example.polypack"
+team = "ABCDE12345"
+signing = "apple-dev"
+
+[targets.macos]
+signing = "apple-dev"
+
+[targets.web]
+pwa = true
+
+[publish]
+stores = ["play", "appstore", "appgallery"]
+
+[retention]
+cache_days = 14
+cache_gib = 8
+artifact_builds = 5

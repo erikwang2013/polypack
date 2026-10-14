@@ -1,0 +1,12 @@
+[package]
+name = "poly-cache"
+description = "PolyPack 内容寻址构建缓存（M1+）"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+
+[lints]
+workspace = true

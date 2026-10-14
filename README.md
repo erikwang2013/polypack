@@ -4,7 +4,7 @@
 
 [English](README.en.md) · [详细规划](docs/ROADMAP.md) · [架构](#项目架构) · [平台矩阵](#支持平台矩阵)
 
-> **项目状态：规划阶段（文档基线 v1.0.0）**。本仓库当前的产出是设计文档、图示与可复现的图示流水线；代码骨架按 [docs/ROADMAP.md](docs/ROADMAP.md) 的里程碑推进。README 中的 CLI 与配置示例均为首个代码版本的目标形态。
+> **项目状态：M0 地基已交付**（文档基线 v1.0.0；代码首个里程碑于 2026-10-15 落地）。当前包含：双语文档与规划、图示流水线与 Pax 生成器，以及可用的 Rust 工作区（`poly doctor` / 配置 schema / 目标注册表）；后续里程碑按 [docs/ROADMAP.md](docs/ROADMAP.md) 推进。README 中的 CLI 与配置示例除 `poly doctor` 外均为目标形态。
 
 ---
 
@@ -179,7 +179,7 @@ PolyPack 的界面只写一遍（React），由适配层按端映射到**该平�
 ## 快速开始（规划中 API）
 
 ```bash
-# 首个代码版本的目标形态，尚未实现
+# 其余命令为目标形态；M0 已可用：poly doctor（见下方说明）
 cargo install polypack      # 安装 poly CLI
 poly init                   # 生成 polypack.toml
 poly dev                    # 启动热预览
@@ -188,6 +188,8 @@ poly release --target all --publish
 ```
 
 > `--target all` = 当前环境**可构建**的全部目标；排除项（需厂商授权、宿主 / 凭据不可达）与原因在 plan 阶段列明。
+>
+> M0 已可用：`cargo run -p poly-cli -- doctor`（本机工具链探测 + L1 覆盖矩阵，人读与 `--json` 双模式）。
 
 `polypack.toml` 示意：
 
@@ -220,7 +222,7 @@ appid = "wx0000000000000000"
 stores = ["play", "appstore", "appgallery"]
 ```
 
-## 仓库结构（目标形态）
+## 仓库结构
 
 ```text
 polypack/
@@ -240,13 +242,15 @@ polypack/
 ├── app/                   # poly-gui 控制台（Tauri + React）
 ├── docs/
 │   ├── ROADMAP.md         # 详细规划（里程碑、风险、支持矩阵）
-│   ├── TASKS.md           # 任务计划（113 任务 / 279.5 人日）
+│   ├── TASKS.md           # 任务计划（116 任务 / 283 人日）
 │   ├── assets/            # 本文档内嵌的全部 SVG（含 Pax）
 │   └── diagrams/          # 图示源文件（JSON IR）与重建流水线
 └── tools/
     ├── render-diagrams.mjs  # 图示流水线: JSON IR → SVG (含右下角 Pax 角标)
     └── build-pax.mjs        # Pax 生成器: 多形态 + 图标 + 联系表 + 游乐场
 ```
+
+（M0 已交付 9-crate 工作区骨架与 `poly-cli` / `poly-core` / `poly-targets` / `poly-toolchain`；`ui/` 与 `app/` 为 M1+ 目标形态。）
 
 ## 文档与图示同步约定
 

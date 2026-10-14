@@ -200,6 +200,8 @@ BuildEvent =
 
 **`--target all` 语义**：解析为当前 profile 下**可构建**的全部目标——排除需厂商授权的 L7 与宿主 / 凭据不可达的目标；plan 阶段输出排除清单与原因（`--explain` 展开），显式列出的目标同样执行可达性检查。
 
+**多产物**：`package` 声明**主产物**（AAB / MSI / DMG / AppImage 等）；平台副产物矩阵（APK、NSIS、PKG、deb/rpm/Flatpak/Snap 等）在 M1 打包器矩阵落地时扩展为多产物字段（T-M1-05..08 的前置，届时随实现更新本节）。
+
 ### 4.4 桥接矩阵
 
 | 宿主 | 桥 | 产物 |
@@ -237,6 +239,7 @@ world polypack-target {
 | `polypack.toml` | 顶层 `schema = 1` 字段（缺省视为 1；未知版本直接拒绝并提示升级 `poly`） |
 | TargetSpec / 插件接口 | `target-spec/v1` 版本化（破坏性变更走新版本号，见 4.5） |
 | 本仓库版本 | tag 与 GitHub Release 自 v1.0.0 起按 `vX.Y.Z` 语义化递增 |
+| 配置严格度 | `deny_unknown_fields`：未知键一律拒绝（绝不静默丢配置）；新增键视为破坏性变更 |
 
 ## 5. 构建流水线
 

@@ -1,0 +1,13 @@
+# T-M0-03 夹具：最小合法配置（仅必需段）。
+schema = 1
+
+[package]
+name = "my-app"
+version = "1.2.0"
+
+[ui]
+framework = "react"
+entry = "ui/src/main.tsx"
+
+[core]
+crate = "crates/app-core"

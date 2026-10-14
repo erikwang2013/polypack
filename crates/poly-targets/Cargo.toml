@@ -1,0 +1,18 @@
+[package]
+name = "poly-targets"
+description = "PolyPack 目标注册表：TargetSpec 声明、校验与内建目标"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+
+[dependencies]
+serde.workspace = true
+toml.workspace = true
+thiserror.workspace = true
+schemars.workspace = true
+
+[lints]
+workspace = true

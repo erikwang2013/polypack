@@ -3,6 +3,7 @@
 > Derived from the milestone breakdown in [ROADMAP.en.md](ROADMAP.en.md) §9; produced in parallel by a four-person planning group and merged after cross-reconciliation: **116 tasks**, all cross-milestone references verified in two passes (existence + description match, zero dangling), Chinese/English task IDs aligned one-to-one.
 > Chinese original: [TASKS.md](TASKS.md). This file falls under the documentation sync convention (ROADMAP §11): task additions/removals must land in both files in the same commit, and drift is caught in CI by the structural checker delivered in T-M0-10.
 > Extension directions (E1–E8) are incubated and intentionally absent from this task table — see [ROADMAP.en.md](ROADMAP.en.md) §13.
+> Progress (2026-10-15): **M0 ships 10/11** (T-M0-02's workflow is delivered; its remote run awaits GitHub billing; everything else is green with tests).
 
 ## Team roster
 
@@ -49,7 +50,7 @@
 
 > Prerequisite: none｜Exit criteria: `poly doctor` correctly reports missing local toolchains; the schema covers every L1 field; CI is green on all three hosts (ubuntu-latest / macos-14 / windows-2022); the doc-sync validator (diagrams / Pax / bilingual structural check) is enforced in CI.
 
-### T-M0-01 · Cargo workspace skeleton and dependency-direction constraints
+### T-M0-01 · ✅ Cargo workspace skeleton and dependency-direction constraints
 
 - Role: core
 - Deps: —
@@ -57,7 +58,7 @@
 - Deliverable: A Cargo workspace with 9 crate stubs (poly-cli / poly-core / poly-targets / poly-toolchain / poly-bundle / poly-sign / poly-publish / poly-cache / poly-plugin) plus a dependency-direction constraint check script.
 - Acceptance: `cargo check --workspace` is green; introducing a reverse dependency by hand (e.g. poly-core depending on poly-bundle) makes the check fail and names the offending direction.
 
-### T-M0-02 · Three-host CI with Rust build caching
+### T-M0-02 · Three-host CI with Rust build caching (workflow delivered; remote run pending billing)
 
 - Role: infra
 - Deps: T-M0-01
@@ -65,7 +66,7 @@
 - Deliverable: CI workflows for ubuntu-latest / macos-14 / windows-2022 (fmt + clippy + test) with Rust build caching (cargo registry and target directories).
 - Acceptance: all three hosts green; a second run restores the cache and its hit is recorded (build wall time clearly lower than a cold start).
 
-### T-M0-03 · polypack.toml schema (serde + JSON Schema export)
+### T-M0-03 · ✅ polypack.toml schema (serde + JSON Schema export)
 
 - Role: core
 - Deps: T-M0-01
@@ -73,7 +74,7 @@
 - Deliverable: serde model for `polypack.toml` ([package] / [ui] / [core] / [targets.*] / [publish]), parse validation, and JSON Schema export.
 - Acceptance: covers every key of the README example config; invalid config (unknown key, type error) fails with a stable error code; the exported JSON Schema validates the sample configs in the repo; round-trip serialization unit tests pass.
 
-### T-M0-04 · TargetSpec DSL and target registry
+### T-M0-04 · ✅ TargetSpec DSL and target registry
 
 - Role: core
 - Deps: T-M0-03
@@ -81,7 +82,7 @@
 - Deliverable: TargetSpec struct (all §4.3 fields: id / tier / hosts / runtime / bridge / ui / package / signing / verify / publish / experimental / notes) and the TargetRegistry::resolve interface.
 - Acceptance: all fields parse and round-trip identically; an invalid tier (outside 1–7) or unknown runtime enum fails with an error code; resolving an unknown id returns a diagnostic instead of panicking.
 
-### T-M0-05 · L1 seven-target TargetSpec declarations
+### T-M0-05 · ✅ L1 seven-target TargetSpec declarations
 
 - Role: platforms
 - Deps: T-M0-04
@@ -89,7 +90,7 @@
 - Deliverable: Complete declarations for the seven L1 targets (Android / iOS / HarmonyOS / Windows / macOS / Linux / Web): runtime, bridge, UI adapter, package format, signing reference, verifiers, publishing channels, notes — column-aligned with §3.2.
 - Acceptance: all seven targets resolve through the registry; declarations match the §3.2 detail table column by column (comparison script or test); every target has at least one verifier and one publishing channel, and credentials appear only as references.
 
-### T-M0-06 · JobSpec and the plan stage (DAG skeleton)
+### T-M0-06 · ✅ JobSpec and the plan stage (DAG skeleton)
 
 - Role: core
 - Deps: T-M0-04
@@ -97,7 +98,7 @@
 - Deliverable: JobSpec struct (§4.2: profile / targets / stages / cache_policy / secret references / artifact budget) and the plan stage (load polypack.toml → JobSpec), including the plan → probe → compile → bundle → package stage-graph skeleton.
 - Acceptance: unknown targets, dependency cycles, and missing credential references all fail fast in the plan stage (before any compilation), each with a stable error code and fix hint.
 
-### T-M0-07 · Diagnostics framework (error-code scheme + --json event stream)
+### T-M0-07 · ✅ Diagnostics framework (error-code scheme + --json event stream)
 
 - Role: core
 - Deps: T-M0-06
@@ -105,7 +106,7 @@
 - Deliverable: The `poly::E_<module>_<number>` error-code scheme (code + cause + fix hint), the §4.2 BuildEvent bus and its serialization, and the full `poly build --json` event-stream output.
 - Acceptance: every failure path emits a stable error code and hint; `--json` output is consumable line by line by a JSON parser; event variant definitions cover the full §4.2 enum (M0 can at least emit Planned / Failed); error codes are locked by snapshot tests.
 
-### T-M0-08 · poly doctor (probe report skeleton)
+### T-M0-08 · ✅ poly doctor (probe report skeleton)
 
 - Role: core
 - Deps: T-M0-01
@@ -113,7 +114,7 @@
 - Deliverable: The `poly doctor` command, the Probe trait (locate / install), and probe-report rendering (human-readable terminal + machine-readable).
 - Acceptance: an environment item with no registered probe reports "not probed" instead of crashing; the report gives a ready / missing / version tri-state per toolchain; the exit code distinguishes "all ready" from "something missing".
 
-### T-M0-09 · L1 host toolchain probes
+### T-M0-09 · ✅ L1 host toolchain probes
 
 - Role: platforms
 - Deps: T-M0-08
@@ -129,7 +130,7 @@
 - Deliverable: A doc-sync validator wired into CI: 1) add a `--check` mode to `tools/render-diagrams.mjs` (re-render and compare against the on-disk SVGs, non-zero exit on drift, mirroring `tools/build-pax.mjs --check`); 2) run `tools/build-pax.mjs --check` (no Pax asset drift); 3) a new structural bilingual-doc check that, for each zh/en pair of README, ROADMAP, and the task-breakdown document (TASKS), verifies identical H2/H3 heading counts, identical task-ID sets, and identical Markdown table row counts (no full-text translation diffing).
 - Acceptance: hand-editing `docs/assets/*.svg` without re-rendering makes CI fail and names the drifted files; changing a heading / task / table row on only one side of a doc pair makes the bilingual check fail and names the mismatch; the existing doc pairs (README, ROADMAP) pass as baseline; CI is green when every check passes.
 
-### T-M0-11 · Supply-chain checks (cargo-deny / cargo-audit / lockfile policy)
+### T-M0-11 · ✅ Supply-chain checks (cargo-deny / cargo-audit / lockfile policy)
 - Role: release-sec
 - Deps: T-M0-01, T-M0-02
 - Estimate: 1d

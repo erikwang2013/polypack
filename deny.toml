@@ -1,0 +1,29 @@
+# 供应链策略（T-M0-11）。由 CI 的 cargo-deny-action 与本地 `cargo deny check` 读取。
+# schema 对照 cargo-deny 0.20.2 的 deny.template.toml（该版本无 `version = 2` 字段）。
+
+[advisories]
+# 漏洞（RUSTSEC vulnerability）恒为 error，无需开关，本段存在的意义是显式声明检查启用。
+# 其余保持默认：unmaintained 全图检查、unsound 限工作区、yanked = warn。
+
+[bans]
+# 禁通配版本依赖（"*"）
+wildcards = "deny"
+# 工作区内部 path 依赖天然写作 "*"（poly-cli -> poly-core 等），放行这类非 registry 依赖
+allow-wildcard-paths = true
+
+[sources]
+# 只接受 crates.io 与显式声明的来源，防依赖混淆 / 换源投毒
+unknown-registry = "deny"
+unknown-git = "deny"
+
+[licenses]
+allow = [
+    "Apache-2.0",
+    "MIT",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "ISC",
+    "Unicode-3.0",
+    "Unicode-DFS-2016",
+    "Zlib",
+]

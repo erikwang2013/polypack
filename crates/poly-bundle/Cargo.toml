@@ -1,0 +1,12 @@
+[package]
+name = "poly-bundle"
+description = "PolyPack 打包器矩阵（M1+：apk / ipa / msi / dmg / deb / wgt / …）"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+
+[lints]
+workspace = true

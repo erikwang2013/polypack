@@ -1,0 +1,16 @@
+[package]
+name = "poly-toolchain"
+description = "PolyPack 工具链探测：SDK / NDK / Xcode / emsdk 的定位与版本报告"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+
+[dependencies]
+serde.workspace = true
+thiserror.workspace = true
+
+[lints]
+workspace = true

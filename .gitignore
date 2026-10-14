@@ -1,6 +1,9 @@
 # 图示流水线中间产物（交互式 HTML，按需重新生成，不入库）
 docs/diagrams/build/
 
+# Rust 构建产物（Cargo.lock 强制提交，见 T-M0-11）
+/target
+
 # Ruflo local secrets and runtime data
 .env
 .env.local

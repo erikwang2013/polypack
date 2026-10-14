@@ -4,7 +4,7 @@
 
 [简体中文](README.md) · [Roadmap](docs/ROADMAP.en.md) · [Architecture](#architecture) · [Platforms](#platform-matrix)
 
-> **Project status: planning phase (documentation baseline v1.0.0).** This repository currently ships the design documentation, the diagrams, and a reproducible diagram pipeline. The code skeleton lands per the milestones in [docs/ROADMAP.en.md](docs/ROADMAP.en.md). All CLI and config examples in this README describe the target shape of the first code release.
+> **Project status: M0 Foundation delivered** (documentation baseline v1.0.0; the first code milestone landed 2026-10-15). The repo now contains the bilingual docs and plan, the diagram pipeline and Pax generator, and a working Rust workspace (`poly doctor` / config schema / target registry); later milestones follow [docs/ROADMAP.en.md](docs/ROADMAP.en.md). All CLI and config examples except `poly doctor` describe target shape.
 >
 > **Note on diagram labels:** the embedded diagrams are labeled in Chinese (the project's primary language). English-labeled variants are scheduled for milestone M1.
 
@@ -181,7 +181,7 @@ The interface is written once (React) and mapped by the adapter layer onto **eac
 ## Quick start (planned API)
 
 ```bash
-# target shape of the first code release — not yet implemented
+# remaining commands are target shape; available today (M0): poly doctor (see below)
 cargo install polypack      # install the poly CLI
 poly init                   # generate polypack.toml
 poly dev                    # hot preview
@@ -190,6 +190,8 @@ poly release --target all --publish
 ```
 
 > `--target all` = every **buildable** target in the current environment; exclusions (license-gated, unreachable host/credentials) and their reasons are listed during the plan stage.
+>
+> Available today (M0): `cargo run -p poly-cli -- doctor` (local toolchain probes + L1 coverage matrix, human and `--json` modes).
 
 Sketch of `polypack.toml`:
 
@@ -222,7 +224,7 @@ appid = "wx0000000000000000"
 stores = ["play", "appstore", "appgallery"]
 ```
 
-## Repository layout (target shape)
+## Repository layout
 
 ```text
 polypack/
@@ -242,13 +244,15 @@ polypack/
 ├── app/                   # poly-gui console (Tauri + React)
 ├── docs/
 │   ├── ROADMAP.en.md      # detailed plan (milestones, risks, support matrix)
-│   ├── TASKS.en.md        # task plan (113 tasks / 279.5 person-days)
+│   ├── TASKS.en.md        # task plan (116 tasks / 283 person-days)
 │   ├── assets/            # every SVG embedded in this document (incl. Pax)
 │   └── diagrams/          # diagram sources (JSON IR) + rebuild pipeline
 └── tools/
     ├── render-diagrams.mjs  # diagram pipeline: JSON IR → SVG (with the Pax corner badge)
     └── build-pax.mjs        # Pax generator: expressions + icon + contact sheet + playground
 ```
+
+(M0 delivered: the 9-crate workspace skeleton plus `poly-cli` / `poly-core` / `poly-targets` / `poly-toolchain`; `ui/` and `app/` remain M1+ target shape.)
 
 ## Documentation sync convention
 

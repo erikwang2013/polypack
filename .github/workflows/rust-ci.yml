@@ -1,0 +1,50 @@
+name: rust-ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  rust:
+    name: rust / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    # 一个宿主失败不掐掉其余宿主，便于一次看清三宿主差异
+    strategy:
+      fail-fast: false
+      matrix:
+        # macos-14 = Apple Silicon；windows-2022 与项目文档声明的支持面一致
+        os: [ubuntu-latest, macos-14, windows-2022]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Rust toolchain（stable + rustfmt + clippy）
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: 构建缓存
+        uses: Swatinem/rust-cache@v2
+
+      # 无需 apt 安装系统依赖：依赖树为纯 Rust（无 *-sys / openssl 等）
+      - name: cargo fmt --check
+        run: cargo fmt --check
+
+      - name: cargo clippy
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
+      - name: cargo test
+        run: cargo test --workspace
+
+      # 供应链检查只需跑一次，固定挂在 Linux 宿主（T-M0-11）
+      - name: cargo-deny（licenses / bans / advisories）
+        if: runner.os == 'Linux'
+        uses: EmbarkStudios/cargo-deny-action@v2
+
+      - name: 安装 cargo-audit
+        if: runner.os == 'Linux'
+        uses: taiki-e/install-action@cargo-audit
+
+      - name: cargo audit
+        if: runner.os == 'Linux'
+        run: cargo audit

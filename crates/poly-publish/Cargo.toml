@@ -1,0 +1,12 @@
+[package]
+name = "poly-publish"
+description = "PolyPack 商店与平台发布客户端（M2+）"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+
+[lints]
+workspace = true

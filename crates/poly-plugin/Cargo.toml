@@ -1,0 +1,12 @@
+[package]
+name = "poly-plugin"
+description = "PolyPack WASM 插件宿主（M8：自定义目标）"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+
+[lints]
+workspace = true

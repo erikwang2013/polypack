@@ -200,6 +200,8 @@ BuildEvent =
 
 **`--target all` semantics**: resolves to every **buildable** target under the current profile — excluding license-gated L7 and targets whose host/credentials are unreachable; the plan stage prints the exclusion list and reasons (`--explain` expands them), and explicitly listed targets go through the same reachability check.
 
+**Multiple artifacts**: `package` declares the **primary artifact** (AAB / MSI / DMG / AppImage, …); each platform's secondary matrix (APK, NSIS, PKG, deb/rpm/Flatpak/Snap, …) becomes a multi-artifact field when the M1 packager matrix lands (a prerequisite of T-M1-05..08; this section updates with the implementation).
+
 ### 4.4 Bridge matrix
 
 | Host | Bridge | Artifact |
@@ -237,6 +239,7 @@ Constraints: plugin artifacts carry a content digest (SRI) check; the interface 
 | `polypack.toml` | top-level `schema = 1` field (absent = 1; unknown versions are rejected with an upgrade hint) |
 | TargetSpec / plugin interface | versioned as `target-spec/v1` (breaking changes get a new version, see 4.5) |
 | This repository | tags and GitHub Releases increment `vX.Y.Z` semantically since v1.0.0 |
+| Config strictness | `deny_unknown_fields`: unknown keys are rejected outright (config is never silently dropped); new keys count as breaking changes |
 
 ## 5. Build pipeline
 
