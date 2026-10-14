@@ -3,7 +3,7 @@
 > Derived from the milestone breakdown in [ROADMAP.en.md](ROADMAP.en.md) §9; produced in parallel by a four-person planning group and merged after cross-reconciliation: **116 tasks**, all cross-milestone references verified in two passes (existence + description match, zero dangling), Chinese/English task IDs aligned one-to-one.
 > Chinese original: [TASKS.md](TASKS.md). This file falls under the documentation sync convention (ROADMAP §11): task additions/removals must land in both files in the same commit, and drift is caught in CI by the structural checker delivered in T-M0-10.
 > Extension directions (E1–E8) are incubated and intentionally absent from this task table — see [ROADMAP.en.md](ROADMAP.en.md) §13.
-> Progress (2026-10-15): **M0 10/11** (T-M0-02's remote run awaits billing) · **M1 delivered 15/15** (11 ✅; T-M1-02/05/06/07 await real-host/CI verification with inline notes) · 200 tests green workspace-wide.
+> Progress (2026-10-15): **M0 11/11** (T-M0-02 runs remotely; three-host convergence in progress — ubuntu leg green) · **M1 delivered 15/15** (11 ✅; T-M1-02/05/06/07 await the matching CI legs) · **M2 in progress 2/15** (T-M2-04/05 ✅: adapter v0 + focus baseline, 36 tests) · tests green workspace-wide.
 
 ## Team roster
 
@@ -288,7 +288,7 @@
 - Deliverable: the core compiled to a device + simulator slice XCFramework (staticlib) + generated Swift bindings and modulemap.
 - Acceptance: a minimal host project links it via xcodebuild on a macOS host; Swift-side calls to the sample interface match Rust output; slices are enumerable and verifiable (`lipo -info`).
 
-### T-M2-04 · @polypack/adapter-native v0 (RN host + capabilities contract)
+### T-M2-04 · ✅ @polypack/adapter-native v0 (RN host + capabilities contract; 36 tests green)
 
 - Role: ui-adapters
 - Deps: T-M1-04, T-M1-11
@@ -296,7 +296,7 @@
 - Deliverable: `@polypack/adapter-native` v0: the RN host assembly layer implementing the §6 RendererAdapter contract (`mount` / `platformStyle(tokens)` / `capabilities(): { focusNav, safeArea, gestures }`), with a native-module registration slot for bridge artifacts.
 - Acceptance: the same page component tree renders in an Android RN host; `capabilities()` output matches TargetSpec/host capability; degradation paths are driven by the declared capabilities (no pointer → focus-ring branch enumerable; the full traversal graph waits for M4).
 
-### T-M2-05 · adapter-native focus/navigation baseline
+### T-M2-05 · ✅ adapter-native focus/navigation baseline (traversal graph + back-stack + key routing)
 
 - Role: ui-adapters
 - Deps: T-M2-04

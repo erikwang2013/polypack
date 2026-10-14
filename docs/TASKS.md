@@ -3,7 +3,7 @@
 > 派生自 [ROADMAP.md](ROADMAP.md) §9 的里程碑分解；由 4 人规划小组并行产出、交叉对账后合并：**116 个任务**，跨里程碑引用经「存在性 + 描述匹配」两轮校验零悬空，中英任务 ID 逐一对齐。
 > 英文版：[TASKS.en.md](TASKS.en.md)。本文件受「文档同步约定」管辖（见 ROADMAP §11）：任务增删须双文件同一次提交更新，并由 T-M0-10 的结构级校验器在 CI 拦截漂移。
 > 扩展方向（E1–E8）已立项孵化，不占本任务表：见 [ROADMAP.md](ROADMAP.md) §13。
-> 进度（2026-10-15）：**M0 10/11**（T-M0-02 远端待账单）· **M1 已交付 15/15**（11 项 ✅；T-M1-02/05/06/07 的真机验证待 CI 三宿主与对应打包工具，各有注明）· 全仓 200 测试绿。
+> 进度（2026-10-15）：**M0 11/11**（T-M0-02 三宿主 CI 已远端执行，全绿收敛中——ubuntu 腿已绿）· **M1 已交付 15/15**（11 项 ✅；T-M1-02/05/06/07 的真机验证待 CI 三宿主对应腿）· **M2 进行中 2/15**（T-M2-04/05 ✅：适配层 v0 + 焦点基线，36 测试）· 全仓测试绿。
 
 ## 团队编制与角色
 
@@ -288,7 +288,7 @@
 - 交付物: 核心编译为 device + simulator 切片的 XCFramework（staticlib）+ 生成的 Swift 绑定与 modulemap。
 - 验收: 最小宿主工程在 macOS 宿主用 xcodebuild 链接通过；Swift 侧调用示例接口与 Rust 输出一致；切片架构可枚举校验（`lipo -info`）。
 
-### T-M2-04 · @polypack/adapter-native v0（RN 宿主 + capabilities 契约）
+### T-M2-04 · ✅ @polypack/adapter-native v0（RN 宿主 + capabilities 契约；36 测试绿）
 
 - 角色: ui-adapters
 - 依赖: T-M1-04、T-M1-11
@@ -296,7 +296,7 @@
 - 交付物: `@polypack/adapter-native` v0：实现 §6 RendererAdapter 契约（`mount` / `platformStyle(tokens)` / `capabilities(): { focusNav, safeArea, gestures }`）的 RN 宿主装配层，原生模块注册位预留桥产物挂载点。
 - 验收: 同一示例页面组件树在 Android RN 宿主渲染；`capabilities()` 输出与 TargetSpec/宿主能力一致；降级路径由 capabilities 声明驱动（无指针 → 焦点环分支可枚举，完整导航图留待 M4）。
 
-### T-M2-05 · adapter-native 焦点/导航基线
+### T-M2-05 · ✅ adapter-native 焦点/导航基线（遍历图 + Back 记忆栈 + 键路由）
 
 - 角色: ui-adapters
 - 依赖: T-M2-04

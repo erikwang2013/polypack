@@ -252,7 +252,7 @@ polypack/
     └── build-pax.mjs        # Pax generator: expressions + icon + contact sheet + playground
 ```
 
-(M0 delivered: the 9-crate workspace skeleton plus `poly-cli` / `poly-core` / `poly-targets` / `poly-toolchain`; `ui/` and `app/` remain M1+ target shape.)
+(M0 delivered: the 9-crate workspace skeleton plus `poly-cli` / `poly-core` / `poly-targets` / `poly-toolchain`; since M2 `ui/` has landed — `ui/adapters/native` native adapter v0 + RN host skeleton (T-M2-04/05); `app/` remains target shape.)
 
 ## Documentation sync convention
 

@@ -1,0 +1,5 @@
+# 依赖不入库（宿主工程的忽略规则见 host/.gitignore）
+node_modules/
+# lockfile 不入库：依赖面仅 react/react-dom 两个 devDeps（见 README「测试」），
+# 且本宿主 npm 走镜像（resolved 会烙进 npmmirror 地址，对三宿主 CI 不友好）
+package-lock.json

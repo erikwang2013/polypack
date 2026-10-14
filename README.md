@@ -250,7 +250,7 @@ polypack/
     └── build-pax.mjs        # Pax 生成器: 多形态 + 图标 + 联系表 + 游乐场
 ```
 
-（M0 已交付 9-crate 工作区骨架与 `poly-cli` / `poly-core` / `poly-targets` / `poly-toolchain`；`ui/` 与 `app/` 为 M1+ 目标形态。）
+（M0 已交付 9-crate 工作区骨架与 `poly-cli` / `poly-core` / `poly-targets` / `poly-toolchain`；M2 起 `ui/` 已落地——`ui/adapters/native` 原生适配层 v0 + RN 宿主骨架（T-M2-04/05）；`app/` 仍为目标形态。）
 
 ## 文档与图示同步约定
 

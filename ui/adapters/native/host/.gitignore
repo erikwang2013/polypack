@@ -1,0 +1,14 @@
+node_modules/
+android/build/
+android/app/build/
+android/.gradle/
+android/local.properties
+
+# 桥产物挂载点（T-M2-02 经 poly build 注入，不入库）
+android/app/libs/*.aar
+android/app/libs/*.so
+android/app/src/main/jniLibs/
+
+# 凭据不入库（RN 模板 _gitignore 同款；debug.keystore 由 keytool 生成）
+*.keystore
+*.jks

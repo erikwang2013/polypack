@@ -1,0 +1,30 @@
+{
+  "name": "@polypack/adapter-native",
+  "version": "0.1.0",
+  "description": "RendererAdapter 契约的 React Native 宿主装配层（Android / iOS / 鸿蒙 RNOH）",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "./src/index.js",
+  "exports": {
+    ".": "./src/index.js",
+    "./example": "./example.js"
+  },
+  "files": [
+    "src",
+    "example.js",
+    "host"
+  ],
+  "scripts": {
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=20.11"
+  },
+  "peerDependencies": {
+    "react": ">=18"
+  },
+  "devDependencies": {
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0"
+  }
+}
