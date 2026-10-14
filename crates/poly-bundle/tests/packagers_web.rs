@@ -4,6 +4,8 @@
 //! 静态托管起 `python3 -m http.server` 子进程并用 `TcpStream` 发最小 HTTP/1.1 GET，
 //! 子进程由 Drop 守卫回收（测试失败 / panic 也不留孤儿）。
 
+mod common;
+
 use std::io::{Read, Write};
 use std::net::TcpStream;
 use std::path::{Path, PathBuf};
@@ -257,6 +259,10 @@ fn package_builds_site_with_manifest_and_sri() {
 /// 2. 静态托管真跑：python3 起服务器 → HTTP/1.1 GET /index.html → 200 + 标记文本。
 #[test]
 fn site_is_served_by_a_static_http_server() {
+    // 静态托管真跑要 python3（三宿主不保证预装；缺失即显式跳过）。
+    if common::skip_without("python3") {
+        return;
+    }
     let t = Temp::new("serve");
     let inputs = inputs(&t);
     let artifact = StaticSite

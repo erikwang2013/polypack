@@ -4,6 +4,12 @@
 //! （`[targets.*]` 只声明平台参数，格式以注册表为准）：成功发 `Packaged{format,bytes}`，
 //! 环境性缺失（宿主无打包工具 / 派生图标未就绪）如实告警并跳过本目标；产物随构建快照落
 //! `.polypack/artifacts/<target>/build-<millis>/packages/`。金样比对与四端深检见 tests/contract_m1.rs。
+//!
+//! 整份文件是 **Linux 宿主专属**：全部用例都 `poly build --target linux`，而显式目标在非 Linux
+//! 宿主上是结构性不可达（`Registry::resolve_all` 返回 `Unreachable`，见 build.rs 只喂
+//! `current_host()`），加上 deb / AppDir / hicolor 断言本身也只对 Linux 打包器成立——故整文件
+//! 一次性 gate 掉，省得每个用例各带一条 `cfg` 又在别处漏掉辅助函数的 gate（死代码）。
+#![cfg(target_os = "linux")]
 
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
@@ -179,7 +185,6 @@ fn png_size(path: &Path) -> (u32, u32) {
 /// 图标走 T-M1-14 派生管线（模板的 `ui/public/icon.svg` → PNG 集 + ICO），故前置条件是宿主有
 /// `rsvg-convert`；尺寸按 IHDR 断言，不看文件名。本测试真编 crate（模板 crate 零依赖）。
 #[test]
-#[cfg(target_os = "linux")]
 fn packaging_derives_icons_and_produces_linux_artifact() {
     if !tool_present("rsvg-convert") {
         eprintln!("跳过：宿主无 rsvg-convert（图标派生管线的外部依赖）");
@@ -281,7 +286,6 @@ fn packaging_derives_icons_and_produces_linux_artifact() {
 /// 配置驱动的格式覆盖（§3.4「目标即配置」）：`[targets.linux] format = "deb"` 真的出 `.deb`，
 /// 且产物过 `dpkg-deb` 深检（包名 + 包内 256 图标来自派生管线）。
 #[test]
-#[cfg(target_os = "linux")]
 fn target_format_override_packages_deb() {
     for tool in ["dpkg-deb", "rsvg-convert"] {
         if !tool_present(tool) {
@@ -353,7 +357,6 @@ fn target_format_override_packages_deb() {
 /// 图标源回退链的末档：没有 `<root>/icons/`、`ui/public/icon.svg` 也被移走时，改从工程根
 /// `icon.svg` 派生（UI 目录之外的落点）；PWA manifest 用另一枚位图，与桌面图标互不影响。
 #[test]
-#[cfg(target_os = "linux")]
 fn root_icon_svg_fallback_derives_for_desktop_packaging() {
     if !tool_present("rsvg-convert") {
         eprintln!("跳过：宿主无 rsvg-convert（图标派生管线的外部依赖）");
@@ -397,7 +400,6 @@ fn root_icon_svg_fallback_derives_for_desktop_packaging() {
 /// 手工放置的 `<root>/icons/` 优先于派生：放了就不为该项目图标起派生管线
 /// （暂存目录里没有派生落点 `icons/`），包内用放置的那枚。
 #[test]
-#[cfg(target_os = "linux")]
 fn manual_icons_take_precedence_over_derivation() {
     let temp = init_project("pkg-manual-icons");
     let root = temp.path();

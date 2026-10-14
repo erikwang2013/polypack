@@ -3,13 +3,19 @@
 //! 真跑范围：dpkg-deb 组装 + `--info`/`--contents` 校验 + `dpkg-deb -x` 解包安装冒烟
 //! + AppDir 直接执行冒烟 + desktop-file-validate。
 //!
+//! 工具无关性：图标取仓库内提交的夹具（`tests/fixtures/`，由 T-M1-14 派生管线生成一次
+//! 入库），不再依赖宿主 rsvg-convert / magick；dpkg-deb / desktop-file-validate / sh
+//! 缺失时**显式 skip**（打印原因后通过），工具齐备的宿主走真跑分支。
+//!
 //! 阻塞项：`dpkg -i` 系统级安装需 root；AppImage 单文件生成需 appimagetool（本宿主未装）。
+
+mod common;
 
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use poly_bundle::error::{BundleError, codes};
-use poly_bundle::inputs::{BundleInputs, Icon, ProductInfo};
+use poly_bundle::inputs::{BundleInputs, Icon, IconKind, ProductInfo};
 use poly_bundle::packager::{Packager, builtin, find};
 use poly_bundle::packagers::linux::{AppImage, Deb};
 use poly_targets::{Host, PackageSpec, TargetSpec};
@@ -56,12 +62,20 @@ fn spec(format: &str) -> TargetSpec {
     spec
 }
 
-/// 用 T-M1-14 派生管线从 Pax 品牌 SVG 产出图标（本机 rsvg-convert / magick 已确认可用）。
-fn pax_icons(base: &Path) -> Vec<Icon> {
-    let svg = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../docs/assets/pax-mark.svg");
-    poly_bundle::icons::derive(&svg, base)
-        .expect("Pax 图标派生（rsvg-convert + magick）")
-        .icons
+/// Pax 图标（仓库内夹具：T-M1-14 派生管线产出的 256 / 128 PNG，跨宿主可用）。
+fn pax_icons() -> Vec<Icon> {
+    vec![
+        Icon {
+            path: common::fixture("pax-notes-256.png"),
+            kind: IconKind::Png,
+            size: Some(256),
+        },
+        Icon {
+            path: common::fixture("pax-notes-128.png"),
+            kind: IconKind::Png,
+            size: Some(128),
+        },
+    ]
 }
 
 /// 造输入：假核心 + dist + 256/128 PNG 图标 → T-M1-03 裸产物。
@@ -81,7 +95,7 @@ fn inputs(base: &Path) -> BundleInputs {
     let mut inputs = BundleInputs::new(product(), base.join("out"));
     inputs.core_binary = Some(core);
     inputs.ui_dist = Some(dist);
-    inputs.icons = pax_icons(base);
+    inputs.icons = pax_icons();
     let bare = poly_bundle::tauri::bare_product(&inputs, Host::Linux).expect("裸产物");
     inputs.bare = Some(bare);
     inputs
@@ -134,6 +148,12 @@ fn deb_package_builds_and_verifies_with_dpkg_deb() {
     );
     assert!(lines[1].starts_with("dpkg-deb --info "), "{}", lines[1]);
     assert!(lines[2].starts_with("dpkg-deb --contents "), "{}", lines[2]);
+
+    // 以下为真跑段：需 dpkg-deb（组装/校验/解包）、desktop-file-validate 与 sh（冒烟）。
+    // 计划契约已在上面无条件断言，故工具缺失的宿主（macOS / Windows 腿）仍覆盖计划面。
+    if common::skip_without_any(&["dpkg-deb", "desktop-file-validate", "sh"]) {
+        return;
+    }
 
     // 真跑：组装 + --info / --contents 校验。
     let artifact = Deb.package(&inputs, &spec("deb")).expect("deb 组装");
@@ -214,6 +234,11 @@ fn deb_package_builds_and_verifies_with_dpkg_deb() {
 
 #[test]
 fn appimage_without_tool_yields_labeled_appdir_that_runs() {
+    // AppDir 需要根级 AppRun 符号链接，且冒烟要执行 shell 夹具核心。
+    if common::skip_unless_unix("AppDir 符号链接与 shell 夹具") || common::skip_without("sh")
+    {
+        return;
+    }
     let base = scratch("appimage");
     let inputs = inputs(&base);
     let plan = AppImage.plan(&inputs, &spec("appimage")).expect("计划");

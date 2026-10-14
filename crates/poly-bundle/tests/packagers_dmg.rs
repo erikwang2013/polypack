@@ -6,6 +6,8 @@
 //!
 //! 输入用 `std::env::temp_dir()` 现造（每测试独立目录，`cargo test` 并行安全）。
 
+mod common;
+
 use std::path::{Path, PathBuf};
 
 use poly_bundle::packagers::dmg::Dmg;
@@ -69,6 +71,10 @@ fn spec(format: &str) -> TargetSpec {
 
 #[test]
 fn stage_builds_drag_and_drop_layout() {
+    // DMG 暂存要建 `Applications -> /Applications` 符号链接（非 Unix 宿主跳过）。
+    if common::skip_unless_unix("DMG 暂存布局的符号链接") {
+        return;
+    }
     let inputs = inputs("stage");
     let stage = Dmg.stage(&inputs, &spec("dmg")).expect("stage");
 

@@ -1,7 +1,9 @@
 //! T-M0-09 验收：探测器集合、required_for 映射、本机探测与子进程容错。
 
 use std::collections::BTreeSet;
-use std::time::{Duration, Instant};
+use std::time::Duration;
+#[cfg(unix)]
+use std::time::Instant;
 
 use poly_toolchain::probes::run_capture;
 use poly_toolchain::{Probe, default_probes};

@@ -128,11 +128,17 @@ mod tests {
 
     #[test]
     fn failing_tool_carries_stderr() {
-        let err = run(&Command::new("sh", ["-c", "echo boom >&2; exit 3"])).expect_err("非零退出");
+        // 三宿主通用：Unix 用 sh，Windows 用 cmd（CI 三腿都要跑）。
+        let failing = if cfg!(windows) {
+            Command::new("cmd", ["/C", "echo boom 1>&2 & exit 3"])
+        } else {
+            Command::new("sh", ["-c", "echo boom >&2; exit 3"])
+        };
+        let err = run(&failing).expect_err("非零退出");
         match err {
             BundleError::ToolFailed { status, stderr, .. } => {
                 assert_eq!(status, "3");
-                assert!(stderr.contains("boom"));
+                assert!(stderr.contains("boom"), "stderr 须带诊断：{stderr}");
             }
             other => panic!("期望 ToolFailed，实得 {other:?}"),
         }
@@ -140,7 +146,9 @@ mod tests {
 
     #[test]
     fn tool_present_matches_path_lookup() {
-        assert!(tool_present("sh"));
+        // 正向用例取各宿主必有的 shell（Unix: sh / Windows: cmd.exe）。
+        let present = if cfg!(windows) { "cmd.exe" } else { "sh" };
+        assert!(tool_present(present), "{present} 应可解析");
         assert!(!tool_present("poly-definitely-missing-tool"));
     }
 

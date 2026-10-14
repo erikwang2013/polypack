@@ -4,6 +4,8 @@
 //! 宿主上真实产出布局与资源注入（布局生成与宿主参数无关），但**执行**冒烟真机阻塞
 //! ——测试只做结构断言，不冒充真机执行。
 
+mod common;
+
 use std::path::{Path, PathBuf};
 
 use poly_bundle::error::{BundleError, codes};
@@ -104,6 +106,10 @@ fn run(exe: &Path) -> std::process::Output {
 
 #[test]
 fn linux_bare_product_layout_and_version_smoke() {
+    // 冒烟需执行 shell 夹具核心（`--version` 走 POSIX shell）。
+    if common::skip_unless_unix("shell 夹具核心的执行冒烟") || common::skip_without("sh") {
+        return;
+    }
     let base = scratch("linux");
     let bare = tauri::bare_product(&inputs(&base), poly_targets::Host::Linux).expect("裸产物");
     let stdout = run(&bare.executable);

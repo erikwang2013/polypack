@@ -26,7 +26,11 @@ jobs:
       - name: 构建缓存
         uses: Swatinem/rust-cache@v2
 
-      # 无需 apt 安装系统依赖：依赖树为纯 Rust（无 *-sys / openssl 等）
+      # 依赖树为纯 Rust（无 *-sys / openssl 等）；以下仅为「测试真跑」所需的系统工具（T-M1-14 图标派生 / deb 校验）
+      - name: 安装测试工具（Linux 真跑）
+        if: runner.os == 'Linux'
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq librsvg2-bin imagemagick desktop-file-utils
+
       - name: cargo fmt --check
         run: cargo fmt --check
 
