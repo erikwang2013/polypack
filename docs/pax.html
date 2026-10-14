@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" type="image/svg+xml" href="assets/pax-mark.svg">
+<title>Pax · 邮差蟹 — PolyPack 游乐场</title>
+<style>
+  :root { color-scheme: light; }
+  body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #f8fafc;
+         font-family: 'JetBrains Mono', ui-monospace, 'PingFang SC', 'Microsoft YaHei', monospace; color: #0f172a; }
+  main { width: min(760px, 92vw); padding: 28px 24px 24px; background: #ffffff; border: 1px solid #e2e8f0;
+         border-radius: 18px; text-align: center; }
+  h1 { margin: 0 0 4px; font-size: 20px; }
+  p.sub { margin: 0 0 18px; color: #64748b; font-size: 13px; }
+  .stage { background: #f8fafc; border: 1px dashed #e2e8f0; border-radius: 14px; padding: 10px; }
+  .stage img { width: min(560px, 100%); height: auto; display: block; margin: 0 auto; }
+  .moods { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-top: 18px; }
+  button { font: inherit; font-size: 13px; padding: 8px 16px; border-radius: 999px; cursor: pointer;
+           border: 1px solid #e2e8f0; background: #ffffff; color: #0f172a; }
+  button:hover { border-color: #94a3b8; }
+  button.active { background: #ea580c; border-color: #ea580c; color: #ffffff; }
+  footer { margin-top: 14px; color: #64748b; font-size: 12px; }
+  code { background: #f1f5f9; padding: 1px 6px; border-radius: 6px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Pax · 邮差蟹</h1>
+  <p class="sub">PolyPack 项目宠物 · 五形态表情游乐场</p>
+  <div class="stage"><img id="stage" src="assets/pax.svg" alt="Pax 的表情预览" width="640" height="384"></div>
+  <div class="moods" role="group" aria-label="切换 Pax 的表情">
+    <button data-src="assets/pax.svg" class="active">自动循环</button>
+    <button data-src="assets/pax-happy.svg">笑</button>
+    <button data-src="assets/pax-cry.svg">哭</button>
+    <button data-src="assets/pax-shock.svg">惊恐</button>
+    <button data-src="assets/pax-confused.svg">疑惑</button>
+    <button data-src="assets/pax-blink.svg">眨眼</button>
+  </div>
+  <footer>动画在 SVG 内部由纯 CSS 驱动；本页按钮仅切换文件（<code>img</code> 内 SVG 为独立文档，互不干扰）。</footer>
+</main>
+<script>
+  var stage = document.getElementById('stage');
+  var buttons = Array.prototype.slice.call(document.querySelectorAll('button[data-src]'));
+  buttons.forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      stage.src = btn.dataset.src;
+      buttons.forEach(function (b) { b.classList.toggle('active', b === btn); });
+    });
+  });
+</script>
+</body>
+</html>

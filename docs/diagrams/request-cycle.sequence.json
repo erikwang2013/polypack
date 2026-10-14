@@ -1,0 +1,52 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "构建请求周期",
+    "subtitle": "poly release 的完整旅程 — 从一条命令到多端产物与发布",
+    "output": "docs/diagrams/build/request-cycle.html",
+    "viewBox": [920, 840],
+    "quality_profile": "showcase"
+  },
+  "participants": [
+    { "id": "dev", "type": "external", "label": "开发者 / CI", "sublabel": "触发构建" },
+    { "id": "cli", "type": "frontend", "label": "poly CLI", "sublabel": "参数 · 清单" },
+    { "id": "core", "type": "backend", "label": "poly-core", "sublabel": "编排 · 调度" },
+    { "id": "tools", "type": "database", "label": "工具链 · 缓存", "sublabel": "SDK 探测" },
+    { "id": "comp", "type": "backend", "label": "Rust 交叉编译", "sublabel": "cargo + SDK" },
+    { "id": "ui", "type": "frontend", "label": "React UI 打包", "sublabel": "适配器变换" },
+    { "id": "sign", "type": "security", "label": "签名与公证", "sublabel": "密钥 · 公证" },
+    { "id": "out", "type": "external", "label": "产物 / 商店", "sublabel": "APK·IPA·HAP…" }
+  ],
+  "segments": [
+    { "from": 132, "to": 330, "label": "01 · 解析探测" },
+    { "from": 335, "to": 495, "label": "02 · 编译与 UI" },
+    { "from": 505, "to": 580, "label": "03 · 签名" },
+    { "from": 590, "to": 665, "label": "04 · 封装校验" },
+    { "from": 688, "to": 720, "label": "05 · 交付" }
+  ],
+  "messages": [
+    { "id": "release-cmd", "from": "dev", "to": "cli", "y": 185, "label": "poly release --target …", "variant": "emphasis" },
+    { "id": "load-manifest", "from": "cli", "to": "core", "y": 225, "label": "装载 polypack.toml → JobSpec" },
+    { "id": "probe-toolchain", "from": "core", "to": "tools", "y": 265, "label": "探测 SDK / NDK" },
+    { "id": "toolchain-ready", "from": "tools", "to": "core", "y": 305, "label": "就绪 · 缓存命中", "variant": "return" },
+    { "id": "cross-build", "from": "core", "to": "comp", "y": 350, "label": "cargo build --target …", "variant": "emphasis" },
+    { "id": "lib-artifacts", "from": "comp", "to": "core", "y": 390, "label": "libpoly (.a/.so/.wasm)", "variant": "return" },
+    { "id": "ui-bundle", "from": "core", "to": "ui", "y": 435, "label": "vite 打包 + 适配器变换", "variant": "emphasis" },
+    { "id": "bundle-assets", "from": "ui", "to": "core", "y": 475, "label": "bundle.js + assets", "variant": "return" },
+    { "id": "sign-request", "from": "core", "to": "sign", "y": 520, "label": "签名请求（密钥引用）", "variant": "security" },
+    { "id": "sign-done", "from": "sign", "to": "core", "y": 560, "label": "签名 · 公证完成", "variant": "return" },
+    { "id": "pack", "from": "core", "to": "out", "y": 605, "label": "封装 APK / IPA / HAP / wgt…", "variant": "emphasis" },
+    { "id": "pack-verify", "from": "out", "to": "core", "y": 645, "label": "产物 + 校验清单", "variant": "return" },
+    { "id": "report", "from": "core", "to": "dev", "y": 690, "label": "构建报告 + 产物路径", "variant": "return" }
+  ],
+  "activations": [
+    { "participant": "cli", "from": 180, "to": 230, "type": "frontend" },
+    { "participant": "core", "from": 220, "to": 700, "type": "backend" },
+    { "participant": "tools", "from": 260, "to": 310, "type": "database" },
+    { "participant": "comp", "from": 345, "to": 395, "type": "backend" },
+    { "participant": "ui", "from": 430, "to": 480, "type": "frontend" },
+    { "participant": "sign", "from": 515, "to": 565, "type": "security" },
+    { "participant": "out", "from": 600, "to": 650, "type": "external" }
+  ]
+}

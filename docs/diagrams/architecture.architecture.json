@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "PolyPack 架构总览",
+    "subtitle": "Rust 核心 + React 平台适配层 — 一条命令，打包 50+ 目标平台",
+    "quality_profile": "showcase"
+  },
+  "components": [
+    { "id": "dev", "type": "external", "label": "开发者 / CI", "sublabel": "仓库 · 流水线", "pos": [30, 300], "size": [120, 60] },
+    { "id": "guishell", "type": "frontend", "label": "poly-gui 控制台", "sublabel": "Tauri + React", "pos": [190, 440], "size": [130, 60] },
+    { "id": "cli", "type": "frontend", "label": "poly CLI", "sublabel": "clap · 单二进制", "pos": [190, 300], "size": [130, 60] },
+    { "id": "core", "type": "backend", "label": "poly-core", "sublabel": "流水线 · 计划 · 调度", "pos": [410, 300], "size": [140, 60] },
+    { "id": "bundle", "type": "backend", "label": "poly-bundle", "sublabel": "打包器矩阵", "pos": [610, 300], "size": [130, 60] },
+    { "id": "signer", "type": "security", "label": "poly-sign", "sublabel": "签名 · 公证 · 加固", "pos": [810, 300], "size": [130, 60] },
+    { "id": "publish", "type": "backend", "label": "poly-publish", "sublabel": "商店 API · 提审", "pos": [1010, 300], "size": [130, 60] },
+    { "id": "stores", "type": "external", "label": "平台商店 / 渠道", "sublabel": "50+ 个收件人", "pos": [1210, 300], "size": [130, 60] },
+    { "id": "farm", "type": "cloud", "label": "远程构建农场", "sublabel": "macOS Worker · 矩阵", "pos": [200, 120], "size": [140, 64] },
+    { "id": "targets", "type": "backend", "label": "poly-targets", "sublabel": "50+ TargetSpec", "pos": [500, 120], "size": [140, 64] },
+    { "id": "toolchain", "type": "backend", "label": "poly-toolchain", "sublabel": "SDK/NDK/Xcode 探测", "pos": [680, 120], "size": [140, 64] },
+    { "id": "keys", "type": "security", "label": "密钥库", "sublabel": "Keychain / Vault", "pos": [870, 120], "size": [130, 64] },
+    { "id": "uikit", "type": "frontend", "label": "@polypack/ui", "sublabel": "设计 tokens + 原语", "pos": [380, 480], "size": [140, 60] },
+    { "id": "adapters", "type": "frontend", "label": "平台渲染适配器", "sublabel": "react-dom · RN · Taro · TV", "pos": [560, 480], "size": [160, 60] },
+    { "id": "cache", "type": "database", "label": "构建缓存", "sublabel": "内容寻址 · 增量复用", "pos": [790, 480], "size": [150, 60] }
+  ],
+  "boundaries": [
+    { "kind": "region", "label": "Rust 核心工作区 · poly workspace", "wraps": ["core", "bundle", "signer", "publish", "targets", "toolchain"] },
+    { "kind": "region", "label": "React UI 适配层", "wraps": ["uikit", "adapters"] }
+  ],
+  "connections": [
+    { "id": "dev-to-cli", "from": "dev", "to": "cli", "label": "poly release", "variant": "emphasis", "labelAt": [170, 376] },
+    { "id": "gui-to-cli", "from": "guishell", "to": "cli", "label": "poly gui", "variant": "default", "fromSide": "top", "toSide": "bottom" },
+    { "id": "cli-to-core", "from": "cli", "to": "core", "label": "polypack.toml", "variant": "emphasis" },
+    { "id": "core-to-targets", "from": "core", "to": "targets", "label": "查询 TargetSpec", "variant": "default", "fromSide": "top", "toSide": "bottom" },
+    { "id": "core-to-farm", "from": "core", "to": "farm", "label": "Apple 目标派单", "variant": "dashed", "fromSide": "top", "toSide": "bottom" },
+    { "id": "bundle-to-toolchain", "from": "bundle", "to": "toolchain", "label": "SDK / NDK", "variant": "default", "fromSide": "top", "toSide": "bottom" },
+    { "id": "signer-to-keys", "from": "signer", "to": "keys", "label": "密钥引用", "variant": "security", "fromSide": "top", "toSide": "bottom" },
+    { "id": "uikit-to-adapters", "from": "uikit", "to": "adapters", "label": "tokens", "variant": "default" },
+    { "id": "adapters-to-bundle", "from": "adapters", "to": "bundle", "label": "JS 产物 + 适配", "variant": "emphasis", "fromSide": "top", "toSide": "bottom" },
+    { "id": "bundle-to-cache", "from": "bundle", "to": "cache", "label": "增量复用", "variant": "dashed", "fromSide": "bottom", "toSide": "top" },
+    { "id": "bundle-to-signer", "from": "bundle", "to": "signer", "label": "待签署产物", "variant": "default" },
+    { "id": "signer-to-publish", "from": "signer", "to": "publish", "variant": "default" },
+    { "id": "publish-to-stores", "from": "publish", "to": "stores", "label": "提审 / 上架", "variant": "emphasis" }
+  ]
+}

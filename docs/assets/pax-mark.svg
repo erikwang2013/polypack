@@ -1,0 +1,14 @@
+<svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="pax-mark-t pax-mark-d">
+  <title id="pax-mark-t">Pax — PolyPack 项目图标</title>
+  <desc id="pax-mark-d">橙底圆角芯片上的邮差蟹 Pax 头部：青色邮政帽、双眼与微笑。</desc>
+  <rect x="1.5" y="1.5" width="61" height="61" rx="14" fill="#ea580c" stroke="#9a3412" stroke-width="3"/>
+  <path d="M14,31 a18,15 0 0 1 36,0 z" fill="#0e7490" stroke="#0b5e75" stroke-width="2"/>
+  <rect x="12" y="28" width="40" height="6.5" rx="3.25" fill="#0b5e75"/>
+  <circle cx="22.5" cy="41" r="7" fill="#ffffff" stroke="#7c2d12" stroke-width="2.5"/>
+  <circle cx="41.5" cy="41" r="7" fill="#ffffff" stroke="#7c2d12" stroke-width="2.5"/>
+  <circle cx="24" cy="42.5" r="3.2" fill="#0f172a"/>
+  <circle cx="40" cy="42.5" r="3.2" fill="#0f172a"/>
+  <ellipse cx="14.5" cy="50" rx="3" ry="2" fill="#fda4af" opacity="0.8"/>
+  <ellipse cx="49.5" cy="50" rx="3" ry="2" fill="#fda4af" opacity="0.8"/>
+  <path d="M24,53 q8,6.5 16,0" fill="none" stroke="#7c2d12" stroke-width="3" stroke-linecap="round"/>
+</svg>

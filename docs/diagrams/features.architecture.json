@@ -1,0 +1,43 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "PolyPack 功能地图",
+    "subtitle": "五大能力族 — 全部由 Rust 核心驱动，React 适配层按端呈现",
+    "quality_profile": "showcase"
+  },
+  "layout": {
+    "mode": "grid",
+    "cols": 3,
+    "origin": [60, 120],
+    "gapX": 45,
+    "gapY": 66,
+    "cellW": 230,
+    "cellH": 64
+  },
+  "components": [
+    { "id": "targets", "type": "backend", "label": "目标注册表", "sublabel": "50+ TargetSpec · 声明式", "row": 0, "col": 0, "size": [200, 64] },
+    { "id": "one_command", "type": "backend", "label": "单命令多端", "sublabel": "poly release 一次全出", "row": 0, "col": 1, "size": [200, 64] },
+    { "id": "variants", "type": "frontend", "label": "系统变体支持", "sublabel": "GrapheneOS · KaiOS · 鸿蒙", "row": 0, "col": 2, "size": [200, 64] },
+    { "id": "toolchain", "type": "backend", "label": "工具链管理", "sublabel": "SDK 自动探测 · 安装", "row": 1, "col": 0, "size": [200, 64] },
+    { "id": "cache", "type": "database", "label": "内容寻址缓存", "sublabel": "增量复用 · 可复现", "row": 1, "col": 1, "size": [200, 64] },
+    { "id": "farm", "type": "cloud", "label": "远程构建农场", "sublabel": "macOS Worker 池", "row": 1, "col": 2, "size": [200, 64] },
+    { "id": "tokens", "type": "frontend", "label": "@polypack/ui", "sublabel": "tokens + headless 原语", "row": 2, "col": 0, "size": [200, 64] },
+    { "id": "components", "type": "frontend", "label": "平台组件适配", "sublabel": "Material · HIG · 鸿蒙风", "row": 2, "col": 1, "size": [200, 64] },
+    { "id": "preview", "type": "frontend", "label": "热预览", "sublabel": "poly dev · 实时重载", "row": 2, "col": 2, "size": [200, 64] },
+    { "id": "keystore", "type": "security", "label": "密钥库", "sublabel": "Keychain/Vault · 引用", "row": 3, "col": 0, "size": [200, 64] },
+    { "id": "signing", "type": "security", "label": "签名 · 公证 · 加固", "sublabel": "notarize · AVB · 加固", "row": 3, "col": 1, "size": [200, 64] },
+    { "id": "stores", "type": "backend", "label": "商店流水线", "sublabel": "Play · ASC · AGC · 小程序", "row": 3, "col": 2, "size": [200, 64] },
+    { "id": "plugins", "type": "messagebus", "label": "WASM 插件", "sublabel": "自定义目标 · 沙箱", "row": 4, "col": 0, "size": [200, 64] },
+    { "id": "ci", "type": "cloud", "label": "CI 集成", "sublabel": "Actions / GitLab", "row": 4, "col": 1, "size": [200, 64] },
+    { "id": "diag", "type": "backend", "label": "诊断报告", "sublabel": "构建解释 · 失败定位", "row": 4, "col": 2, "size": [200, 64] }
+  ],
+  "boundaries": [
+    { "kind": "region", "label": "1 · 多端目标与覆盖", "wraps": ["targets", "one_command", "variants"] },
+    { "kind": "region", "label": "2 · 构建与缓存", "wraps": ["toolchain", "cache", "farm"] },
+    { "kind": "region", "label": "3 · 跨平台 UI 体系", "wraps": ["tokens", "components", "preview"] },
+    { "kind": "region", "label": "4 · 签名与发布", "wraps": ["keystore", "signing", "stores"] },
+    { "kind": "region", "label": "5 · 生态与运维", "wraps": ["plugins", "ci", "diag"] }
+  ],
+  "connections": []
+}

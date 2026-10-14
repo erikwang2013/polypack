@@ -1,0 +1,43 @@
+{
+  "schema_version": 1,
+  "diagram_type": "lifecycle",
+  "meta": {
+    "title": "项目与产物生命周期",
+    "subtitle": "从初始化到归档 — 构建任务与发布产物的状态机",
+    "output": "docs/diagrams/build/lifecycle.html",
+    "viewBox": [980, 640],
+    "quality_profile": "showcase"
+  },
+  "lanes": [
+    { "id": "main", "label": "项目阶段" },
+    { "id": "waiting", "label": "等待 · 挂起" },
+    { "id": "exceptions", "label": "恢复回路" },
+    { "id": "terminal", "label": "终态" }
+  ],
+  "states": [
+    { "id": "init", "type": "start", "label": "初始化", "sublabel": "poly init · 生成清单", "lane": "main", "col": 0, "step": "01", "tag": "entry" },
+    { "id": "dev", "type": "active", "label": "开发迭代", "sublabel": "poly dev · 热预览", "lane": "main", "col": 1, "step": "02" },
+    { "id": "build", "type": "active", "label": "构建", "sublabel": "交叉编译 + UI 打包", "lane": "main", "col": 2, "step": "03" },
+    { "id": "verify", "type": "decision", "label": "签名与校验", "sublabel": "公证 · 完整性", "lane": "main", "col": 3, "step": "04" },
+    { "id": "release", "type": "success", "label": "发布", "sublabel": "商店 / 自托管", "lane": "main", "col": 4, "step": "05" },
+    { "id": "failed", "type": "failure", "label": "构建失败", "sublabel": "编译 / 校验错误", "lane": "exceptions", "col": 0, "tag": "retryable" },
+    { "id": "keys", "type": "waiting", "label": "等待密钥", "sublabel": "Keychain/Vault 解锁", "lane": "waiting", "col": 1, "tag": "pause" },
+    { "id": "review", "type": "waiting", "label": "等待审核", "sublabel": "商店 / 小程序审核", "lane": "waiting", "col": 2, "tag": "pause" },
+    { "id": "rejected", "type": "failure", "label": "审核驳回", "sublabel": "整改后重提", "lane": "terminal", "col": 1 },
+    { "id": "archived", "type": "neutral", "label": "归档 / EOL", "sublabel": "停止维护", "lane": "terminal", "col": 2 }
+  ],
+  "transitions": [
+    { "id": "init-dev", "from": "init", "to": "dev", "variant": "default" },
+    { "id": "dev-build", "from": "dev", "to": "build", "label": "poly build", "variant": "emphasis", "labelAt": [325, 202] },
+    { "id": "build-verify", "from": "build", "to": "verify", "label": "产物就绪", "variant": "default", "labelAt": [479, 202] },
+    { "id": "verify-release", "from": "verify", "to": "release", "label": "签名通过", "variant": "emphasis", "labelAt": [633, 202] },
+    { "id": "verify-keys", "from": "verify", "to": "keys", "label": "缺少密钥", "variant": "security", "fromSide": "bottom", "toSide": "top", "route": "straight", "labelAt": [510, 233] },
+    { "id": "keys-verify", "from": "keys", "to": "verify", "label": "已解锁", "variant": "default", "fromSide": "top", "toSide": "bottom", "route": "straight", "labelAt": [600, 233] },
+    { "id": "build-failed", "from": "build", "to": "failed", "label": "编译 / 校验失败", "variant": "security", "fromSide": "bottom", "toSide": "top", "route": "straight", "labelAt": [345, 230] },
+    { "id": "failed-build", "from": "failed", "to": "build", "label": "修复后重试", "variant": "default", "fromSide": "top", "toSide": "bottom", "route": "straight", "labelAt": [462, 250] },
+    { "id": "release-review", "from": "release", "to": "review", "label": "提审", "variant": "default", "fromSide": "bottom", "toSide": "top", "route": "drop", "labelAt": [740, 233] },
+    { "id": "review-rejected", "from": "review", "to": "rejected", "label": "驳回", "variant": "security", "fromSide": "bottom", "toSide": "top", "via": [[689, 396], [556, 396]], "labelAt": [620, 378] },
+    { "id": "rejected-dev", "from": "rejected", "to": "dev", "label": "整改后重建", "variant": "default", "fromSide": "left", "toSide": "bottom", "via": [[24, 479], [24, 240], [248, 240]], "labelAt": [136, 240] },
+    { "id": "release-archived", "from": "release", "to": "archived", "label": "停止维护", "variant": "default", "fromSide": "right", "toSide": "top", "via": [[790, 157], [790, 408], [689, 408]], "labelAt": [834, 280] }
+  ]
+}
