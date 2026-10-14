@@ -187,9 +187,13 @@ poly release --target android,ios,wechat
 poly release --target all --publish
 ```
 
+> `--target all` = 当前环境**可构建**的全部目标；排除项（需厂商授权、宿主 / 凭据不可达）与原因在 plan 阶段列明。
+
 `polypack.toml` 示意：
 
 ```toml
+schema = 1
+
 [package]
 name = "my-app"
 version = "1.2.0"
@@ -254,6 +258,8 @@ polypack/
    node tools/render-diagrams.mjs   # 校验 → 渲染 → 提取为 docs/assets/*.svg
    ```
 
+   CI 侧由 `render-diagrams.mjs --check`、`build-pax.mjs --check` 与 `tools/check-docs.mjs` 自动拦截漂移（见 `.github/workflows/docs-check.yml`）。
+
 2. `README.md` 与 [`README.en.md`](README.en.md) 必须**同一次提交内同步**（双语镜像）；
 3. 里程碑与支持矩阵的变化同步到 `docs/ROADMAP.md` / [`ROADMAP.en.md`](docs/ROADMAP.en.md)；
 4. Pax 形象或文案变化时更新 `docs/assets/pax.svg`，保持与设计系统一致。
@@ -261,6 +267,8 @@ polypack/
 ## 路线图
 
 自 v1.0.0 起，本仓库的 tag 与 GitHub Release 名称统一按 `vX.Y.Z` 语义化递增（v1.0.0 = 本文档与规划基线）。
+
+已立项的扩展方向（SBOM / monorepo / 增量发布 / OTA / 商店元数据 / GUI 仪表盘 / 设备预览 / ADR）见 [docs/ROADMAP.md](docs/ROADMAP.md) 第 13 节。
 
 | 里程碑 | 内容 |
 |---|---|
@@ -278,4 +286,4 @@ polypack/
 
 ## 许可
 
-计划采用 [Apache-2.0](https://www.apache.org/licenses/LICENSE-2.0)（随首个代码提交落地）。
+[Apache-2.0](LICENSE)（`LICENSE` 已落地；贡献规则随代码化完善）。

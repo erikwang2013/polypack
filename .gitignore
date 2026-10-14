@@ -1,2 +1,48 @@
 # 图示流水线中间产物（交互式 HTML，按需重新生成，不入库）
 docs/diagrams/build/
+
+# Ruflo local secrets and runtime data
+.env
+.env.local
+.env.*.local
+.claude-flow/data/
+.claude-flow/logs/
+.claude-flow/sessions/
+
+# Codex local configuration
+.codex/
+
+.claude
+.agents
+.swarm
+.mcp.json
+ruvector.db
+
+# Codex local configuration
+.codex/
+# Claude Flow runtime data
+# Environment variables
+
+# Rust
+target/
+
+# Flutter
+ui/build/
+ui/.dart_tool/
+ui/.flutter-plugins*
+
+# Android 特权 helper 产物（M4-T4 Step 1：scripts/package-android-helper.sh 生成，不入库）
+ui/android/app/src/main/jniLibs/
+
+# Generated test images
+fixtures/*.img
+.worktrees/
+
+# Build artifacts
+dist/
+
+# 本地工具产物（不入库）
+.claude-flow/
+AGENTS.md
+CLAUDE.md
+.worktrees/

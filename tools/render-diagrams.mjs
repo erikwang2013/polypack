@@ -16,6 +16,8 @@
  * 零依赖。用法:
  *   node tools/render-diagrams.mjs             重新生成全部 SVG（默认在右下角盖 Pax 微缩角标）
  *   node tools/render-diagrams.mjs --no-brand  关闭右下角角标
+ *   node tools/render-diagrams.mjs --check     校验磁盘 SVG 与重渲染结果一致（CI 用），漂移即非零退出
+ * 环境变量: ARCHIFY_BIN 可覆盖 archify 路径（CI 中克隆后用）
  */
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
@@ -23,12 +25,13 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const ARCHIFY = '/home/erik/.claude/skills/archify/bin/archify.mjs';
+const ARCHIFY = process.env.ARCHIFY_BIN || '/home/erik/.claude/skills/archify/bin/archify.mjs';
 const SRC = path.join(ROOT, 'docs', 'diagrams');
 const OUT = path.join(ROOT, 'docs', 'assets');
 const BUILD = path.join(SRC, 'build');
 const PAX_MARK = path.join(OUT, 'pax-mark.svg'); // 角标单一源: tools/build-pax.mjs 生成
 const BRAND = !process.argv.includes('--no-brand');
+const CHECK = process.argv.includes('--check');
 
 const FONT_STACK =
   "'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', " +
@@ -161,8 +164,18 @@ for (const file of sources) {
     execFileSync('node', [ARCHIFY, 'deliver', type, full, htmlPath, '--json', ...qualityArgs], { stdio: 'pipe' });
     const svg = applyBrand(extractStandaloneSvg(fs.readFileSync(htmlPath, 'utf8')));
     const svgPath = path.join(OUT, `${base}.svg`);
-    fs.writeFileSync(svgPath, svg);
-    console.log(`OK  → docs/assets/${base}.svg (${(svg.length / 1024).toFixed(1)} KiB)`);
+    if (CHECK) {
+      const existing = fs.existsSync(svgPath) ? fs.readFileSync(svgPath, 'utf8') : null;
+      if (existing === svg) {
+        console.log(`ok   docs/assets/${base}.svg`);
+      } else {
+        failed += 1;
+        console.error(`DRIFT docs/assets/${base}.svg — 运行 node tools/render-diagrams.mjs 重新生成`);
+      }
+    } else {
+      fs.writeFileSync(svgPath, svg);
+      console.log(`OK  → docs/assets/${base}.svg (${(svg.length / 1024).toFixed(1)} KiB)`);
+    }
   } catch (err) {
     failed += 1;
     console.log('FAIL');
@@ -170,5 +183,5 @@ for (const file of sources) {
     console.error(out || err.message);
   }
 }
-console.log(failed ? `\n${failed} 个图示未通过` : `\n全部 ${sources.length} 个图示已生成到 docs/assets/`);
+console.log(failed ? `\n${failed} 个图示未通过` : CHECK ? `\n全部 ${sources.length} 个图示与磁盘一致` : `\n全部 ${sources.length} 个图示已生成到 docs/assets/`);
 process.exit(failed ? 1 : 0);

@@ -4,7 +4,7 @@
 > Chinese original: [ROADMAP.md](ROADMAP.md); platform overview and diagrams: [README](../README.en.md#platform-matrix).
 
 - Project status: **planning phase (documentation baseline v1.0.0)**
-- Plan date: 2026-10-14; revision: 2026-10-14 (per-platform detail edition)
+- Plan date: 2026-10-14; revision: 2026-10-14 (per-platform detail; gap audit & extension incubation)
 - Name: PolyPack (CLI command `poly`); project pet: Pax the postcrab
 - Scheduling assumption: 1–2 engineers fluent in Rust (milestone estimates assume 1.5 FTE)
 
@@ -39,7 +39,7 @@
 4. **Budgeted builds** — every target has artifact budgets (size, startup latency); exceeding them warns;
 5. **Honest tiering** — unsupported / experimental / constrained are labeled as such, never inflated;
 6. **Plugins first** — built-in targets are simply "official plugins"; third-party plugins use the same interface;
-7. **One identity** — Pax is the project's sole icon and mascot: wherever a "project icon" is needed (documentation favicons, the mini badge in the bottom-right corner of generated diagrams, and future CLI / GUI / installer icons) Pax is used (`docs/assets/pax.svg` / `pax-mark.svg`), never a generic placeholder; the five expressions map onto build states (success = happy, failure = crying, exception = shocked, needs-confirmation = puzzled, idle = blinking). Generated image assets get the Pax mini badge in the bottom-right by default (`--no-brand` disables it); the same rule extends to the product — when PolyPack generates store preview images, it labels the bottom-right corner with the mini icon of the **corresponding target platform** (toggleable, on by default).
+7. **One identity** — Pax is the project's sole icon and mascot: wherever a "project icon" is needed (documentation favicons, the mini badge in the bottom-right corner of generated diagrams, and future CLI / GUI / installer icons) Pax is used (`docs/assets/pax.svg` / `pax-mark.svg`), never a generic placeholder; the five expressions map onto build states (success = happy, failure = crying, exception = shocked, needs-confirmation = puzzled, idle = blinking). Generated image assets get the Pax mini badge in the bottom-right by default (`--no-brand` disables it); the same rule extends to the product — when PolyPack generates store preview images, it labels the bottom-right corner with the mini icon of the **corresponding target platform** (toggleable, on by default). (Delivery task: T-M1-14)
 
 ## 3. Support matrix, per-platform engineering detail
 
@@ -198,6 +198,8 @@ BuildEvent =
 | `experimental` | bool | constrained/experimental (affects docs and CI labeling) | `false` |
 | `notes` | string | boundary and degradation notes (rendered into generated doc tables) | `"web runtime, no push"` |
 
+**`--target all` semantics**: resolves to every **buildable** target under the current profile — excluding license-gated L7 and targets whose host/credentials are unreachable; the plan stage prints the exclusion list and reasons (`--explain` expands them), and explicitly listed targets go through the same reachability check.
+
 ### 4.4 Bridge matrix
 
 | Host | Bridge | Artifact |
@@ -226,6 +228,15 @@ world polypack-target {
 ```
 
 Constraints: plugin artifacts carry a content digest (SRI) check; the interface is versioned as `target-spec/v1`, and breaking changes get a new version number; built-in targets and plugins share one interface (principle 6).
+
+### 4.6 Versioning policy
+
+| Object | Policy |
+|---|---|
+| Rust | MSRV = the two most recent stable releases; edition 2024 |
+| `polypack.toml` | top-level `schema = 1` field (absent = 1; unknown versions are rejected with an upgrade hint) |
+| TargetSpec / plugin interface | versioned as `target-spec/v1` (breaking changes get a new version, see 4.5) |
+| This repository | tags and GitHub Releases increment `vX.Y.Z` semantically since v1.0.0 |
 
 ## 5. Build pipeline
 
@@ -257,6 +268,28 @@ Tiered caches: **library-level** (compile output) → **package-level** (package
 - `SOURCE_DATE_EPOCH` is injected at compile time; absolute paths and host environment variables are banned from artifacts;
 - The GrapheneOS target additionally offers a "reproducible diff" channel against upstream builds.
 
+### 5.4 Build-time budgets
+
+Beyond artifact budgets (size / startup latency, see JobSpec), the pipeline itself carries build-time budgets, and breaches warn:
+
+| Scenario | Budget (soft target) |
+|---|---|
+| Cache fully hit (single target) | < 30s |
+| Incremental build (single target, source-level change) | < 3min |
+| L1 cold build (local five-target matrix) | < 20min |
+
+### 5.5 Cleanup and retention policy
+
+Disks never balloon silently: caches and artifacts carry caps and LRU eviction, configured in `polypack.toml`:
+
+| Object | Default retention | Cleanup |
+|---|---|---|
+| Build cache (CAS) | most recent 30 days or 20 GiB, whichever comes first | LRU eviction on breach; `poly clean --cache` manually |
+| Build artifacts | the most recent 10 builds per target | `poly clean --artifacts` |
+| Submission records | forever (audit needs them) | never cleaned |
+
+`poly clean` is dry-run by default (listing reclaimable entries and space); `--yes` executes and prints reclaimed-space stats (delivery task: T-M1-15).
+
 ## 6. UI adapter layer
 
 Package structure:
@@ -280,7 +313,7 @@ Adapter contract (sketch): `RendererAdapter { mount(root, app), platformStyle(to
 - **secret-scan**: built-in rules (keystore/JKS, certificate private keys, API-key patterns) checked both on commit and during builds;
 - **Artifact redaction**: artifact metadata is scanned before packaging — absolute paths, environment variables, and debug symbols stripped (retention configurable);
 - **Plugin sandbox**: no network/filesystem by default, explicit capability grants plus SRI verification;
-- **Supply chain**: `cargo-deny` (licenses/vulnerabilities/duplicates) + `cargo-audit`; lockfiles are mandatory.
+- **Supply chain**: `cargo-deny` (licenses/vulnerabilities/duplicates) + `cargo-audit`; lockfiles are mandatory (delivery task: T-M0-11).
 
 ## 8. Testing and CI matrix
 
@@ -440,9 +473,24 @@ Any change affecting **architecture / features / flows / platform matrix** must,
 | Bridge | the binding layer between the Rust core and the host language |
 | Contract test | the per-target automated check "package + verify + structure assertions" |
 
-## 13. Open questions (to decide)
+## 13. Extension directions (incubation pool)
 
-- **License**: Apache-2.0 by default; re-evaluate if GPL-family toolchain installers are ever included;
+Projected from the 2026-10-14 gap audit: the directions below **do not consume the current M0–M8 schedule**; each carries a "promotion trigger" and a "first step", and enters the roadmap only after the trigger fires and a needs-validation review passes (to prevent building on assumptions).
+
+| # | Extension | Value | Promotion trigger | First step |
+|---|---|---|---|---|
+| E1 | **SBOM / build provenance** | SPDX/CycloneDX manifests plus SLSA-style provenance per artifact; a supply-chain compliance staple (baseline scanning already lands in T-M0-11) | first compliance or supply-chain audit demand | generate SBOMs alongside publish, reusing the cache-key input list |
+| E2 | **monorepo / multi-app workspace** | one config managing several apps sharing a Rust core, for larger teams | first multi-app repository user | design the `[workspace]` table and composite JobSpec semantics |
+| E3 | **Incremental releases `poly release --changed`** | republish only changed targets (decided by the content-addressed cache), cutting multi-target CI time by an order of magnitude | pilot right after M1 ships the cache | prototype change detection on cache keys |
+| E4 | **Production hot update / OTA channel** | completes the "release → iterate" loop with an online update channel | first users asking for over-the-air updates | survey per-platform update mechanisms (Play In-App Updates / mini-program version management / Tauri updater) |
+| E5 | **Store metadata pipeline** | versioned, multilingual management of listing copy / screenshots / keywords (publish currently only uploads and submits) | the first M2/M3 store release lands | define the metadata directory structure and its checker |
+| E6 | **GUI target-matrix view / build history** | upgrade poly-gui from "console" to a usability dashboard | the M1 Tauri pipeline lands | design the matrix view's data source (the BuildEvent stream) |
+| E7 | **Pre-release device preview matrix** | real-device/emulator matrix previews (also supplies the smoke-test devices noted in the audit) | M4 TV or M7 wearables smoke testing hits a device bottleneck | survey device-farm options and cost |
+| E8 | **Decision records (ADR)** | archive the "why" behind choices (bilingual docs, no crate split, wasm plugins, …) | can start immediately | create `docs/decisions/` with a template and backfill existing decisions |
+
+## 14. Open questions (to decide)
+
+- **License**: settled — **Apache-2.0** (the `LICENSE` file is in place); re-evaluate compatibility if GPL-family toolchain installers are ever included;
 - **Plugin marketplace**: distribution model for WASM plugins (official registry vs decentralized index);
 - **Remote farm**: self-hosted only (docs + deployment guide) or a hosted offering;
 - **English diagrams**: landed in M1 (current diagrams are labeled in Chinese; noted in README.en.md).

@@ -1,7 +1,8 @@
 # PolyPack Task Plan
 
-> Derived from the milestone breakdown in [ROADMAP.en.md](ROADMAP.en.md) §9; produced in parallel by a four-person planning group and merged after cross-reconciliation: **113 tasks**, all cross-milestone references verified in two passes (existence + description match, zero dangling), Chinese/English task IDs aligned one-to-one.
+> Derived from the milestone breakdown in [ROADMAP.en.md](ROADMAP.en.md) §9; produced in parallel by a four-person planning group and merged after cross-reconciliation: **116 tasks**, all cross-milestone references verified in two passes (existence + description match, zero dangling), Chinese/English task IDs aligned one-to-one.
 > Chinese original: [TASKS.md](TASKS.md). This file falls under the documentation sync convention (ROADMAP §11): task additions/removals must land in both files in the same commit, and drift is caught in CI by the structural checker delivered in T-M0-10.
+> Extension directions (E1–E8) are incubated and intentionally absent from this task table — see [ROADMAP.en.md](ROADMAP.en.md) §13.
 
 ## Team roster
 
@@ -19,8 +20,8 @@
 
 | Milestone | Tasks | Person-days | Notes |
 |---|---|---|---|
-| M0 Foundation | 10 | 17 | includes the doc-sync checker (diagrams / Pax / bilingual structure in one) |
-| M1 Desktop & Web | 13 | 29 | no buffer (29d vs 30d capacity); artifacts unsigned until M2 |
+| M0 Foundation | 11 | 18 | includes the doc-sync checker (delivered) and supply-chain checks |
+| M1 Desktop & Web | 15 | 31.5 | no buffer (31.5d vs 30d capacity, 105%); artifacts unsigned until M2 |
 | M2 Mobile | 15 | 38 | 101% loaded; includes the remote-farm and "initiate vs build" docs |
 | M3 HarmonyOS & mini programs | 12 | 31.5 | 105% loaded; includes Quick App packaging and store verification |
 | M4 TV family | 15 | 36 | includes the conditional T-M4-15 (Roku packager; 14 tasks / 33d if untriggered) |
@@ -28,13 +29,13 @@
 | M6 Embedded & automotive | 13 | 36 | includes the no_std feature split (no new crate) |
 | M7 Wearables | 11 | 29 | Wear OS is platform-level support (UI runtime beta); watchOS / Garmin are experimental |
 | M8 Ecosystem GA | 13 | 38 | below the 45d target (bounded by task granularity), still inside ±20% |
-| **Total** | **113** | **279.5** | 276.5d without the conditional task; ≈ 37 weeks at 1.5 FTE, matching the ROADMAP |
+| **Total** | **116** | **283** | 280d without the conditional task; ≈ 37.5 weeks at 1.5 FTE, matching the ROADMAP |
 
 **Global longest dependency chain (16.5d)**: T-M2-01 → T-M2-02 → T-M2-06 → T-M2-07 → T-M2-14 → T-M3-11 (bridge generator → Android packaging chain → mobile contract goldens → mini-program contract tests).
 
 **Scheduling notes (reconciliation output, recorded honestly):**
 
-- M1–M3 carry no slack (29/30, 38/37.5, 31.5/30 person-days) — accepted without compression; the critical path is 16.5d over a 25-working-day window, so parallelism is ample, but any slip directly squeezes an acceptance item (M2's "IPA via the farm", M3's "all three mini programs preview").
+- M0–M3 are at or over capacity (18/15, 31.5/30, 38/37.5, 31.5/30 person-days) — accepted without compression; the critical path is 16.5d over a 25-working-day window, so parallelism is ample, but any slip directly squeezes an acceptance item (M2's "IPA via the farm", M3's "all three mini programs preview").
 - M1 artifacts are unsigned until M2: macOS demos will show Gatekeeper / SmartScreen warnings (consistent with the signing chain arriving in M2).
 - M4 hits the +20% estimate ceiling when the Roku conditional task triggers; T-M4-15 is the only schedulable-away item in M4/M5.
 - Cross-milestone references passed two reconciliation passes: existence (113 tasks, zero dangling) and description match (the second pass fixed five guessed references in fragment-m4m5).
@@ -120,13 +121,20 @@
 - Deliverable: Probe implementations for L1-related tools: Android SDK/NDK, Xcode, HarmonyOS SDK, emsdk, WiX/NSIS, WebView2 runtime, Linux packaging toolchain (annotated by host applicability).
 - Acceptance: `poly doctor` correctly reports missing/installed toolchains and versions on all three hosts (against a manual checklist); one failing probe does not abort the others; the all-missing scenario prints actionable suggestions.
 
-### T-M0-10 · Doc-sync validator wired into CI
+### T-M0-10 · ✅ Doc-sync validator wired into CI (delivered)
 
 - Role: docs
 - Deps: T-M0-02
 - Estimate: 1.5d
 - Deliverable: A doc-sync validator wired into CI: 1) add a `--check` mode to `tools/render-diagrams.mjs` (re-render and compare against the on-disk SVGs, non-zero exit on drift, mirroring `tools/build-pax.mjs --check`); 2) run `tools/build-pax.mjs --check` (no Pax asset drift); 3) a new structural bilingual-doc check that, for each zh/en pair of README, ROADMAP, and the task-breakdown document (TASKS), verifies identical H2/H3 heading counts, identical task-ID sets, and identical Markdown table row counts (no full-text translation diffing).
 - Acceptance: hand-editing `docs/assets/*.svg` without re-rendering makes CI fail and names the drifted files; changing a heading / task / table row on only one side of a doc pair makes the bilingual check fail and names the mismatch; the existing doc pairs (README, ROADMAP) pass as baseline; CI is green when every check passes.
+
+### T-M0-11 · Supply-chain checks (cargo-deny / cargo-audit / lockfile policy)
+- Role: release-sec
+- Deps: T-M0-01, T-M0-02
+- Estimate: 1d
+- Deliverable: `cargo-deny` (licenses / vulnerabilities / duplicates) and `cargo-audit` wired into CI; committed `Cargo.lock` enforced; a first full-scan baseline archived as a report.
+- Acceptance: CI fails when a violating dependency is introduced; the baseline report is archived as a build artifact; `cargo tree` shows no duplicate-version warnings.
 
 ## M1 Desktop & Web (4 weeks)
 
@@ -236,7 +244,21 @@
 - Deliverable: Contract tests for the sample app on all four targets (Windows / macOS / Linux / Web): packaging + verifiers + artifact structure assertions with golden comparison (mock mode every commit, real mode nightly), plus the second-run cache-hit-rate assertion.
 - Acceptance: CI is green on all three hosts; artifact structure assertions pass on all four targets; second-run cache hit ≥ 90% on identical inputs (with statistics emitted in the build report).
 
-<!-- 统计: M0=10任务/17d, M1=13任务/29d -->
+### T-M1-14 · Pax branding rollout (CLI state expressions + app-icon derivation)
+- Role: ui-adapters
+- Deps: T-M1-05, T-M1-11
+- Estimate: 1.5d
+- Deliverable: (1) CLI banner and build-state expression mapping (success = happy / failure = crying / exception = shocked / needs-confirmation = puzzled / idle = blinking; text-and-color fallback on terminals without graphics); (2) icon derivation pipeline: `pax-mark.svg` → PNG / ICNS / ICO generated at build time, never committed; (3) poly-gui application and window icons.
+- Acceptance: MSI / DMG / deb artifact icons are Pax-derived with size assertions passing; the CLI prints the matching expression on success and failure paths (text in fallback mode); every brand asset traces to the single source `tools/build-pax.mjs`.
+
+### T-M1-15 · `poly clean` and retention policy
+- Role: core
+- Deps: T-M1-09
+- Estimate: 1d
+- Deliverable: `poly clean` (`--cache` / `--artifacts` / `--all`; dry-run by default listing reclaimable entries and space, `--yes` executes); `[retention]` config in `polypack.toml` (cache age/capacity caps, artifact build history); LRU auto-eviction on breach; a cleanup report (reclaimed-space stats).
+- Acceptance: LRU eviction keeps builds reusing the remaining cache; `poly doctor` passes after `poly clean --all --yes`; dry-run performs no writes.
+
+<!-- 统计: M0=11任务/18d, M1=15任务/31.5d -->
 ## M2 Mobile (5 weeks)
 
 > Prerequisites: T-M0-01 (workspace), T-M0-02 (three-host CI), T-M0-04/T-M0-05 (TargetSpec DSL and L1 declarations), T-M0-06/T-M0-07 (JobSpec and diagnostics framework), T-M0-09 (toolchain probes), T-M1-05 (Packager trait), T-M1-09 (poly-cache), T-M1-11 (sample-app template) | Exit criteria: sample APK/IPA installs and signatures verify; zero keys in-repo (secret-scan green); a Linux host produces an IPA through the remote farm

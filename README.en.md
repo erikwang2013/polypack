@@ -189,9 +189,13 @@ poly release --target android,ios,wechat
 poly release --target all --publish
 ```
 
+> `--target all` = every **buildable** target in the current environment; exclusions (license-gated, unreachable host/credentials) and their reasons are listed during the plan stage.
+
 Sketch of `polypack.toml`:
 
 ```toml
+schema = 1
+
 [package]
 name = "my-app"
 version = "1.2.0"
@@ -256,6 +260,8 @@ Docs are part of the product; diagrams and prose must stay single-sourced:
    node tools/render-diagrams.mjs   # validate → render → extract to docs/assets/*.svg
    ```
 
+   CI catches drift automatically via `render-diagrams.mjs --check`, `build-pax.mjs --check`, and `tools/check-docs.mjs` (see `.github/workflows/docs-check.yml`).
+
 2. `README.md` and [`README.en.md`](README.en.md) must be updated **in the same commit** (bilingual mirrors);
 3. Milestone and platform-matrix changes sync to `docs/ROADMAP.md` / [`ROADMAP.en.md`](docs/ROADMAP.en.md);
 4. When Pax's art or copy changes, update `docs/assets/pax.svg` to stay consistent with the design system.
@@ -263,6 +269,8 @@ Docs are part of the product; diagrams and prose must stay single-sourced:
 ## Roadmap
 
 Releases: since v1.0.0, tags and GitHub Release names follow `vX.Y.Z` semantic increments (v1.0.0 = this documentation and planning baseline).
+
+Incubated extension directions (SBOM / monorepo / incremental releases / OTA / store metadata / GUI dashboard / device previews / ADR) live in [docs/ROADMAP.en.md](docs/ROADMAP.en.md) §13.
 
 | Milestone | Scope |
 |---|---|
@@ -280,4 +288,4 @@ The complete plan (per-platform support detail, risks, and mitigations) lives in
 
 ## License
 
-Planned: [Apache-2.0](https://www.apache.org/licenses/LICENSE-2.0) (lands with the first code commit).
+[Apache-2.0](LICENSE) (the `LICENSE` file is in place; contribution rules formalize with the code).
