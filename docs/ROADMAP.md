@@ -423,7 +423,7 @@ CI 宿主 × 目标层矩阵：
 2. 同步 `README.md` 与 `README.en.md`（双语镜像）；
 3. 同步 `docs/ROADMAP.md` 与 `docs/ROADMAP.en.md`；任务计划同规矩（`docs/TASKS.md` / `docs/TASKS.en.md`），任务增删与估算调整须双文件同提交更新；
 4. 平台矩阵增删 = 同时更新：README 分级表（×2 语言）+ 本文件逐平台明细（×2 语言）+ 里程碑验收 + TargetSpec；
-5. Pax 由 `tools/build-pax.mjs` 单一源生成（五种表情 + 动画版 + 项目图标 `pax-mark.svg` + 表情联系表 `pax-moods.svg` + 本地游乐场 `docs/pax.html`）；美术或表达变化时运行该脚本重新生成，并同步双 README（CI 以 `node tools/build-pax.mjs --check` 校验漂移）。
+5. Pax 由 `tools/build-pax.mjs` 单一源生成（五种表情·各自带专属动效 + 全表情循环动画版 + 项目图标 `pax-mark.svg` + 表情联系表 `pax-moods.svg` + 本地游乐场 `docs/pax.html`）；美术或表达变化时运行该脚本重新生成，并同步双 README（CI 以 `node tools/build-pax.mjs --check` 校验漂移）。
 
 ## 12. 术语表
 

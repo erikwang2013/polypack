@@ -16,11 +16,11 @@
 
 **Pax** is the PolyPack project pet — a postcrab. The rust-orange shell is a nod to Ferris; the postal cap on its head is its job: it packs your app into a parcel, sticks a React-orbit stamp on it, and delivers it claw by claw to phones, watches, and TVs. The parcel it carries is your one codebase, compiled into dozens of artifacts.
 
-Pax is animated and multi-form: it idly bobs, blinks on a timer, and cycles through five expressions — **happy / blinking / puzzled / crying / shocked** (pure CSS animation, no scripts; with "reduce motion" enabled it settles into a static smile). All five at a glance:
+Pax is animated and multi-form: it idly bobs, blinks on a timer, and cycles through five expressions — **happy / blinking / puzzled / crying / shocked**; every individual expression carries its own motion too — crying drips tears, shock shivers and sweats, puzzled floats a question mark, blinking blinks on a timer, happy bobs lightly. All pure CSS, no scripts; with "reduce motion" enabled every form settles into its static pose. All five at a glance (every one in the grid is moving):
 
-![Pax's five expressions: happy / crying / shocked / puzzled / blinking](docs/assets/pax-moods.svg)
+![Pax's five expressions, each animated: happy / crying / shocked / puzzled / blinking](docs/assets/pax-moods.svg)
 
-Static expression files (individually usable): [happy](docs/assets/pax-happy.svg) · [crying](docs/assets/pax-cry.svg) · [shocked](docs/assets/pax-shock.svg) · [puzzled](docs/assets/pax-confused.svg) · [blinking](docs/assets/pax-blink.svg); open [docs/pax.html](docs/pax.html) locally to switch expressions by hand.
+Individual expression files (each with its own motion): [happy](docs/assets/pax-happy.svg) · [crying](docs/assets/pax-cry.svg) · [shocked](docs/assets/pax-shock.svg) · [puzzled](docs/assets/pax-confused.svg) · [blinking](docs/assets/pax-blink.svg); open [docs/pax.html](docs/pax.html) locally to switch expressions by hand.
 
 **Brand rule**: Pax *is* the PolyPack project icon — the docs favicon ([pax-mark.svg](docs/assets/pax-mark.svg)), the mini badge in the bottom-right corner of generated diagrams, and future CLI / GUI / installer icons all use it; the five expressions map onto build states (success = happy · failure = crying · exception = shocked · needs-confirmation = puzzled · idle = blinking). Every form is generated from a single source by `tools/build-pax.mjs`.
 

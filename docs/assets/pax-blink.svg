@@ -1,6 +1,16 @@
 <svg width="640" height="384" viewBox="0 0 720 432" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="pax-t pax-d">
-  <title id="pax-t">Pax · 邮差蟹 — 眨眼表情</title>
-  <desc id="pax-d">PolyPack 项目宠物 Pax 的眨眼表情（blinking）。</desc>
+  <title id="pax-t">Pax · 邮差蟹 — 眨眼表情（动态）</title>
+  <desc id="pax-d">PolyPack 项目宠物 Pax 的眨眼表情（blinking），带该表情专属的 CSS 动效；减弱动态效果时定格为静态形态。</desc>
+  <style>.pax-blink-open { opacity: 0; }
+  @media (prefers-reduced-motion: no-preference) {
+    .pax-crab { animation: pax-bob 3.2s ease-in-out infinite; }
+    .pax-blink-open { animation: pax-blink-open 3.2s linear infinite; }
+    .pax-blink-shut { animation: pax-blink-shut 3.2s linear infinite; }
+  }
+  @keyframes pax-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+  @keyframes pax-blink-open { 0%, 87% { opacity: 1; } 88.5%, 93% { opacity: 0; } 94.5%, 100% { opacity: 1; } }
+  @keyframes pax-blink-shut { 0%, 87% { opacity: 0; } 88.5%, 93% { opacity: 1; } 94.5%, 100% { opacity: 0; } }
+  </style>
 
   <defs>
     <marker id="pax-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
@@ -19,7 +29,7 @@
   </g>
   <circle cx="566" cy="88" r="2.6" fill="#64748b" stroke="none"/>
   <ellipse cx="300" cy="396" rx="152" ry="15" fill="#0f172a" opacity="0.06"/>
-  <g>
+  <g class="pax-crab">
     <g stroke="#c2410c" stroke-width="11" stroke-linecap="round" fill="none">
       <path d="M214,318 L182,356"/>
       <path d="M246,338 L228,380"/>
@@ -31,7 +41,17 @@
     <ellipse cx="300" cy="268" rx="110" ry="78" fill="#ea580c" stroke="#9a3412" stroke-width="3"/>
     <ellipse cx="300" cy="292" rx="72" ry="46" fill="#fdba74" opacity="0.85"/>
 
-  <g class="pax-face pax-face-blink">
+  <g class="pax-face pax-face-happy pax-blink-open">
+      <ellipse cx="242" cy="300" rx="12" ry="7.5" fill="#fb7185" opacity="0.55"/>
+      <ellipse cx="358" cy="300" rx="12" ry="7.5" fill="#fb7185" opacity="0.55"/>
+      <path d="M276,283 Q300,318 324,283 Z" fill="#7c2d12" stroke="#9a3412" stroke-width="3" stroke-linejoin="round"/>
+      <ellipse cx="300" cy="303" rx="11" ry="6.5" fill="#fb7185"/>
+      <circle cx="236" cy="154" r="17" fill="#ffffff" stroke="#9a3412" stroke-width="3"/>
+      <circle cx="364" cy="154" r="17" fill="#ffffff" stroke="#9a3412" stroke-width="3"/>
+      <circle cx="240" cy="158" r="7.5" fill="#0f172a"/>
+      <circle cx="360" cy="158" r="7.5" fill="#0f172a"/>
+  </g>
+  <g class="pax-face pax-face-blink pax-blink-shut">
       <ellipse cx="242" cy="300" rx="12" ry="7.5" fill="#fb7185" opacity="0.55"/>
       <ellipse cx="358" cy="300" rx="12" ry="7.5" fill="#fb7185" opacity="0.55"/>
       <path d="M276,283 Q300,318 324,283 Z" fill="#7c2d12" stroke="#9a3412" stroke-width="3" stroke-linejoin="round"/>

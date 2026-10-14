@@ -14,11 +14,11 @@
 
 **Pax（帕克斯）** 是 PolyPack 的项目宠物——一只邮差蟹。Rust 橙的蟹壳致敬 Ferris，头顶的邮政帽是它的工种：把你的应用打包成一件快递件，贴上 React 轨道邮票，用钳子一件件送达手机、手表、电视们手里。它抱着的那件包裹，就是同一份代码库编译出的几十种产物。
 
-Pax 是动态多形态的：空闲时轻轻浮动、定时眨眼，并循环展示 **笑 / 眨眼 / 疑惑 / 哭 / 惊恐** 五种表情（纯 CSS 动画、无脚本；系统开启「减弱动态效果」时定格为静态笑脸）。五种表情一览：
+Pax 是动态多形态的：空闲时轻轻浮动、定时眨眼，并循环展示 **笑 / 眨眼 / 疑惑 / 哭 / 惊恐** 五种表情；每一个单独的表情也都有自己的动态——哭是泪滴下落、惊恐是发抖加汗滴、疑惑是问号浮动、眨眼是定期眨眼、笑是轻盈浮动。全部为纯 CSS 动画、无脚本；系统开启「减弱动态效果」时各自定格为对应的静态形态。五种表情一览（格子里每一只都在动）：
 
-![Pax 的五种表情：笑 happy / 哭 crying / 惊恐 shocked / 疑惑 puzzled / 眨眼 blinking](docs/assets/pax-moods.svg)
+![Pax 的五种表情（各自带动态）：笑 / 哭 / 惊恐 / 疑惑 / 眨眼](docs/assets/pax-moods.svg)
 
-静态表情包（可单独取用）：[笑](docs/assets/pax-happy.svg) · [哭](docs/assets/pax-cry.svg) · [惊恐](docs/assets/pax-shock.svg) · [疑惑](docs/assets/pax-confused.svg) · [眨眼](docs/assets/pax-blink.svg)；本地打开 [docs/pax.html](docs/pax.html) 可手动切换表情。
+独立表情文件（每个都带自己的动态）：[笑](docs/assets/pax-happy.svg) · [哭](docs/assets/pax-cry.svg) · [惊恐](docs/assets/pax-shock.svg) · [疑惑](docs/assets/pax-confused.svg) · [眨眼](docs/assets/pax-blink.svg)；本地打开 [docs/pax.html](docs/pax.html) 可手动切换表情。
 
 **品牌约定**：Pax 就是 PolyPack 的项目图标——文档 favicon（[pax-mark.svg](docs/assets/pax-mark.svg)）、生成图示右下角的微缩角标、未来的 CLI / GUI / 安装包图标都用它；五种表情同时映射构建状态（成功 = 笑 · 失败 = 哭 · 异常 = 惊恐 · 待确认 = 疑惑 · 空闲 = 眨眼）。全部形态由 `tools/build-pax.mjs` 单一源生成。
 

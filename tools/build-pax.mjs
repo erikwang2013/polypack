@@ -151,6 +151,33 @@ const FACES = {
   </g>`,
 };
 
+/* ── 表情级动态: 每个形态自带微动效; 基态 = 该形态静态, prefers-reduced-motion 时定格 ── */
+const KF = {
+  bob: '@keyframes pax-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }',
+  float: '@keyframes pax-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }',
+  tear: '@keyframes pax-tear { 0% { transform: translateY(0); opacity: 0; } 15% { opacity: 1; } 100% { transform: translateY(30px); opacity: 0; } }',
+  shiver: '@keyframes pax-shiver { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-1.6px); } 75% { transform: translateX(1.6px); } }',
+  drip: '@keyframes pax-drip { 0% { transform: translateY(0); opacity: 0.3; } 40% { opacity: 1; } 100% { transform: translateY(12px); opacity: 0; } }',
+  blinkOpen: '@keyframes pax-blink-open { 0%, 87% { opacity: 1; } 88.5%, 93% { opacity: 0; } 94.5%, 100% { opacity: 1; } }',
+  blinkShut: '@keyframes pax-blink-shut { 0%, 87% { opacity: 0; } 88.5%, 93% { opacity: 1; } 94.5%, 100% { opacity: 0; } }',
+};
+
+/* 眨眼形态 = 睁眼(happy) + 闭眼(blink) 两套脸交替; 基态显示闭眼 (静态身份 = 眨眼) */
+const BLINK_OPEN_FACES = FACES.happy.replace('class="pax-face pax-face-happy"', 'class="pax-face pax-face-happy pax-blink-open"');
+const BLINK_SHUT_FACES = FACES.blink.replace('class="pax-face pax-face-blink"', 'class="pax-face pax-face-blink pax-blink-shut"');
+
+/* 单个形态文件的动态 CSS (基态规则在媒体查询外, 动效在 no-preference 内) */
+function moodStyle(id) {
+  const a = {
+    happy: { motion: '.pax-crab { animation: pax-bob 3s ease-in-out infinite; }', kf: [KF.bob], base: '' },
+    cry: { motion: '.pax-crab { animation: pax-bob 4s ease-in-out infinite; }\n    .pax-tear-a { animation: pax-tear 1.15s ease-in infinite; }\n    .pax-tear-b { animation: pax-tear 1.15s ease-in 0.2s infinite; }', kf: [KF.bob, KF.tear], base: '' },
+    shock: { motion: '.pax-crab { animation: pax-shiver 0.16s linear infinite; }\n    .pax-sweat { animation: pax-drip 1.4s ease-in infinite; }', kf: [KF.shiver, KF.drip], base: '' },
+    confused: { motion: '.pax-crab { animation: pax-bob 3.4s ease-in-out infinite; }\n    .pax-question { animation: pax-float 2.2s ease-in-out infinite; }', kf: [KF.bob, KF.float], base: '' },
+    blink: { motion: '.pax-crab { animation: pax-bob 3.2s ease-in-out infinite; }\n    .pax-blink-open { animation: pax-blink-open 3.2s linear infinite; }\n    .pax-blink-shut { animation: pax-blink-shut 3.2s linear infinite; }', kf: [KF.bob, KF.blinkOpen, KF.blinkShut], base: '.pax-blink-open { opacity: 0; }' },
+  }[id];
+  return [a.base, `@media (prefers-reduced-motion: no-preference) {\n    ${a.motion}\n  }`, ...a.kf].filter(Boolean).join('\n  ');
+}
+
 /* ── 动画 CSS (仅动态版): 空闲浮动 + 表情循环 14s + 泪滴下落 + 道具浮动 ── */
 const ANIMATION_CSS = `
   .pax-face { opacity: 0; }
@@ -177,8 +204,8 @@ const ANIMATION_CSS = `
   @keyframes pax-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }`;
 
 /* ── SVG 组装 ── */
-function svg({ title, desc, faces, animated }) {
-  const style = animated ? `\n  <style>${ANIMATION_CSS}\n  </style>` : '';
+function svg({ title, desc, faces, animated, css = ANIMATION_CSS }) {
+  const style = animated ? `\n  <style>${css}\n  </style>` : '';
   const crabOpen = animated ? '<g class="pax-crab">' : '<g>';
   return `<svg width="${WIDTH}" height="${HEIGHT}" viewBox="${VIEWBOX}" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="pax-t pax-d">
   <title id="pax-t">${title}</title>
@@ -228,28 +255,47 @@ const SHEET_GAP = 10;
 const SHEET_MARGIN = 20;
 
 function moodSheet() {
-  const defs = Object.entries(FACES)
-    .map(([id, face]) => `    <g id="pax-art-${id}">${CORE}${face}${HEAD}\n    </g>`)
-    .join('\n');
+  const art = (id) => (id === 'blink' ? BLINK_OPEN_FACES + BLINK_SHUT_FACES : FACES[id]);
+  const phase = (i) => (i ? ` ${(-i * 0.45).toFixed(2)}s` : ''); // 单元格相位错开
   const cells = Object.entries(MOODS)
     .map(([id, mood], i) => {
       const x = SHEET_MARGIN + i * (SHEET_CELL_W + SHEET_GAP);
       const cx = x + SHEET_CELL_W / 2;
-      return `  <rect x="${x}" y="14" width="${SHEET_CELL_W}" height="${SHEET_ART_H + 12}" rx="12" fill="#ffffff" stroke="#e2e8f0"/>
-  <svg x="${x + 6}" y="20" width="${SHEET_ART_W}" height="${SHEET_ART_H}" viewBox="${SHEET_VIEWBOX}" preserveAspectRatio="xMidYMid meet"><use href="#pax-art-${id}"/></svg>
-  <text x="${cx}" y="${SHEET_ART_H + 44}" text-anchor="middle" font-size="13" font-weight="700" fill="#0f172a" font-family="${FONT}">${mood.zh}</text>
-  <text x="${cx}" y="${SHEET_ART_H + 59}" text-anchor="middle" font-size="10.5" fill="#64748b" font-family="${FONT}">${mood.en}</text>`;
+      return `  <g class="cell cell-${id}">
+    <rect x="${x}" y="14" width="${SHEET_CELL_W}" height="${SHEET_ART_H + 12}" rx="12" fill="#ffffff" stroke="#e2e8f0"/>
+    <svg x="${x + 6}" y="20" width="${SHEET_ART_W}" height="${SHEET_ART_H}" viewBox="${SHEET_VIEWBOX}" preserveAspectRatio="xMidYMid meet">
+      <g class="pax-crab">${CORE}${art(id)}${HEAD}</g>
+    </svg>
+    <text x="${cx}" y="${SHEET_ART_H + 44}" text-anchor="middle" font-size="13" font-weight="700" fill="#0f172a" font-family="${FONT}">${mood.zh}</text>
+    <text x="${cx}" y="${SHEET_ART_H + 59}" text-anchor="middle" font-size="10.5" fill="#64748b" font-family="${FONT}">${mood.en}</text>
+  </g>`;
     })
     .join('\n');
+  const motion = [
+    `.cell-happy .pax-crab { animation: pax-bob 3s ease-in-out${phase(0)} infinite; }`,
+    `.cell-cry .pax-crab { animation: pax-bob 4s ease-in-out${phase(1)} infinite; }
+    .cell-cry .pax-tear-a { animation: pax-tear 1.15s ease-in infinite; }
+    .cell-cry .pax-tear-b { animation: pax-tear 1.15s ease-in 0.2s infinite; }`,
+    `.cell-shock .pax-crab { animation: pax-shiver 0.16s linear infinite; }
+    .cell-shock .pax-sweat { animation: pax-drip 1.4s ease-in infinite; }`,
+    `.cell-confused .pax-crab { animation: pax-bob 3.4s ease-in-out${phase(3)} infinite; }
+    .cell-confused .pax-question { animation: pax-float 2.2s ease-in-out infinite; }`,
+    `.cell-blink .pax-crab { animation: pax-bob 3.2s ease-in-out${phase(4)} infinite; }
+    .cell-blink .pax-blink-open { animation: pax-blink-open 3.2s linear infinite; }
+    .cell-blink .pax-blink-shut { animation: pax-blink-shut 3.2s linear infinite; }`,
+  ].join('\n    ');
+  const css = [
+    '.cell-blink .pax-blink-open { opacity: 0; }', // 基态: 眨眼格显示闭眼 (静态身份)
+    `@media (prefers-reduced-motion: no-preference) {\n    ${motion}\n  }`,
+    ...Object.values(KF),
+  ].join('\n  ');
   const width = SHEET_MARGIN * 2 + 5 * SHEET_CELL_W + 4 * SHEET_GAP;
   const height = SHEET_ART_H + 74;
-  return `<svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" role="img" aria-labelledby="pax-moods-t pax-moods-d">
-  <title id="pax-moods-t">Pax 的五种表情 — 笑 / 哭 / 惊恐 / 疑惑 / 眨眼</title>
-  <desc id="pax-moods-d">邮差蟹 Pax 的头部特写联系表：五种表情及中英文标签。</desc>
+  return `<svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="pax-moods-t pax-moods-d">
+  <title id="pax-moods-t">Pax 的五种表情（各自带动态）— 笑 / 哭 / 惊恐 / 疑惑 / 眨眼</title>
+  <desc id="pax-moods-d">邮差蟹 Pax 的头部特写联系表：五种表情及中英文标签，每个形态各自带有专属动效（笑=浮动、哭=泪滴、惊恐=发抖加汗滴、疑惑=问号浮动、眨眼=定期眨眼）。</desc>
+  <style>${css}</style>
   <rect width="${width}" height="${height}" fill="#f8fafc"/>
-  <defs>
-${defs}
-  </defs>
 ${cells}
 </svg>
 `;
@@ -275,10 +321,11 @@ for (const [id, mood] of Object.entries(MOODS)) {
   files.set(
     path.join(ASSETS, mood.src),
     svg({
-      title: `Pax · 邮差蟹 — ${mood.zh}表情`,
-      desc: `PolyPack 项目宠物 Pax 的${mood.zh}表情（${mood.en}）。`,
-      faces: FACES[id],
-      animated: false,
+      title: `Pax · 邮差蟹 — ${mood.zh}表情（动态）`,
+      desc: `PolyPack 项目宠物 Pax 的${mood.zh}表情（${mood.en}），带该表情专属的 CSS 动效；减弱动态效果时定格为静态形态。`,
+      faces: id === 'blink' ? BLINK_OPEN_FACES + BLINK_SHUT_FACES : FACES[id],
+      animated: true,
+      css: moodStyle(id),
     }),
   );
 }

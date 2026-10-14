@@ -1,6 +1,13 @@
 <svg width="640" height="384" viewBox="0 0 720 432" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="pax-t pax-d">
-  <title id="pax-t">Pax · 邮差蟹 — 惊恐表情</title>
-  <desc id="pax-d">PolyPack 项目宠物 Pax 的惊恐表情（shocked）。</desc>
+  <title id="pax-t">Pax · 邮差蟹 — 惊恐表情（动态）</title>
+  <desc id="pax-d">PolyPack 项目宠物 Pax 的惊恐表情（shocked），带该表情专属的 CSS 动效；减弱动态效果时定格为静态形态。</desc>
+  <style>@media (prefers-reduced-motion: no-preference) {
+    .pax-crab { animation: pax-shiver 0.16s linear infinite; }
+    .pax-sweat { animation: pax-drip 1.4s ease-in infinite; }
+  }
+  @keyframes pax-shiver { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-1.6px); } 75% { transform: translateX(1.6px); } }
+  @keyframes pax-drip { 0% { transform: translateY(0); opacity: 0.3; } 40% { opacity: 1; } 100% { transform: translateY(12px); opacity: 0; } }
+  </style>
 
   <defs>
     <marker id="pax-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
@@ -19,7 +26,7 @@
   </g>
   <circle cx="566" cy="88" r="2.6" fill="#64748b" stroke="none"/>
   <ellipse cx="300" cy="396" rx="152" ry="15" fill="#0f172a" opacity="0.06"/>
-  <g>
+  <g class="pax-crab">
     <g stroke="#c2410c" stroke-width="11" stroke-linecap="round" fill="none">
       <path d="M214,318 L182,356"/>
       <path d="M246,338 L228,380"/>

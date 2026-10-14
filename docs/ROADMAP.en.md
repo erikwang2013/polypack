@@ -423,7 +423,7 @@ Any change affecting **architecture / features / flows / platform matrix** must,
 2. Sync `README.md` and `README.en.md` (bilingual mirrors);
 3. Sync `docs/ROADMAP.md` and `docs/ROADMAP.en.md`; the task plan follows the same rule (`docs/TASKS.md` / `docs/TASKS.en.md`), with additions/removals and estimate changes landing in both files in one commit;
 4. Platform matrix additions/removals = update together: the README tiered list (×2 languages) + this file's per-platform detail (×2 languages) + milestone acceptance + the TargetSpec;
-5. Pax is generated from a single source by `tools/build-pax.mjs` (five expressions + an animated version + the project icon `pax-mark.svg` + the expression contact sheet `pax-moods.svg` + the local playground `docs/pax.html`); re-run it after art or expression changes and sync both READMEs (CI verifies drift with `node tools/build-pax.mjs --check`).
+5. Pax is generated from a single source by `tools/build-pax.mjs` (five expressions, each with its own motion + the full-cycle animated version + the project icon `pax-mark.svg` + the expression contact sheet `pax-moods.svg` + the local playground `docs/pax.html`); re-run it after art or expression changes and sync both READMEs (CI verifies drift with `node tools/build-pax.mjs --check`).
 
 ## 12. Glossary
 
