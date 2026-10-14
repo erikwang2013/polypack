@@ -230,32 +230,42 @@ const MOODS = {
    内部标记单独导出为 MARK_INNER, 供图示流水线盖章复用 (单一事实源) */
 const MARK_INNER = `
   <rect x="1.5" y="1.5" width="61" height="61" rx="14" fill="#ea580c" stroke="#9a3412" stroke-width="3"/>
-  <path d="M14,31 a18,15 0 0 1 36,0 z" fill="#0e7490" stroke="#0b5e75" stroke-width="2"/>
-  <rect x="12" y="28" width="40" height="6.5" rx="3.25" fill="#0b5e75"/>
-  <circle cx="22.5" cy="41" r="7" fill="#ffffff" stroke="#7c2d12" stroke-width="2.5"/>
-  <circle cx="41.5" cy="41" r="7" fill="#ffffff" stroke="#7c2d12" stroke-width="2.5"/>
-  <circle cx="24" cy="42.5" r="3.2" fill="#0f172a"/>
-  <circle cx="40" cy="42.5" r="3.2" fill="#0f172a"/>
-  <ellipse cx="14.5" cy="50" rx="3" ry="2" fill="#fda4af" opacity="0.8"/>
-  <ellipse cx="49.5" cy="50" rx="3" ry="2" fill="#fda4af" opacity="0.8"/>
-  <path d="M24,53 q8,6.5 16,0" fill="none" stroke="#7c2d12" stroke-width="3" stroke-linecap="round"/>`;
+  <g stroke="#9a3412" stroke-width="5.5" stroke-linecap="round" fill="none">
+    <path d="M20,50 L13,56.5"/>
+    <path d="M27,53 L24,60"/>
+    <path d="M37,53 L40,60"/>
+    <path d="M44,50 L51,56.5"/>
+  </g>
+  <ellipse cx="32" cy="39" rx="18" ry="14" fill="#fdba74"/>
+  <path d="M17,27 a15,12.5 0 0 1 30,0 z" fill="#0e7490" stroke="#0b5e75" stroke-width="2"/>
+  <rect x="14.5" y="25" width="35" height="6" rx="3" fill="#0b5e75"/>
+  <circle cx="24" cy="36.5" r="5.6" fill="#ffffff" stroke="#7c2d12" stroke-width="2.2"/>
+  <circle cx="40" cy="36.5" r="5.6" fill="#ffffff" stroke="#7c2d12" stroke-width="2.2"/>
+  <circle cx="25.2" cy="37.8" r="2.5" fill="#0f172a"/>
+  <circle cx="38.8" cy="37.8" r="2.5" fill="#0f172a"/>
+  <ellipse cx="18.5" cy="44.5" rx="2.4" ry="1.6" fill="#fda4af" opacity="0.8"/>
+  <ellipse cx="45.5" cy="44.5" rx="2.4" ry="1.6" fill="#fda4af" opacity="0.8"/>
+  <path d="M26,45 q6,5 12,0" fill="none" stroke="#7c2d12" stroke-width="2.6" stroke-linecap="round"/>`;
 
 const MARK_SVG = `<svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="pax-mark-t pax-mark-d">
   <title id="pax-mark-t">Pax — PolyPack 项目图标</title>
-  <desc id="pax-mark-d">橙底圆角芯片上的邮差蟹 Pax 头部：青色邮政帽、双眼与微笑。</desc>${MARK_INNER}
+  <desc id="pax-mark-d">橙底圆角芯片上的邮差蟹 Pax 徽章：青色邮政帽、双眼、微笑与四条蟹腿。</desc>${MARK_INNER}
 </svg>
 `;
 
-/* ── 表情联系表 pax-moods: 五个头部特写 + 中英标签 (README 直接展示多形态) ── */
-const SHEET_VIEWBOX = '184 68 232 268'; // 头部特写裁剪窗
+/* ── 表情联系表 pax-moods: 五个全身像 (含腿与钳) + 中英标签 (README 直接展示多形态) ── */
+const SHEET_VIEWBOX = '54 64 448 346'; // 全身裁剪窗 (包裹左缘 58.5 起, 含地面投影)
 const SHEET_ART_W = 150;
-const SHEET_ART_H = Math.round((SHEET_ART_W * 268) / 232); // 173
+const SHEET_ART_H = Math.round((SHEET_ART_W * 346) / 448); // 116
 const SHEET_CELL_W = 162;
 const SHEET_GAP = 10;
 const SHEET_MARGIN = 20;
 
 function moodSheet() {
-  const art = (id) => (id === 'blink' ? BLINK_OPEN_FACES + BLINK_SHUT_FACES : FACES[id]);
+  const art = (id) => {
+    const faces = id === 'blink' ? BLINK_OPEN_FACES + BLINK_SHUT_FACES : FACES[id];
+    return `${BODY_TOP}${faces}${BODY_TAIL}`; // 全身: 腿 + 身 + 表情 + 帽 + 钳与包裹
+  };
   const phase = (i) => (i ? ` ${(-i * 0.45).toFixed(2)}s` : ''); // 单元格相位错开
   const cells = Object.entries(MOODS)
     .map(([id, mood], i) => {
@@ -264,7 +274,7 @@ function moodSheet() {
       return `  <g class="cell cell-${id}">
     <rect x="${x}" y="14" width="${SHEET_CELL_W}" height="${SHEET_ART_H + 12}" rx="12" fill="#ffffff" stroke="#e2e8f0"/>
     <svg x="${x + 6}" y="20" width="${SHEET_ART_W}" height="${SHEET_ART_H}" viewBox="${SHEET_VIEWBOX}" preserveAspectRatio="xMidYMid meet">
-      <g class="pax-crab">${CORE}${art(id)}${HEAD}</g>
+      <g class="pax-crab">${art(id)}</g>
     </svg>
     <text x="${cx}" y="${SHEET_ART_H + 44}" text-anchor="middle" font-size="13" font-weight="700" fill="#0f172a" font-family="${FONT}">${mood.zh}</text>
     <text x="${cx}" y="${SHEET_ART_H + 59}" text-anchor="middle" font-size="10.5" fill="#64748b" font-family="${FONT}">${mood.en}</text>
@@ -293,7 +303,7 @@ function moodSheet() {
   const height = SHEET_ART_H + 74;
   return `<svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="pax-moods-t pax-moods-d">
   <title id="pax-moods-t">Pax 的五种表情（各自带动态）— 笑 / 哭 / 惊恐 / 疑惑 / 眨眼</title>
-  <desc id="pax-moods-d">邮差蟹 Pax 的头部特写联系表：五种表情及中英文标签，每个形态各自带有专属动效（笑=浮动、哭=泪滴、惊恐=发抖加汗滴、疑惑=问号浮动、眨眼=定期眨眼）。</desc>
+  <desc id="pax-moods-d">邮差蟹 Pax 的全身联系表：五种表情（含蟹腿与钳子）及中英文标签，每个形态各自带有专属动效（笑=浮动、哭=泪滴、惊恐=发抖加汗滴、疑惑=问号浮动、眨眼=定期眨眼）。</desc>
   <style>${css}</style>
   <rect width="${width}" height="${height}" fill="#f8fafc"/>
 ${cells}

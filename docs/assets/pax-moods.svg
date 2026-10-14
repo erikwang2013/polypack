@@ -1,6 +1,6 @@
-<svg width="890" height="247" viewBox="0 0 890 247" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="pax-moods-t pax-moods-d">
+<svg width="890" height="190" viewBox="0 0 890 190" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="pax-moods-t pax-moods-d">
   <title id="pax-moods-t">Pax 的五种表情（各自带动态）— 笑 / 哭 / 惊恐 / 疑惑 / 眨眼</title>
-  <desc id="pax-moods-d">邮差蟹 Pax 的头部特写联系表：五种表情及中英文标签，每个形态各自带有专属动效（笑=浮动、哭=泪滴、惊恐=发抖加汗滴、疑惑=问号浮动、眨眼=定期眨眼）。</desc>
+  <desc id="pax-moods-d">邮差蟹 Pax 的全身联系表：五种表情（含蟹腿与钳子）及中英文标签，每个形态各自带有专属动效（笑=浮动、哭=泪滴、惊恐=发抖加汗滴、疑惑=问号浮动、眨眼=定期眨眼）。</desc>
   <style>.cell-blink .pax-blink-open { opacity: 0; }
   @media (prefers-reduced-motion: no-preference) {
     .cell-happy .pax-crab { animation: pax-bob 3s ease-in-out infinite; }
@@ -22,11 +22,19 @@
   @keyframes pax-drip { 0% { transform: translateY(0); opacity: 0.3; } 40% { opacity: 1; } 100% { transform: translateY(12px); opacity: 0; } }
   @keyframes pax-blink-open { 0%, 87% { opacity: 1; } 88.5%, 93% { opacity: 0; } 94.5%, 100% { opacity: 1; } }
   @keyframes pax-blink-shut { 0%, 87% { opacity: 0; } 88.5%, 93% { opacity: 1; } 94.5%, 100% { opacity: 0; } }</style>
-  <rect width="890" height="247" fill="#f8fafc"/>
+  <rect width="890" height="190" fill="#f8fafc"/>
   <g class="cell cell-happy">
-    <rect x="20" y="14" width="162" height="185" rx="12" fill="#ffffff" stroke="#e2e8f0"/>
-    <svg x="26" y="20" width="150" height="173" viewBox="184 68 232 268" preserveAspectRatio="xMidYMid meet">
+    <rect x="20" y="14" width="162" height="128" rx="12" fill="#ffffff" stroke="#e2e8f0"/>
+    <svg x="26" y="20" width="150" height="116" viewBox="54 64 448 346" preserveAspectRatio="xMidYMid meet">
       <g class="pax-crab">
+    <g stroke="#c2410c" stroke-width="11" stroke-linecap="round" fill="none">
+      <path d="M214,318 L182,356"/>
+      <path d="M246,338 L228,380"/>
+      <path d="M282,348 L276,388"/>
+      <path d="M386,318 L418,356"/>
+      <path d="M354,338 L372,380"/>
+      <path d="M318,348 L324,388"/>
+    </g>
     <ellipse cx="300" cy="268" rx="110" ry="78" fill="#ea580c" stroke="#9a3412" stroke-width="3"/>
     <ellipse cx="300" cy="292" rx="72" ry="46" fill="#fdba74" opacity="0.85"/>
   <g class="pax-face pax-face-happy">
@@ -46,15 +54,37 @@
     <path d="M246,192 q0,-54 54,-54 q54,0 54,54 z" fill="#0891b2" stroke="#0e7490" stroke-width="3"/>
     <rect x="234" y="188" width="132" height="14" rx="7" fill="#0e7490"/>
     <circle cx="300" cy="166" r="10" fill="#fdba74" stroke="#0e7490" stroke-width="2.5"/>
-    <rect x="295.5" y="161.5" width="9" height="8.5" rx="2" fill="#9a3412"/></g>
+    <rect x="295.5" y="161.5" width="9" height="8.5" rx="2" fill="#9a3412"/>
+    <path d="M206,258 L148,216" stroke="#ea580c" stroke-width="16" stroke-linecap="round"/>
+    <g transform="rotate(-8 118 253)">
+      <rect x="64" y="210" width="108" height="86" rx="10" fill="#d4a373" stroke="#b08968" stroke-width="3"/>
+      <rect x="107" y="210" width="22" height="86" fill="#b08968" opacity="0.85"/>
+      <circle cx="150" cy="240" r="17" fill="#ffffff" stroke="#0891b2" stroke-width="2" stroke-dasharray="3 2.6"/>
+      <ellipse cx="150" cy="240" rx="11.5" ry="4.4" fill="none" stroke="#0891b2" stroke-width="2" transform="rotate(-32 150 240)"/>
+      <circle cx="150" cy="240" r="2.4" fill="#0891b2"/>
+      <text x="80" y="282" font-size="13" font-family="'JetBrains Mono', ui-monospace, 'PingFang SC', 'Microsoft YaHei', monospace" font-weight="700" fill="#7c4a2a">POLY</text>
+    </g>
+    <circle cx="128" cy="194" r="22" fill="#ea580c" stroke="#9a3412" stroke-width="3"/>
+    <path d="M112,184 q14,-9 28,-3" fill="none" stroke="#9a3412" stroke-width="2.5" stroke-linecap="round"/>
+    <path d="M394,254 L452,208" stroke="#ea580c" stroke-width="16" stroke-linecap="round"/>
+    <circle cx="464" cy="192" r="24" fill="#ea580c" stroke="#9a3412" stroke-width="3"/>
+    <path d="M448,180 q16,-10 32,-4" fill="none" stroke="#9a3412" stroke-width="2.5" stroke-linecap="round"/></g>
     </svg>
-    <text x="101" y="217" text-anchor="middle" font-size="13" font-weight="700" fill="#0f172a" font-family="'JetBrains Mono', ui-monospace, 'PingFang SC', 'Microsoft YaHei', monospace">笑</text>
-    <text x="101" y="232" text-anchor="middle" font-size="10.5" fill="#64748b" font-family="'JetBrains Mono', ui-monospace, 'PingFang SC', 'Microsoft YaHei', monospace">happy</text>
+    <text x="101" y="160" text-anchor="middle" font-size="13" font-weight="700" fill="#0f172a" font-family="'JetBrains Mono', ui-monospace, 'PingFang SC', 'Microsoft YaHei', monospace">笑</text>
+    <text x="101" y="175" text-anchor="middle" font-size="10.5" fill="#64748b" font-family="'JetBrains Mono', ui-monospace, 'PingFang SC', 'Microsoft YaHei', monospace">happy</text>
   </g>
   <g class="cell cell-cry">
-    <rect x="192" y="14" width="162" height="185" rx="12" fill="#ffffff" stroke="#e2e8f0"/>
-    <svg x="198" y="20" width="150" height="173" viewBox="184 68 232 268" preserveAspectRatio="xMidYMid meet">
+    <rect x="192" y="14" width="162" height="128" rx="12" fill="#ffffff" stroke="#e2e8f0"/>
+    <svg x="198" y="20" width="150" height="116" viewBox="54 64 448 346" preserveAspectRatio="xMidYMid meet">
       <g class="pax-crab">
+    <g stroke="#c2410c" stroke-width="11" stroke-linecap="round" fill="none">
+      <path d="M214,318 L182,356"/>
+      <path d="M246,338 L228,380"/>
+      <path d="M282,348 L276,388"/>
+      <path d="M386,318 L418,356"/>
+      <path d="M354,338 L372,380"/>
+      <path d="M318,348 L324,388"/>
+    </g>
     <ellipse cx="300" cy="268" rx="110" ry="78" fill="#ea580c" stroke="#9a3412" stroke-width="3"/>
     <ellipse cx="300" cy="292" rx="72" ry="46" fill="#fdba74" opacity="0.85"/>
   <g class="pax-face pax-face-cry">
@@ -73,15 +103,37 @@
     <path d="M246,192 q0,-54 54,-54 q54,0 54,54 z" fill="#0891b2" stroke="#0e7490" stroke-width="3"/>
     <rect x="234" y="188" width="132" height="14" rx="7" fill="#0e7490"/>
     <circle cx="300" cy="166" r="10" fill="#fdba74" stroke="#0e7490" stroke-width="2.5"/>
-    <rect x="295.5" y="161.5" width="9" height="8.5" rx="2" fill="#9a3412"/></g>
+    <rect x="295.5" y="161.5" width="9" height="8.5" rx="2" fill="#9a3412"/>
+    <path d="M206,258 L148,216" stroke="#ea580c" stroke-width="16" stroke-linecap="round"/>
+    <g transform="rotate(-8 118 253)">
+      <rect x="64" y="210" width="108" height="86" rx="10" fill="#d4a373" stroke="#b08968" stroke-width="3"/>
+      <rect x="107" y="210" width="22" height="86" fill="#b08968" opacity="0.85"/>
+      <circle cx="150" cy="240" r="17" fill="#ffffff" stroke="#0891b2" stroke-width="2" stroke-dasharray="3 2.6"/>
+      <ellipse cx="150" cy="240" rx="11.5" ry="4.4" fill="none" stroke="#0891b2" stroke-width="2" transform="rotate(-32 150 240)"/>
+      <circle cx="150" cy="240" r="2.4" fill="#0891b2"/>
+      <text x="80" y="282" font-size="13" font-family="'JetBrains Mono', ui-monospace, 'PingFang SC', 'Microsoft YaHei', monospace" font-weight="700" fill="#7c4a2a">POLY</text>
+    </g>
+    <circle cx="128" cy="194" r="22" fill="#ea580c" stroke="#9a3412" stroke-width="3"/>
+    <path d="M112,184 q14,-9 28,-3" fill="none" stroke="#9a3412" stroke-width="2.5" stroke-linecap="round"/>
+    <path d="M394,254 L452,208" stroke="#ea580c" stroke-width="16" stroke-linecap="round"/>
+    <circle cx="464" cy="192" r="24" fill="#ea580c" stroke="#9a3412" stroke-width="3"/>
+    <path d="M448,180 q16,-10 32,-4" fill="none" stroke="#9a3412" stroke-width="2.5" stroke-linecap="round"/></g>
     </svg>
-    <text x="273" y="217" text-anchor="middle" font-size="13" font-weight="700" fill="#0f172a" font-family="'JetBrains Mono', ui-monospace, 'PingFang SC', 'Microsoft YaHei', monospace">哭</text>
-    <text x="273" y="232" text-anchor="middle" font-size="10.5" fill="#64748b" font-family="'JetBrains Mono', ui-monospace, 'PingFang SC', 'Microsoft YaHei', monospace">crying</text>
+    <text x="273" y="160" text-anchor="middle" font-size="13" font-weight="700" fill="#0f172a" font-family="'JetBrains Mono', ui-monospace, 'PingFang SC', 'Microsoft YaHei', monospace">哭</text>
+    <text x="273" y="175" text-anchor="middle" font-size="10.5" fill="#64748b" font-family="'JetBrains Mono', ui-monospace, 'PingFang SC', 'Microsoft YaHei', monospace">crying</text>
   </g>
   <g class="cell cell-shock">
-    <rect x="364" y="14" width="162" height="185" rx="12" fill="#ffffff" stroke="#e2e8f0"/>
-    <svg x="370" y="20" width="150" height="173" viewBox="184 68 232 268" preserveAspectRatio="xMidYMid meet">
+    <rect x="364" y="14" width="162" height="128" rx="12" fill="#ffffff" stroke="#e2e8f0"/>
+    <svg x="370" y="20" width="150" height="116" viewBox="54 64 448 346" preserveAspectRatio="xMidYMid meet">
       <g class="pax-crab">
+    <g stroke="#c2410c" stroke-width="11" stroke-linecap="round" fill="none">
+      <path d="M214,318 L182,356"/>
+      <path d="M246,338 L228,380"/>
+      <path d="M282,348 L276,388"/>
+      <path d="M386,318 L418,356"/>
+      <path d="M354,338 L372,380"/>
+      <path d="M318,348 L324,388"/>
+    </g>
     <ellipse cx="300" cy="268" rx="110" ry="78" fill="#ea580c" stroke="#9a3412" stroke-width="3"/>
     <ellipse cx="300" cy="292" rx="72" ry="46" fill="#fdba74" opacity="0.85"/>
   <g class="pax-face pax-face-shock">
@@ -99,15 +151,37 @@
     <path d="M246,192 q0,-54 54,-54 q54,0 54,54 z" fill="#0891b2" stroke="#0e7490" stroke-width="3"/>
     <rect x="234" y="188" width="132" height="14" rx="7" fill="#0e7490"/>
     <circle cx="300" cy="166" r="10" fill="#fdba74" stroke="#0e7490" stroke-width="2.5"/>
-    <rect x="295.5" y="161.5" width="9" height="8.5" rx="2" fill="#9a3412"/></g>
+    <rect x="295.5" y="161.5" width="9" height="8.5" rx="2" fill="#9a3412"/>
+    <path d="M206,258 L148,216" stroke="#ea580c" stroke-width="16" stroke-linecap="round"/>
+    <g transform="rotate(-8 118 253)">
+      <rect x="64" y="210" width="108" height="86" rx="10" fill="#d4a373" stroke="#b08968" stroke-width="3"/>
+      <rect x="107" y="210" width="22" height="86" fill="#b08968" opacity="0.85"/>
+      <circle cx="150" cy="240" r="17" fill="#ffffff" stroke="#0891b2" stroke-width="2" stroke-dasharray="3 2.6"/>
+      <ellipse cx="150" cy="240" rx="11.5" ry="4.4" fill="none" stroke="#0891b2" stroke-width="2" transform="rotate(-32 150 240)"/>
+      <circle cx="150" cy="240" r="2.4" fill="#0891b2"/>
+      <text x="80" y="282" font-size="13" font-family="'JetBrains Mono', ui-monospace, 'PingFang SC', 'Microsoft YaHei', monospace" font-weight="700" fill="#7c4a2a">POLY</text>
+    </g>
+    <circle cx="128" cy="194" r="22" fill="#ea580c" stroke="#9a3412" stroke-width="3"/>
+    <path d="M112,184 q14,-9 28,-3" fill="none" stroke="#9a3412" stroke-width="2.5" stroke-linecap="round"/>
+    <path d="M394,254 L452,208" stroke="#ea580c" stroke-width="16" stroke-linecap="round"/>
+    <circle cx="464" cy="192" r="24" fill="#ea580c" stroke="#9a3412" stroke-width="3"/>
+    <path d="M448,180 q16,-10 32,-4" fill="none" stroke="#9a3412" stroke-width="2.5" stroke-linecap="round"/></g>
     </svg>
-    <text x="445" y="217" text-anchor="middle" font-size="13" font-weight="700" fill="#0f172a" font-family="'JetBrains Mono', ui-monospace, 'PingFang SC', 'Microsoft YaHei', monospace">惊恐</text>
-    <text x="445" y="232" text-anchor="middle" font-size="10.5" fill="#64748b" font-family="'JetBrains Mono', ui-monospace, 'PingFang SC', 'Microsoft YaHei', monospace">shocked</text>
+    <text x="445" y="160" text-anchor="middle" font-size="13" font-weight="700" fill="#0f172a" font-family="'JetBrains Mono', ui-monospace, 'PingFang SC', 'Microsoft YaHei', monospace">惊恐</text>
+    <text x="445" y="175" text-anchor="middle" font-size="10.5" fill="#64748b" font-family="'JetBrains Mono', ui-monospace, 'PingFang SC', 'Microsoft YaHei', monospace">shocked</text>
   </g>
   <g class="cell cell-confused">
-    <rect x="536" y="14" width="162" height="185" rx="12" fill="#ffffff" stroke="#e2e8f0"/>
-    <svg x="542" y="20" width="150" height="173" viewBox="184 68 232 268" preserveAspectRatio="xMidYMid meet">
+    <rect x="536" y="14" width="162" height="128" rx="12" fill="#ffffff" stroke="#e2e8f0"/>
+    <svg x="542" y="20" width="150" height="116" viewBox="54 64 448 346" preserveAspectRatio="xMidYMid meet">
       <g class="pax-crab">
+    <g stroke="#c2410c" stroke-width="11" stroke-linecap="round" fill="none">
+      <path d="M214,318 L182,356"/>
+      <path d="M246,338 L228,380"/>
+      <path d="M282,348 L276,388"/>
+      <path d="M386,318 L418,356"/>
+      <path d="M354,338 L372,380"/>
+      <path d="M318,348 L324,388"/>
+    </g>
     <ellipse cx="300" cy="268" rx="110" ry="78" fill="#ea580c" stroke="#9a3412" stroke-width="3"/>
     <ellipse cx="300" cy="292" rx="72" ry="46" fill="#fdba74" opacity="0.85"/>
   <g class="pax-face pax-face-confused">
@@ -126,15 +200,37 @@
     <path d="M246,192 q0,-54 54,-54 q54,0 54,54 z" fill="#0891b2" stroke="#0e7490" stroke-width="3"/>
     <rect x="234" y="188" width="132" height="14" rx="7" fill="#0e7490"/>
     <circle cx="300" cy="166" r="10" fill="#fdba74" stroke="#0e7490" stroke-width="2.5"/>
-    <rect x="295.5" y="161.5" width="9" height="8.5" rx="2" fill="#9a3412"/></g>
+    <rect x="295.5" y="161.5" width="9" height="8.5" rx="2" fill="#9a3412"/>
+    <path d="M206,258 L148,216" stroke="#ea580c" stroke-width="16" stroke-linecap="round"/>
+    <g transform="rotate(-8 118 253)">
+      <rect x="64" y="210" width="108" height="86" rx="10" fill="#d4a373" stroke="#b08968" stroke-width="3"/>
+      <rect x="107" y="210" width="22" height="86" fill="#b08968" opacity="0.85"/>
+      <circle cx="150" cy="240" r="17" fill="#ffffff" stroke="#0891b2" stroke-width="2" stroke-dasharray="3 2.6"/>
+      <ellipse cx="150" cy="240" rx="11.5" ry="4.4" fill="none" stroke="#0891b2" stroke-width="2" transform="rotate(-32 150 240)"/>
+      <circle cx="150" cy="240" r="2.4" fill="#0891b2"/>
+      <text x="80" y="282" font-size="13" font-family="'JetBrains Mono', ui-monospace, 'PingFang SC', 'Microsoft YaHei', monospace" font-weight="700" fill="#7c4a2a">POLY</text>
+    </g>
+    <circle cx="128" cy="194" r="22" fill="#ea580c" stroke="#9a3412" stroke-width="3"/>
+    <path d="M112,184 q14,-9 28,-3" fill="none" stroke="#9a3412" stroke-width="2.5" stroke-linecap="round"/>
+    <path d="M394,254 L452,208" stroke="#ea580c" stroke-width="16" stroke-linecap="round"/>
+    <circle cx="464" cy="192" r="24" fill="#ea580c" stroke="#9a3412" stroke-width="3"/>
+    <path d="M448,180 q16,-10 32,-4" fill="none" stroke="#9a3412" stroke-width="2.5" stroke-linecap="round"/></g>
     </svg>
-    <text x="617" y="217" text-anchor="middle" font-size="13" font-weight="700" fill="#0f172a" font-family="'JetBrains Mono', ui-monospace, 'PingFang SC', 'Microsoft YaHei', monospace">疑惑</text>
-    <text x="617" y="232" text-anchor="middle" font-size="10.5" fill="#64748b" font-family="'JetBrains Mono', ui-monospace, 'PingFang SC', 'Microsoft YaHei', monospace">puzzled</text>
+    <text x="617" y="160" text-anchor="middle" font-size="13" font-weight="700" fill="#0f172a" font-family="'JetBrains Mono', ui-monospace, 'PingFang SC', 'Microsoft YaHei', monospace">疑惑</text>
+    <text x="617" y="175" text-anchor="middle" font-size="10.5" fill="#64748b" font-family="'JetBrains Mono', ui-monospace, 'PingFang SC', 'Microsoft YaHei', monospace">puzzled</text>
   </g>
   <g class="cell cell-blink">
-    <rect x="708" y="14" width="162" height="185" rx="12" fill="#ffffff" stroke="#e2e8f0"/>
-    <svg x="714" y="20" width="150" height="173" viewBox="184 68 232 268" preserveAspectRatio="xMidYMid meet">
+    <rect x="708" y="14" width="162" height="128" rx="12" fill="#ffffff" stroke="#e2e8f0"/>
+    <svg x="714" y="20" width="150" height="116" viewBox="54 64 448 346" preserveAspectRatio="xMidYMid meet">
       <g class="pax-crab">
+    <g stroke="#c2410c" stroke-width="11" stroke-linecap="round" fill="none">
+      <path d="M214,318 L182,356"/>
+      <path d="M246,338 L228,380"/>
+      <path d="M282,348 L276,388"/>
+      <path d="M386,318 L418,356"/>
+      <path d="M354,338 L372,380"/>
+      <path d="M318,348 L324,388"/>
+    </g>
     <ellipse cx="300" cy="268" rx="110" ry="78" fill="#ea580c" stroke="#9a3412" stroke-width="3"/>
     <ellipse cx="300" cy="292" rx="72" ry="46" fill="#fdba74" opacity="0.85"/>
   <g class="pax-face pax-face-happy pax-blink-open">
@@ -162,9 +258,23 @@
     <path d="M246,192 q0,-54 54,-54 q54,0 54,54 z" fill="#0891b2" stroke="#0e7490" stroke-width="3"/>
     <rect x="234" y="188" width="132" height="14" rx="7" fill="#0e7490"/>
     <circle cx="300" cy="166" r="10" fill="#fdba74" stroke="#0e7490" stroke-width="2.5"/>
-    <rect x="295.5" y="161.5" width="9" height="8.5" rx="2" fill="#9a3412"/></g>
+    <rect x="295.5" y="161.5" width="9" height="8.5" rx="2" fill="#9a3412"/>
+    <path d="M206,258 L148,216" stroke="#ea580c" stroke-width="16" stroke-linecap="round"/>
+    <g transform="rotate(-8 118 253)">
+      <rect x="64" y="210" width="108" height="86" rx="10" fill="#d4a373" stroke="#b08968" stroke-width="3"/>
+      <rect x="107" y="210" width="22" height="86" fill="#b08968" opacity="0.85"/>
+      <circle cx="150" cy="240" r="17" fill="#ffffff" stroke="#0891b2" stroke-width="2" stroke-dasharray="3 2.6"/>
+      <ellipse cx="150" cy="240" rx="11.5" ry="4.4" fill="none" stroke="#0891b2" stroke-width="2" transform="rotate(-32 150 240)"/>
+      <circle cx="150" cy="240" r="2.4" fill="#0891b2"/>
+      <text x="80" y="282" font-size="13" font-family="'JetBrains Mono', ui-monospace, 'PingFang SC', 'Microsoft YaHei', monospace" font-weight="700" fill="#7c4a2a">POLY</text>
+    </g>
+    <circle cx="128" cy="194" r="22" fill="#ea580c" stroke="#9a3412" stroke-width="3"/>
+    <path d="M112,184 q14,-9 28,-3" fill="none" stroke="#9a3412" stroke-width="2.5" stroke-linecap="round"/>
+    <path d="M394,254 L452,208" stroke="#ea580c" stroke-width="16" stroke-linecap="round"/>
+    <circle cx="464" cy="192" r="24" fill="#ea580c" stroke="#9a3412" stroke-width="3"/>
+    <path d="M448,180 q16,-10 32,-4" fill="none" stroke="#9a3412" stroke-width="2.5" stroke-linecap="round"/></g>
     </svg>
-    <text x="789" y="217" text-anchor="middle" font-size="13" font-weight="700" fill="#0f172a" font-family="'JetBrains Mono', ui-monospace, 'PingFang SC', 'Microsoft YaHei', monospace">眨眼</text>
-    <text x="789" y="232" text-anchor="middle" font-size="10.5" fill="#64748b" font-family="'JetBrains Mono', ui-monospace, 'PingFang SC', 'Microsoft YaHei', monospace">blinking</text>
+    <text x="789" y="160" text-anchor="middle" font-size="13" font-weight="700" fill="#0f172a" font-family="'JetBrains Mono', ui-monospace, 'PingFang SC', 'Microsoft YaHei', monospace">眨眼</text>
+    <text x="789" y="175" text-anchor="middle" font-size="10.5" fill="#64748b" font-family="'JetBrains Mono', ui-monospace, 'PingFang SC', 'Microsoft YaHei', monospace">blinking</text>
   </g>
 </svg>
