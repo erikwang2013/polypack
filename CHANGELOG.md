@@ -6,6 +6,18 @@ Notable changes are recorded here; since v1.0.0, tags and releases follow `vX.Y.
 
 ## [Unreleased]
 
+## [1.3.0] — 2026-10-15
+
+### Added
+- **M2 移动与桥生态交付**（2026-10-15）：uniffi 桥生成器（UDL 单源 → Kotlin/Swift 绑定、接口摘要入缓存键、`poly bridge`）；Kotlin/JNI AAR（双 ABI 真交叉编译，emulator 三层实证：loadLibrary + dlsym 真调用 + Kotlin→JNA→Rust 全链）；Swift XCFramework + iOS IPA 链（macos-14 真跑直出未签名 IPA 并留档）；Android 链（AAPT2 免 Gradle 直出 AAB/APK、bundletool 校验、emulator 冷启动冒烟、跨绝对目录逐字节可复现）；apksigner 签名（v2+v3 真验、临时密钥零残留）与凭据层（keyring/Vault/Env + 全通道脱敏）；远程农场协议 v0（发起地/构建地分离、共享对象存储跨构建点缓存复用、`E_FARM_0002` 准入语义）；secret-scan 双检（全历史 823 文件零命中 + CI 三宿主）；`poly verify --reproducible` / `poly retry --from sign`；adapter-native v0（RN 宿主 + 焦点基线）；移动契约 CI（mobile-contract：mock 每提交 + nightly 真列并留档）与 bridge 真跑 nightly；FARM 双语文档。**355 测试、五工作流三宿主全绿、真模式两腿全绿（IPA/AAB 留档）。**
+
+*M2 mobile & bridge ecosystem delivered — uniffi bridge, AAR, Android AAPT2 chain, iOS IPA chain, signing & credentials, farm v0, secret-scan, verify/retry, adapter-native, mobile-contract CI. 355 tests; five workflows green on three hosts; real-mode dispatch green with archived unsigned IPA and AAB.*
+
+### Fixed
+- **CI 三宿主全绿收敛**（2026-10-15）：测试与宿主工具解耦（夹具入库 + 显式 SKIP 体系）、`.gitattributes` 强制 LF 检出、显式 linux 目标整文件门控、`EXE_SUFFIX`/路径分隔符/`getopt` 参数序等跨宿主修复——**windows 腿首次全绿**；随后真模式七轮 dispatch 逐层根因（SDK 死包 `tools`、`lipo` 输出目录执行序、上传基准 `$TMPDIR`、`exportArchive` 无 Team 语义、骨架绑定引用写死、取件竞态）全部修复并经真机判决，含三处"静默假绿"通道的点亮（aapt2 `warn:` 前缀、SKIP 掩盖失败、错误显示丢 stderr）。
+
+*Three-host CI convergence (windows leg green for the first time) and real-mode hardening: every root cause fixed with local reproduction — including three silent-false-green channels lit up.*
+
 ## [1.2.0] — 2026-10-15
 
 ### Added

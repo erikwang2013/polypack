@@ -4,7 +4,7 @@
 
 [简体中文](README.md) · [Roadmap](docs/ROADMAP.en.md) · [Architecture](#architecture) · [Platforms](#platform-matrix)
 
-> **Project status: M1 Desktop & Web delivered** (2026-10-15). Available today: `poly doctor` / `poly init` / `poly build` (real deb / AppDir / web static bundles on Linux, with Pax icon derivation) / `poly dev` (full-reload hot preview) / `poly clean`; the Windows / macOS packagers and their contracts are in place, awaiting the three-host CI (post-billing) for real-machine runs. Later milestones follow [docs/ROADMAP.en.md](docs/ROADMAP.en.md).
+> **Project status: M2 mobile & bridge ecosystem delivered** (2026-10-15). Available commands: `poly doctor` / `poly init` / `poly build` (real deb / AppDir / web static bundles; **Android AAB/APK direct**; **iOS unsigned IPA** on macOS hosts) / `poly bridge` (uniffi generator) / `poly farm worker|submit` (remote farm) / `poly scan` (secret scan) / `poly verify --reproducible` / `poly retry --from sign` / `poly dev` / `poly clean`. Five workflows green across three hosts, including real-mode nightlies with archived artifacts. Later milestones follow [docs/ROADMAP.en.md](docs/ROADMAP.en.md).
 >
 > **Note on diagram labels:** the embedded diagrams are labeled in Chinese (the project's primary language). English-labeled variants are scheduled for milestone M1.
 

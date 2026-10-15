@@ -4,7 +4,7 @@
 
 [English](README.en.md) · [详细规划](docs/ROADMAP.md) · [架构](#项目架构) · [平台矩阵](#支持平台矩阵)
 
-> **项目状态：M1 桌面与 Web 已交付**（2026-10-15）。可用命令：`poly doctor` / `poly init` / `poly build`（Linux 真出 deb / AppDir / Web 静态包，含 Pax 图标派生）/ `poly dev`（整页重载热预览）/ `poly clean`；Windows / macOS 打包器与契约就绪，真机验证随 CI 三宿主（GitHub 账单恢复后）。后续里程碑按 [docs/ROADMAP.md](docs/ROADMAP.md) 推进。
+> **项目状态：M2 移动与桥生态已交付**（2026-10-15）。可用命令：`poly doctor` / `poly init` / `poly build`（真出 deb / AppDir / Web 静态包；**Android 直出 AAB/APK**；**iOS 未签名 IPA**（macOS 宿主））/ `poly bridge`（uniffi 桥生成）/ `poly farm worker|submit`（远程农场）/ `poly scan`（密钥扫描）/ `poly verify --reproducible` / `poly retry --from sign` / `poly dev` / `poly clean`。五工作流三宿主全绿（含真模式 nightly 与真产物留档）。后续里程碑按 [docs/ROADMAP.md](docs/ROADMAP.md) 推进。
 
 ---
 
