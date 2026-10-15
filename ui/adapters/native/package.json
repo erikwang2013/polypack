@@ -12,7 +12,8 @@
   "files": [
     "src",
     "example.js",
-    "host"
+    "host",
+    "device-walks"
   ],
   "scripts": {
     "test": "node --test"

@@ -264,7 +264,7 @@
 
 > 前置依赖: T-M0-01（workspace）、T-M0-02（三宿主 CI）、T-M0-04/T-M0-05（TargetSpec DSL 与 L1 声明）、T-M0-06/T-M0-07（JobSpec 与诊断框架）、T-M0-09（工具链探测）、T-M1-05（Packager 接口）、T-M1-09（poly-cache）、T-M1-11（示例应用模板）｜出口条件: 示例 APK/IPA 可安装且签名可验证；密钥零入库（secret-scan 全绿）；Linux 宿主经远程农场出 IPA
 
-### T-M2-01 · uniffi 桥生成器（UDL 单源 → Kotlin/Swift 绑定；摘要入缓存键、四出口登记；Kotlin 真编译 + 双 ABI .so 真跑，Swift 编译待 macOS 宿主）
+### T-M2-01 · uniffi 桥生成器（UDL 单源 → Kotlin/Swift 绑定；摘要入缓存键、四出口登记；Kotlin 真编译 + 双 ABI .so 真跑；Swift 编译腿已建——真生成器产物过 swiftc -typecheck，macos-14 真模式待首证）
 
 - 角色: core
 - 依赖: T-M0-01、T-M1-11
@@ -280,7 +280,7 @@
 - 交付物: 核心编译为各 ABI triple 的 JNI `.so` + 生成的 Kotlin 绑定，组装为 AAR（清单/资源最小化），作为 Android 打包阶段的输入。
 - 验收: AAR 在 Android 契约测试中加载成功；Kotlin 侧调用示例接口结果与 Rust 单测一致；AAR 走库级缓存，二跑命中。
 
-### T-M2-03 · Swift 绑定产物（XCFramework）（三 triple/lipo/结构与篡改校验完备；macos-14 真跑已覆盖 cargo×3 交叉编译 + lipo 合并 + `xcodebuild -create-xcframework` 真链接与 archive 链；Swift 运行时调用对拍留待真机）
+### T-M2-03 · Swift 绑定产物（XCFramework）（三 triple/lipo/结构与篡改校验完备；macos-14 真跑已覆盖 cargo×3 交叉编译 + lipo 合并 + `xcodebuild -create-xcframework` 真链接与 archive 链；simulator 调用对拍腿已建——simctl spawn 真跑 paxAdd 符号面与 i32 回绕，待 macos-14 真模式首证）
 
 - 角色: platforms
 - 依赖: T-M2-01
@@ -288,7 +288,7 @@
 - 交付物: 核心编译为 device + simulator 切片的 XCFramework（staticlib）+ 生成的 Swift 绑定与 modulemap。
 - 验收: 最小宿主工程在 macOS 宿主用 xcodebuild 链接通过；Swift 侧调用示例接口与 Rust 输出一致；切片架构可枚举校验（`lipo -info`）。
 
-### T-M2-04 · @polypack/adapter-native v0（RN 宿主 + capabilities 契约；37 测试绿；真机 RN 渲染待设备，代理渲染替代）
+### T-M2-04 · ✅ @polypack/adapter-native v0（RN 宿主 + capabilities 契约；42 测试绿；示例页真机渲染实证——emulator-5554 uiautomator 语义标记全中 + 截图留档；降级分支双形态走查并跑；宿主构建环境适配成文）
 
 - 角色: ui-adapters
 - 依赖: T-M1-04、T-M1-11
@@ -296,7 +296,7 @@
 - 交付物: `@polypack/adapter-native` v0：实现 §6 RendererAdapter 契约（`mount` / `platformStyle(tokens)` / `capabilities(): { focusNav, safeArea, gestures }`）的 RN 宿主装配层，原生模块注册位预留桥产物挂载点。
 - 验收: 同一示例页面组件树在 Android RN 宿主渲染；`capabilities()` 输出与 TargetSpec/宿主能力一致；降级路径由 capabilities 声明驱动（无指针 → 焦点环分支可枚举，完整导航图留待 M4）。
 
-### T-M2-05 · adapter-native 焦点/导航基线（遍历图 + Back 记忆栈 + 键路由；快照断言齐；设备方向键冒烟待宿主）
+### T-M2-05 · ✅ adapter-native 焦点/导航基线（遍历图 + Back 记忆栈 + 键路由；设备六走查双形态 6/6 + 6/6；环像素差分双态 4 点实证；真根因修复——首键吞噬与 CENTER 双计 → 焦点锚点）
 
 - 角色: ui-adapters
 - 依赖: T-M2-04
@@ -336,7 +336,7 @@
 - 交付物: `poly-sign` Android Signer：`CredentialRef` → keystore 解析 → apksigner 签名，密钥材料只落内存/临时目录；签名后自动 `apksigner verify`。
 - 验收: 示例 APK `apksigner verify --print-certs` 通过；缺失/错误引用在 plan 阶段快速失败（稳定错误码 + 修复提示）；签名后断言无临时密钥残留。
 
-### T-M2-10 · iOS 签名与公证（codesign + notarytool）（库级链路/凭据引用/回执槽就绪；verify 阶段接入与真机公证待 Apple 环境）
+### T-M2-10 · iOS 签名与公证（codesign + notarytool）（库级链路/凭据引用/回执槽就绪；sign/verify 已入 DAG——`poly build` 内联 sign 凭据门控三级语义、真签 apksigner 双方案独立复核；codesign 真执行与真机公证待 Apple 门控）
 
 - 角色: release-sec
 - 依赖: T-M2-08、T-M2-11
@@ -344,7 +344,7 @@
 - 交付物: `poly-sign` iOS 链路：codesign（证书/描述文件经凭据引用）+ `notarytool submit --wait` 公证 + stapler 装订；`codesign --verify` 与 `spctl` 校验接入 verify 阶段。
 - 验收: 示例 IPA 公证成功并装订；`codesign --verify --deep` 与 `spctl -a -vv` 通过；公证回执归档入提审级缓存记录。
 
-### T-M2-11 · ✅ 密钥库集成（keyring + Vault 后端 trait）（后端链 + 脱敏断言；retry --from sign 真签两轮重拉凭据；真总线/Vault HTTP 待真机）
+### T-M2-11 · ✅ 密钥库集成（keyring + Vault 后端 trait）（后端链 + 脱敏断言；retry --from sign 真签两轮重拉凭据；真 Vault dev KV v2 读写往返（audit 日志 token 仅 hmac）+ 真 keyring 隔离总线闭环——Deepin 补丁版根因实证）
 
 - 角色: release-sec
 - 依赖: T-M0-06
@@ -368,7 +368,7 @@
 - 交付物: 农场协议 v0：JobSpec 序列化格式 + worker 拉取-执行-回传循环（worker 注册与能力声明），本地与远程共用同一 DAG 执行实现。
 - 验收: Linux 宿主发起 iOS 目标构建 → macOS worker 出 IPA，签名校验通过（R3 验收路径打通）；worker 端失败时错误码与修复提示完整回传；缓存跨机复用经对象存储后端验证。
 
-### T-M2-14 · ✅ 移动目标 CI 接入与契约测试金样（mock 列三宿主全绿；真模式两腿通过并留档——ios 9,062B / android 9,770B；契约 ios 腿走库形态夹具 + 双产物（ipa + xcframework）真比对、android 取件按名锚定 base.zip；金样漂移即红含 diff；windows msi / macos dmg 条目待打包器检查器落地后补断言）
+### T-M2-14 · ✅ 移动目标 CI 接入与契约测试金样（mock 列三宿主全绿；真模式两腿通过并留档——ios 9,062B / android 9,770B；契约 ios 腿走库形态夹具 + 双产物（ipa + xcframework）真比对、android 取件按名锚定 base.zip；金样漂移即红含 diff；windows msi / macos dmg 真检查器已落（本机全绿；真编译面待 windows/macos CI 腿首证））
 
 - 角色: infra
 - 依赖: T-M2-07、T-M2-10、T-M1-13、T-M0-02

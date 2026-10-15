@@ -51,6 +51,10 @@ test("代理渲染：同一示例页面组件树可渲染，语义标记与 poly
   }
   assert.match(html, /点击计数：0/, "初始计数为 0");
   assert.match(html, /<img[^>]+alt="Pax"/, "图标原语渲染（accessibilityLabel → alt）");
+  // 键节点锚点：真机 uiautomator resource-id（testID）与代理渲染 data-testid 同名
+  for (const id of ["counter", "reset"]) {
+    assert.ok(html.includes(`data-testid="${id}"`), `缺键节点锚点: ${id}`);
+  }
 });
 
 test("降级驱动：无指针 → 焦点环落在初始焦点；触屏 → 不渲染焦点环", { skip }, () => {

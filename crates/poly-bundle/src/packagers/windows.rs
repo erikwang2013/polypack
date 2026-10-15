@@ -326,14 +326,17 @@ fn wix_script(inputs: &BundleInputs, bare: &BareProduct) -> Result<String, Bundl
 fn nsi_script(inputs: &BundleInputs, bare: &BareProduct) -> String {
     let product = &inputs.product;
     let name = &product.name;
-    let root = windows_path(&bare.root);
-    let exe = windows_path(&exe_rel(inputs, bare));
+    let root = nsis_escape(&windows_path(&bare.root));
+    let exe = nsis_escape(&windows_path(&exe_rel(inputs, bare)));
 
     let mut out = String::new();
     out.push_str("Unicode true\n");
     out.push_str("!include \"MUI2.nsh\"\n\n");
     out.push_str(&format!("Name \"{name}\"\n"));
-    out.push_str(&format!("OutFile \"{}\"\n", nsis_file_name(inputs)));
+    out.push_str(&format!(
+        "OutFile \"{}\"\n",
+        nsis_escape(&nsis_file_name(inputs))
+    ));
     out.push_str(&format!("InstallDir \"$PROGRAMFILES64\\{name}\"\n"));
     out.push_str(&format!(
         "VIProductVersion \"{}\"\n",
@@ -353,7 +356,7 @@ fn nsi_script(inputs: &BundleInputs, bare: &BareProduct) -> String {
         product.version
     ));
     if let Some(icon) = inputs.icon(IconKind::Ico) {
-        let ico = windows_path(&icon.path);
+        let ico = nsis_escape(&windows_path(&icon.path));
         out.push_str(&format!("Icon \"{ico}\"\n"));
         out.push_str(&format!("UninstallIcon \"{ico}\"\n"));
     }
@@ -554,6 +557,15 @@ pub fn xml_escape(text: &str) -> String {
         .replace('"', "&quot;")
 }
 
+/// NSIS 脚本转义：`$` 在脚本里引入变量（`$INSTDIR` / `$0`…），字面量须写 `$$`
+/// （同 [`xml_escape`]：产品名由 `inputs` 白名单限制，裸产物路径可能含任意字符）。
+///
+/// 公开给契约测试按**同一口径**构造 path needle：宿主路径合法可含 `$`
+/// （如 `C:\$Recycle.Bin\…`），测试自建转义表会与实际产物漂移。
+pub fn nsis_escape(text: &str) -> String {
+    text.replace('$', "$$")
+}
+
 /// `UpgradeCode`：由产品标识符派生的稳定 GUID（同标识符恒等，换标识符即变）。
 ///
 /// 无 uuid 依赖：FNV-1a 双种子取 16 字节，按 UUID v5 形态置版本 / 变体位。
@@ -642,6 +654,17 @@ mod tests {
     #[test]
     fn xml_escape_covers_attribute_chars() {
         assert_eq!(xml_escape("a&b<c>\"d\""), "a&amp;b&lt;c&gt;&quot;d&quot;");
+    }
+
+    #[test]
+    fn nsis_escape_doubles_dollar_signs() {
+        // 变量形态（`$INSTDIR`）与数字寄存器形态（`$0`）都按字面量转义。
+        assert_eq!(nsis_escape("$INSTDIR\\x"), "$$INSTDIR\\x");
+        assert_eq!(
+            nsis_escape("C:\\$Recycle.Bin\\$0"),
+            "C:\\$$Recycle.Bin\\$$0"
+        );
+        assert_eq!(nsis_escape("Pax Notes"), "Pax Notes");
     }
 
     #[test]

@@ -30,55 +30,44 @@ const SOURCE_EXCLUDE: &[&str] = &["target", "node_modules", "dist", ".polypack",
 ///
 /// `profile` 为 `ci` / `local`，是缓存键的「构建参数」输入（§5.2）。
 pub fn plan(cache: Arc<Cache>, profile: &str) -> Result<Plan, StageError> {
-    plan_with_package(cache, profile, None)
+    plan_with_stages(cache, profile, InjectedStages::default())
 }
 
-/// 同 [`plan`]，但可用真实实现替换 `package` 阶段（`None` = 保留骨架占位）。
+/// 由上层注入的真实阶段实现：`None` = 保留骨架 `NotYetStage` 占位。
 ///
-/// 打包器矩阵在 poly-bundle，而依赖方向约束（`tests/dependency_direction.rs`）禁止
-/// poly-core 依赖它，故真实实现由 poly-cli 注入。
-pub fn plan_with_package(
+/// 打包器矩阵在 poly-bundle、签名链与校验器在 poly-sign，而依赖方向约束
+/// （`tests/dependency_direction.rs`）禁止 poly-core 依赖它们，故三者都由 poly-cli 注入。
+/// 工厂形态（`fn` 指针）与农场 worker 的 [`crate::farm::StageFactory`] 同型：`Copy`，
+/// 便于跨 worker 参数与主端两侧传递。
+#[derive(Clone, Copy, Default)]
+pub struct InjectedStages {
+    /// `package` 阶段（打包器矩阵 T-M1-05..08）。
+    pub package: Option<crate::farm::StageFactory>,
+    /// `sign` 阶段（签名链 T-M2-10）。
+    pub sign: Option<crate::farm::StageFactory>,
+    /// `verify` 阶段（校验器注册表 T-M2-10）。
+    pub verify: Option<crate::farm::StageFactory>,
+}
+
+/// 同 [`plan`]，三个可注入阶段（`package` / `sign` / `verify`）分别以真实实现替换。
+pub fn plan_with_stages(
     cache: Arc<Cache>,
     profile: &str,
-    package: Option<Box<dyn Stage>>,
+    stages: InjectedStages,
 ) -> Result<Plan, StageError> {
-    let package_node = match package {
-        Some(stage) => StageNode {
-            name: "package",
-            deps: vec!["compile", "bundle"],
-            stage,
-        },
-        None => StageNode::new(
-            "package",
-            NotYetStage {
-                name: "package",
-                since: "M1（打包器矩阵 T-M1-05..08）",
-            },
-        )
-        .after(&["compile", "bundle"]),
-    };
     Plan::from_nodes(vec![
         StageNode::new("plan", PlanStage),
         StageNode::new("probe", ProbeStage).after(&["plan"]),
         StageNode::new("compile", CompileStage::new(cache.clone(), profile)).after(&["probe"]),
         StageNode::new("bundle", BundleStage::new(cache, profile)).after(&["probe"]),
-        package_node,
-        StageNode::new(
-            "sign",
-            NotYetStage {
-                name: "sign",
-                since: "M2",
-            },
-        )
-        .after(&["package"]),
-        StageNode::new(
-            "verify",
-            NotYetStage {
-                name: "verify",
-                since: "M2",
-            },
-        )
-        .after(&["sign"]),
+        injected(
+            "package",
+            stages.package,
+            "M1（打包器矩阵 T-M1-05..08）",
+            &["compile", "bundle"],
+        ),
+        injected("sign", stages.sign, "M2（T-M2-10 签名链）", &["package"]),
+        injected("verify", stages.verify, "M2（校验器注册表）", &["sign"]),
         StageNode::new(
             "publish",
             NotYetStage {
@@ -88,6 +77,23 @@ pub fn plan_with_package(
         )
         .after(&["verify"]),
     ])
+}
+
+/// 注入实现 / 骨架占位的二选一节点构造（`since` 说明占位归属的里程碑与任务）。
+fn injected(
+    name: &'static str,
+    factory: Option<crate::farm::StageFactory>,
+    since: &'static str,
+    deps: &[&'static str],
+) -> StageNode {
+    match factory {
+        Some(factory) => StageNode {
+            name,
+            deps: deps.to_vec(),
+            stage: factory(),
+        },
+        None => StageNode::new(name, NotYetStage { name, since }).after(deps),
+    }
 }
 
 /// `compile` 支线：核心 crate 的宿主 release 编译，带库级缓存。

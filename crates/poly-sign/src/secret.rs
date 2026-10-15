@@ -365,8 +365,9 @@ impl SecretBackend for KeyringBackend {
 
 /// 外部 Vault 客户端抽象（`CredentialSource::Vault`）。
 ///
-/// 真实 HTTP 实现（KV v2，`VAULT_ADDR` / `VAULT_TOKEN`）留给 CLI 接线（M2 之后），
-/// 本 crate 只定义 trait + [`VaultBackend`] 适配器：验收用内存假实现，**测试绝不联网**。
+/// 真实 HTTP 实现是 [`crate::vault::HttpVaultClient`]（KV v2，`VAULT_ADDR` / `VAULT_TOKEN`）；
+/// 本 trait + [`VaultBackend`] 适配器是它的接缝：单元测试用内存假实现（**默认测试绝不联网**），
+/// 真服务器的读写往返在 `tests/vault_real.rs`（`POLY_VAULT_REAL=1` 门控）。
 pub trait VaultClient: Send + Sync {
     /// 按凭据档案名读取 base64(JSON) 载荷原文。
     fn read(&self, name: &str) -> Result<Vec<u8>, SignError>;

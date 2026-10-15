@@ -1,0 +1,267 @@
+{
+  "schema": "polypack/adapter-native/device-walks/v1",
+  "target": "android",
+  "derivedFrom": {
+    "kernel": "src/focus.js",
+    "nodes": "src/example-nodes.js"
+  },
+  "precondition": {
+    "focus": "counter",
+    "clicks": 0,
+    "reset": [
+      "shell am force-stop com.polypack.host",
+      "shell am start -n com.polypack.host/.MainActivity"
+    ]
+  },
+  "keymap": [
+    {
+      "kernel": "DPAD_UP",
+      "adb": "KEYCODE_DPAD_UP",
+      "code": 19
+    },
+    {
+      "kernel": "DPAD_DOWN",
+      "adb": "KEYCODE_DPAD_DOWN",
+      "code": 20
+    },
+    {
+      "kernel": "DPAD_LEFT",
+      "adb": "KEYCODE_DPAD_LEFT",
+      "code": 21
+    },
+    {
+      "kernel": "DPAD_RIGHT",
+      "adb": "KEYCODE_DPAD_RIGHT",
+      "code": 22
+    },
+    {
+      "kernel": "DPAD_CENTER",
+      "adb": "KEYCODE_DPAD_CENTER",
+      "code": 23
+    },
+    {
+      "kernel": "Back",
+      "adb": "KEYCODE_BACK",
+      "code": 4
+    }
+  ],
+  "walks": [
+    {
+      "id": "traverse-cycle",
+      "purpose": "方向键遍历：DOWN / UP 在环内往返",
+      "keys": [
+        "DPAD_DOWN",
+        "DPAD_UP"
+      ],
+      "adb": [
+        "shell input keyevent KEYCODE_DPAD_DOWN",
+        "shell input keyevent KEYCODE_DPAD_UP"
+      ],
+      "expect": {
+        "results": [
+          {
+            "type": "move",
+            "direction": "down",
+            "from": "counter",
+            "to": "reset"
+          },
+          {
+            "type": "move",
+            "direction": "up",
+            "from": "reset",
+            "to": "counter"
+          }
+        ],
+        "focus": [
+          "reset",
+          "counter"
+        ],
+        "clicks": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "boundary-hold",
+      "purpose": "边界自环：无邻接方向原地不动（无死路，焦点不丢）",
+      "keys": [
+        "DPAD_UP",
+        "DPAD_DOWN",
+        "DPAD_DOWN"
+      ],
+      "adb": [
+        "shell input keyevent KEYCODE_DPAD_UP",
+        "shell input keyevent KEYCODE_DPAD_DOWN",
+        "shell input keyevent KEYCODE_DPAD_DOWN"
+      ],
+      "expect": {
+        "results": [
+          {
+            "type": "move",
+            "direction": "up",
+            "from": "counter",
+            "to": "counter"
+          },
+          {
+            "type": "move",
+            "direction": "down",
+            "from": "counter",
+            "to": "reset"
+          },
+          {
+            "type": "move",
+            "direction": "down",
+            "from": "reset",
+            "to": "reset"
+          }
+        ],
+        "focus": [
+          "counter",
+          "reset",
+          "reset"
+        ],
+        "clicks": [
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "lateral-hold",
+      "purpose": "未定义方向（左右）不外溢，焦点原地",
+      "keys": [
+        "DPAD_LEFT",
+        "DPAD_RIGHT"
+      ],
+      "adb": [
+        "shell input keyevent KEYCODE_DPAD_LEFT",
+        "shell input keyevent KEYCODE_DPAD_RIGHT"
+      ],
+      "expect": {
+        "results": [
+          {
+            "type": "move",
+            "direction": "left",
+            "from": "counter",
+            "to": "counter"
+          },
+          {
+            "type": "move",
+            "direction": "right",
+            "from": "counter",
+            "to": "counter"
+          }
+        ],
+        "focus": [
+          "counter",
+          "counter"
+        ],
+        "clicks": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "activate-counter",
+      "purpose": "中心键激活当前焦点（计数 +1）",
+      "keys": [
+        "DPAD_CENTER"
+      ],
+      "adb": [
+        "shell input keyevent KEYCODE_DPAD_CENTER"
+      ],
+      "expect": {
+        "results": [
+          {
+            "type": "activate",
+            "id": "counter"
+          }
+        ],
+        "focus": [
+          "counter"
+        ],
+        "clicks": [
+          1
+        ]
+      }
+    },
+    {
+      "id": "reset-then-back",
+      "purpose": "移焦到重置 → 激活清零 → Back 回上一焦点 → 再激活（计数 +1）",
+      "keys": [
+        "DPAD_DOWN",
+        "DPAD_CENTER",
+        "Back",
+        "DPAD_CENTER"
+      ],
+      "adb": [
+        "shell input keyevent KEYCODE_DPAD_DOWN",
+        "shell input keyevent KEYCODE_DPAD_CENTER",
+        "shell input keyevent KEYCODE_BACK",
+        "shell input keyevent KEYCODE_DPAD_CENTER"
+      ],
+      "expect": {
+        "results": [
+          {
+            "type": "move",
+            "direction": "down",
+            "from": "counter",
+            "to": "reset"
+          },
+          {
+            "type": "activate",
+            "id": "reset"
+          },
+          {
+            "type": "back",
+            "from": "reset",
+            "to": "counter"
+          },
+          {
+            "type": "activate",
+            "id": "counter"
+          }
+        ],
+        "focus": [
+          "reset",
+          "reset",
+          "counter",
+          "counter"
+        ],
+        "clicks": [
+          0,
+          0,
+          0,
+          1
+        ]
+      }
+    },
+    {
+      "id": "unknown-key-ignored",
+      "purpose": "未映射键被忽略（焦点不动、不崩）",
+      "keys": [
+        "KeyQ"
+      ],
+      "adb": [
+        "shell input keyevent KEYCODE_Q"
+      ],
+      "expect": {
+        "results": [
+          {
+            "type": "ignored",
+            "key": "KeyQ"
+          }
+        ],
+        "focus": [
+          "counter"
+        ],
+        "clicks": [
+          0
+        ]
+      }
+    }
+  ]
+}

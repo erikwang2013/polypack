@@ -31,12 +31,21 @@ function toCss(style) {
 export function createDomPrimitives(React) {
   const { createElement } = React;
   return {
-    View: ({ style, children }) => createElement("div", { style: toCss(style) }, children),
-    Text: ({ style, children }) => createElement("span", { style: toCss(style) }, children),
-    Pressable: ({ style, children }) =>
-      createElement("button", { type: "button", style: toCss(style) }, children),
-    Image: ({ source, accessibilityLabel, style }) =>
-      createElement("img", { src: source, alt: accessibilityLabel, style: toCss(style) }),
+    // testID → data-testid（react-native-web 同款约定）：与真机 uiautomator 的
+    // resource-id 对齐，代理渲染据此断言键节点锚点
+    View: ({ testID, style, children }) =>
+      createElement("div", { "data-testid": testID, style: toCss(style) }, children),
+    Text: ({ testID, style, children }) =>
+      createElement("span", { "data-testid": testID, style: toCss(style) }, children),
+    Pressable: ({ testID, style, children }) =>
+      createElement("button", { type: "button", "data-testid": testID, style: toCss(style) }, children),
+    Image: ({ source, accessibilityLabel, testID, style }) =>
+      createElement("img", {
+        src: source,
+        alt: accessibilityLabel,
+        "data-testid": testID,
+        style: toCss(style),
+      }),
     iconSource: "./icon.svg",
   };
 }

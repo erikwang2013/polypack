@@ -1,4 +1,7 @@
 {
   "name": "PaxApp",
-  "displayName": "PolyPack App"
+  "displayName": "PolyPack App",
+  "polypack": {
+    "pointer": "touch"
+  }
 }

@@ -14,11 +14,11 @@ use crate::config::PolypackConfig;
 use crate::diagnostics::{Diagnostic, codes};
 use crate::events::{BuildEvent, EventSink};
 use crate::job::{JobSpec, Profile};
-use crate::pipeline;
+use crate::pipeline::{self, InjectedStages};
 use crate::plan::{Project, Stage, StageError};
 
-/// 注入式阶段工厂：`package` 阶段实现在 poly-bundle / poly-cli，poly-core 不得依赖它
-/// （依赖方向约束），故由调用方注入（与 `pipeline::plan_with_package` 同模型）。
+/// 注入式阶段工厂：`package` / `sign` / `verify` 的实现在 poly-bundle / poly-sign / poly-cli，
+/// poly-core 不得依赖它们（依赖方向约束），故由调用方注入（[`InjectedStages`] 的元素类型）。
 pub type StageFactory = fn() -> Box<dyn Stage>;
 
 /// worker 运行参数。
@@ -33,6 +33,10 @@ pub struct WorkerOptions {
     pub idle: Duration,
     /// `package` 阶段工厂（缺省保留 `Skipped` 占位）。
     pub package: Option<StageFactory>,
+    /// `sign` 阶段工厂（缺省保留占位；签名在构建地按需拉取凭据，T-M2-11 模型）。
+    pub sign: Option<StageFactory>,
+    /// `verify` 阶段工厂（缺省保留占位）。
+    pub verify: Option<StageFactory>,
 }
 
 /// worker 退出信息。
@@ -118,7 +122,11 @@ pub fn run_worker(
                     Path::new(&project_dir),
                     &spec,
                     backend,
-                    opts.package,
+                    InjectedStages {
+                        package: opts.package,
+                        sign: opts.sign,
+                        verify: opts.verify,
+                    },
                     events,
                 );
                 transport.send(&result)?;
@@ -143,10 +151,10 @@ fn execute_and_report(
     project_dir: &Path,
     spec: &JobSpec,
     backend: &CacheBackend,
-    package: Option<StageFactory>,
+    stages: InjectedStages,
     events: &mut dyn EventSink,
 ) -> FarmFrame {
-    match execute_job(project_dir, spec, backend, package, events) {
+    match execute_job(project_dir, spec, backend, stages, events) {
         Ok(outcome) => {
             events.emit(&BuildEvent::Warning {
                 stage: "farm".to_string(),
@@ -191,13 +199,13 @@ pub struct ExecOutcome {
 }
 
 /// 在 `project_root` 执行一个任务：远程 worker 与本地 `poly build` 共用同一套 `Plan` DAG
-/// （[`pipeline::plan_with_package`]）与同一缓存键公式（§5.2），差别只在缓存后端由
-/// [`CacheBackend`] 决定、打包器由调用方注入。
+/// （[`pipeline::plan_with_stages`]）与同一缓存键公式（§5.2），差别只在缓存后端由
+/// [`CacheBackend`] 决定、打包器 / 签名 / 校验由调用方注入。
 pub fn execute_job(
     project_root: &Path,
     spec: &JobSpec,
     backend: &CacheBackend,
-    package: Option<StageFactory>,
+    stages: InjectedStages,
     events: &mut dyn EventSink,
 ) -> Result<ExecOutcome, StageError> {
     let config = PolypackConfig::load(&project_root.join("polypack.toml"))
@@ -211,8 +219,7 @@ pub fn execute_job(
         Profile::Local => "local",
     };
     let cache = Arc::new(backend.cache(project_root));
-    let plan =
-        pipeline::plan_with_package(cache.clone(), profile, package.map(|factory| factory()))?;
+    let plan = pipeline::plan_with_stages(cache.clone(), profile, stages)?;
     plan.run_with(Some(&project), spec, events)?;
     Ok(ExecOutcome {
         artifacts: collect_artifacts(&project),

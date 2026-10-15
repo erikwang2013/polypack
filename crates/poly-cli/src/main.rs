@@ -12,6 +12,7 @@ mod package;
 mod project;
 mod retry;
 mod scan;
+mod sign;
 mod verify;
 
 use clap::{Parser, Subcommand};
@@ -50,7 +51,7 @@ enum Command {
     Scan(scan::Args),
     /// 从签名阶段独立重跑（重新拉取凭据、重签未签名 APK）。
     Retry(retry::Args),
-    /// 产物校验：`--reproducible` 做同输入二跑的可复现比对。
+    /// 产物校验：缺省跑目标声明的校验器（codesign / spctl），`--reproducible` 做二跑比对。
     Verify(verify::Args),
 }
 

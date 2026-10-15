@@ -2,9 +2,12 @@ buildscript {
     ext {
         buildToolsVersion = "37.0.0"
         minSdkVersion = 24
-        compileSdkVersion = 37
+        // 钉实有版本：SDK 侧无常装 android-37 平台 / NDK 27.1（模板默认值），
+        // 取 36 / 27.0.12077973（m2-android 设备链实测在装版本，T-M2-05 回传）；
+        // build-tools 37.0.0 同样实有（其真跑用的即此版本），保留
+        compileSdkVersion = 36
         targetSdkVersion = 36
-        ndkVersion = "27.1.12297006"
+        ndkVersion = "27.0.12077973"
         kotlinVersion = "2.2.0"
     }
     repositories {

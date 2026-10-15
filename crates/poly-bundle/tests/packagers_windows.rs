@@ -1,15 +1,19 @@
-//! T-M1-05 契约测试（mock 模式）：WiX MSI 与 NSIS 的计划断言 + 宿主工具缺失契约。
+//! T-M1-05 契约测试：WiX MSI 与 NSIS 的计划断言 + 宿主工具缺失契约 + **真机深检**。
 //!
-//! 本宿主（Linux）无 `candle` / `light` / `makensis`：`package()` 必须返回
-//! [`BundleError::ToolMissing`]（`poly::E_BND_0001`）——「真机执行阻塞（宿主）」的证据；
-//! 装了工具的真实宿主（windows-2022）如实跳过该契约而非误报。
+//! 无 `candle` / `light` / `makensis` 的宿主（Linux / macOS 腿）：`package()` 必须返回
+//! [`BundleError::ToolMissing`]（`poly::E_BND_0001`）——「真机执行阻塞（宿主）」的证据。
+//! windows-2022 腿预装 WiX v3.14（`%WIX%\bin` 在 Machine PATH 上），走**真跑深检**：
+//! `candle` + `light` 出真 MSI → `msiexec /a` 管理安装解出载荷 → 字节级核对。
 //!
 //! 输入用 `std::env::temp_dir()` 现造（每测试独立目录，`cargo test` 并行安全）。
 
+mod common;
+
 use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
+use std::process::Command;
 
-use poly_bundle::packagers::windows::{Nsis, WixMsi, xml_escape};
+use poly_bundle::packagers::windows::{Nsis, WixMsi, nsis_escape, xml_escape};
 use poly_bundle::{
     BareProduct, BundleError, BundleInputs, BundlePlan, Icon, IconKind, Packager, ProductInfo,
     codes, exec,
@@ -241,11 +245,11 @@ fn nsis_plan_covers_install_and_uninstall_sections() {
         assert!(nsi.contains(needle), "nsi 缺少 `{needle}`：\n{nsi}");
     }
 
-    // 整树安装：裸产物根 + Windows 分隔符。
+    // 整树安装：裸产物根 + Windows 分隔符 + NSIS 转义（与生成器同源，不自建转义表）。
     let root = inputs.bare.as_ref().unwrap().root.clone();
     let tree = format!(
         "File /r \"{}\\*.*\"",
-        root.display().to_string().replace('/', "\\")
+        nsis_escape(&root.display().to_string().replace('/', "\\"))
     );
     assert!(nsi.contains(&tree), "nsi 缺少整树安装：{tree}\n{nsi}");
 
@@ -260,6 +264,31 @@ fn nsis_plan_covers_install_and_uninstall_sections() {
         !plan.commands[0].line().contains("setup.exe"),
         "makensis 自动补 .exe，不得手工拼接：{}",
         plan.commands[0].line()
+    );
+}
+
+/// 宿主路径含 `$`（Windows 合法形态，如 `C:\$Recycle.Bin\…`）：脚本里的字面量须写 `$$`，
+/// 否则 makensis 把它当变量（`$Recycle` 未定义报错 / `$0`… 静默按寄存器替换）。
+///
+/// 本机可证层=脚本文本；makensis 真编译面需 windows 腿（金样暂无 nsis 条目，CI 不触发）。
+#[test]
+fn nsi_script_escapes_dollar_in_host_paths() {
+    let inputs = inputs("nsis-esc$ape", true);
+    let nsi = script(&Nsis.plan(&inputs, &spec("nsis")).unwrap(), ".nsi");
+
+    assert!(
+        nsi.contains("nsis-esc$$ape"),
+        "路径里的 `$` 须转义为 `$$`：\n{nsi}"
+    );
+    assert!(
+        !nsi.contains("nsis-esc$ape"),
+        "不得残留未转义的 `$`（makensis 会当变量）：\n{nsi}"
+    );
+    // Icon / UninstallIcon 两处同一路径同源转义。
+    assert_eq!(
+        nsi.matches("nsis-esc$$ape").count(),
+        3,
+        "裸产物根 + Icon + UninstallIcon 三处都须转义：\n{nsi}"
     );
 }
 
@@ -327,6 +356,101 @@ fn package_fails_with_tool_missing_on_host_without_wix() {
         "脚本应先落盘：{}",
         inputs.out_dir.display()
     );
+}
+
+/// 真跑深检（Windows 宿主）：`candle` + `light` 出真 MSI → `msiexec /a` 管理安装解出载荷
+/// 做**字节级**核对（文件表真的能解出裸产物，而不是只生成了一个文件）。
+///
+/// 非 Windows 宿主无 WiX（Linux / macOS 腿）显式 skip；该腿的 ToolMissing 契约由相邻用例覆盖。
+#[test]
+fn msi_real_build_embeds_the_bare_product_payload() {
+    if common::skip_without_any(&["candle", "light", "msiexec"]) {
+        return;
+    }
+    let mut inputs = inputs("msi-real", false);
+    inputs.icons.push(Icon {
+        // 真 ICO（T-M1-14 派生资产）：安装器图标走 `<Icon>` + ARPPRODUCTICON 真嵌入。
+        path: common::fixture("pax-notes.ico"),
+        kind: IconKind::Ico,
+        size: Some(256),
+    });
+
+    let artifact = WixMsi
+        .package(&inputs, &spec("msi"))
+        .expect("candle + light 真跑");
+    assert_eq!(artifact.format, "msi");
+    assert!(artifact.bytes > 0, "产物为空");
+
+    // MSI 是 OLE 复合文档（CFB）：魔数证明产物形态真实，而非改名空壳。
+    let bytes = std::fs::read(&artifact.path).expect("读 MSI");
+    assert_eq!(
+        &bytes[..8],
+        &[0xD0, 0xCF, 0x11, 0xE0, 0xA1, 0xB1, 0x1A, 0xE1],
+        "MSI 须为 CFB 复合文档：{}",
+        artifact.path.display()
+    );
+
+    // 载荷核对：管理安装（`/a`，非系统安装、不改系统状态）把文件表解到 TARGETDIR。
+    let target = inputs.out_dir.join("admin-install");
+    std::fs::create_dir_all(&target).expect("建解包目录");
+    let status = Command::new("msiexec")
+        .arg("/a")
+        .arg(&artifact.path)
+        .args(["/qn"])
+        .arg(format!("TARGETDIR={}", target.display()))
+        .status()
+        .expect("msiexec /a 真跑");
+    assert!(status.success(), "管理安装解包失败：{status}");
+    let exe = find_named(&target, "pax-notes.exe").expect("文件表须含 pax-notes.exe");
+    assert_eq!(
+        std::fs::read(&exe).expect("读解出的可执行"),
+        b"MZ\x90\x00",
+        "载荷字节须与裸产物一致：{}",
+        exe.display()
+    );
+    assert!(
+        find_named(&target, "index.html").is_some(),
+        "resources 须一并入包：{}",
+        target.display()
+    );
+    // 金样 msi 条目的三条 entries（`*.exe` / `index.html` / `RUNTIME-DEPENDENCIES.txt`）全部点到。
+    assert!(
+        find_named(&target, "RUNTIME-DEPENDENCIES.txt").is_some(),
+        "RUNTIME-DEPENDENCIES.txt 须一并入包：{}",
+        target.display()
+    );
+}
+
+/// 递归找同名文件（管理安装的层级随 Directory 表形态而变，不写死路径）。
+#[test]
+fn find_named_walks_nested_dirs() {
+    let dir = temp_dir("find-named");
+    write(&dir.join("a/b/c/pax-notes.exe"), b"MZ");
+    write(&dir.join("a/index.html"), b"<html></html>");
+    assert!(
+        find_named(&dir, "pax-notes.exe").is_some(),
+        "深层文件须能找到"
+    );
+    assert!(find_named(&dir, "index.html").is_some());
+    assert!(find_named(&dir, "missing.txt").is_none());
+    assert!(
+        find_named(&dir.join("nope"), "x").is_none(),
+        "不存在的目录不 panic"
+    );
+}
+
+fn find_named(dir: &Path, name: &str) -> Option<PathBuf> {
+    for entry in std::fs::read_dir(dir).ok()? {
+        let path = entry.ok()?.path();
+        if path.is_dir() {
+            if let Some(found) = find_named(&path, name) {
+                return Some(found);
+            }
+        } else if path.file_name().is_some_and(|n| n == name) {
+            return Some(path);
+        }
+    }
+    None
 }
 
 #[test]

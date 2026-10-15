@@ -264,7 +264,7 @@
 
 > Prerequisites: T-M0-01 (workspace), T-M0-02 (three-host CI), T-M0-04/T-M0-05 (TargetSpec DSL and L1 declarations), T-M0-06/T-M0-07 (JobSpec and diagnostics framework), T-M0-09 (toolchain probes), T-M1-05 (Packager trait), T-M1-09 (poly-cache), T-M1-11 (sample-app template) | Exit criteria: sample APK/IPA installs and signatures verify; zero keys in-repo (secret-scan green); a Linux host produces an IPA through the remote farm
 
-### T-M2-01 · uniffi bridge generator (UDL single source → Kotlin/Swift bindings; digest in the cache key, four exits registered; Kotlin really compiled + dual-ABI .so real runs — Swift compile pending a macOS host)
+### T-M2-01 · uniffi bridge generator (UDL single source → Kotlin/Swift bindings; digest in the cache key, four exits registered; Kotlin really compiled + dual-ABI .so real runs — Swift compile leg built: real generator output passes swiftc -typecheck, macos-14 real-mode first proof pending)
 
 - Role: core
 - Deps: T-M0-01, T-M1-11
@@ -280,7 +280,7 @@
 - Deliverable: the core compiled to JNI `.so` per ABI triple + generated Kotlin bindings, assembled into an AAR (minimal manifest/resources) as the input to Android packaging.
 - Acceptance: the AAR loads in the Android contract test; Kotlin-side calls to the sample interface return the same results as the Rust unit tests; the AAR goes through the library-level cache and hits on the second run.
 
-### T-M2-03 · Swift binding artifact (XCFramework) (triple/lipo structure + tamper checks complete; the macos-14 real run now covers cargo ×3 cross-compilation + lipo merge + a real `xcodebuild -create-xcframework` link and archive chain; Swift runtime call parity awaits a device)
+### T-M2-03 · Swift binding artifact (XCFramework) (triple/lipo structure + tamper checks complete; the macos-14 real run now covers cargo ×3 cross-compilation + lipo merge + a real `xcodebuild -create-xcframework` link and archive chain; simulator call-parity leg built — simctl spawn really runs paxAdd symbol surface and i32 wraparound, macos-14 real-mode first proof pending)
 
 - Role: platforms
 - Deps: T-M2-01
@@ -288,7 +288,7 @@
 - Deliverable: the core compiled to a device + simulator slice XCFramework (staticlib) + generated Swift bindings and modulemap.
 - Acceptance: a minimal host project links it via xcodebuild on a macOS host; Swift-side calls to the sample interface match Rust output; slices are enumerable and verifiable (`lipo -info`).
 
-### T-M2-04 · @polypack/adapter-native v0 (RN host + capabilities contract; 37 tests green; real-device RN render pending — proxy render substitution)
+### T-M2-04 · ✅ @polypack/adapter-native v0 (RN host + capabilities contract; 42 tests green; sample page render proven on device — emulator-5554 uiautomator semantic markers all hit + archived screenshots; degraded branch walked in both forms; host build-env adaptation documented)
 
 - Role: ui-adapters
 - Deps: T-M1-04, T-M1-11
@@ -296,7 +296,7 @@
 - Deliverable: `@polypack/adapter-native` v0: the RN host assembly layer implementing the §6 RendererAdapter contract (`mount` / `platformStyle(tokens)` / `capabilities(): { focusNav, safeArea, gestures }`), with a native-module registration slot for bridge artifacts.
 - Acceptance: the same page component tree renders in an Android RN host; `capabilities()` output matches TargetSpec/host capability; degradation paths are driven by the declared capabilities (no pointer → focus-ring branch enumerable; the full traversal graph waits for M4).
 
-### T-M2-05 · adapter-native focus/navigation baseline (traversal graph + back-stack + key routing; snapshot asserts in place; on-device d-pad smoke pending a host)
+### T-M2-05 · ✅ adapter-native focus/navigation baseline (traversal graph + back-stack + key routing; six device walks 6/6 + 6/6 across both forms; ring pixel differential sampling 4 points across two states; root-cause fixes — first-key swallow and CENTER double-count → focus anchor)
 
 - Role: ui-adapters
 - Deps: T-M2-04
@@ -336,7 +336,7 @@
 - Deliverable: `poly-sign` Android signer: `CredentialRef` → keystore resolution → apksigner signing, with key material only in memory/temp dirs; `apksigner verify` runs automatically after signing.
 - Acceptance: the sample APK passes `apksigner verify --print-certs`; a missing/wrong reference fails fast at the plan stage (stable error code + fix hint); a post-sign assertion shows no leftover key material.
 
-### T-M2-10 · iOS signing and notarization (codesign + notarytool) (library chain/credential refs/receipt slot ready; verify-stage hookup and real notarization pending an Apple environment)
+### T-M2-10 · iOS signing and notarization (codesign + notarytool) (library chain/credential refs/receipt slot ready; sign/verify now in the DAG — `poly build` inlines sign with three-tier credential gating, real apksigner v2+v3 independently re-checked; codesign real execution and real notarization pending the Apple gate)
 
 - Role: release-sec
 - Deps: T-M2-08, T-M2-11
@@ -344,7 +344,7 @@
 - Deliverable: `poly-sign` iOS chain: codesign (certificate/profile via credential references) + `notarytool submit --wait` + stapler; `codesign --verify` and `spctl` checks wired into the verify stage.
 - Acceptance: the sample IPA notarizes and staples successfully; `codesign --verify --deep` and `spctl -a -vv` pass; the notarization receipt is archived into the submission-level cache record.
 
-### T-M2-11 · ✅ Vault integration (keyring + Vault backend trait) (backend chain + redaction asserts; retry --from sign re-fetches credentials across two real signing rounds; real bus/Vault HTTP pending a real host)
+### T-M2-11 · ✅ Vault integration (keyring + Vault backend trait) (backend chain + redaction asserts; retry --from sign re-fetches credentials across two real signing rounds; real Vault dev KV v2 round-trip (audit log shows the token only as hmac) + real keyring isolated-bus loop closed — Deepin-patched root cause evidenced)
 
 - Role: release-sec
 - Deps: T-M0-06
@@ -368,7 +368,7 @@
 - Deliverable: farm protocol v0: JobSpec serialization format + worker pull-execute-report loop (worker registration and capability declaration), with local and remote runs sharing one DAG implementation.
 - Acceptance: a Linux host initiates an iOS-target build → a macOS worker produces the IPA and signature verification passes (the R3 acceptance path); worker-side failures return complete error codes and fix hints; cross-machine cache sharing is verified through the object-storage backend.
 
-### T-M2-14 · ✅ Mobile CI integration and contract-test goldens (three-host mock columns all green; real-mode both legs passed with archived artifacts — ios 9,062 B / android 9,770 B; the iOS contract leg runs a lib-form fixture with dual-artifact (ipa + xcframework) real comparison, android lookup anchored by name (base.zip); golden drift fails with a diff; windows msi / macos dmg entries await packager checkers for assertion coverage)
+### T-M2-14 · ✅ Mobile CI integration and contract-test goldens (three-host mock columns all green; real-mode both legs passed with archived artifacts — ios 9,062 B / android 9,770 B; the iOS contract leg runs a lib-form fixture with dual-artifact (ipa + xcframework) real comparison, android lookup anchored by name (base.zip); golden drift fails with a diff; windows msi / macos dmg real checkers landed (all green locally; real compile surface awaits windows/macos CI legs' first proof))
 
 - Role: infra
 - Deps: T-M2-07, T-M2-10, T-M1-13, T-M0-02

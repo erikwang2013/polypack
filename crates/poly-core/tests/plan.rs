@@ -52,6 +52,83 @@ fn standard_stage_order_is_plan_to_publish() {
     );
 }
 
+/// 注入三阶段（package / sign / verify）后 DAG 形状不变，且都真在图层里按依赖序执行。
+///
+/// 这是 T-M2-10 接线的核心不变量：`sign` 依赖 `package`、`verify` 依赖 `sign`，三者不在同一
+/// 层（否则顺序无保证）；注入与否只换实现（`NotYetStage` → 真实阶段），不改图。
+#[test]
+fn injected_stages_keep_the_dag_shape_and_run_in_dependency_order() {
+    use poly_core::farm::StageFactory;
+    use poly_core::pipeline::{self, InjectedStages};
+    use poly_core::plan::{Stage, StageContext, StageOutcome};
+    use std::sync::{Arc, Mutex};
+
+    /// 记录「我跑过」的测试替身（真实实现由 poly-cli 注入，poly-core 不得依赖它们）。
+    struct MarkerStage(&'static str);
+
+    /// 记录序（每测试独占本二进制内的这一个静态量）。
+    static LOG: Mutex<Vec<&'static str>> = Mutex::new(Vec::new());
+
+    impl Stage for MarkerStage {
+        fn name(&self) -> &'static str {
+            self.0
+        }
+        fn plan(&self, _job: &JobSpec) -> Result<(), poly_core::StageError> {
+            Ok(())
+        }
+        fn run(&self, _ctx: &mut StageContext<'_>) -> Result<StageOutcome, poly_core::StageError> {
+            LOG.lock().expect("锁可用").push(self.0);
+            Ok(StageOutcome::Done)
+        }
+    }
+
+    fn package_stage() -> Box<dyn Stage> {
+        Box::new(MarkerStage("package"))
+    }
+    fn sign_stage() -> Box<dyn Stage> {
+        Box::new(MarkerStage("sign"))
+    }
+    fn verify_stage() -> Box<dyn Stage> {
+        Box::new(MarkerStage("verify"))
+    }
+
+    let root = std::env::temp_dir().join(format!("polypack-plan-inject-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&root);
+    std::fs::create_dir_all(&root).expect("临时目录可建");
+    let cache = Arc::new(poly_cache::Cache::from_root(root.clone()));
+    let stages = InjectedStages {
+        package: Some(package_stage as StageFactory),
+        sign: Some(sign_stage as StageFactory),
+        verify: Some(verify_stage as StageFactory),
+    };
+    let expected = [
+        "plan", "probe", "compile", "bundle", "package", "sign", "verify", "publish",
+    ];
+    let plan = pipeline::plan_with_stages(cache.clone(), "local", stages).expect("DAG 合法");
+    assert_eq!(
+        plan.names(),
+        expected,
+        "注入不改阶段序（同一张图，只换实现）"
+    );
+    assert_eq!(
+        pipeline::plan(cache, "local").expect("默认注入").names(),
+        expected,
+        "缺省注入（骨架占位）也必须是同一张图"
+    );
+
+    LOG.lock().expect("锁可用").clear();
+    let mut sink = CaptureSink::default();
+    // 无项目上下文：compile / bundle 如实跳过，三个注入阶段照跑（依赖序即执行序）
+    plan.run(&job(vec![spec("linux")]), &mut sink)
+        .expect("骨架阶段不该失败");
+    assert_eq!(
+        *LOG.lock().expect("锁可用"),
+        vec!["package", "sign", "verify"],
+        "sign 必须在 package 之后、verify 在 sign 之后"
+    );
+    let _ = std::fs::remove_dir_all(&root);
+}
+
 #[test]
 fn empty_job_fails_and_emits_failed_event() {
     let mut sink = CaptureSink::default();

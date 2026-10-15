@@ -128,6 +128,9 @@ jobs:
           cargo test -p poly-bundle --test ios_real_run --no-fail-fast -- --nocapture
           cargo test -p poly-sign --test ios_sign --no-fail-fast -- --nocapture
           cargo test -p poly-cli --test contract_m2 --no-fail-fast -- --nocapture
+          # 真生成器输出 × Apple 编译：另两条 iOS 腿编译的都是**夹具手写**三件套，这一条才覆盖
+          # 「真 uniffi 产物过得了 swiftc」（bridge.yml 在 ubuntu 只管生成，无 swiftc）
+          cargo test -p poly-cli --test ios_bindings_typecheck --no-fail-fast -- --nocapture
 
       - name: 留产物（真跑；测试失败也留，便于定位）
         if: ${{ always() && env.POLY_CONTRACT_REAL == '1' }}

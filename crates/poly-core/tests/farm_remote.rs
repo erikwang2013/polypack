@@ -12,6 +12,7 @@ use poly_core::farm::{
     ArtifactRecord, CacheBackend, DirTransport, FarmFrame, FarmMaster, FarmTransport, JobOutcome,
     PROTOCOL, Requirement, WorkerCaps, execute_job,
 };
+use poly_core::pipeline::InjectedStages;
 use poly_core::{BuildEvent, EventSink, JobSpec, PolypackConfig, Profile};
 use poly_targets::{Host, Registry, TargetRequest, current_host};
 
@@ -122,7 +123,7 @@ fn shared_object_store_reuses_cache_across_build_locations() {
         &site_a,
         &spec,
         &CacheBackend::Shared(store.clone()),
-        None,
+        InjectedStages::default(),
         &mut events,
     )
     .expect("站点 A 构建");
@@ -141,7 +142,7 @@ fn shared_object_store_reuses_cache_across_build_locations() {
         &site_b,
         &spec,
         &CacheBackend::Shared(store),
-        None,
+        InjectedStages::default(),
         &mut events,
     )
     .expect("站点 B 构建");

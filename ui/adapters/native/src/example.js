@@ -69,21 +69,40 @@ export function createExampleApp(primitives, adapter) {
 
     return h(
       View,
-      { style: styles.card },
+      {
+        style: styles.card,
+        // 焦点锚点（设备链实测）：原生焦点停在卡上 → ① 键事件经聚焦链送达 ReactRootView
+        // ② 按钮撤焦点后 CENTER 不再触发原生点击（消内核 activate 的双计）
+        // ③ 开机即建焦（hasTVPreferredFocus）→ 首键不再被 Android 焦点修正吞掉
+        focusable: true,
+        hasTVPreferredFocus: true,
+      },
       // 图标资产由 Pax 派生管线产出（T-M1-14）；未就位时省略节点而非渲染空图
       iconSource
         ? h(Image, { source: iconSource, accessibilityLabel: "Pax", style: { width: 64, height: 64 } })
         : null,
       h(Text, { style: styles.title }, "PolyPack App"),
       h(Text, { style: styles.muted }, "版本 0.1.0 · 由 PolyPack 构建（poly build --target android）"),
+      // testID = 焦点节点 id：真机 uiautomator 的 resource-id，走查据此定位节点取 bounds
+      // 做焦点环像素采样（比匹配中文文本稳）
       h(
         Pressable,
-        { style: [styles.button, ring("counter")], onPress: () => press("counter") },
+        {
+          testID: "counter",
+          style: [styles.button, ring("counter")],
+          focusable: false, // 撤原生焦点轨：CENTER 走内核单路激活（原生点击会与 activate 双计——设备链实测）
+          onPress: () => press("counter"),
+        },
         h(Text, { style: styles.buttonLabel }, `点击计数：${clicks}`),
       ),
       h(
         Pressable,
-        { style: [styles.button, ring("reset")], onPress: () => press("reset") },
+        {
+          testID: "reset",
+          style: [styles.button, ring("reset")],
+          focusable: false, // 撤原生焦点轨：CENTER 走内核单路激活（原生点击会与 activate 双计——设备链实测）
+          onPress: () => press("reset"),
+        },
         h(Text, { style: styles.buttonLabel }, "重置"),
       ),
       h(Text, { style: styles.muted }, "方向键上下切换焦点；中心键激活；Back 返回上一焦点。"),

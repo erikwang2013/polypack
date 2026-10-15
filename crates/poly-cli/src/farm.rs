@@ -98,8 +98,11 @@ fn serve(args: &WorkerArgs, json: bool) -> Result<i32, Diagnostic> {
         caps: local_caps(&id, declared_targets(&args.targets))?,
         jobs: args.jobs,
         idle: Duration::from_secs(args.idle_secs),
-        // package 阶段由 CLI 注入（打包器矩阵在 poly-bundle，poly-core 不得依赖它）
+        // package / sign / verify 由 CLI 注入（打包器矩阵在 poly-bundle、签名链与校验器在
+        // poly-sign，poly-core 不得依赖它们）；签名在构建地按需拉取凭据（T-M2-11 模型）
         package: Some(|| Box::new(crate::package::PackageStage)),
+        sign: Some(|| Box::new(crate::sign::SignStage)),
+        verify: Some(|| Box::new(crate::verify::VerifyStage)),
     };
     let mut events = crate::project::sink(json);
     let exit = run_worker(&opts, &cache_backend(&args.cache), events.as_mut())?;

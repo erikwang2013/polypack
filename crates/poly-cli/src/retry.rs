@@ -10,16 +10,20 @@
 //! （`<root>/.polypack/packages/<target>`）里找 `<名称>-<版本>-unsigned.apk`
 //! （T-M2-06 的产物命名约定），找不到即 `poly::E_RETRY_0001` 并提示先跑
 //! `poly build --target android`。
+//!
+//! 与 `poly build` 的 `sign` 阶段（[`crate::sign`]）共用派生与错误翻译：未签名 APK 查找、
+//! 凭据引用、`SignError` → 诊断都在那边，本命令只保留「不经 DAG 的独立重跑」外壳。
 
 use std::path::PathBuf;
 
-use poly_core::diagnostics::{Code, Diagnostic};
+use poly_core::diagnostics::Diagnostic;
 use poly_core::events::BuildEvent;
-use poly_core::{CredentialRef, CredentialSource, JobSpec, Profile, Project, codes};
-use poly_sign::{AndroidSigner, SignError, SignRequest};
+use poly_core::{CredentialSource, JobSpec, Profile, Project, codes};
+use poly_sign::{AndroidSigner, SignRequest};
 use poly_targets::{Registry, TargetRequest, TargetSpec, current_host};
 
 use crate::project;
+use crate::sign::sign_error;
 
 /// `poly retry` 的参数。
 #[derive(Debug, clap::Args)]
@@ -75,9 +79,10 @@ fn sign(args: &Args, json: bool) -> Result<i32, Diagnostic> {
 
     let input = match &args.input {
         Some(path) => path.clone(),
-        None => find_unsigned_apk(&project, &spec)?,
+        None => crate::sign::unsigned_apk(&project, &spec)
+            .ok_or_else(|| missing_apk(&project, &spec))?,
     };
-    let credential = credential_ref(&job, &spec, args.credential.as_deref())?;
+    let credential = crate::sign::credential_ref(&job, &spec, args.credential.as_deref())?;
     let request = SignRequest {
         input,
         out: args.out.clone(),
@@ -146,94 +151,23 @@ fn resolve(project: &Project, target: &str) -> Result<(JobSpec, TargetSpec), Dia
     Ok((job, spec))
 }
 
-/// 未签名 APK：`--input` 优先（调用方处理）；否则在打包暂存目录里按命名约定查找。
-fn find_unsigned_apk(project: &Project, spec: &TargetSpec) -> Result<PathBuf, Diagnostic> {
+/// 未签名 APK 缺位（`--input` 未给且暂存目录里没有）时的稳定诊断。
+fn missing_apk(project: &Project, spec: &TargetSpec) -> Diagnostic {
     let staged = project::packages_root(&project.root).join(&spec.id);
-    let preferred = staged.join(unsigned_name(&project.config.package));
-    if preferred.is_file() {
-        return Ok(preferred);
-    }
-    // 命名约定之外的落点（如手工放置）退化为 `*-unsigned.apk` 扫描，取名字序第一份
-    let mut candidates: Vec<PathBuf> = match std::fs::read_dir(&staged) {
-        Ok(entries) => entries
-            .flatten()
-            .map(|entry| entry.path())
-            .filter(|path| {
-                path.is_file()
-                    && path
-                        .file_name()
-                        .is_some_and(|name| name.to_string_lossy().ends_with("-unsigned.apk"))
-            })
-            .collect(),
-        Err(_) => Vec::new(),
-    };
-    candidates.sort();
-    candidates.into_iter().next().ok_or_else(|| {
-        Diagnostic::error(
-            codes::E_RETRY_0001,
-            format!("{} 下没有未签名 APK（目标 {}）", staged.display(), spec.id),
-        )
-        .with_hint(
-            "先跑 poly build --target android 产出未签名 APK，或用 --input 指定未签名 APK 路径",
-        )
-    })
-}
-
-/// `<kebab 名称>-<版本>-unsigned.apk`（打包器的产物命名约定，见 poly-bundle Android 打包器）。
-fn unsigned_name(section: &poly_core::config::PackageSection) -> String {
-    // 借打包器的派生出口拿 kebab 形态，避免在 CLI 里复制一份命名规则
-    let product = poly_bundle::inputs::ProductInfo {
-        name: section.name.clone(),
-        version: section.version.clone(),
-        identifier: String::new(),
-        manufacturer: String::new(),
-        description: String::new(),
-        homepage: None,
-    };
-    format!("{}-{}-unsigned.apk", product.kebab_name(), product.version)
-}
-
-/// 凭据引用：取 `JobSpec.secrets` 里本目标档案（= `TargetSpec.signing`）的那条；
-/// `--credential` 只覆盖来源（`env:` 的变量名 / `keyring:` 的条目名），不改凭据值。
-fn credential_ref(
-    job: &JobSpec,
-    spec: &TargetSpec,
-    override_ref: Option<&str>,
-) -> Result<CredentialRef, Diagnostic> {
-    let name = spec.signing.clone().ok_or_else(|| {
-        Diagnostic::error(
-            codes::E_PLAN_0002,
-            format!("目标 {} 未声明签名凭据（TargetSpec.signing 为空）", spec.id),
-        )
-        .with_hint("在 polypack.toml 的 [targets.<id>] 声明签名档案后再重跑")
-    })?;
-    let mut reference = job
-        .secrets
-        .iter()
-        .find(|secret| secret.name == name)
-        .cloned()
-        .ok_or_else(|| {
-            Diagnostic::error(
-                codes::E_PLAN_0002,
-                format!("JobSpec 缺少 {name} 的凭据引用"),
-            )
-            .with_hint("用 poly doctor 核对目标注册表的 signing 档案名")
-        })?;
-    if let Some(value) = override_ref {
-        let (source, alias) = parse_credential(value)?;
-        reference.source = source;
-        if let Some(alias) = alias {
-            reference.name = alias;
-        }
-    }
-    Ok(reference)
+    Diagnostic::error(
+        codes::E_RETRY_0001,
+        format!("{} 下没有未签名 APK（目标 {}）", staged.display(), spec.id),
+    )
+    .with_hint("先跑 poly build --target android 产出未签名 APK，或用 --input 指定未签名 APK 路径")
 }
 
 /// 解析 `--credential` 引用（`env:变量名` / `keyring[:条目名]` / `vault[:条目名]`）。
 ///
 /// 载荷形态（base64(JSON)）与脱敏由 poly-sign 的后端链负责，这里只翻译成
 /// [`CredentialSource`]；`:` 后的条目名覆盖档案名（`env:` 的变量名不覆盖档案名）。
-fn parse_credential(value: &str) -> Result<(CredentialSource, Option<String>), Diagnostic> {
+pub(crate) fn parse_credential(
+    value: &str,
+) -> Result<(CredentialSource, Option<String>), Diagnostic> {
     let (kind, arg) = match value.split_once(':') {
         Some((kind, arg)) => (kind, Some(arg.trim()).filter(|arg| !arg.is_empty())),
         None => (value, None),
@@ -261,13 +195,4 @@ fn parse_credential(value: &str) -> Result<(CredentialSource, Option<String>), D
         "vault" => Ok((CredentialSource::Vault, arg.map(str::to_string))),
         _ => Err(unknown()),
     }
-}
-
-/// `SignError` → 诊断：错误码原样透传（`poly::E_SIG_*`，绝不重新编号），提示取 `hint()`。
-fn sign_error(err: SignError) -> Diagnostic {
-    let mut diagnostic = Diagnostic::error(Code::new(err.code()), err.to_string());
-    if let Some(hint) = err.hint() {
-        diagnostic = diagnostic.with_hint(hint);
-    }
-    diagnostic
 }

@@ -1,7 +1,7 @@
 //! `package` 阶段（§5.1 汇聚点）：把 `compile` / `bundle` 的产出交给打包器矩阵（poly-bundle）。
 //!
 //! 实现落在 poly-cli：打包器矩阵在 poly-bundle，而依赖方向约束（`tests/dependency_direction.rs`）
-//! 禁止 poly-core 依赖它，故经 [`poly_core::pipeline::plan_with_package`] 注入。
+//! 禁止 poly-core 依赖它，故经 [`poly_core::pipeline::plan_with_stages`] 注入。
 //!
 //! 只打包「本机宿主目标」（`spec.hosts` 含 `current_host()`）；交叉打包需 wine / osxcross 等（M2）。
 //! 环境性缺失（宿主无打包工具、输入未就绪）如实告警并跳过本目标，不阻断编译与 UI 支线；
@@ -437,7 +437,7 @@ fn project_icon_svg(project: &poly_core::Project) -> Option<PathBuf> {
 ///
 /// shortcut: 派生值（`com.polypack.<kebab>`）仅供本机打包，跨宿主发布（M2）前应在
 /// `[package]` 补 identifier / manufacturer / description 字段。
-fn product_info(section: &poly_core::config::PackageSection) -> ProductInfo {
+pub(crate) fn product_info(section: &poly_core::config::PackageSection) -> ProductInfo {
     let mut product = ProductInfo {
         name: section.name.clone(),
         version: section.version.clone(),

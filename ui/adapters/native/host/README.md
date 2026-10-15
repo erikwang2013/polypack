@@ -8,9 +8,10 @@
 
 ```text
 MainActivity(PaxApp) → AppRegistry → host/index.js
-  ├─ createAdapter({ target: "android", runtime: RN, host: { pointer } })
+  ├─ createAdapter({ target: "android", runtime: RN, host: { pointer } })  # pointer ← app.json polypack.pointer
   ├─ createExampleApp(RN, adapter) → App / onKey（方向键遍历 + Back 焦点记忆）
   ├─ adapter.mount({ appKey: "PaxApp" }, App)
+  ├─ onHWKeyEvent / BackHandler → onKey → logcat `POLYPACK_KEY {…}`（T-M2-05 走查通道）
   └─ adapter.native.register(...)   # T-M2-02 AAR 挂载点（口径见下「桥产物挂载点」）
 ```
 
@@ -35,17 +36,48 @@ arm64 仅到 ELF 符号层，未上机。
 | 缺项 | 来源 |
 |---|---|
 | `android/gradlew` + `gradle/wrapper/*.jar` | RN CLI 生成（M2 打包链免 Gradle：T-M2-06 AAPT2 直出） |
-| `android/app/debug.keystore` | RN CLI / keytool 生成——二进制凭据不入库（secret-scan 约定） |
+| `android/app/debug.keystore` | keytool 生成（命令见上「构建环境前置」）——二进制凭据不入库（secret-scan 约定） |
 | `res/mipmap-*/ic_launcher*.png` | Pax 图标派生管线（`tools/build-pax.mjs`，T-M1-14） |
 | `node_modules/` | `npm install`（宿主依赖：react-native 0.87.1 + adapter `file:..`） |
+
+## 构建环境前置（m2-android 设备链实测）
+
+- **`npx` 须可用**：RN 0.87 `settings.gradle` 的 autolink 会调用它；无独立 `npx` 可执行时用 shim 顶。
+- **JDK 17**：Gradle 工具链检查在 JDK 18（其构建机默认）不过，指定
+  `JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64` 才过。
+- **`debug.keystore` 须先生成**：骨架不含（二进制凭据不入库——本仓密钥零入库是 secret-scan 红线，
+  不给 debug 开例外；`.gitignore` 的 `*.keystore` 兜底），缺它 `:app:validateSigningDebug` 直接失败
+  （设备链实测：构建末段才炸）。日后若要模板级 UX，正确形态是 gradle 任务缺时自动 keytool 生成
+  （构建脚本生成而非入库文件）。同名同参生成到 `android/app/`：
+
+  ```sh
+  keytool -genkeypair -v -storetype PKCS12 -keystore android/app/debug.keystore \
+    -alias androiddebugkey -storepass android -keypass android \
+    -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
+  ```
+
+- **Metro 链接包的 watch 开销**：`@polypack/adapter-native` 经 `file:..` 以符号链接入
+  `node_modules`，其真实路径在项目根之外——`metro.config.js` 的 `watchFolders` 是**解析必需**；
+  符号链接形态下 Metro 爬 watch 树的耗时受 I/O 压力放大（设备链实测：数十分钟 D 状态 vs
+  真实目录拷贝 40 秒起服务）。I/O 紧张时用真实目录拷贝替换链接（拷贝包内容到
+  `node_modules/@polypack/adapter-native`），`watchFolders` 配置不变。
 
 ## 阻塞与挂载点
 
 - **真机渲染阻塞（宿主/设备）**：本仓库宿主为 Linux，无 Android SDK / 模拟器 / Gradle，
   未做 `run-android`、未做 Gradle 构建。渲染证据由包级测试代理
   （`../test/render.test.js` 静态渲染 + 宿主结构断言），**不伪造成真机渲染证据**。
-- **方向键冒烟阻塞（设备）**：`onKey` 需原生按键事件源（外接键盘 / 调试模式），留待
-  M4 冒烟（T-M4-05 同形态：无指针完成核心任务）。
+- **方向键冒烟（宿主已接线；真机仍阻塞）**：`onKey` 事件源 = RN 核心的 `onHWKeyEvent`
+  （`ReactRootView.dispatchKeyEvent` 无条件派发，d-pad 四向 → up/down/left/right，中心 → select）
+  + Back 走核心 `BackHandler`；每键结果打 logcat `POLYPACK_KEY {…}`（`ReactNativeJS` tag）。
+  **只消费 `ACTION_DOWN`**：一次 `adb shell input keyevent` 派发 DOWN(0)+UP(1) 两帧，全收则中心键
+  激活双计、Back 双弹（走查期望必对不上）。**真机冒烟仍阻塞（设备）**：需模拟器/实机；
+  对拍数据、adb 命令与观测通道见 `../device-walks/README.md`。
+  冒烟形态同 T-M4-05：无指针完成核心任务（方向键遍历 → 中心键激活 → Back 回上一焦点）。
+- **pointer 开关（走查会话用）**：`app.json` 的 `polypack.pointer`，默认 `"touch"`；设备走查改
+  `"none"` 即无指针形态（焦点环 + `focusNav`）。用 app.json 而非 `process.env`：RN 运行时
+  `process.env` 只保证 `NODE_ENV`（`Libraries/Core/setUpGlobals.js`），自定义 env 不在打包内联
+  且无插件支持（`@react-native/babel-preset` 无 inline-env），写 env 会**静默失效**。
 - **桥产物挂载点（T-M2-02 口径）**：`poly bridge aar [--abi ...] [--out P]` 产出
   `<工程根>/bridge/android/<核心库名>.aar`（内件 `jni/<abi>/lib<核心库名>.so` + 可选 `classes.jar`；
   非 maven 坐标、不放 `libs/`）。**前置**：本骨架是模板，按工程根布局铺开——`android/` 与

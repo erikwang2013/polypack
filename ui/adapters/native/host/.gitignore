@@ -2,6 +2,8 @@ node_modules/
 android/build/
 android/app/build/
 android/.gradle/
+android/.kotlin/
+android/app/.cxx/
 android/local.properties
 
 # 桥产物（T-M2-02：`poly bridge aar --out bridge/android` 的输出，不入库）

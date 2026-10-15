@@ -212,6 +212,8 @@ fn worker_loopback_runs_shared_dag_and_returns_artifacts() {
         jobs: 1,
         idle: Duration::from_secs(30),
         package: None,
+        sign: None,
+        verify: None,
     };
     let worker = std::thread::spawn(move || {
         let mut events = Recorder::default();
@@ -283,6 +285,8 @@ fn task_failure_returns_remote_code_and_hint() {
         jobs: 1,
         idle: Duration::from_secs(30),
         package: None,
+        sign: None,
+        verify: None,
     };
     let worker = std::thread::spawn(move || {
         let mut events = Recorder::default();
@@ -417,6 +421,8 @@ fn worker_surfaces_rejected_registration_as_error() {
         jobs: 1,
         idle: Duration::from_secs(30),
         package: None,
+        sign: None,
+        verify: None,
     };
     let mut events = Recorder::default();
     let err = run_worker(&opts, &CacheBackend::Local, &mut events).expect_err("注册被拒必须失败");

@@ -5,7 +5,7 @@
 //! - **传输抽象**：[`FarmTransport`]；v0 默认实现 [`DirTransport`]（本地目录双信箱），
 //!   HTTP / SSH 等远端后端在 M3+ 接入同一 trait；
 //! - **执行**：worker 与本地 `poly build` 共用同一 DAG 实现与同一缓存键公式，共享入口
-//!   即 [`execute_job`]（内部走 `crate::pipeline` 的 `plan_with_package`）；
+//!   即 [`execute_job`]（内部走 `crate::pipeline::plan_with_stages`）；
 //! - **跨机缓存**：[`CacheBackend`] 只换 `ObjectStore` 后端（[`DirSharedStore`] 为参考实现）；
 //! - **凭据边界**（T-M2-11 同模型）：`JobSpec.secrets` 只传 `crate::job::CredentialRef` 引用，
 //!   绝不内联明文，凭据在构建地（worker）按需拉取；

@@ -70,11 +70,16 @@ pub fn run(args: &Args, json: bool) -> Result<i32, Diagnostic> {
         .map_err(|err| err.diagnostic)?;
 
     let cache = Arc::new(Cache::from_root(project::cache_root(&project.root)));
-    // package 阶段由 CLI 注入：打包器矩阵在 poly-bundle，poly-core 不得依赖它（依赖方向约束）
-    let plan = pipeline::plan_with_package(
+    // package / sign / verify 三个阶段由 CLI 注入：打包器矩阵在 poly-bundle、签名链与校验器
+    // 在 poly-sign，poly-core 不得依赖它们（依赖方向约束）
+    let plan = pipeline::plan_with_stages(
         cache.clone(),
         args.profile.name(),
-        Some(Box::new(crate::package::PackageStage)),
+        pipeline::InjectedStages {
+            package: Some(|| Box::new(crate::package::PackageStage)),
+            sign: Some(|| Box::new(crate::sign::SignStage)),
+            verify: Some(|| Box::new(crate::verify::VerifyStage)),
+        },
     )?;
     let mut events = project::sink(json);
     plan.run_with(Some(&project), &job, events.as_mut())?;

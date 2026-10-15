@@ -1,4 +1,11 @@
-//! `poly verify --reproducible`：同输入二跑的可复现比对（T-M2-06 验收口径）。
+//! `poly verify`：产物校验。两条通路共用一个命令——
+//!
+//! - **声明校验器**（缺省）：按 [`TargetSpec::verify`] 注册表逐目标跑已接入的校验器
+//!   （`poly build` 的 `verify` 阶段同源，[`VerifyStage`]）。M2 接入 ios 的
+//!   `codesign-verify` + `spctl`（同一份 [`poly_sign::ios::plan_verify`]：`codesign --verify
+//!   --deep --strict` + `spctl --assess`）；未接入的 id 如实点名归属，绝不静默假绿。
+//! - **`--reproducible`**：同输入二跑的可复现比对（T-M2-06 验收口径），一个「校验器」的
+//!   实现，不进 DAG（比一次要两跑，太贵，只在显式要求时跑）。
 //!
 //! 口径（最懒且够用）：只比对**本机宿主可达**的目标（`spec.hosts` 含 `current_host()`）；
 //! 同一份输入组装两次、落到两个不同的绝对目录
@@ -22,6 +29,8 @@ use poly_bundle::error::BundleError;
 use poly_bundle::packager::{Artifact, ArtifactKind};
 use poly_core::diagnostics::{Code, Diagnostic};
 use poly_core::events::{BuildEvent, EventSink};
+use poly_core::job::JobSpec;
+use poly_core::plan::{Stage, StageContext, StageError, StageOutcome};
 use poly_core::{Profile, Project, codes};
 use poly_targets::{Host, Registry, TargetRequest, TargetSpec, current_host};
 
@@ -36,7 +45,7 @@ pub struct Args {
     /// 工程配置路径。
     #[arg(long, default_value = "polypack.toml")]
     pub config: PathBuf,
-    /// 可复现比对：同一输入二跑，逐产物比 SRI 摘要（T-M2-06）。
+    /// 可复现比对：同一输入二跑，逐产物比 SRI 摘要（T-M2-06）；缺省跑目标声明的校验器。
     #[arg(long)]
     pub reproducible: bool,
     /// 目标 id（可重复；缺省 = 当前宿主可达的全部已声明目标）。
@@ -46,20 +55,12 @@ pub struct Args {
 
 /// 执行 `poly verify`；返回进程退出码。
 pub fn run(args: &Args, json: bool) -> Result<i32, Diagnostic> {
-    if !args.reproducible {
-        return Err(Diagnostic::error(
-            codes::E_VERIFY_0002,
-            "poly verify 目前只接入 --reproducible 校验器（bundletool / codesign 等见 T-M2-07 / T-M2-10）",
-        )
-        .with_hint("用法：poly verify --reproducible [--target ID]…"));
-    }
-
     let project = project::load(&args.config)?;
     let registry = Registry::builtin();
     let Some(host) = current_host() else {
         return Err(Diagnostic::error(
             codes::E_VERIFY_0002,
-            "无法识别本机宿主：复现比对只对本机宿主目标成立（交叉打包归 M2 之后）",
+            "无法识别本机宿主：校验只对本机宿主目标成立（交叉目标的校验走远程农场，T-M2-13）",
         ));
     };
     let hosts = vec![host];
@@ -74,9 +75,38 @@ pub fn run(args: &Args, json: bool) -> Result<i32, Diagnostic> {
         .map_err(|err| err.diagnostic)?;
 
     let mut events = project::sink(json);
+    if !args.reproducible {
+        // 声明校验器通路（`poly build` 的 verify 阶段同源实现）
+        let verified = verify_targets(&project, &job.targets, host, events.as_mut())?;
+        if verified == 0 {
+            return Err(Diagnostic::error(
+                codes::E_VERIFY_0002,
+                format!(
+                    "{} 个入选目标都没有已接入的校验器可跑（逐目标原因见上方告警）",
+                    job.targets.len()
+                ),
+            )
+            .with_hint(
+                "校验器按 TargetSpec.verify 声明注册：ios 的 codesign-verify / spctl 已接入；\
+                 其余 id 的归属见告警，可先用 poly verify --reproducible 做可复现比对",
+            ));
+        }
+        return Ok(0);
+    }
+    reproducible(&project, &job, host, json, events.as_mut())
+}
+
+/// `--reproducible` 通路：同输入二跑比对（T-M2-06 验收口径）。
+fn reproducible(
+    project: &Project,
+    job: &poly_core::JobSpec,
+    host: Host,
+    json: bool,
+    events: &mut dyn EventSink,
+) -> Result<i32, Diagnostic> {
     if std::env::var_os("SOURCE_DATE_EPOCH").is_none() {
         warning(
-            events.as_mut(),
+            events,
             "SOURCE_DATE_EPOCH 未设置：含时间戳的产物在二跑间可能不一致，比对结果会如实报出差异（设 `export SOURCE_DATE_EPOCH=<秒>` 后重跑）",
         );
     }
@@ -85,7 +115,7 @@ pub fn run(args: &Args, json: bool) -> Result<i32, Diagnostic> {
     for spec in &job.targets {
         if !spec.hosts.contains(&host) {
             warning(
-                events.as_mut(),
+                events,
                 &format!(
                     "目标 {} 未做复现比对：非本机宿主（交叉打包的复现比对归 M2 之后）",
                     spec.id
@@ -93,7 +123,7 @@ pub fn run(args: &Args, json: bool) -> Result<i32, Diagnostic> {
             );
             continue;
         }
-        if compare(&project, spec, host, json, events.as_mut())? {
+        if compare(project, spec, host, json, events)? {
             compared += 1;
         }
     }
@@ -111,6 +141,204 @@ pub fn run(args: &Args, json: bool) -> Result<i32, Diagnostic> {
         ));
     }
     Ok(0)
+}
+
+// ---------------------------------------------------------------- 声明校验器（verify 阶段）
+
+/// 已接入的校验器实现。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Verifier {
+    /// `codesign --verify --deep --strict` + `spctl --assess`（[`poly_sign::ios::plan_verify`]，
+    /// 一次执行同时给出 `TargetSpec.verify` 里 `codesign-verify` 与 `spctl` 两个 id 的判决）。
+    IosCodesign,
+}
+
+/// 校验器 id → 已接入实现（`None` = 未接入，归属查 [`verifier_owner`]）。
+fn verifier_for(id: &str) -> Option<Verifier> {
+    match id {
+        "codesign-verify" | "spctl" => Some(Verifier::IosCodesign),
+        _ => None,
+    }
+}
+
+/// 未接入校验器的归属与替代路径；`None` = 注册表里出现了没人认领的 id（如新增目标忘了接线）。
+fn verifier_owner(id: &str) -> Option<&'static str> {
+    match id {
+        "apksigner-verify" => Some(
+            "poly-sign 的 `AndroidSigner::sign` 已在签名后内联 `apksigner verify --print-certs` \
+             证据（T-M2-09）；独立校验器入 DAG 归 M2 之后",
+        ),
+        "bundletool-validate" => {
+            Some("bundletool validate 归 T-M2-07（打包器侧已跑，入 DAG 未接线）")
+        }
+        "stapler-validate" => {
+            Some("poly-sign 有 `plan_staple` 的 validate 半步（T-M2-10）；独立校验器未接线")
+        }
+        "hap-sign-verify" | "hap-structure-check" => Some("鸿蒙链（T-M2 之后）"),
+        "signtool-verify" => Some("Windows 链（M2 之后）"),
+        "lintian" | "rpmlint" => Some("Linux 仓库检查（M3 之后）"),
+        "html-validate" | "sri-check" => Some("Web 链（M2 之后；SRI 清单已由打包器产出）"),
+        _ => None,
+    }
+}
+
+/// `verify` 阶段：按 `TargetSpec.verify` 注册表逐目标跑已接入的校验器。
+///
+/// 宿主门控与 `package` 阶段同判据：只校验「本机宿主目标」，交叉目标的校验走远程农场
+/// （T-M2-13）。全部目标都跳过时如实返回 `Skipped`（原因里点名），绝不假装校验过。
+pub struct VerifyStage;
+
+impl Stage for VerifyStage {
+    fn name(&self) -> &'static str {
+        "verify"
+    }
+
+    fn plan(&self, _job: &JobSpec) -> Result<(), StageError> {
+        Ok(())
+    }
+
+    fn run(&self, ctx: &mut StageContext<'_>) -> Result<StageOutcome, StageError> {
+        let Some(project) = ctx.project else {
+            return Ok(StageOutcome::Skipped {
+                reason: "缺少项目上下文".to_string(),
+            });
+        };
+        let Some(host) = current_host() else {
+            return Ok(StageOutcome::Skipped {
+                reason: "无法识别宿主（交叉目标的校验归 M2 之后）".to_string(),
+            });
+        };
+        let verified = verify_targets(project, &ctx.job.targets, host, ctx.events)?;
+        if verified == 0 {
+            return Ok(StageOutcome::Skipped {
+                reason: format!(
+                    "{} 个入选目标都没有已接入的校验器可跑（见 verify 告警）",
+                    ctx.job.targets.len()
+                ),
+            });
+        }
+        Ok(StageOutcome::Done)
+    }
+}
+
+/// 逐目标跑已接入的校验器；返回真的跑过的目标数（跳过已在事件流里说明原因）。
+///
+/// `poly verify`（声明校验器通路）与 [`VerifyStage`] 共用本函数，保证「显式校验」与
+/// 「构建内校验」口径一致。
+fn verify_targets(
+    project: &Project,
+    specs: &[TargetSpec],
+    host: Host,
+    events: &mut dyn EventSink,
+) -> Result<usize, StageError> {
+    let mut verified = 0usize;
+    for spec in specs {
+        if !spec.hosts.contains(&host) {
+            warning(
+                events,
+                &format!(
+                    "目标 {} 未校验：非本机宿主（交叉目标的校验归 M2 之后）",
+                    spec.id
+                ),
+            );
+            continue;
+        }
+        if verify_target(project, spec, events)? {
+            verified += 1;
+        }
+    }
+    Ok(verified)
+}
+
+/// 校验单个目标；返回是否真的校验了（`false` = 告警跳过并已说明原因）。
+fn verify_target(
+    project: &Project,
+    spec: &TargetSpec,
+    events: &mut dyn EventSink,
+) -> Result<bool, StageError> {
+    let mut unserved: Vec<String> = Vec::new();
+    let mut ios_ids: Vec<String> = Vec::new();
+    for id in &spec.verify {
+        match verifier_for(id) {
+            Some(Verifier::IosCodesign) => ios_ids.push(id.clone()),
+            None => unserved.push(match verifier_owner(id) {
+                Some(owner) => format!("{id}（{owner}）"),
+                // 注册表有 id 但没人认领：如实点名到具体 id，测试保证这里在 M2 的注册表上是死路
+                None => format!("{id}（归属未登记）"),
+            }),
+        }
+    }
+    if !unserved.is_empty() {
+        warning(
+            events,
+            &format!(
+                "目标 {} 的这些校验器未接入：{}",
+                spec.id,
+                unserved.join("；")
+            ),
+        );
+    }
+    if ios_ids.is_empty() {
+        return Ok(false);
+    }
+
+    let app = crate::sign::ios_app(project, spec);
+    if !app.is_dir() {
+        warning(
+            events,
+            &format!(
+                "目标 {} 未校验：{} 不存在（先跑 poly build 把产物流到打包暂存目录）",
+                spec.id,
+                app.display()
+            ),
+        );
+        return Ok(false);
+    }
+    // 已签名判定沿用 zip 签名块的同款思路：`_CodeSignature/CodeResources` 是 codesign 的落点
+    if !app.join("_CodeSignature").join("CodeResources").is_file() {
+        warning(
+            events,
+            &format!(
+                "目标 {} 未校验：产物未签名（{} 缺 `_CodeSignature/CodeResources`）——校验器对未签名产物\
+                 无从谈起，先跑签名（sign 阶段 / poly retry）",
+                spec.id,
+                app.display()
+            ),
+        );
+        return Ok(false);
+    }
+    // 「命令计划正确生成」是本阶段的运行时前置：命令序由 poly-sign 组装（`codesign --verify
+    // --deep --strict` + `spctl --assess`），空计划意味着注册表与 poly-sign 脱节——如实跳过，
+    // 绝不假装校验过
+    let plan = poly_sign::ios::plan_verify(&app);
+    if plan.commands.is_empty() {
+        warning(
+            events,
+            &format!(
+                "目标 {} 未校验：poly-sign 未给出校验计划（注册表脱节）",
+                spec.id
+            ),
+        );
+        return Ok(false);
+    }
+    // 执行：非 macOS 宿主在 `require_macos` 处得到 E_SIG_0001（skip-if-missing）
+    match poly_sign::ios::verify(&app) {
+        Ok(_) => {
+            // 一次执行给声明的每个 id 一份判决（计划同源：两个 id 是同一份 plan 的两条命令）
+            for id in &ios_ids {
+                events.emit(&BuildEvent::Verified {
+                    checker: id.clone(),
+                    ok: true,
+                });
+            }
+            Ok(true)
+        }
+        Err(err @ poly_sign::SignError::ToolMissing { .. }) => {
+            warning(events, &format!("目标 {} 未校验：{err}", spec.id));
+            Ok(false)
+        }
+        Err(other) => Err(crate::sign::sign_error(other).into()),
+    }
 }
 
 /// 对单个目标做二跑比对；返回是否真的比对了（`false` = 告警跳过并已说明原因）。
@@ -413,6 +641,138 @@ fn warning(events: &mut dyn EventSink, message: &str) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// 建最小工程骨架（含 `polypack.toml` 的 package 段：`.app` 名由它派生）。
+    fn fixture(tag: &str) -> (std::path::PathBuf, Project) {
+        const FIXTURE_TOML: &str = "[package]\nname = \"fixture-app\"\nversion = \"0.0.1\"\n[ui]\nframework = \"react\"\nentry = \"index.html\"\n[core]\ncrate = \"core\"\n";
+        let root =
+            std::env::temp_dir().join(format!("polypack-verify-reg-{tag}-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        std::fs::create_dir_all(root.join("core")).expect("工程目录可建");
+        let config =
+            poly_core::config::PolypackConfig::parse(FIXTURE_TOML).expect("fixture 配置应合法");
+        let project = Project {
+            root: root.clone(),
+            config,
+        };
+        (root, project)
+    }
+
+    /// 内建注册表的每个 `verify` id 都必须「已接入」或「有归属」：新目标 / 新校验器漏接线即红。
+    #[test]
+    fn every_declared_verifier_is_served_or_owned() {
+        for spec in Registry::builtin().all() {
+            for id in &spec.verify {
+                assert!(
+                    verifier_for(id).is_some() || verifier_owner(id).is_some(),
+                    "目标 {} 声明的校验器 {id} 既未接入也没有归属登记",
+                    spec.id
+                );
+            }
+        }
+        assert!(verifier_for("no-such-verifier").is_none());
+        assert!(verifier_owner("no-such-verifier").is_none());
+    }
+
+    /// ios 声明的两个 id（`codesign-verify` / `spctl`）都落在 poly-sign 的同一份校验计划上。
+    #[test]
+    fn ios_verifiers_share_the_poly_sign_plan() {
+        let ios = Registry::builtin()
+            .get("ios")
+            .expect("内建 ios 目标")
+            .clone();
+        assert_eq!(ios.verify, vec!["codesign-verify", "spctl"]);
+        for id in &ios.verify {
+            assert_eq!(
+                verifier_for(id),
+                Some(Verifier::IosCodesign),
+                "{id} 应由 poly_sign::ios::plan_verify 覆盖"
+            );
+        }
+        // 计划本体：`.app` 形态 → codesign --verify --deep --strict + spctl --assess
+        let root =
+            std::env::temp_dir().join(format!("polypack-verify-plan-{}", std::process::id()));
+        let app = root.join("Payload").join("fixture-app.app");
+        std::fs::create_dir_all(&app).expect("伪造 .app 目录");
+        let lines = poly_sign::ios::plan_verify(&app).lines();
+        assert_eq!(lines.len(), 2, "{lines:?}");
+        assert!(
+            lines[0].starts_with("codesign --verify --deep --strict"),
+            "{lines:?}"
+        );
+        assert!(
+            lines[1].starts_with("spctl --assess --type execute"),
+            "{lines:?}"
+        );
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    /// 未接入的校验器（android 的两个）如实点名归属并跳过，不静默也不硬失败。
+    #[test]
+    fn unserved_verifiers_are_named_with_their_owner() {
+        let (root, project) = fixture("unserved");
+        let android = Registry::builtin()
+            .get("android")
+            .expect("内建 android 目标")
+            .clone();
+        let mut sink = poly_core::events::HumanSink {
+            out: Vec::<u8>::new(),
+        };
+        assert!(
+            !verify_target(&project, &android, &mut sink).expect("未接入不该失败"),
+            "android 的校验器都未接入 → 未校验"
+        );
+        let text = String::from_utf8_lossy(&sink.out).into_owned();
+        assert!(text.contains("apksigner-verify"), "{text}");
+        assert!(text.contains("bundletool-validate"), "{text}");
+        assert!(text.contains("T-M2-09"), "归属要具体到任务：{text}");
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    /// `.app` 缺位 / 未签名时跳过并说明原因（校验器对未签名产物无从谈起）。
+    #[test]
+    fn missing_or_unsigned_app_is_skipped_with_a_reason() {
+        let (root, project) = fixture("unsigned");
+        let ios = Registry::builtin()
+            .get("ios")
+            .expect("内建 ios 目标")
+            .clone();
+        let mut sink = poly_core::events::HumanSink {
+            out: Vec::<u8>::new(),
+        };
+        assert!(!verify_target(&project, &ios, &mut sink).expect("缺 .app 不该失败"));
+        let text = String::from_utf8_lossy(&sink.out).into_owned();
+        assert!(text.contains("fixture-app.app"), "{text}");
+        assert!(text.contains("packages/ios"), "{text}");
+
+        let app = crate::sign::ios_app(&project, &ios);
+        std::fs::create_dir_all(&app).expect("伪造 .app 目录");
+        sink.out.clear();
+        assert!(!verify_target(&project, &ios, &mut sink).expect("未签名不该失败"));
+        let text = String::from_utf8_lossy(&sink.out).into_owned();
+        assert!(text.contains("未签名"), "{text}");
+        assert!(text.contains("_CodeSignature/CodeResources"), "{text}");
+
+        // 已签名（布局就位）→ 走到计划校验；执行在非 macOS 宿主按 E_SIG_0001 跳过
+        std::fs::create_dir_all(app.join("_CodeSignature")).expect("伪造签名目录");
+        std::fs::write(app.join("_CodeSignature/CodeResources"), b"<xml/>").expect("写签名件");
+        sink.out.clear();
+        // 非 macOS 宿主：E_SIG_0001（缺 codesign）归入跳过；macOS 上会真跑 codesign，
+        // 对伪造的 .app 必然以 E_SIG_0003 硬失败（该签没签成 ≠ 校验通过）
+        let macos = current_host() == Some(Host::Macos);
+        match verify_target(&project, &ios, &mut sink) {
+            Ok(checked) => {
+                assert!(
+                    !checked,
+                    "非 macOS 宿主应把 E_SIG_0001 归入跳过：{}",
+                    String::from_utf8_lossy(&sink.out)
+                );
+                assert!(!macos, "macOS 上伪造 .app 不该校验通过");
+            }
+            Err(err) => assert!(macos, "只有 macOS 宿主才可能真的执行 codesign：{err}"),
+        }
+        let _ = std::fs::remove_dir_all(&root);
+    }
 
     /// 目录产物比对的三类不一致都要点名（缺失 / 摘要不符 / 清单外新增），一致时给汇总摘要。
     #[test]

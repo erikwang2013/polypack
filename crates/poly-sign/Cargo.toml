@@ -16,6 +16,20 @@ thiserror.workspace = true
 # 载荷契约 base64(JSON)；与 keyring 的传递依赖同主版本，共用同一份编译产物。
 base64 = "0.22"
 
+# 真实 Vault HTTP 客户端（T-M2-11 真环境闭环，`vault server -dev`）。**关默认特性**：
+# 默认的 `rustls` 特性会拉 webpki-roots / webpki-root-certs（许可证 CDLA-Permissive-2.0，
+# 不在 deny.toml 白名单，且 webpki-root-certs 只在 wasm32 目标出现 = 永不被编译的
+# 纯策略噪音）→ 关掉自带根证书，改由本 crate 显式给 `RootCerts::Specific`：
+# 系统信任库（rustls-native-certs，纯 Rust；企业内网 CA 生效）或 `VAULT_CACERT`。
+# 加密提供者用 ring（`_ring` 是 ureq 为此开的公共钩子：ring 为 vendored C，无系统库依赖）。
+ureq = { version = "3.4", default-features = false, features = [
+    "rustls-no-provider",
+    "_ring",
+] }
+# 系统信任库读取（https 且未设 VAULT_CACERT 时）。Linux/macOS：openssl-probe +
+# security-framework；Windows：schannel API——许可证全在 deny.toml 白名单内。
+rustls-native-certs = "0.8"
+
 # keyring v3 无 default feature，必须按平台显式选后端（否则落到其内置 mock store）。
 # Linux 用 async-secret-service（secret-service + zbus，纯 Rust）：只依赖会话总线，
 # 不需要系统 libdbus（sync-secret-service / dbus-secret-service 才会链到 libdbus）。
@@ -37,6 +51,17 @@ keyring = { version = "3.6.3", default-features = false }
 [dev-dependencies]
 # 测试自造最小 APK（zip 容器）；与 poly-bundle 同版本同 feature，不引入新的第三方树。
 zip = { version = "9.0.3", default-features = false, features = ["deflate"] }
+
+# 真总线闭环（tests/keyring_real.rs）的写 / 删侧：`KeyringBackend` 本体只读，写删得直接
+# 用 keyring crate。同版本同特性 = 与依赖侧共用同一编译实例，不引入新的第三方树；
+# 只在 Linux 声明（真跑形态是 headless secret-service，测试文件本身也 `cfg(linux)`），
+# 避免在 macOS / Windows 上把 secret-service 后端特性并进 apple-native / windows-native。
+[target.'cfg(target_os = "linux")'.dev-dependencies]
+keyring = { version = "3.6.3", default-features = false, features = [
+    "async-secret-service",
+    "async-io",
+    "crypto-rust",
+] }
 
 [lints]
 workspace = true

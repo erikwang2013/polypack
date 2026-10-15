@@ -1,14 +1,17 @@
-//! T-M1-06 契约测试（mock 模式）：DMG 暂存布局、hdiutil 命令与宿主工具缺失契约。
+//! T-M1-06 契约测试：DMG 暂存布局、hdiutil 命令与**真机深检**/宿主工具缺失契约。
 //!
-//! 本宿主（Linux）无 `hdiutil`：`package()` 必须返回 [`BundleError::ToolMissing`]
-//! （`poly::E_BND_0001`）——「真机执行阻塞（宿主）」的证据；macOS 真机（macos-14）上
-//! `hdiutil verify` 与挂载/卸载冒烟由每夜模式承担。
+//! 非 macOS 宿主无 `hdiutil`：`package()` 必须返回 [`BundleError::ToolMissing`]
+//! （`poly::E_BND_0001`）——「真机执行阻塞（宿主）」的证据。
+//! macOS 宿主（macos-14 腿，`hdiutil` 随系统提供）走**真跑深检**：
+//! `hdiutil create`（UDZO）→ `verify` → `imageinfo` 结构断言 → 真实挂载后核对
+//! `.app` 载荷字节与 `Applications` 符号链接语义 → 卸载（Drop 守卫，失败也不留挂载点）。
 //!
 //! 输入用 `std::env::temp_dir()` 现造（每测试独立目录，`cargo test` 并行安全）。
 
 mod common;
 
 use std::path::{Path, PathBuf};
+use std::process::Command;
 
 use poly_bundle::packagers::dmg::Dmg;
 use poly_bundle::{BareProduct, BundleError, BundleInputs, Packager, ProductInfo, codes, exec};
@@ -195,5 +198,95 @@ fn package_fails_with_tool_missing_on_host_without_hdiutil() {
         inputs.out_dir.join("dmg-stage/README.txt").is_file(),
         "脚本应先落盘：{}",
         inputs.out_dir.display()
+    );
+}
+
+/// 已挂载的磁盘映像（Drop 时 `hdiutil detach`：断言 panic 也不留挂载点）。
+struct Mounted {
+    mount: PathBuf,
+}
+
+impl Mounted {
+    /// 只读挂载到指定挂载点（先建目录：`-mountpoint` 要求目录已存在）。
+    fn attach(image: &Path, mount: &Path) -> Self {
+        std::fs::create_dir_all(mount).expect("建挂载点");
+        let status = Command::new("hdiutil")
+            .args(["attach", "-nobrowse", "-readonly", "-mountpoint"])
+            .arg(mount)
+            .arg(image)
+            .status()
+            .expect("hdiutil attach: 真机深检需要 macOS 宿主");
+        assert!(status.success(), "hdiutil attach 失败：{}", image.display());
+        Self {
+            mount: mount.to_path_buf(),
+        }
+    }
+
+    fn path(&self) -> &Path {
+        &self.mount
+    }
+}
+
+impl Drop for Mounted {
+    fn drop(&mut self) {
+        let _ = Command::new("hdiutil")
+            .arg("detach")
+            .arg(&self.mount)
+            .status();
+    }
+}
+
+/// 真跑深检（macOS 宿主）：`hdiutil create`(UDZO) → `verify` → `imageinfo` → 挂载核对载荷与链接。
+///
+/// Linux / Windows 腿无 `hdiutil`，显式 skip（该腿的 ToolMissing 契约由上一个用例覆盖）。
+#[test]
+fn dmg_real_build_verifies_and_mounts_with_drag_layout() {
+    if common::skip_without("hdiutil") {
+        return;
+    }
+    let inputs = inputs("real");
+    let artifact = Dmg
+        .package(&inputs, &spec("dmg"))
+        .expect("hdiutil create + verify 真跑");
+    assert_eq!(artifact.format, "dmg");
+    assert!(artifact.bytes > 0, "产物为空");
+    assert!(
+        artifact.path.extension().is_some_and(|e| e == "dmg"),
+        "产物路径：{}",
+        artifact.path.display()
+    );
+
+    // 结构：真 UDIF 磁盘映像（verify 已在 package() 内以退出码 0 通过）。
+    let info = Command::new("hdiutil")
+        .arg("imageinfo")
+        .arg(&artifact.path)
+        .output()
+        .expect("hdiutil imageinfo");
+    let text = String::from_utf8_lossy(&info.stdout);
+    assert!(info.status.success(), "imageinfo 非零退出：{text}");
+    assert!(text.contains("UDIF"), "须为 UDIF 映像：\n{text}");
+
+    // 挂载后核对拖拽安装布局与载荷字节（真读一遍映像内的文件系统）。
+    let mounted = Mounted::attach(&artifact.path, &inputs.out_dir.join("mount"));
+    let app = mounted.path().join("Pax Notes.app");
+    assert!(
+        app.join("Contents/MacOS/pax-notes").is_file(),
+        "挂载卷缺可执行：{}",
+        app.display()
+    );
+    assert_eq!(
+        std::fs::read(app.join("Contents/MacOS/pax-notes")).expect("读可执行"),
+        b"\xcf\xfa\xed\xfe",
+        "载荷字节须与裸产物一致（非占位文件）"
+    );
+    assert_eq!(
+        std::fs::read(app.join("Contents/Resources/index.html")).expect("读 index.html"),
+        b"<html></html>"
+    );
+    let link = mounted.path().join("Applications");
+    assert_eq!(
+        std::fs::read_link(&link).expect("Applications 须为符号链接"),
+        Path::new("/Applications"),
+        "拖拽安装语义：Applications 指向系统目录"
     );
 }
