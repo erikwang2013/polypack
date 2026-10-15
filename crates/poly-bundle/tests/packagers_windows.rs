@@ -111,7 +111,7 @@ fn upgrade_code_of(wxs: &str) -> String {
 }
 
 #[test]
-fn msi_plan_is_wix_v3_with_tree_shortcut_and_ui() {
+fn msi_plan_is_wix_v3_with_tree_shortcut_and_arp_icon() {
     let inputs = inputs("msi-plan", true);
     let plan = WixMsi.plan(&inputs, &spec("msi")).expect("plan");
     let wxs = script(&plan, ".wxs");
@@ -134,10 +134,16 @@ fn msi_plan_is_wix_v3_with_tree_shortcut_and_ui() {
         "On=\"uninstall\"",
         "RegistryValue Root=\"HKCU\" Key=\"Software\\Pax Notes\" Name=\"installed\" Type=\"integer\" Value=\"1\" KeyPath=\"yes\"",
         "<Feature Id=\"MainFeature\" Level=\"1\"",
-        "<UIRef Id=\"WixUI_InstallDir\"/>",
-        "<Property Id=\"WIXUI_INSTALLDIR\" Value=\"INSTALLDIR\"/>",
     ] {
         assert!(wxs.contains(needle), "wxs 缺少 `{needle}`：\n{wxs}");
+    }
+    // UI 腿退出（负向守卫）：WixUIExtension 的 en-us wxl 会把 DB 码页钉死 1252，中文描述
+    // 在 light 链接期报 LGHT0311（windows-2022 真跑实证）；恢复 UI 须先带 65001 本地化方案。
+    for absent in ["WixUI", "WIXUI_INSTALLDIR"] {
+        assert!(
+            !wxs.contains(absent),
+            "wxs 不应再含 `{absent}`（LGHT0311 根因）：\n{wxs}"
+        );
     }
 
     // 裸产物内每个文件都有对应 `<File Source=...>`（绝对路径写进 Source）。
@@ -167,7 +173,7 @@ fn msi_plan_is_wix_v3_with_tree_shortcut_and_ui() {
         );
     }
 
-    // 命令链：candle → light（x64 + en-US，与 tauri-bundler 命名一致）。
+    // 命令链：candle → light（x64）；light 不带 culture/扩展（见上 LGHT0311 负向守卫）。
     assert_eq!(plan.commands.len(), 2);
     assert_eq!(plan.commands[0].program, "candle");
     assert!(
@@ -181,7 +187,13 @@ fn msi_plan_is_wix_v3_with_tree_shortcut_and_ui() {
         plan.commands[0].line()
     );
     assert_eq!(plan.commands[1].program, "light");
-    assert!(plan.commands[1].line().contains("-cultures:en-us"));
+    for absent in ["-cultures", "WixUIExtension"] {
+        assert!(
+            !plan.commands[1].line().contains(absent),
+            "light 不应再带 `{absent}`（LGHT0311 根因）：{}",
+            plan.commands[1].line()
+        );
+    }
     assert!(
         plan.commands[1]
             .line()

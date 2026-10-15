@@ -55,13 +55,15 @@ impl Packager for WixMsi {
                     path_arg(&wxs),
                 ],
             ))
+            // 不带 `-ext WixUIExtension` / `-cultures:en-us`：其本地化 wxl 会把 DB 码页钉死为
+            // 1252（`-loc` 同 Culture 覆盖不生效，jpackage JDK-8290471 同款），非拉丁描述（如
+            // 中文）在 light 链接期报 LGHT0311（windows-2022 真跑实证）。UI-less 形态下码页由
+            // Product/@Codepage=65001 决定，任意 Unicode 字符串可入库（官方不支持 UTF-8+对话框，
+            // 故对话框留待有 65001 本地化方案时再接）。
             .with_command(Command::new(
                 "light",
                 [
                     "-nologo".into(),
-                    "-ext".into(),
-                    "WixUIExtension".into(),
-                    "-cultures:en-us".into(),
                     "-out".into(),
                     path_arg(&msi),
                     path_arg(&wixobj),
@@ -199,6 +201,8 @@ fn wix_script(inputs: &BundleInputs, bare: &BareProduct) -> Result<String, Bundl
 
     let mut out = String::from("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
     out.push_str("<Wix xmlns=\"http://schemas.microsoft.com/wix/2006/wi\">\n");
+    // Codepage=65001（UTF-8）：产品名/描述等入 DB 字符串可为任意 Unicode（中文描述实证
+    // LGHT0311 修复点）；改小码页前先想清楚非拉丁用户的代价。
     line(
         &mut out,
         1,
@@ -311,12 +315,6 @@ fn wix_script(inputs: &BundleInputs, bare: &BareProduct) -> Result<String, Bundl
         line(&mut out, 3, &format!("<ComponentRef Id=\"{component}\"/>"));
     }
     line(&mut out, 2, "</Feature>");
-    line(
-        &mut out,
-        2,
-        "<Property Id=\"WIXUI_INSTALLDIR\" Value=\"INSTALLDIR\"/>",
-    );
-    line(&mut out, 2, "<UIRef Id=\"WixUI_InstallDir\"/>");
     line(&mut out, 1, "</Product>");
     out.push_str("</Wix>\n");
     Ok(out)

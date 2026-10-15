@@ -742,8 +742,10 @@ mod tests {
         };
         assert!(!verify_target(&project, &ios, &mut sink).expect("缺 .app 不该失败"));
         let text = String::from_utf8_lossy(&sink.out).into_owned();
+        // 路径按宿主分隔符打印（Windows 为 `\`）；断言先归一，跨宿主同判。
+        let text_unix = text.replace('\\', "/");
         assert!(text.contains("fixture-app.app"), "{text}");
-        assert!(text.contains("packages/ios"), "{text}");
+        assert!(text_unix.contains("packages/ios"), "{text}");
 
         let app = crate::sign::ios_app(&project, &ios);
         std::fs::create_dir_all(&app).expect("伪造 .app 目录");
@@ -751,7 +753,11 @@ mod tests {
         assert!(!verify_target(&project, &ios, &mut sink).expect("未签名不该失败"));
         let text = String::from_utf8_lossy(&sink.out).into_owned();
         assert!(text.contains("未签名"), "{text}");
-        assert!(text.contains("_CodeSignature/CodeResources"), "{text}");
+        assert!(
+            text.replace('\\', "/")
+                .contains("_CodeSignature/CodeResources"),
+            "{text}"
+        );
 
         // 已签名（布局就位）→ 走到计划校验；执行在非 macOS 宿主按 E_SIG_0001 跳过
         std::fs::create_dir_all(app.join("_CodeSignature")).expect("伪造签名目录");

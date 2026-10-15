@@ -66,13 +66,21 @@ pub fn run(command: &Command) -> Result<Output, BundleError> {
     })?;
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        // WiX（light/candle）把诊断写 stdout：stderr 空时回落到 stdout——否则失败无凭据
+        // （msi 真跑 LGHT0311 曾因 stderr 空丢原文，windows-2022 CI 实证）。
+        let diag: &str = if stderr.trim().is_empty() {
+            stdout.as_ref()
+        } else {
+            stderr.as_ref()
+        };
         return Err(BundleError::ToolFailed {
             command: command.line(),
             status: output
                 .status
                 .code()
                 .map_or_else(|| "signal".to_string(), |c| c.to_string()),
-            stderr: tail(&stderr, 800),
+            stderr: tail(diag, 800),
             hint: None,
         });
     }
