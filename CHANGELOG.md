@@ -6,6 +6,19 @@ Notable changes are recorded here; since v1.0.0, tags and releases follow `vX.Y.
 
 ## [Unreleased]
 
+## [1.4.0] — 2026-10-16
+
+### Added
+- **M2 收口：设备走查闭环 + sign/verify 入 DAG**（2026-10-16）：RN 宿主设备走查真跑（emulator）——六走查 touch 6/6、none 6/6（焦点序列与计数逐条命中 `expectations.json`）+ 焦点环差分像素采样双态实证（T-M2-04/05 升 ✅；自带漂移哨兵与 adb 驱动口径）；`poly build` 内联 sign 阶段（凭据门控三级语义：未声明静默 / 环境缺→告警跳过 / 非法→硬失败）与 verify 校验器注册表入 DAG（T-M2-10「verify 阶段接入」落地）；真签实证（Secret Service 一次性密钥 → apksigner v2+v3 独立复核，钥匙库事后清空）；T-M2-11 双真环境闭环（真 Vault dev KV v2 读写往返——audit 日志 token 仅 hmac；真 keyring 隔离总线——Deepin 补丁版根因实证）；真生成器 × Apple 编译首证（真 uniffi 产物 + 真调用面过 `swiftc -typecheck`，macos-14 真模式）与 simulator 调用对拍（`simctl` 真跑 `paxAdd(-5,3)=-2` 与 i32 回绕）；windows msi / macos dmg 真检查器落地（MSI 真机执行首次全通：windows-2022 真跑 `candle`+`light`+`msiexec` 载荷字节核对）。**工作区 384 测试全绿（另 ui/ 42）；五工作流三宿主绿；真实模式经手动 dispatch 全绿实证（mobile-contract 双新腿 + bridge 全链）。**
+
+*M2 closure — device walks proven on emulator (6/6 in both forms, plus ring pixel evidence), sign/verify stages wired into the DAG with real apksigner evidence, Vault/keyring real closures, first real proof of generator × Apple compile and simulator call parity, MSI/DMG real checkers with MSI real execution green on windows-2022. All workflows green; real mode evidenced via manual dispatch.*
+
+### Fixed
+- **首夜真跑根因三修**（2026-10-16）：msi 链接 LGHT0311（WixUI 本地化 wxl 钉死 DB 码页 1252 与中文描述冲突——UI 腿退出，`Product/@Codepage=65001` 保全任意 Unicode；`exec` 失败证据补 stdout 回落）；Swift 调用面文件须为 `main.swift`（多文件编译顶层表达式规则——两处同修）；`bridge.yml` 的 `setup-android` v3→v4（v3 默认包含已下架死包 `tools`——两次真派实证，对齐 mobile-contract 同款修复）。
+- **如实发现**：`schedule` 事件历史触发数为 0——两个 workflow 的「每夜真跑」此前从未发生（原生 API 实证；仓库/YAML/账号侧均已排查，平台侧成因待查）；真实模式今后以手动 dispatch 达成，台账已注记。
+
+*First-real-run root causes fixed (WiX code page LGHT0311, swiftc `main.swift` rule, setup-android v3→v4); noted honestly: the `schedule` trigger has never fired — real mode is now evidenced via manual dispatch.*
+
 ## [1.3.0] — 2026-10-15
 
 ### Added

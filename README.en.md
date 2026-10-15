@@ -4,7 +4,7 @@
 
 [简体中文](README.md) · [Roadmap](docs/ROADMAP.en.md) · [Architecture](#architecture) · [Platforms](#platform-matrix)
 
-> **Project status: M2 mobile & bridge ecosystem delivered** (2026-10-15). Available commands: `poly doctor` / `poly init` / `poly build` (real deb / AppDir / web static bundles; **Android AAB/APK direct**; **iOS unsigned IPA** on macOS hosts) / `poly bridge` (uniffi generator) / `poly farm worker|submit` (remote farm) / `poly scan` (secret scan) / `poly verify --reproducible` / `poly retry --from sign` / `poly dev` / `poly clean`. Five workflows green across three hosts, including real-mode nightlies with archived artifacts. Later milestones follow [docs/ROADMAP.en.md](docs/ROADMAP.en.md).
+> **Project status: M2 mobile & bridge ecosystem delivered and closed** (2026-10-16). Available commands: `poly doctor` / `poly init` / `poly build` (real deb / AppDir / web static bundles; **Android AAB/APK direct**; **iOS unsigned IPA** on macOS hosts; sign/verify wired into the DAG) / `poly bridge` (uniffi generator) / `poly farm worker|submit` (remote farm) / `poly scan` (secret scan) / `poly verify --reproducible` / `poly retry --from sign` / `poly dev` / `poly clean`. Five workflows green across three hosts; RN host device walks 6/6 + 6/6 across both forms with ring-pixel evidence (real emulator run); real mode green via manual dispatch (the `schedule` trigger has never fired — platform-side, under investigation). Later milestones follow [docs/ROADMAP.en.md](docs/ROADMAP.en.md).
 >
 > **Note on diagram labels:** the embedded diagrams are labeled in Chinese (the project's primary language). English-labeled variants are scheduled for milestone M1.
 

@@ -4,7 +4,7 @@
 
 [English](README.en.md) · [详细规划](docs/ROADMAP.md) · [架构](#项目架构) · [平台矩阵](#支持平台矩阵)
 
-> **项目状态：M2 移动与桥生态已交付**（2026-10-15）。可用命令：`poly doctor` / `poly init` / `poly build`（真出 deb / AppDir / Web 静态包；**Android 直出 AAB/APK**；**iOS 未签名 IPA**（macOS 宿主））/ `poly bridge`（uniffi 桥生成）/ `poly farm worker|submit`（远程农场）/ `poly scan`（密钥扫描）/ `poly verify --reproducible` / `poly retry --from sign` / `poly dev` / `poly clean`。五工作流三宿主全绿（含真模式 nightly 与真产物留档）。后续里程碑按 [docs/ROADMAP.md](docs/ROADMAP.md) 推进。
+> **项目状态：M2 移动与桥生态已交付并收口**（2026-10-16）。可用命令：`poly doctor` / `poly init` / `poly build`（真出 deb / AppDir / Web 静态包；**Android 直出 AAB/APK**；**iOS 未签名 IPA**（macOS 宿主）；sign/verify 入 DAG）/ `poly bridge`（uniffi 桥生成）/ `poly farm worker|submit`（远程农场）/ `poly scan`（密钥扫描）/ `poly verify --reproducible` / `poly retry --from sign` / `poly dev` / `poly clean`。五工作流三宿主全绿；RN 宿主设备走查双形态 6/6 + 6/6 与焦点环像素实证（emulator 真跑）；真实模式以手动 dispatch 全绿实证（`schedule` 触发历史 0 次——平台侧待查）。后续里程碑按 [docs/ROADMAP.md](docs/ROADMAP.md) 推进。
 
 ---
 
