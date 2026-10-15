@@ -11,11 +11,13 @@
 //! M2 签名 / 校验入场后按 profile 收紧——`ci` 下缺包即失败（profile 已分 local / ci）。
 
 use std::path::{Path, PathBuf};
+use std::process::Command;
 
 use poly_bundle::error::BundleError;
 use poly_bundle::inputs::{
     AndroidInputs, BundleInputs, Icon, IconKind, IosInputs, NativeLib, ProductInfo,
 };
+use poly_bundle::packagers::ios::swift;
 use poly_core::bridge;
 use poly_core::diagnostics::{Code, Diagnostic};
 use poly_core::events::{BuildEvent, EventSink};
@@ -37,6 +39,13 @@ const ICON_SVG_ROOT: &str = "icon.svg";
 
 /// PWA manifest 候选文件名（T-M1-04 产物，web 打包器必需输入）。
 const MANIFEST_NAMES: &[&str] = &["manifest.webmanifest", "manifest.json"];
+
+/// Apple 交叉目标：`swift::package` 三条 cargo 命令对应的 triple（缺一即造不出 XCFramework）。
+const APPLE_TRIPLES: [&str; 3] = [
+    swift::DEVICE_TRIPLE,
+    swift::SIM_ARM64_TRIPLE,
+    swift::SIM_X86_64_TRIPLE,
+];
 
 /// `package` 阶段。
 pub struct PackageStage;
@@ -228,6 +237,30 @@ pub(crate) fn assemble_inputs(
         "ipa" => {
             no_ui_warning(events, spec, &dist, &inputs);
             inputs.ios = Some(ios_inputs(project)?);
+            // XCFramework（T-M2-03）是 iOS 打包器的必需输入，而会造它的只有 `swift::package`
+            // （`poly bridge generate` 只产绑定）——缺则现建，否则打包器必 MissingInput 整目标跳过。
+            if !swift::xcframework_path(&inputs).is_dir() {
+                // 缺 std 交叉目标属工具链缺失：cargo 会在 swift::package 里硬失败，
+                // 按 skip-if-missing 先如实跳过并点名要装的 triple（rustup 不在场则不拦）
+                let installed = rustup_targets();
+                if let Some(missing) = first_missing_apple_triple(installed.as_deref()) {
+                    return skip(
+                        events,
+                        spec,
+                        out_dir,
+                        &format!(
+                            "缺交叉目标 {missing}（rustup target add {missing}）——XCFramework 无从构建"
+                        ),
+                    );
+                }
+                match swift::package(&inputs, spec) {
+                    Ok(artifact) => events.emit(&BuildEvent::Packaged {
+                        format: artifact.format,
+                        bytes: artifact.bytes,
+                    }),
+                    Err(err) => return environment_slot(events, spec, out_dir, err),
+                }
+            }
         }
         _ => {}
     }
@@ -359,6 +392,33 @@ fn skip(
         message: format!("目标 {} 未打包：{reason}", spec.id),
     });
     Ok(None)
+}
+
+/// rustup 报告的已装目标；rustup 不在场或调用失败 → `None`（不拦：cargo 会自己报缺 triple）。
+fn rustup_targets() -> Option<Vec<String>> {
+    let out = Command::new("rustup")
+        .args(["target", "list", "--installed"])
+        .output()
+        .ok()
+        .filter(|out| out.status.success())?;
+    Some(
+        String::from_utf8_lossy(&out.stdout)
+            .lines()
+            .map(|line| line.trim().to_string())
+            .filter(|line| !line.is_empty())
+            .collect(),
+    )
+}
+
+/// 已装清单里缺的第一个 Apple 交叉目标；`None`（rustup 不在场/调用失败）→ `None`（放行给 cargo）。
+///
+/// 清单为空串与「rustup 不可用」必须分开：前者是真没装任何目标（点名要装的 triple），
+/// 后者只是查不到——查不到就拦会把非 rustup 工具链的机器误判成缺目标。
+fn first_missing_apple_triple(installed: Option<&[String]>) -> Option<&'static str> {
+    let installed = installed?;
+    APPLE_TRIPLES
+        .into_iter()
+        .find(|triple| !installed.iter().any(|have| have.as_str() == *triple))
 }
 
 /// 项目图标 svg（T-M1-14 派生源）：优先 UI 目录下的 `public/icon.svg`（模板约定），
@@ -614,6 +674,58 @@ mod tests {
         assert_eq!(inputs.core_crate, Some(root.join("core")));
         assert_eq!(inputs.host_project, Some(root.clone()));
         assert_eq!(inputs.bindings_dir, Some(root.join("bridge/swift")));
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    /// 缺哪个交叉目标由 rustup 清单点名（skip 原因可直接拷进终端）；查不到清单不拦。
+    #[test]
+    fn missing_apple_triple_is_named_from_installed_list() {
+        let all: Vec<String> = APPLE_TRIPLES
+            .iter()
+            .map(|triple| (*triple).to_string())
+            .collect();
+        assert_eq!(first_missing_apple_triple(Some(&all)), None);
+        let without_sim_arm64: Vec<String> = ["aarch64-apple-ios", "x86_64-apple-ios"]
+            .map(str::to_string)
+            .to_vec();
+        assert_eq!(
+            first_missing_apple_triple(Some(&without_sim_arm64)),
+            Some(swift::SIM_ARM64_TRIPLE)
+        );
+        assert_eq!(
+            first_missing_apple_triple(Some(&[])),
+            Some(swift::DEVICE_TRIPLE),
+            "清单在但空 = 真没装：点名要装的 triple"
+        );
+        assert_eq!(
+            first_missing_apple_triple(None),
+            None,
+            "rustup 不在场 → 放行，由 cargo 报真错"
+        );
+    }
+
+    /// 不变式：前置校验清单须与 `swift::package` 真跑的 cargo `--target` 同源——
+    /// 漏一个新 triple 会让缺工具链的机器绕过跳过、直接硬失败。
+    #[test]
+    fn apple_triple_precheck_matches_swift_chain() {
+        let (root, project) = fixture("ios-triples");
+        let mut inputs = BundleInputs::new(product_info(&project.config.package), root.clone());
+        inputs.ios = Some(ios_inputs(&project).expect("iOS 输入"));
+        let spec = TargetSpec::new_stub("ios", 1, &[Host::Macos]);
+
+        let plan = swift::plan(&inputs, &spec).expect("纯组装，任意宿主可跑");
+        let mut built: Vec<&str> = plan
+            .commands
+            .iter()
+            .filter(|command| command.program == "cargo")
+            .flat_map(|command| command.args.windows(2))
+            .filter(|pair| pair[0] == "--target")
+            .map(|pair| pair[1].as_str())
+            .collect();
+        built.sort_unstable();
+        let mut expected = APPLE_TRIPLES;
+        expected.sort_unstable();
+        assert_eq!(built, expected, "前置校验清单须覆盖 swift 链的全部交叉目标");
         let _ = std::fs::remove_dir_all(&root);
     }
 }

@@ -420,7 +420,136 @@ fn poly(args: &[&str], cwd: &Path) -> Output {
         .expect("poly 可执行")
 }
 
-/// real：真实链路的产物 zip 条目 ↔ 金样 `entries` 比对；产物未产出即 NOTE 返回。
+/// iOS 真跑夹具的核心 crate 名（`lib<pax_core>.a` / `<pax_core>.swift` 的命名基准）。
+const IOS_FIXTURE_LIB: &str = "pax_core";
+
+/// 把 `poly init` 模板的 bin 核心换成库形态夹具：静态库 crate + UDL + Swift 绑定三件套。
+///
+/// crate 与 `poly-bundle/tests/fixtures/ios_core`（T-M2-14 nightly 在用）**同一份源**——
+/// 夹具形态只有一处，避免两腿漂移。绑定三件套手写预置同 `ios_real_run::write_bindings`：
+/// 真绑定由 T-M2-01 生成器产出，本腿不依赖 runner 上的 `uniffi-bindgen` CLI（其版本与
+/// uniffi 库版本强耦合，nightly 会因此变脆）。
+fn install_ios_core_fixture(root: &Path) {
+    let source =
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("../poly-bundle/tests/fixtures/ios_core");
+    let core = root.join("core");
+    for (from, to) in [
+        (source.join("Cargo.toml"), core.join("Cargo.toml")),
+        (source.join("src/lib.rs"), core.join("src/lib.rs")),
+    ] {
+        std::fs::copy(&from, &to).unwrap_or_else(|err| {
+            panic!("夹具 {} 拷入 {} 失败：{err}", from.display(), to.display())
+        });
+    }
+    // 模板的 bin 入口留着会让同名包同时产 bin，库形态夹具不要它
+    let _ = std::fs::remove_file(core.join("src/main.rs"));
+
+    // UDL 与 lib.rs 的导出面同构；`<core>/src/*.udl` 是 T-M2-01 生成器的接口源约定。
+    let udl_path = core.join(format!("src/{IOS_FIXTURE_LIB}.udl"));
+    let udl = format!("namespace {IOS_FIXTURE_LIB} {{\n  i32 pax_add(i32 a, i32 b);\n}};\n");
+    std::fs::write(&udl_path, &udl).expect("UDL 可写");
+    // 自证：夹具 UDL 必须能被 T-M2-01 的解析器读通（否则夹具形态本身就是错的；
+    // 本机即可跑，不必等 macos 腿）。
+    let interface = poly_core::bridge::udl::parse_source(&udl_path).expect("夹具 UDL 可解析");
+    assert_eq!(interface.namespace, IOS_FIXTURE_LIB);
+    assert_eq!(interface.functions.len(), 1, "夹具 UDL 应声明 1 个函数");
+
+    let bridge = root.join("bridge").join("swift");
+    std::fs::create_dir_all(&bridge).expect("绑定目录可建");
+    let lib = IOS_FIXTURE_LIB;
+    for (name, body) in [
+        (
+            format!("{lib}FFI.h"),
+            "#include <stdint.h>\nint32_t pax_add(int32_t a, int32_t b);\n".to_string(),
+        ),
+        (
+            format!("{lib}FFI.modulemap"),
+            format!("module {lib}FFI {{\n  header \"{lib}FFI.h\"\n  export *\n}}\n"),
+        ),
+        (
+            format!("{lib}.swift"),
+            format!(
+                "import {lib}FFI\n\npublic func paxAdd(_ a: Int32, _ b: Int32) -> Int32 {{\n    pax_add(a, b)\n}}\n"
+            ),
+        ),
+    ] {
+        std::fs::write(bridge.join(name), body).expect("绑定文件可写");
+    }
+}
+
+/// 文件形态产物：按扩展名取最新一件，读 zip 条目名。
+fn artifact_file_entries(root: &Path, extension: &str) -> Option<(PathBuf, Vec<String>)> {
+    let path = find_artifact(root, extension)?;
+    let names = poly_bundle::zipwrite::entry_names(&path)
+        .unwrap_or_else(|err| panic!("{} 产物条目清单读取失败：{err}", path.display()));
+    Some((path, names))
+}
+
+/// 目录形态产物（`*.<format>`，如 `*.xcframework`）：条目名 = `<目录名>/<相对路径>`。
+///
+/// 金样模式含目录名段（`*.xcframework/ios-arm64/*.a`），故条目名以目录名起头——
+/// 与「相对产物父目录」同义，且不受产物落在快照目录还是 `packages/` 的影响。
+fn artifact_dir_entries(root: &Path, format: &str) -> Option<(PathBuf, Vec<String>)> {
+    let dir = find_dir(root, &format!(".{format}"))?;
+    let base = dir.file_name()?.to_string_lossy().to_string();
+    let mut names = Vec::new();
+    let mut stack = vec![dir.clone()];
+    while let Some(current) = stack.pop() {
+        let Ok(children) = std::fs::read_dir(&current) else {
+            continue;
+        };
+        for child in children.flatten() {
+            let path = child.path();
+            if path.is_dir() {
+                stack.push(path);
+                continue;
+            }
+            if let Ok(rel) = path.strip_prefix(&dir) {
+                // 归一化分隔符：期望串一律 `/`（Windows 腿同纪律）
+                names.push(format!(
+                    "{base}/{}",
+                    rel.to_string_lossy().replace('\\', "/")
+                ));
+            }
+        }
+    }
+    names.sort();
+    Some((dir, names))
+}
+
+/// 目录形态产物定位：与 [`find_artifact`] 同一「取最新」纪律——真跑工程里可能留着旧快照。
+fn find_dir(root: &Path, suffix: &str) -> Option<PathBuf> {
+    let mut stack = vec![root.to_path_buf()];
+    let mut dirs: Vec<PathBuf> = Vec::new();
+    while let Some(dir) = stack.pop() {
+        let Ok(children) = std::fs::read_dir(&dir) else {
+            continue;
+        };
+        for child in children.flatten() {
+            let path = child.path();
+            if !path.is_dir() {
+                continue;
+            }
+            let name = path
+                .file_name()
+                .and_then(|name| name.to_str())
+                .unwrap_or_default()
+                .to_lowercase();
+            if name.ends_with(suffix) {
+                dirs.push(path.clone());
+            }
+            stack.push(path);
+        }
+    }
+    dirs.sort_by_key(|path| {
+        std::fs::metadata(path)
+            .and_then(|meta| meta.modified())
+            .ok()
+    });
+    dirs.pop()
+}
+
+/// real：真实链路的产物条目 ↔ 金样 `artifacts[*]` 逐件比对；主产物未产出即 NOTE 返回。
 fn real_artifact_check(target: &str) {
     let spec = registry_spec(target);
     let host = poly_targets::current_host();
@@ -433,7 +562,6 @@ fn real_artifact_check(target: &str) {
     }
     let golden = load_golden(target);
     let primary = &artifacts(&golden)[0];
-    let format = primary["format"].as_str().expect("声明格式").to_string();
     let extension = primary["extension"]
         .as_str()
         .expect("声明格式须有扩展名")
@@ -460,6 +588,9 @@ fn real_artifact_check(target: &str) {
         init.status,
         String::from_utf8_lossy(&init.stderr)
     );
+    if target == "ios" {
+        install_ios_core_fixture(&workdir);
+    }
     let build = poly(&["build", "--target", target, "--json"], &workdir);
     assert!(
         build.status.success(),
@@ -468,30 +599,45 @@ fn real_artifact_check(target: &str) {
         String::from_utf8_lossy(&build.stderr)
     );
 
-    let Some(artifact) = find_artifact(&workdir, &extension) else {
-        eprintln!(
-            "NOTE {target}：未发现 .{extension} 产物（落点 .polypack/packages/{target}/；\
-             打包器 / SDK 未接线时如实跳过，nightly 装齐工具链后走真比对）"
+    for (index, artifact) in artifacts(&golden).iter().enumerate() {
+        let format = artifact["format"].as_str().expect("声明格式").to_string();
+        // 文件形态按扩展名找 zip；目录形态（extension = null，如 xcframework）按 `*.<format>` 找目录。
+        let found = match artifact["extension"].as_str() {
+            Some(extension) => artifact_file_entries(&workdir, extension),
+            None => artifact_dir_entries(&workdir, &format),
+        };
+        let Some((path, names)) = found else {
+            if index == 0 {
+                eprintln!(
+                    "NOTE {target}：未发现 .{extension} 产物（落点 .polypack/packages/{target}/；\
+                     打包器 / SDK 未接线时如实跳过，nightly 装齐工具链后走真比对）"
+                );
+                return;
+            }
+            // 主产物在而声明过的次产物缺 = 声明了却没给：硬失败，绝不静默。
+            panic!(
+                "{target} 金样声明了 {format} 产物但工程未产出（工程 {}）",
+                workdir.display()
+            );
+        };
+        let expected = value_str_list(&artifact["entries"]);
+        assert!(
+            unmatched_patterns(&expected, &names).is_empty(),
+            "{target} {format} 产物 {} 与金样漂移（- 金样模式缺失 / + 产物多出条目）：\n{}",
+            path.display(),
+            entries_report(&expected, &names)
         );
-        return;
-    };
-
-    let names = poly_bundle::zipwrite::entry_names(&artifact)
-        .unwrap_or_else(|err| panic!("{target} 产物条目清单读取失败：{err}"));
-    let expected = value_str_list(&primary["entries"]);
-    let unmatched = unmatched_patterns(&expected, &names);
-    assert!(
-        unmatched.is_empty(),
-        "{target} {format} 产物 {} 与金样漂移（- 金样模式缺失 / + 产物多出条目）：\n{}",
-        artifact.display(),
-        entries_report(&expected, &names)
-    );
+        eprintln!(
+            "OK {target}：{format} 产物 {} 的 {} 条命中金样 {} 条模式",
+            path.display(),
+            names.len(),
+            expected.len()
+        );
+    }
     // 真跑产物留档：不删临时工程（CI 由 `留产物` 步上传；本地留一份供人工核验）。
     eprintln!(
-        "OK {target}：{format} 产物 {} 的 {} 条命中金样 {} 条模式（工程 {}）",
-        artifact.display(),
-        names.len(),
-        expected.len(),
+        "OK {target}：全部 {} 件产物命中金样（工程 {}）",
+        artifacts(&golden).len(),
         workdir.display()
     );
 }
@@ -514,4 +660,67 @@ fn contract_ios_real_artifact() {
         return;
     }
     real_artifact_check("ios");
+}
+
+/// 目录形态产物（iOS 第二件 `xcframework`）的比对器自检：条目名约定 + 漂移必被检出。
+///
+/// 真比对只在 macos-14 跑，本用例在任意宿主先把「`<目录名>/<相对路径>` ↔ 金样
+/// `*.xcframework/...` 模式」这一约定钉住——约定写错时本机即红，不必等一夜。
+#[test]
+fn xcframework_directory_entries_match_golden_patterns() {
+    let golden = load_golden("ios");
+    let artifact = artifact_of(&golden, "xcframework");
+    let expected = value_str_list(&artifact["entries"]);
+    assert!(artifact["extension"].is_null(), "目录形态产物无扩展名");
+
+    let root = std::env::temp_dir().join(format!(
+        "poly-contract-m2-xcframework-{}",
+        std::process::id()
+    ));
+    let _ = std::fs::remove_dir_all(&root);
+    let xcframework = root.join("Polypack App.xcframework");
+    for slice in ["ios-arm64", "ios-arm64_x86_64-simulator"] {
+        let headers = xcframework.join(slice).join("Headers");
+        std::fs::create_dir_all(&headers).expect("夹具切片目录可建");
+        std::fs::write(xcframework.join(slice).join("libpax_core.a"), b"!<arch>\n").unwrap();
+        std::fs::write(
+            headers.join("pax_coreFFI.h"),
+            b"int32_t pax_add(int32_t, int32_t);\n",
+        )
+        .unwrap();
+        std::fs::write(
+            headers.join("module.modulemap"),
+            b"module pax_coreFFI { header \"pax_coreFFI.h\" export * }\n",
+        )
+        .unwrap();
+    }
+    std::fs::write(
+        xcframework.join("Info.plist"),
+        b"<plist><dict><key>AvailableLibraries</key></dict></plist>\n",
+    )
+    .unwrap();
+
+    let (found, names) = artifact_dir_entries(&root, "xcframework").expect("目录被定位");
+    assert_eq!(found, xcframework, "取到的应是唯一那件");
+    assert!(
+        unmatched_patterns(&expected, &names).is_empty(),
+        "条目名约定与金样模式不符：\n{}",
+        entries_report(&expected, &names)
+    );
+
+    // 非空转证明：抽掉仿真切片的 modulemap，对应模式必被报为缺失。
+    std::fs::remove_file(
+        xcframework
+            .join("ios-arm64_x86_64-simulator")
+            .join("Headers")
+            .join("module.modulemap"),
+    )
+    .unwrap();
+    let (_, after) = artifact_dir_entries(&root, "xcframework").expect("目录仍被定位");
+    assert_eq!(
+        unmatched_patterns(&expected, &after),
+        vec!["*.xcframework/ios-arm64_x86_64-simulator/Headers/module.modulemap".to_string()],
+        "缺少的条目应被精确报出"
+    );
+    let _ = std::fs::remove_dir_all(&root);
 }

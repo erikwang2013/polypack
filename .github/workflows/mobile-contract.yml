@@ -89,9 +89,9 @@ jobs:
           include-hidden-files: true
           path: |
             ${{ runner.temp }}/poly-contract-m2-android-*/.polypack/packages/android/**
-          # 暂留 warn：CLI 侧 android 产物至今是「如实 NOTE」（dispatch 38690074497 该腿未跑到打包），
-          # 翻 error 前须先见一次真落盘（仅此一路 glob，无产物即整步失败）。ios 侧已翻，见下。
-          if-no-files-found: warn
+          # error 条件已满足：dispatch 38692194578 该腿真落盘并上传 9,770 B（.aab + .apks + 未签名 apk）。
+          # 此后空上传=真异常。
+          if-no-files-found: error
           retention-days: 14
 
   ios:
