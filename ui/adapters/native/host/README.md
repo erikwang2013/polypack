@@ -14,6 +14,22 @@ MainActivity(PaxApp) → AppRegistry → host/index.js
   └─ adapter.native.register(...)   # T-M2-02 AAR 挂载点（口径见下「桥产物挂载点」）
 ```
 
+## 宿主集成依赖（T-M2-02 上机实证）
+
+桥产物接进真 app 时，除 AAR 本身外还需（口径来自 m2-core 的 T-M2-02 上机三层实证）：
+
+- `net.java.dev.jna:jna:5.14.0`（uniffi 的 Kotlin 绑定经 JNA 走 `dlsym`；含各 ABI
+  `libjnidispatch.so`）+ `kotlin-stdlib`
+- `.so` 进 APK 的 `lib/<abi>/` 后由 `System.loadLibrary("<核心库名>")` 装载：AAR 内件
+  `jni/<abi>/lib<核心库名>.so` 由 AGP 合入，或按 jniLibs 直投（本骨架 `.gitignore` 已忽略该目录）
+- 库名两端对齐：绑定侧别名用 `-Duniffi.component.<UDL namespace>.libraryOverride` 覆盖，
+  与装配层 `native-registry` 的 `libraryName` 字段互为两端
+
+本骨架尚未接线这两条依赖（`index.js` 的 `register` 仍是注释示例）：真 app 装配时随 AAR
+一并补 `build.gradle` 依赖。实证边界（如实，非本仓库复现）：emulator x86_64 API 36 上
+loadLibrary 真载 + `dlsym` 真调用（`ADD(2,3)=5`）+ Kotlin→JNA→Rust（`GREET=hello, polypack`）；
+arm64 仅到 ELF 符号层，未上机。
+
 ## 未纳入的模板文件（二进制 / 派生资产）
 
 | 缺项 | 来源 |

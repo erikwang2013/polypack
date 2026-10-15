@@ -3,6 +3,7 @@
 //! 链路（`plan()` 的纯命令组装，`package()` 按序执行）：
 //!
 //! ```text
+//! ensure_staging_dirs()                                    # 先铺切片目录骨架（lipo 不建父目录）
 //! cargo build --target aarch64-apple-ios       --release   # device 切片
 //! cargo build --target aarch64-apple-ios-sim   --release   # simulator（Apple Silicon）
 //! cargo build --target x86_64-apple-ios        --release   # simulator（Intel）
@@ -122,6 +123,10 @@ pub fn package(inputs: &BundleInputs, spec: &TargetSpec) -> Result<Artifact, Bun
     require_macos("xcodebuild")?;
     let (pre, post) = command_split(inputs, spec)?;
 
+    // 目录骨架必须先于 pre：`lipo -create` 不建输出父目录（macos-14 真跑实证：
+    // `… .a.lipo (No such file or directory)`）。`stage_slices` 只纯拷贝文件且必须排在
+    // cargo 之后（拷的是 cargo 产物），故不能靠它铺目录。
+    ensure_staging_dirs(inputs)?;
     exec::run_all(&pre)?;
     stage_slices(inputs, spec)?;
     exec::run_all(&post)?;
@@ -145,6 +150,18 @@ pub fn package(inputs: &BundleInputs, spec: &TargetSpec) -> Result<Artifact, Bun
                 .to_string(),
         ],
     )
+}
+
+/// 切片目录骨架（两切片各自 `Headers/`，`out_dir` 随之建立；幂等）。
+///
+/// `lipo -create` 与 `xcodebuild -create-xcframework` 都不创建输出父目录，故写盘命令
+/// 之前必须先铺骨架；缺目录时命令报错落点晦涩（`.a.lipo (No such file or directory)`）。
+pub fn ensure_staging_dirs(inputs: &BundleInputs) -> Result<PathBuf, BundleError> {
+    for slice in [DEVICE_SLICE, SIM_SLICE] {
+        let headers = slice_headers(&inputs.out_dir, slice);
+        std::fs::create_dir_all(&headers).map_err(io_err(&headers))?;
+    }
+    Ok(slices_dir(&inputs.out_dir))
 }
 
 /// 切片暂存：device 静态库拷入切片目录；两切片各备 `Headers/`。

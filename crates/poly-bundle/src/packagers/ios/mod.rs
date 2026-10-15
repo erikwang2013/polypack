@@ -19,7 +19,7 @@ use std::path::{Path, PathBuf};
 
 use poly_targets::TargetSpec;
 
-use crate::error::BundleError;
+use crate::error::{BundleError, io_err};
 use crate::exec;
 use crate::fsutil;
 use crate::inputs::{BundleInputs, IosInputs, ProductInfo};
@@ -108,9 +108,12 @@ impl Packager for Ios {
         swift::validate_xcframework_layout(&inputs.out_dir)?;
 
         fsutil::write_scripts(&plan)?;
+        // `-exportPath` 父目录（out_dir）由骨架脚本落盘建立；`export/` 叶子是否由
+        // xcodebuild 自建本机无从验证（macOS-only）——先幂等铺好，省一次真跑往返。
+        let export_dir = export_dir(inputs);
+        std::fs::create_dir_all(&export_dir).map_err(io_err(&export_dir))?;
         exec::run_all(&plan.commands)?;
 
-        let export_dir = export_dir(inputs);
         let ipa = find_ipa(&export_dir).ok_or(BundleError::MissingInput {
             packager: IOS,
             field: "export/*.ipa",

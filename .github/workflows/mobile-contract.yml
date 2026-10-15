@@ -56,6 +56,9 @@ jobs:
       - name: build-tools / platform 与 bundletool（真跑）
         if: env.POLY_CONTRACT_REAL == '1'
         run: |
+          # 无 TTY 时 sdkmanager 打印许可条款后 exit 1（真模式 dispatch 38686285041 实证）：
+          # 先非交互全量接受。`|| true` 兜住 yes 的 SIGPIPE（许可已接受时 sdkmanager 立即退出）。
+          yes | sdkmanager --licenses > /dev/null 2>&1 || true
           sdkmanager "platforms;android-36" "build-tools;36.0.0"
           # 打包器按 AndroidInputs.bundletool → $POLYPACK_BUNDLETOOL → PATH → ~/.cache/polypack/tools/
           # 依次解析（crates/poly-bundle/src/tools.rs）：落缓存目录即被自动发现。

@@ -385,6 +385,37 @@ fn stage_slices_lands_modulemap_and_headers_for_both_slices() {
     assert_eq!(err.code(), codes::E_BND_0002);
 }
 
+/// 不变式：写盘命令的 `-output` 父目录须先由 `ensure_staging_dirs` 铺好。
+///
+/// macos-14 真跑实证：`lipo -create` 不建输出父目录（`… .a.lipo (No such file or
+/// directory)`）；夹具不得自铺切片目录，否则结构测试会再次掩盖执行路径的缺目录。
+/// （`uniffi-bindgen --out-dir` 自己会建目录——真跑实证，故不在本不变式内。）
+#[test]
+fn staging_dirs_cover_every_command_output_parent() {
+    let inputs = inputs("staging-dirs");
+    let plan = swift::plan(&inputs, &spec("ipa")).expect("plan");
+    let sim_parent = swift::slices_dir(&inputs.out_dir).join(swift::SIM_SLICE);
+    assert!(!sim_parent.is_dir(), "夹具不应预铺切片目录：{sim_parent:?}");
+
+    let slices = swift::ensure_staging_dirs(&inputs).expect("铺目录骨架");
+    swift::ensure_staging_dirs(&inputs).expect("幂等：复用路径 / 重跑再调不得失败");
+    assert_eq!(slices, swift::slices_dir(&inputs.out_dir));
+
+    for command in &plan.commands {
+        for pair in command.args.windows(2) {
+            if pair[0] == "-output" {
+                let out = Path::new(&pair[1]);
+                assert!(
+                    out.parent().unwrap().is_dir(),
+                    "`-output` 父目录未铺：{}（命令 {}）",
+                    out.display(),
+                    command.line()
+                );
+            }
+        }
+    }
+}
+
 /// XCFramework 结构校验：合规结构通过；切片标识漂移 / 缺库 / 多库 / 缺模块图逐一拒绝。
 #[test]
 fn xcframework_layout_validates_and_rejects_tampering() {
