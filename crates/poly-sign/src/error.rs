@@ -51,7 +51,10 @@ pub enum SignError {
         reason: String,
     },
     /// 外部命令非零退出。
-    #[error("外部命令失败（退出码 {status}）：{command}")]
+    ///
+    /// stderr 尾部**直出到显示里**（同 `poly-bundle::BundleError::ToolFailed`）：命令失败的
+    /// 根因只在工具自己的 stderr，只给「查看 stderr」而不带内容，日志里就什么都没有。
+    #[error("外部命令失败（退出码 {status}）：{command}\nstderr 尾部：{stderr}")]
     ToolFailed {
         /// 命令展示形态（口令经环境变量注入，展示串里只有 `env:VAR` 引用）。
         command: String,
@@ -97,7 +100,7 @@ impl SignError {
                  \"key_alias\"?,\"key_password\"?}",
             ),
             Self::ToolFailed { .. } => Some(
-                "查看 stderr 尾部；apksigner 路径按 POLYPACK_APKSIGNER → PATH → \
+                "命令与 stderr 已随本错直出；apksigner 路径按 POLYPACK_APKSIGNER → PATH → \
                  ANDROID_HOME / ANDROID_SDK_ROOT 解析",
             ),
             Self::Io { .. } => Some("核对输入 APK / 输出目录 / 临时目录的路径、权限与磁盘空间"),

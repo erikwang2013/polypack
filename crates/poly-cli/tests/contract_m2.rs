@@ -245,6 +245,13 @@ fn ios_plan_chain_matches_golden_contract() {
 fn android_plan_or_note_without_sdk() {
     let golden = load_golden("android");
     let format = artifacts(&golden)[0]["format"].as_str().expect("声明格式");
+    // 降级产物（缺 bundletool 时的声明产物）是 AAB 模块 **zip 文件**（真产物 `base.zip` 实证）：
+    // 声明成目录形态（extension = null）会让 real 侧去找不存在的 `*.module-zip` 目录并误报
+    // 「声明了却没给」（dispatch 38693729015 的假阴性即此）。
+    assert!(
+        artifact_of(&golden, "module-zip")["extension"].is_string(),
+        "android 降级产物是 zip 文件形态，非目录"
+    );
     let spec = registry_spec("android");
     // 与 real 用例的目录名区分开（见 `ios_plan_chain_matches_golden_contract` 的注释）
     let dir = std::env::temp_dir().join(format!(

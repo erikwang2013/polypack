@@ -640,6 +640,55 @@ fn ipa_plan_generates_skeleton_project_and_export_chain() {
     );
 }
 
+/// CLI 形态回归：骨架必须引用**实际**绑定落点，而非写死 `<out>/bridge/swift`。
+///
+/// dispatch 38693729015 实证：打包器直调（绑定在 `<out>/bridge/swift`）绿，CLI 腿（绑定在
+/// `<工程根>/bridge/swift`，`out_dir` 在 `.polypack/packages/ios` 下）红——`xcodebuild
+/// archive` 找不到构建输入退出 65。此处把 CLI 的目录形态钉住。
+#[test]
+fn skeleton_references_bindings_at_actual_bindings_dir() {
+    let root = temp_dir("skeleton-refs");
+    let out_dir = root.join(".polypack").join("packages").join("ios");
+    std::fs::create_dir_all(&out_dir).unwrap();
+    // `plan()` 只查 XCFramework 目录在场（布局校验在 `package()`）。
+    std::fs::create_dir_all(out_dir.join(format!("{}.xcframework", product().name))).unwrap();
+    let bindings = root.join("bridge").join("swift");
+    write(&bindings.join(format!("{LIB}.swift")), b"// binding");
+
+    let mut inputs = BundleInputs::new(product(), &out_dir);
+    inputs.ios = Some(IosInputs {
+        core_crate: None,
+        lib_name: Some(LIB.to_string()),
+        host_project: None,
+        bindings_dir: Some(bindings.clone()),
+    });
+    let plan = Ios.plan(&inputs, &spec("ipa")).expect("plan");
+    let pbxproj = &plan
+        .scripts
+        .iter()
+        .find(|s| {
+            s.path
+                .to_string_lossy()
+                .replace('\\', "/")
+                .ends_with("project.pbxproj")
+        })
+        .expect("骨架 pbxproj")
+        .contents;
+
+    let expected = bindings.join(format!("{LIB}.swift"));
+    assert!(
+        pbxproj.contains(&format!(
+            "path = \"{}\"; sourceTree = \"<absolute>\"",
+            expected.display()
+        )),
+        "绑定须按实际落点绝对引用（{expected:?}）：{pbxproj}"
+    );
+    assert!(
+        !pbxproj.contains("../bridge/swift/"),
+        "不得再写死相对 `out_dir` 的旧路径：{pbxproj}"
+    );
+}
+
 /// 复用路径：宿主工程 `ios/<产品名>.xcodeproj` 在位即复用（不落骨架脚本），
 /// ExportOptions.plist 仍须写出（T-M2-10 签名导出的输入）。
 #[test]

@@ -56,7 +56,11 @@ pub enum BundleError {
         reason: String,
     },
     /// 外部命令非零退出。
-    #[error("外部命令失败（退出码 {status}）：{command}")]
+    ///
+    /// stderr 尾部**直出到显示里**：命令失败的根因只在工具自己的 stderr（xcodebuild 的
+    /// 「Build input file cannot be found」、aapt2 的报错行），只给「查看上方 stderr」而
+    /// 不带上内容，日志里就什么都没有（dispatch 38693729015 盲修一轮的教训）。
+    #[error("外部命令失败（退出码 {status}）：{command}\nstderr 尾部：{stderr}")]
     ToolFailed {
         /// 命令展示形态。
         command: String,
@@ -121,9 +125,9 @@ impl BundleError {
             Self::InvalidInput { .. } => {
                 Some("产品名 / 版本 / 标识只允许字母数字与有限标点（见 ProductInfo::validate）")
             }
-            Self::ToolFailed { hint, .. } => hint
-                .as_deref()
-                .or(Some("查看上方 stderr；打包脚本与命令已落盘，可手动重跑")),
+            Self::ToolFailed { hint, .. } => hint.as_deref().or(Some(
+                "命令与 stderr 已随本错直出；打包脚本与命令已落盘，可手动重跑",
+            )),
             Self::Io { .. } => Some("检查输出目录权限与磁盘空间"),
             Self::Archive { .. } => Some(
                 "归档由本工具链产出（aapt2 / bundletool / zip 组装），结构非法多为工具版本不匹配",

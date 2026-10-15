@@ -12,8 +12,8 @@
 //!   `package()` 在动手前返回 [`BundleError::ToolMissing`]；`plan()` 为纯组装，任意宿主可跑。
 //! - 证书 / 描述文件只以凭据引用出现（T-M2-11 模型）：打包阶段不接触密钥材料。
 //!
-//! shortcut: 生成的工程骨架为静态文本（`objectVersion = 56`），未在 macOS 实证——
-//! macos-14 CI nightly（T-M2-14）真跑 xcodebuild 校验；RN 宿主模板落地后走「复用」路径。
+//! shortcut: 生成的工程骨架为静态文本（`objectVersion = 56`）：打包器直调路径已在 macos-14
+//! 全链真跑（T-M2-14 nightly：archive → Payload 直压 → IPA）；RN 宿主模板落地后走「复用」路径。
 
 pub mod swift;
 
@@ -215,7 +215,12 @@ fn skeleton_scripts(
     Ok(vec![
         ScriptFile {
             path: project.join("project.pbxproj"),
-            contents: skeleton_pbxproj(&inputs.product, lib, &swift::xcframework_path(inputs)),
+            contents: skeleton_pbxproj(
+                &inputs.product,
+                lib,
+                &swift::xcframework_path(inputs),
+                &swift::bindings_dir(inputs).join(format!("{lib}.swift")),
+            ),
         },
         ScriptFile {
             path: project
@@ -236,9 +241,17 @@ fn skeleton_scripts(
 
 /// 最小 `project.pbxproj`（单 app target；链接 XCFramework + Swift 绑定进 Sources）。
 ///
-/// 工程位于 `<out>/ios-skeleton/`，故引用相对路径：`../<产品名>.xcframework` 与
-/// `../bridge/swift/<lib>.swift`（均在 `<out>` 下）。
-pub fn skeleton_pbxproj(product: &ProductInfo, lib_name: &str, xcframework: &Path) -> String {
+/// XCFramework 由构造保证在 `<out>/`，故 `../<产品名>.xcframework`（相对 SRCROOT =
+/// `<out>/ios-skeleton`）恒成立；Swift 绑定则随 `IosInputs.bindings_dir` 走，**未必在
+/// `<out>` 下**（CLI 流落在 `<工程根>/bridge/swift`），故按绝对路径引用——写死相对路径会
+/// 让 `xcodebuild archive` 报「Build input file cannot be found」退出 65（dispatch
+/// 38693729015 实证：打包器直调绿、CLI 腿红，差异仅此）。
+pub fn skeleton_pbxproj(
+    product: &ProductInfo,
+    lib_name: &str,
+    xcframework: &Path,
+    swift_binding: &Path,
+) -> String {
     let name = &product.name;
     let xcframework_ref = format!(
         "../{}",
@@ -266,7 +279,7 @@ pub fn skeleton_pbxproj(product: &ProductInfo, lib_name: &str, xcframework: &Pat
 		C0DE0000000000000000F001 /* App.swift */ = {{isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App.swift; sourceTree = "<group>"; }};
 		C0DE0000000000000000F002 /* Info.plist */ = {{isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; }};
 		C0DE0000000000000000F003 /* {name}.app */ = {{isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "{name}.app"; sourceTree = BUILT_PRODUCTS_DIR; }};
-		C0DE0000000000000000F004 /* {lib_name}.swift */ = {{isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "{lib_name}.swift"; path = "../bridge/swift/{lib_name}.swift"; sourceTree = "<group>"; }};
+		C0DE0000000000000000F004 /* {lib_name}.swift */ = {{isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "{lib_name}.swift"; path = "{swift_binding}"; sourceTree = "<absolute>"; }};
 		C0DE0000000000000000F005 /* {name}.xcframework */ = {{isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; name = "{name}.xcframework"; path = "{xcframework_ref}"; sourceTree = "<group>"; }};
 /* End PBXFileReference section */
 
@@ -291,7 +304,8 @@ pub fn skeleton_pbxproj(product: &ProductInfo, lib_name: &str, xcframework: &Pat
 				C0DE0000000000000000A005 /* Products */,
 			);
 			// `../…` 相对 SRCROOT（.xcodeproj 所在目录 = <out>/ios-skeleton）解析：
-			// XCFramework 在 <out>/、Swift 绑定在 <out>/bridge/swift —— 二者挂在主组。
+			// XCFramework 恒在 <out>/；Swift 绑定随 bindings_dir 走（未必在 <out> 下，
+			// 故 F004 用 `<absolute>`）——二者挂在主组。
 			sourceTree = "<group>";
 		}};
 		C0DE0000000000000000A004 /* {name} */ = {{
@@ -492,6 +506,7 @@ pub fn skeleton_pbxproj(product: &ProductInfo, lib_name: &str, xcframework: &Pat
         version = product.version,
         identifier = product.identifier,
         xcframework_ref = xcframework_ref,
+        swift_binding = swift_binding.display(),
         target_id = TARGET_ID,
     )
 }
@@ -825,10 +840,19 @@ mod tests {
             &product,
             "pax_core",
             Path::new("/out/Pax Notes.xcframework"),
+            Path::new("/root/bridge/swift/pax_core.swift"),
         );
         assert!(
             pbxproj.contains(&format!("{TARGET_ID} /* Pax Notes */ = {{")),
             "pbxproj 的 target id 与 scheme 不一致"
+        );
+        // 绑定引用按实参落 → 绝对引用（`bindings_dir` 未必在 `<out>` 下，写死相对路径
+        // 会让 xcodebuild archive 找不到构建输入）。
+        assert!(
+            pbxproj.contains(
+                "path = \"/root/bridge/swift/pax_core.swift\"; sourceTree = \"<absolute>\""
+            ),
+            "绑定文件须按实际落点绝对引用：{pbxproj}"
         );
     }
 
