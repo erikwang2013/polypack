@@ -173,7 +173,7 @@
 - Deliverable: vite frontend build integration (invoke the build, produce dist), react-dom rendering baseline wiring, and PWA manifest generation (name / icons / theme color from polypack.toml; icons derived from Pax brand assets).
 - Acceptance: the sample UI builds to dist; manifest structure and icon-size assertions pass; html-validate passes on the emitted HTML; build failures carry an error code and location info.
 
-### T-M1-05 · poly-bundle: Packager trait and Windows packagers (MSI / NSIS) (implementation + contracts complete; real-machine run blocked: Windows host)
+### T-M1-05 · poly-bundle: Packager trait and Windows packagers (MSI / NSIS) (implementation + contracts complete; MSI real execution proven — windows-2022 CI really runs candle+light+msiexec with payload byte checks (after the first-run LGHT0311 code-page fix); NSIS verified at text level ($-escape negative control), real compile still lacks a host)
 
 - Role: packagers
 - Deps: T-M1-03
