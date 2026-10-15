@@ -1,5 +1,5 @@
 //! T-M2-03 / T-M2-08 契约测试（mock 模式）：Swift 绑定链命令组装、切片暂存、
-//! XCFramework 结构校验、工程骨架 / 复用与 archive→exportArchive 流水线。
+//! XCFramework 结构校验、工程骨架 / 复用与 archive→Payload 直压流水线。
 //!
 //! 本宿主（Linux）无 Apple 工具链（cargo Apple triple / lipo / xcodebuild / uniffi-bindgen）：
 //! `package()` 必须返回 [`BundleError::ToolMissing`]（`poly::E_BND_0001`）——「真机执行
@@ -491,7 +491,7 @@ fn lipo_archs_needs_macos_tooling() {
 
 // ------------------------------------------------- T-M2-08：iOS Packager
 
-/// 骨架路径：工程骨架四件套落盘 + archive→exportArchive→校验命令序。
+/// 骨架路径：工程骨架四件套落盘 + archive→Payload 直压→校验命令序。
 #[test]
 fn ipa_plan_generates_skeleton_project_and_export_chain() {
     let inputs = inputs("ipa-plan");
@@ -555,18 +555,18 @@ fn ipa_plan_generates_skeleton_project_and_export_chain() {
     let export = script("ExportOptions.plist");
     assert!(export.contains("<key>method</key><string>development</string>"));
 
-    // 命令序：archive（未签名）→ exportArchive → plutil -lint → xcrun lipo -info。
+    // 命令序：archive（未签名）→ 归档 Payload 直压 → plutil -lint → xcrun lipo -info。
     let lines: Vec<String> = plan.commands.iter().map(|c| c.line()).collect();
-    assert_eq!(plan.commands.len(), 4, "{lines:#?}");
+    assert_eq!(plan.commands.len(), 5, "{lines:#?}");
     let arg = |path: &Path| path.display().to_string();
     // 期望路径一律经生产同源函数 / 逐段 join 构造（与 `build_commands` 同构）：
     // `join("a/b")` 在 Windows 得 `\`+`/` 混合分隔符，与产物不一致。
     let name = &inputs.product.name;
     let project = Ios.project_path(&inputs, &spec("ipa")).unwrap();
     let archive = inputs.out_dir.join(format!("{name}.xcarchive"));
-    let export_options = inputs.out_dir.join("ExportOptions.plist");
     let export_dir = inputs.out_dir.join("export");
-    let app = export_dir.join("Payload").join(format!("{name}.app"));
+    let payload = export_dir.join("Payload");
+    let app = payload.join(format!("{name}.app"));
 
     let command = &plan.commands[0];
     assert_eq!(
@@ -592,28 +592,42 @@ fn ipa_plan_generates_skeleton_project_and_export_chain() {
     );
 
     let command = &plan.commands[1];
+    assert_eq!(command.program, "ditto", "归档产物拷入 Payload：{lines:#?}");
     assert_eq!(
         command.args,
         vec![
-            "-exportArchive".to_string(),
-            "-archivePath".to_string(),
-            arg(&archive),
-            "-exportOptionsPlist".to_string(),
-            arg(&export_options),
-            "-exportPath".to_string(),
-            arg(&export_dir),
+            arg(&archive
+                .join("Products")
+                .join("Applications")
+                .join(format!("{name}.app"))),
+            arg(&app),
         ],
         "{lines:#?}"
     );
 
     let command = &plan.commands[2];
+    assert_eq!(command.program, "ditto");
+    assert_eq!(
+        command.args,
+        vec![
+            "-c".to_string(),
+            "-k".to_string(),
+            "--sequesterRsrc".to_string(),
+            "--keepParent".to_string(),
+            arg(&payload),
+            arg(&export_dir.join(format!("{name}.ipa"))),
+        ],
+        "未签名 IPA = Payload 直压（选项须先于操作数）：{lines:#?}"
+    );
+
+    let command = &plan.commands[3];
     assert_eq!(command.program, "plutil");
     assert_eq!(
         command.args,
         vec!["-lint".to_string(), arg(&app.join("Info.plist")),],
         "Info.plist 语法校验：{lines:#?}"
     );
-    let command = &plan.commands[3];
+    let command = &plan.commands[4];
     assert_eq!(command.program, "xcrun");
     assert_eq!(
         command.args,
@@ -627,7 +641,7 @@ fn ipa_plan_generates_skeleton_project_and_export_chain() {
 }
 
 /// 复用路径：宿主工程 `ios/<产品名>.xcodeproj` 在位即复用（不落骨架脚本），
-/// ExportOptions.plist 仍须写出（exportArchive 的必需输入）。
+/// ExportOptions.plist 仍须写出（T-M2-10 签名导出的输入）。
 #[test]
 fn ipa_plan_reuses_host_project_when_present() {
     let mut inputs = inputs("ipa-reuse");

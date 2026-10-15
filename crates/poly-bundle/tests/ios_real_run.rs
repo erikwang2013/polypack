@@ -1,14 +1,14 @@
 //! T-M2-14 真跑（`POLY_CONTRACT_REAL=1` + macOS 宿主 + Xcode + rustup Apple triple）：
 //! 夹具核心静态库 → cargo 交叉编译三 triple → lipo 合并切片 → `xcodebuild -create-xcframework`
-//! → 工程骨架 → `xcodebuild archive` / `exportArchive` → 未签名 IPA（含结构断言）。
+//! → 工程骨架 → `xcodebuild archive` → 归档 `Payload/` 直压 → 未签名 IPA（含结构断言）。
 //!
 //! 默认 mock 模式 / 非 macOS 宿主 / 缺 Xcode 或 Apple triple 一律 SKIP 后返回（绝不红）——
 //! 与 M1 契约测试同一 SKIP 纪律（`crates/poly-cli/tests/contract_m1.rs`）。这一份是
 //! 「iOS 链路在真机上确实跑通」的证据；mock 侧的命令组装断言见 `packagers_ios.rs`。
 //!
-//! shortcut: 未签名归档经 `exportArchive` 导出依赖 Xcode 接受 `signingStyle = manual` +
-//! 空 team（无证书的 CI 上唯一可行路径）；Xcode 版本若拒收，nightly 以 stderr 为准调整
-//! 导出方式（`POLY_IOS_EXPORT_METHOD`）或改用 zip 归档 `Payload/`。
+//! 未签名 IPA 走 `ditto -c -k` 直压（不经 `exportArchive`）：无 Team 的未签名归档在
+//! `-exportArchive` 下必失败（macos-14 真跑实证「No Team Found in Archive」）。
+//! `exportArchive` 留给 T-M2-10 的签名导出（`POLY_IOS_EXPORT_METHOD` / ExportOptions.plist）。
 
 mod common;
 
@@ -153,7 +153,7 @@ fn spec() -> TargetSpec {
     spec
 }
 
-/// 真跑全链路：T-M2-03 切片链 + T-M2-08 archive / exportArchive → 未签名 IPA。
+/// 真跑全链路：T-M2-03 切片链 + T-M2-08 archive / Payload 直压 → 未签名 IPA。
 #[test]
 fn ios_end_to_end_builds_unsigned_ipa() {
     if !prerequisites() {
@@ -191,7 +191,7 @@ fn ios_end_to_end_builds_unsigned_ipa() {
         "simulator 切片须双架构合一：{sim:?}"
     );
 
-    // T-M2-08：骨架工程 + 真 xcodebuild archive / exportArchive。
+    // T-M2-08：骨架工程 + 真 xcodebuild archive + 归档 Payload 直压。
     let ipa = Ios.package(&inputs, &spec).expect("IPA 真跑");
     assert_eq!(ipa.format, "ipa");
     assert!(

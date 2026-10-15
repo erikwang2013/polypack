@@ -52,6 +52,11 @@ jobs:
       - name: Android SDK（cmdline-tools + sdkmanager）
         if: env.POLY_CONTRACT_REAL == '1'
         uses: android-actions/setup-android@v3
+        with:
+          # 关掉 action 自带的许可接受：它在本 runner 上会卡在「(y/N)?」后失败
+          # （真模式 dispatch 38688497283 实证，失败在本步、我们的修复步还没轮到）。
+          # 接受职责全交给下一步的 `yes | sdkmanager --licenses`。
+          accept-android-sdk-licenses: "false"
 
       - name: build-tools / platform 与 bundletool（真跑）
         if: env.POLY_CONTRACT_REAL == '1'

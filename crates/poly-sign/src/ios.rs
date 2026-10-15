@@ -23,8 +23,9 @@
 //! 执行函数在动手前返回 [`SignError::ToolMissing`]（`poly::E_SIG_0001`）；`plan_*` 为纯组装，
 //! 任意宿主可跑（mock 契约测试的基础），真机链路由 T-M2-14 nightly（macos-14）覆盖。
 //!
-//! shortcut: 链作用于可签产物本体（`.app`）；它与 T-M2-08 `exportArchive` 的先后次序
-//! （先签后导 / 导出后签）由 poly-cli 集成时定，接入方按产物形态组合 `plan_*`。
+//! shortcut: 链作用于可签产物本体（`.app`）；它与 T-M2-08 IPA 产出的先后次序
+//! （未签名路径为 Payload 直压，有 Team 时回归 `exportArchive`；先签后导 / 导出后签）
+//! 由 poly-cli 集成时定，接入方按产物形态组合 `plan_*`。
 
 use std::path::{Path, PathBuf};
 

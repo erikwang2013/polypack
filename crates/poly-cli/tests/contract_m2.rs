@@ -5,7 +5,7 @@
 //! - **mock（默认，每提交）**：①两端在 `poly-targets` 内建注册表中的声明（格式 / 打包器 /
 //!   校验器 / 签名引用 / 扩展名）与金样逐字段一致；②金样自检（`artifacts[*]` 的 format /
 //!   extension / entries 形态，空条目即失败——防金样空转）；③直连 `poly_bundle` 公开 API：
-//!   打包器 id / format 与金样一致，iOS 的计划含骨架 + archive / exportArchive 链。
+//!   打包器 id / format 与金样一致，iOS 的计划含骨架 + archive / Payload 直压链。
 //!   漂移即失败并打印 `- 声明 / + 金样` diff。
 //! - **real（`POLY_CONTRACT_REAL=1`，每夜）**：`poly init` → `poly build --target <t>` →
 //!   产物（`.aab` / `.ipa`）zip 条目 ↔ 金样 `entries` 比对；条目缺失即失败并给出 diff，
@@ -185,7 +185,7 @@ fn assert_packager_registered(target: &str) {
 }
 
 /// mock：iOS 计划链（`plan()` 为纯组装，无需 Apple 工具——任意宿主可跑）：
-/// 骨架脚本 + archive / exportArchive + 产物校验命令必须在位。
+/// 骨架脚本 + archive / Payload 直压 + 产物校验命令必须在位。
 #[test]
 fn ios_plan_chain_matches_golden_contract() {
     // 目录名必须与 real 用例（`poly-contract-m2-{target}-{pid}`）区分：同进程并行跑，
@@ -229,9 +229,10 @@ fn ios_plan_chain_matches_golden_contract() {
     for marker in [
         "project.pbxproj",         // 工程骨架
         "xcscheme",                // 共享 scheme（裸 CI 无自动生成）
-        "ExportOptions.plist",     // 导出方式（exportArchive 的必需输入）
+        "ExportOptions.plist",     // 导出方式（T-M2-10 签名导出的输入）
         "archive",                 // xcodebuild archive
-        "-exportArchive",          // xcodebuild -exportArchive
+        "ditto",                   // 归档 Payload 直压（exportArchive 需 Team，真跑实证）
+        "--keepParent",            // 选项须先于操作数（BSD getopt，zipalign 同坑）
         "CODE_SIGNING_ALLOWED=NO", // 未签名归档（签名位由 T-M2-10 接入）
     ] {
         assert!(blob.contains(marker), "iOS 计划链缺 {marker}：\n{blob}");

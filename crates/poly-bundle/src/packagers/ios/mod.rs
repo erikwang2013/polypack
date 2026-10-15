@@ -1,11 +1,13 @@
-//! iOS 打包器（T-M2-08）：Xcode 工程骨架生成/复用 + `xcodebuild archive` + `exportArchive`
-//! 直出未签名 IPA。
+//! iOS 打包器（T-M2-08）：Xcode 工程骨架生成/复用 + `xcodebuild archive`（未签名）+
+//! 归档 `Payload/` 直压出未签名 IPA。
 //!
 //! - **工程来源**：`inputs.ios.host_project` 下已有 `<产品名>.xcodeproj`（RN 宿主模板，
 //!   T-M2-04）即复用；否则生成最小工程骨架（pbxproj + Info.plist + App.swift +
 //!   ExportOptions.plist），链接 [swift](T-M2-03) 的 XCFramework 与 Swift 绑定。
 //! - **未签名产物**：archive 阶段 `CODE_SIGNING_ALLOWED=NO`（签名位由 T-M2-10 poly-sign
-//!   iOS 链路接入）；导出方式经 `POLY_IOS_EXPORT_METHOD` 可配（缺省 `development`）。
+//!   iOS 链路接入）；IPA 由归档 `Payload/` 经 `ditto -c -k` 直压——`exportArchive` 对无 Team
+//!   的未签名归档必失败（真跑实证），该命令留给 T-M2-10 签名流。导出方式经
+//!   `POLY_IOS_EXPORT_METHOD` 可配（缺省 `development`，写入 ExportOptions.plist）。
 //! - **宿主门控**：仅 macOS 宿主可执行（`xcodebuild` / `plutil` / `xcrun`）——非 macOS
 //!   `package()` 在动手前返回 [`BundleError::ToolMissing`]；`plan()` 为纯组装，任意宿主可跑。
 //! - 证书 / 描述文件只以凭据引用出现（T-M2-11 模型）：打包阶段不接触密钥材料。
@@ -73,7 +75,8 @@ impl Packager for Ios {
             });
         }
         let method = export_method()?;
-        // ExportOptions.plist 是 exportArchive 的必需输入：骨架与复用路径都要落盘。
+        // ExportOptions.plist：T-M2-10 签名导出的输入（未签名路径不经 exportArchive），
+        // 骨架与复用路径都落盘。
         let mut plan = BundlePlan::new()
             .with_script(export_options_path(inputs), export_options_plist(&method));
 
@@ -108,10 +111,10 @@ impl Packager for Ios {
         swift::validate_xcframework_layout(&inputs.out_dir)?;
 
         fsutil::write_scripts(&plan)?;
-        // `-exportPath` 父目录（out_dir）由骨架脚本落盘建立；`export/` 叶子是否由
-        // xcodebuild 自建本机无从验证（macOS-only）——先幂等铺好，省一次真跑往返。
+        // 导出目录 + Payload 先铺：`ditto` 只保证建最终目录，中间层幂等先建（重跑安全）。
         let export_dir = export_dir(inputs);
-        std::fs::create_dir_all(&export_dir).map_err(io_err(&export_dir))?;
+        let payload = export_dir.join("Payload");
+        std::fs::create_dir_all(&payload).map_err(io_err(&payload))?;
         exec::run_all(&plan.commands)?;
 
         let ipa = find_ipa(&export_dir).ok_or(BundleError::MissingInput {
@@ -129,8 +132,9 @@ impl Packager for Ios {
                 "证书 / 描述文件只以凭据引用出现（T-M2-11 模型）：打包阶段不接触密钥材料"
                     .to_string(),
                 format!(
-                    "导出方式 {method}（{} 可覆写）；archive 内含 Info.plist 与架构（plutil / \
-                     xcrun lipo）校验",
+                    "未签名 IPA = 归档 `<产品名>.xcarchive/Products/Applications` 经 `ditto -c -k` \
+                     直压 Payload（不经 exportArchive：无 Team 的未签名归档必失败，真跑实证）；\
+                     导出方式 {method}（{} 可覆写）写入 ExportOptions.plist，供 T-M2-10 签名流",
                     EXPORT_METHOD_ENV
                 ),
                 "真机执行阻塞（宿主）：xcodebuild archive / exportArchive 仅 macOS 宿主可跑；\
@@ -641,7 +645,13 @@ fn build_commands(project: &Path, inputs: &BundleInputs) -> Vec<Command> {
     let name = &inputs.product.name;
     let archive = inputs.out_dir.join(format!("{name}.xcarchive"));
     let export = export_dir(inputs);
-    let app = export.join("Payload").join(format!("{name}.app"));
+    let payload = export.join("Payload");
+    let app = payload.join(format!("{name}.app"));
+    let ipa = export.join(format!("{name}.ipa"));
+    let archived = archive
+        .join("Products")
+        .join("Applications")
+        .join(format!("{name}.app"));
     vec![
         Command::new(
             "xcodebuild",
@@ -663,16 +673,20 @@ fn build_commands(project: &Path, inputs: &BundleInputs) -> Vec<Command> {
                 "CODE_SIGN_IDENTITY=".into(),
             ],
         ),
+        // 未签名 IPA = 归档产物 → `Payload/` → `ditto -c -k` 直压。`-exportArchive` 对无 Team
+        // 的未签名归档必失败（macos-14 真跑实证「No Team Found in Archive」）；签名导出
+        // （T-M2-10）到位后换回 `-exportArchive`——ExportOptions.plist 即其输入，已随骨架落盘。
+        // 选项须先于操作数：BSD getopt 停在首个非选项（Android zipalign 同坑）。
+        Command::new("ditto", [path_arg(&archived), path_arg(&app)]),
         Command::new(
-            "xcodebuild",
+            "ditto",
             [
-                "-exportArchive".into(),
-                "-archivePath".into(),
-                path_arg(&archive),
-                "-exportOptionsPlist".into(),
-                path_arg(&export_options_path(inputs)),
-                "-exportPath".into(),
-                path_arg(&export),
+                "-c".into(),
+                "-k".into(),
+                "--sequesterRsrc".into(),
+                "--keepParent".into(),
+                path_arg(&payload),
+                path_arg(&ipa),
             ],
         ),
         // 产物校验（T-M2-08 验收）：Info.plist 语法 + 架构
