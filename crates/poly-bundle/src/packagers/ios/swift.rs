@@ -393,7 +393,9 @@ fn lib_name(ios: &IosInputs) -> Result<&str, BundleError> {
 }
 
 /// cargo 产物静态库（`<core_crate>/target/<triple>/release/lib<lib>.a`）。
-fn built_lib(core_crate: &Path, triple: &str, lib_name: &str) -> PathBuf {
+///
+/// `pub` 供契约测试复用同一构造：逐段 `join`（Windows 分隔符与产物一致）。
+pub fn built_lib(core_crate: &Path, triple: &str, lib_name: &str) -> PathBuf {
     core_crate
         .join("target")
         .join(triple)

@@ -590,7 +590,18 @@ fn dex_entries(
             path_arg(&stage.dex_dir),
         ];
         args.extend(jars.iter().map(|jar| path_arg(jar)));
-        exec::run(&with_source_date(Command::new(path_arg(d8), args)))?;
+        if let Err(err) = exec::run(&with_source_date(Command::new(path_arg(d8), args))) {
+            // d8 由 java 驱动，老 JDK（< 17）的失败表现是 java 类加载栈（sun.misc.Launcher…），
+            // 用户读不出修复动作：探测 `java -version`，把「需要 JDK 17+」作为修复提示
+            // （`hint`，经 poly-cli 接到 Diagnostic）。探测不到（无 java / 输出不可解析）不遮蔽原错误。
+            let java = path_arg(tools.java.as_deref().unwrap_or(Path::new("java")));
+            let version = exec::run(&Command::new(java, ["-version"]))
+                .map(|out| String::from_utf8_lossy(&out.stderr).into_owned());
+            return Err(match version.ok().and_then(|v| old_jdk_hint(&v)) {
+                Some(hint) => err.with_hint(hint),
+                None => err,
+            });
+        }
         for entry in std::fs::read_dir(&stage.dex_dir).map_err(io_err(&stage.dex_dir))? {
             let path = entry.map_err(io_err(&stage.dex_dir))?.path();
             if is_dex(&path) {
@@ -613,6 +624,28 @@ fn dex_entries(
         });
     }
     Ok(entries)
+}
+
+/// `java -version`（stderr）里的主版本 < 17 → 修复提示，否则 `None`。
+///
+/// 文件名后缀随平台（windows 上 java.exe——类加载栈同样出在老 JDK 上）；老式 `1.x` 命名
+/// （`"1.8.0_402"` → 8）与 JEP 223（`"17.0.10"` → 17）都认。
+fn old_jdk_hint(version_output: &str) -> Option<String> {
+    let (_, rest) = version_output.split_once('"')?;
+    let (version, _) = rest.split_once('"')?;
+    let mut parts = version.split(['.', '_', '-']);
+    let first = parts.next()?;
+    let major: u32 = if first == "1" {
+        parts.next()?.parse().ok()?
+    } else {
+        first.parse().ok()?
+    };
+    (major < 17).then(|| {
+        format!(
+            "检测到 JDK {major}（Android 构建链需要 JDK 17+）：d8 由 java 驱动，\
+             老 JDK 在类加载阶段就失败。安装 / 切换 JDK 17+（如 Temurin 17）后重试"
+        )
+    })
 }
 
 /// （zip 内路径, 源文件）对。
@@ -750,6 +783,24 @@ fn path_arg(path: &Path) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn old_jdk_failures_get_a_fix_hint_not_a_stack() {
+        // 样本取自真实 `java -version` 输出（stderr）：老式 1.x 命名与 JEP 223 都要解析出来。
+        let java8 =
+            "java version \"1.8.0_402\"\nJava(TM) SE Runtime Environment (build 1.8.0_402-b06)\n";
+        let hint = old_jdk_hint(java8).expect("JDK 8 需要提示");
+        assert!(hint.contains("JDK 8") && hint.contains("JDK 17+"), "{hint}");
+        assert!(
+            old_jdk_hint("openjdk version \"11.0.22\" 2024-01-16\n")
+                .expect("JDK 11 需要提示")
+                .contains("JDK 11")
+        );
+        // ≥ 17 与不可解析的输出：不给提示（不遮蔽 d8 自己的错误）。
+        assert!(old_jdk_hint("openjdk version \"17.0.10\" 2024-01-16\n").is_none());
+        assert!(old_jdk_hint("openjdk version \"18.0.2.1\" 2022-08-18\n").is_none());
+        assert!(old_jdk_hint("no version here").is_none());
+    }
 
     #[test]
     fn version_code_is_derived_from_semver() {

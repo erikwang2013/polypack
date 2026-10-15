@@ -60,6 +60,7 @@ pub fn run(command: &Command) -> Result<Output, BundleError> {
                 command: command.line(),
                 status: "spawn-failed".to_string(),
                 stderr: source.to_string(),
+                hint: None,
             }
         }
     })?;
@@ -72,6 +73,7 @@ pub fn run(command: &Command) -> Result<Output, BundleError> {
                 .code()
                 .map_or_else(|| "signal".to_string(), |c| c.to_string()),
             stderr: tail(&stderr, 800),
+            hint: None,
         });
     }
     Ok(output)
@@ -147,10 +149,18 @@ mod tests {
             Command::new("sh", ["-c", "echo boom >&2; exit 3"])
         };
         let err = run(&failing).expect_err("非零退出");
-        match err {
-            BundleError::ToolFailed { status, stderr, .. } => {
+        match &err {
+            BundleError::ToolFailed {
+                status,
+                stderr,
+                hint,
+                ..
+            } => {
                 assert_eq!(status, "3");
                 assert!(stderr.contains("boom"), "stderr 须带诊断：{stderr}");
+                // 无调用点补充时：hint 为空，`hint()` 走通用话术（CLI 接 Diagnostic）。
+                assert!(hint.is_none());
+                assert!(err.hint().is_some_and(|h| h.contains("stderr")));
             }
             other => panic!("期望 ToolFailed，实得 {other:?}"),
         }

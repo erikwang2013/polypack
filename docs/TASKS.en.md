@@ -3,7 +3,7 @@
 > Derived from the milestone breakdown in [ROADMAP.en.md](ROADMAP.en.md) §9; produced in parallel by a four-person planning group and merged after cross-reconciliation: **116 tasks**, all cross-milestone references verified in two passes (existence + description match, zero dangling), Chinese/English task IDs aligned one-to-one.
 > Chinese original: [TASKS.md](TASKS.md). This file falls under the documentation sync convention (ROADMAP §11): task additions/removals must land in both files in the same commit, and drift is caught in CI by the structural checker delivered in T-M0-10.
 > Extension directions (E1–E8) are incubated and intentionally absent from this task table — see [ROADMAP.en.md](ROADMAP.en.md) §13.
-> Progress (2026-10-15): **M0 11/11** · **M1 delivered 15/15** (11 ✅; the matching CI legs for T-M1-02/05/06/07 are green — remaining tool-level notes live in the task entries) · **M2 delivered 15/15** (5 ✅: T-M2-06/07/09/11/15; T-M2-01/02/03/04/05/08/10/12/13/14 carry host/stage/settings notes — see each entry) · **CI green on all three hosts** (rust-ci#38654820649) plus four new M2 workflows (secret-scan ×3 hosts / mobile-contract mock-per-push + nightly real / bridge nightly real).
+> Progress (2026-10-15): **M0 11/11** · **M1 delivered 15/15** (11 ✅; the matching CI legs for T-M1-02/05/06/07 are green — remaining tool-level notes live in the task entries) · **M2 delivered 15/15** (6 ✅: T-M2-02/06/07/09/11/15; T-M2-01/03/04/05/08/10/12/13/14 carry host/stage/settings notes — see each entry) · **CI green on all three hosts** (rust-ci#38654820649) plus four new M2 workflows (secret-scan ×3 hosts / mobile-contract mock-per-push + nightly real / bridge nightly real).
 
 ## Team roster
 
@@ -272,7 +272,7 @@
 - Deliverable: workspace interface generator: from one Rust interface definition it emits Kotlin and Swift bindings (uniffi), versioned as `bridge/v1`; the generator structure keeps napi / wasm-bindgen / cffi outlets open (consumed by M3) so no bridge is ever hand-written four times.
 - Acceptance: one command emits both binding sets for the sample core and both toolchains compile them; an interface change busts the library-level cache (cache key includes the interface digest); generated output matches the actual Rust export signatures (test assertion).
 
-### T-M2-02 · Kotlin/JNI binding artifact (AAR) (dual-ABI real cross-compile; AAR 499,948 B byte-identical on re-run; on-device loadLibrary pending — substitution: library-name/symbol three-way alignment asserts)
+### T-M2-02 · ✅ Kotlin/JNI binding artifact (AAR) (dual-ABI real cross-compile; AAR 499,948 B byte-identical on re-run; emulator three-layer evidence: loadLibrary + real dlsym calls add(2,3)=5 + full Kotlin→JNA→Rust chain; arm64 ELF-symbol-level only, app_process boundary noted)
 
 - Role: core
 - Deps: T-M2-01, T-M1-09

@@ -64,6 +64,8 @@ pub enum BundleError {
         status: String,
         /// 诊断所用的 stderr 尾部。
         stderr: String,
+        /// 调用点补充的修复提示（如 d8 失败 + 老 JDK）；`None` 走 [`Self::hint`] 的通用话术。
+        hint: Option<String>,
     },
     /// 文件系统操作失败。
     #[error("产物 IO 失败：{path}")]
@@ -119,12 +121,26 @@ impl BundleError {
             Self::InvalidInput { .. } => {
                 Some("产品名 / 版本 / 标识只允许字母数字与有限标点（见 ProductInfo::validate）")
             }
-            Self::ToolFailed { .. } => Some("查看上方 stderr；打包脚本与命令已落盘，可手动重跑"),
+            Self::ToolFailed { hint, .. } => hint
+                .as_deref()
+                .or(Some("查看上方 stderr；打包脚本与命令已落盘，可手动重跑")),
             Self::Io { .. } => Some("检查输出目录权限与磁盘空间"),
             Self::Archive { .. } => Some(
                 "归档由本工具链产出（aapt2 / bundletool / zip 组装），结构非法多为工具版本不匹配",
             ),
         }
+    }
+
+    /// 覆盖 [`Self::ToolFailed`] 的修复提示（其他变体原样返回）。
+    ///
+    /// 调用点比 `exec::run` 更清楚失败语境时用（如 d8 失败 + JDK < 17）；提示经
+    /// [`Self::hint`] 由 poly-cli 接到 `Diagnostic::with_hint`，用户看到的是修复动作而非 java 堆栈。
+    #[must_use]
+    pub fn with_hint(mut self, hint: String) -> Self {
+        if let Self::ToolFailed { hint: slot, .. } = &mut self {
+            *slot = Some(hint);
+        }
+        self
     }
 }
 

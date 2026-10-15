@@ -31,6 +31,14 @@ jobs:
         if: runner.os == 'Linux'
         run: sudo apt-get update -qq && sudo apt-get install -y -qq librsvg2-bin imagemagick desktop-file-utils
 
+      # Android 链真跑（runner 自带 SDK）需要现代 JDK：d8 在默认 Java 8 下
+      # checkAndLoadMain 失败（windows 腿实证）；与 mobile-contract 的 setup-java 对齐
+      - name: 安装 JDK 17（测试真跑：d8/apksigner/bundletool）
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
       - name: cargo fmt --check
         run: cargo fmt --check
 

@@ -194,6 +194,8 @@ fn swift_plan_assembles_cargo_lipo_chain_and_reuses_bindings() {
     }
 
     // simulator 双架构经 lipo 合并为切片内单一静态库。
+    // 期望路径一律经生产同源函数（`built_lib` / `slice_lib_path`）构造：`join("a/b")`
+    // 在 Windows 得 `\`+`/` 混合分隔符（`Path::join` 不归一化），与产物不一致。
     let core = inputs.ios.as_ref().unwrap().core_crate.as_ref().unwrap();
     let arg = |path: &Path| path.display().to_string();
     let command = &plan.commands[3];
@@ -202,14 +204,8 @@ fn swift_plan_assembles_cargo_lipo_chain_and_reuses_bindings() {
         command.args,
         vec![
             "-create".to_string(),
-            arg(&core.join(format!(
-                "target/{}/release/lib{LIB}.a",
-                swift::SIM_ARM64_TRIPLE
-            ))),
-            arg(&core.join(format!(
-                "target/{}/release/lib{LIB}.a",
-                swift::SIM_X86_64_TRIPLE
-            ))),
+            arg(&swift::built_lib(core, swift::SIM_ARM64_TRIPLE, LIB)),
+            arg(&swift::built_lib(core, swift::SIM_X86_64_TRIPLE, LIB)),
             "-output".to_string(),
             arg(&swift::slice_lib_path(
                 &inputs.out_dir,
@@ -288,12 +284,9 @@ fn swift_plan_generates_bindings_when_absent() {
         vec![
             "generate".to_string(),
             "--library".to_string(),
-            core.join(format!(
-                "target/{}/release/lib{LIB}.a",
-                swift::DEVICE_TRIPLE
-            ))
-            .display()
-            .to_string(),
+            swift::built_lib(core, swift::DEVICE_TRIPLE, LIB)
+                .display()
+                .to_string(),
             "--language".to_string(),
             "swift".to_string(),
             "--out-dir".to_string(),
@@ -367,11 +360,7 @@ fn stage_slices_lands_modulemap_and_headers_for_both_slices() {
     let device_a = slices.join(swift::DEVICE_SLICE).join(format!("lib{LIB}.a"));
     assert_eq!(
         std::fs::read(&device_a).unwrap(),
-        std::fs::read(core.join(format!(
-            "target/{}/release/lib{LIB}.a",
-            swift::DEVICE_TRIPLE
-        )))
-        .unwrap(),
+        std::fs::read(swift::built_lib(core, swift::DEVICE_TRIPLE, LIB)).unwrap(),
         "device 切片须为核心 crate 产物本体"
     );
     for slice in [swift::DEVICE_SLICE, swift::SIM_SLICE] {
@@ -539,12 +528,14 @@ fn ipa_plan_generates_skeleton_project_and_export_chain() {
     let lines: Vec<String> = plan.commands.iter().map(|c| c.line()).collect();
     assert_eq!(plan.commands.len(), 4, "{lines:#?}");
     let arg = |path: &Path| path.display().to_string();
-    let project = inputs.out_dir.join("ios-skeleton/Pax Notes.xcodeproj");
-    let archive = inputs.out_dir.join("Pax Notes.xcarchive");
-    // 期望值一律 join + display 构造：参数里的分隔符随宿主（Windows 是 `\`）
+    // 期望路径一律经生产同源函数 / 逐段 join 构造（与 `build_commands` 同构）：
+    // `join("a/b")` 在 Windows 得 `\`+`/` 混合分隔符，与产物不一致。
+    let name = &inputs.product.name;
+    let project = Ios.project_path(&inputs, &spec("ipa")).unwrap();
+    let archive = inputs.out_dir.join(format!("{name}.xcarchive"));
     let export_options = inputs.out_dir.join("ExportOptions.plist");
     let export_dir = inputs.out_dir.join("export");
-    let app = export_dir.join("Payload/Pax Notes.app");
+    let app = export_dir.join("Payload").join(format!("{name}.app"));
 
     let command = &plan.commands[0];
     assert_eq!(
@@ -610,7 +601,12 @@ fn ipa_plan_generates_skeleton_project_and_export_chain() {
 fn ipa_plan_reuses_host_project_when_present() {
     let mut inputs = inputs("ipa-reuse");
     let host = inputs.out_dir.join("host");
-    std::fs::create_dir_all(host.join("ios/Pax Notes.xcodeproj")).unwrap();
+    // 复用位与 `resolve_project` 同构（`host/ios/<产品名>.xcodeproj`），
+    // 期望侧不再手写 `join("ios/…")`（Windows 分隔符会与产物不一致）。
+    let project = host
+        .join("ios")
+        .join(format!("{}.xcodeproj", inputs.product.name));
+    std::fs::create_dir_all(&project).unwrap();
     inputs.ios.as_mut().unwrap().host_project = Some(host.clone());
 
     let plan = Ios.plan(&inputs, &spec("ipa")).expect("plan");
@@ -637,14 +633,11 @@ fn ipa_plan_reuses_host_project_when_present() {
     assert!(
         plan.commands[1]
             .line()
-            .contains(&host.join("ios/Pax Notes.xcodeproj").display().to_string()),
+            .contains(&project.display().to_string()),
         "archive 须指向宿主工程：{}",
         plan.commands[1].line()
     );
-    assert_eq!(
-        Ios.project_path(&inputs, &spec("ipa")).unwrap(),
-        host.join("ios/Pax Notes.xcodeproj")
-    );
+    assert_eq!(Ios.project_path(&inputs, &spec("ipa")).unwrap(), project);
 }
 
 /// 缺桥产物 / 输入缺项：响亮拒绝（E_BND_0002），绝不「打包成功但装不上」。

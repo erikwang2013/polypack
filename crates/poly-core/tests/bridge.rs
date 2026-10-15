@@ -362,6 +362,12 @@ fn aar_layout_is_the_consumer_contract() {
             "jni/x86_64/libpax_core-x86_64.so",
         ]
     );
+    // 分隔符不变式单列：Windows 上 `\` 条目名能被「照抄 CI 输出」修成假绿，这条盯死
+    assert!(
+        entry_names(&out).iter().all(|name| !name.contains('\\')),
+        "zip 条目名恒用 `/` 分隔：{:?}",
+        entry_names(&out)
+    );
     let xml = String::from_utf8(entry_bytes(&out, "AndroidManifest.xml")).expect("清单是 UTF-8");
     assert!(xml.contains("package=\"pax\""), "{xml}");
     assert!(xml.contains("minSdkVersion=\"24\""), "{xml}");

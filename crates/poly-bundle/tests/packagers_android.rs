@@ -494,14 +494,16 @@ fn plan_shape_covers_aapt2_and_bundletool() {
 
     // 命令：compile → 二进制 link → proto link →（有 bundletool 时）三条 java -jar。
     let lines: Vec<String> = plan.commands.iter().map(|c| c.line()).collect();
+    // 程序名带平台后缀（windows 上 aapt2.exe）：按配置的工具路径断言，不用字面 "aapt2"。
+    let aapt2 = tools.aapt2.display().to_string();
     // compile 带 cwd（源路径嵌进 proto 资源表，相对路径才跨构建目录一致）→ 行尾是 `)`。
     assert!(
-        lines[0].contains("aapt2 compile --dir generated-res")
+        lines[0].contains(&format!("{aapt2} compile --dir generated-res"))
             && lines[0].ends_with("generated-res.zip)"),
         "{lines:?}"
     );
-    assert!(lines[1].contains("aapt2 link -o") && !lines[1].contains("--proto-format"));
-    assert!(lines[2].contains("aapt2 link --proto-format -o"));
+    assert!(lines[1].contains(&format!("{aapt2} link -o")) && !lines[1].contains("--proto-format"));
+    assert!(lines[2].contains(&format!("{aapt2} link --proto-format -o")));
     for line in &lines[1..3] {
         assert!(line.contains("--manifest"), "{line}");
         assert!(line.contains("--min-sdk-version 24"), "{line}");
@@ -516,10 +518,12 @@ fn plan_shape_covers_aapt2_and_bundletool() {
     }
     assert!(lines[1].contains(&tools.android_jar.display().to_string()));
 
-    if tools.bundletool.is_some() && tools.java.is_some() {
+    if let (Some(_), Some(java)) = (&tools.bundletool, &tools.java) {
         assert!(plan.skipped.is_empty(), "{:?}", plan.skipped);
         assert_eq!(lines.len(), 6, "aapt2 三条 + bundletool 三条：{lines:?}");
-        assert!(lines[3].contains("java -jar") && lines[3].contains("build-bundle"));
+        // 同 aapt2：程序名带平台后缀（windows 上 java.exe），按解析出的 java 路径断言。
+        let java = java.display().to_string();
+        assert!(lines[3].contains(&format!("{java} -jar")) && lines[3].contains("build-bundle"));
         assert!(lines[3].contains("--modules=") && lines[3].contains("--config="));
         assert!(lines[3].ends_with("--overwrite"), "{}", lines[3]);
         assert!(lines[4].contains("validate --bundle="), "{}", lines[4]);
@@ -550,7 +554,7 @@ fn bundletool_absent_degrades_without_faking() {
         .expect("降级计划仍可用");
     assert!(plan.skipped.iter().any(|s| s.tool == "bundletool"));
     assert!(
-        !plan.commands.iter().any(|c| c.line().contains("java -jar")),
+        !plan.commands.iter().any(|c| c.line().contains("-jar")),
         "缺 bundletool 时不得编排 java 命令"
     );
 

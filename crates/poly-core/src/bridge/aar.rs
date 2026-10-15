@@ -302,10 +302,14 @@ pub fn assemble(
         entries.push((format!("{JNI_DIR}/{}/{name}", abi.dir), so.clone()));
     }
     for file in collect_files(sources)? {
-        entries.push((
-            format!("{SOURCES_DIR}/{}", file.display()),
-            sources.join(&file),
-        ));
+        // zip 条目名恒用 `/` 分隔：Windows 上 `Path::display()` 会给 `\`，而 gradle/Java
+        // 只认 `/`（CI windows 腿实测条目名成了 `bridge-sources/uniffi\pax\pax.kt`）
+        let relative = file
+            .components()
+            .map(|part| part.as_os_str().to_string_lossy())
+            .collect::<Vec<_>>()
+            .join("/");
+        entries.push((format!("{SOURCES_DIR}/{relative}"), sources.join(&file)));
     }
     if let Some(jar) = classes_jar {
         entries.push(("classes.jar".to_string(), jar.to_path_buf()));
