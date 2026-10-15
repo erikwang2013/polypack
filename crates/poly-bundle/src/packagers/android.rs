@@ -137,12 +137,16 @@ impl Packager for AndroidAab {
             &stage.assembled,
         )?;
         if let Some(zipalign) = &tools.zipalign {
+            // 参数顺序：`<align>` 之前必须是全部选项（`zipalign [-f] [-p] <align> in out`）。
+            // 把 `-f` 写在 `<align>` 之后，Linux 的 glibc getopt 会重排、侥幸通过，而
+            // macOS/BSD getopt 在首个非选项处停止解析 → usage + exit 2（实测：
+            // `POSIXLY_CORRECT=1 zipalign -p 4 -f …` 在本机可复现同一条 usage）。
             exec::run(&with_source_date(Command::new(
                 path_arg(zipalign),
                 [
                     "-p".to_string(),
-                    "4".to_string(),
                     "-f".to_string(),
+                    "4".to_string(),
                     path_arg(&stage.assembled),
                     path_arg(&stage.apk),
                 ],

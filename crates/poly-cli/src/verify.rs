@@ -3,7 +3,9 @@
 //! 口径（最懒且够用）：只比对**本机宿主可达**的目标（`spec.hosts` 含 `current_host()`）；
 //! 同一份输入组装两次、落到两个不同的绝对目录
 //! （`<root>/.polypack/repro/<target>/{a,b}`），各自 `package()` 后比产物摘要：
-//! 文件产物的 `sha384-<base64>`（SRI），目录产物逐文件比（`sri::manifest_of`）。
+//! 文件产物的 `sha384-<base64>`（SRI），目录产物逐文件比（`sri::manifest_of`）；
+//! 打包器把一次构建拆成多件落盘时（Android：未签名 APK + AAB + .apks），同目录的其余
+//! 顶层文件也逐件比——T-M2-06 的验收字面要求「AAB 与 APK」都字节一致。
 //!
 //! 跳过语义与 `package` 阶段一致（宿主缺打包工具 / 输入未就绪 → 告警跳过并说明，不硬失败）；
 //! 但**全部目标都跳过**时以 `poly::E_VERIFY_0002` 报错——「一个都没比却报绿」是假绿。
@@ -135,8 +137,10 @@ fn compare(
     std::fs::remove_dir_all(&root).ok();
 
     let mut runs = Vec::new();
+    let mut run_dirs = Vec::new();
     for tag in ["a", "b"] {
         let out_dir = root.join(tag);
+        run_dirs.push(out_dir.clone());
         // 输入组装与 package 阶段共用同一实现（同一份输入，两次独立落点）；
         // `None` = 环境性缺失，该函数已告警并清掉暂存目录，跳过本目标即可
         let Some(inputs) = crate::package::assemble_inputs(project, spec, host, &out_dir, events)?
@@ -168,8 +172,14 @@ fn compare(
         return Ok(false);
     }
 
-    match compare_artifacts(a, b) {
-        Ok(digest) => {
+    // 声明产物之外，同目录的其余顶层文件（Android：未签名 APK + .apks）也逐件比，
+    // 两者任一不一致都收敛到同一条 E_VERIFY_0001
+    let compared = compare_artifacts(a, b).and_then(|digest| {
+        compare_sibling_files(&run_dirs[0], &run_dirs[1], &file_label(&a.path))
+            .map(|files| (digest, files))
+    });
+    match compared {
+        Ok((digest, files)) => {
             project::report(
                 "verify",
                 json,
@@ -179,6 +189,7 @@ fn compare(
                     "format": a.format,
                     "kind": kind_name(a.kind),
                     "digest": digest,
+                    "files": files,
                     "match": true,
                 }),
             );
@@ -278,6 +289,66 @@ fn compare_artifacts(a: &Artifact, b: &Artifact) -> Result<String, Vec<String>> 
             "产物形态不一致：a {:?}，b {:?}",
             kind_a, kind_b
         )]),
+    }
+}
+
+/// 二跑目录里的其余产物逐件比（返回已比对的文件名，稳定序）。
+///
+/// 打包器常把一次构建拆成多件落盘（Android：未签名 APK + AAB + .apks），只比「声明的产物」
+/// 会漏掉同目录的其余件。只取顶层**文件**：顶层目录是暂存中间物（`.stage`），里面的绝对路径
+/// 随落点变，比了必假红。`declared` 是已单独比过的声明产物名，跳过以免重复。
+fn compare_sibling_files(
+    dir_a: &Path,
+    dir_b: &Path,
+    declared: &str,
+) -> Result<Vec<String>, Vec<String>> {
+    /// 顶层文件（名 + 路径，按名排序）。
+    fn top_files(dir: &Path, declared: &str) -> Result<Vec<(String, PathBuf)>, String> {
+        let entries =
+            std::fs::read_dir(dir).map_err(|err| format!("{} 读取失败：{err}", dir.display()))?;
+        let mut files = Vec::new();
+        for entry in entries {
+            let entry = entry.map_err(|err| format!("{} 读取失败：{err}", dir.display()))?;
+            if !entry.file_type().is_ok_and(|kind| kind.is_file()) {
+                continue;
+            }
+            let name = entry.file_name().to_string_lossy().into_owned();
+            if name == declared {
+                continue;
+            }
+            files.push((name, entry.path()));
+        }
+        files.sort();
+        Ok(files)
+    }
+
+    let (files_a, files_b) = match (top_files(dir_a, declared), top_files(dir_b, declared)) {
+        (Ok(files_a), Ok(files_b)) => (files_a, files_b),
+        (Err(err), _) | (_, Err(err)) => return Err(vec![err]),
+    };
+    let mut compared = Vec::new();
+    let mut problems = Vec::new();
+    for (name, path_a) in &files_a {
+        match files_b.iter().find(|(other, _)| other == name) {
+            None => problems.push(format!("b 缺失: {name}")),
+            Some((_, path_b)) => match (digest_of_file(path_a), digest_of_file(path_b)) {
+                (Ok(digest_a), Ok(digest_b)) if digest_a == digest_b => compared.push(name.clone()),
+                (Ok(digest_a), Ok(digest_b)) => {
+                    problems.push(format!("摘要不符: {name}（a {digest_a}，b {digest_b}）"));
+                }
+                (Err(err), _) | (_, Err(err)) => problems.push(err),
+            },
+        }
+    }
+    for (name, _) in &files_b {
+        if !files_a.iter().any(|(other, _)| other == name) {
+            problems.push(format!("b 清单外新增: {name}"));
+        }
+    }
+    if problems.is_empty() {
+        Ok(compared)
+    } else {
+        Err(problems)
     }
 }
 
@@ -414,6 +485,52 @@ mod tests {
         assert_eq!(problems.len(), 1, "{problems:?}");
         assert!(problems[0].contains("a.apk"), "{problems:?}");
         assert!(problems[0].contains("b.apk"), "{problems:?}");
+
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    /// 同目录的其余产物逐件比（Android 三件套），声明的产物排除、顶层暂存目录排除。
+    #[test]
+    fn sibling_files_compare_covers_the_rest_of_the_run_dir() {
+        let root = std::env::temp_dir().join(format!("polypack-verify-sib-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        let (dir_a, dir_b) = (root.join("a"), root.join("b"));
+        for dir in [&dir_a, &dir_b] {
+            std::fs::create_dir_all(dir.join("app.stage")).expect("暂存目录可建");
+            std::fs::write(dir.join("app-0.1.0.aab"), b"declared").expect("写声明产物");
+            std::fs::write(dir.join("app-0.1.0-unsigned.apk"), b"apk").expect("写 APK");
+            std::fs::write(dir.join("app-0.1.0.apks"), b"apks").expect("写 APKS");
+            // 暂存中间物里是落点的绝对路径（两跑必然不同）：不进比对
+            std::fs::write(dir.join("app.stage/abs.txt"), dir.display().to_string())
+                .expect("写暂存件");
+        }
+        // 声明产物两跑不同：已被排除，不影响结论（它由 compare_artifacts 单独比）
+        std::fs::write(dir_b.join("app-0.1.0.aab"), b"declared-other").expect("改写声明产物");
+
+        let files = compare_sibling_files(&dir_a, &dir_b, "app-0.1.0.aab").expect("二跑应一致");
+        assert_eq!(
+            files,
+            vec!["app-0.1.0-unsigned.apk", "app-0.1.0.apks"],
+            "{files:?}"
+        );
+
+        std::fs::write(dir_b.join("app-0.1.0.apks"), b"other").expect("改写 b 的 APKS");
+        let problems = compare_sibling_files(&dir_a, &dir_b, "app-0.1.0.aab")
+            .expect_err("APKS 不同应报不一致");
+        assert_eq!(problems.len(), 1, "{problems:?}");
+        assert!(
+            problems[0].contains("摘要不符: app-0.1.0.apks"),
+            "{problems:?}"
+        );
+
+        std::fs::write(dir_b.join("app-0.1.0.apks"), b"apks").expect("还原 b");
+        std::fs::remove_file(dir_b.join("app-0.1.0-unsigned.apk")).expect("b 缺件");
+        let problems =
+            compare_sibling_files(&dir_a, &dir_b, "app-0.1.0.aab").expect_err("b 缺件应报不一致");
+        assert!(
+            problems[0].contains("b 缺失: app-0.1.0-unsigned.apk"),
+            "{problems:?}"
+        );
 
         let _ = std::fs::remove_dir_all(&root);
     }

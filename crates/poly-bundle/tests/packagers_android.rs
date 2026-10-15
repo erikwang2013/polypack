@@ -693,6 +693,21 @@ fn package_builds_unsigned_apk_and_aab() {
     assert!(badging.contains("native-code: 'arm64-v8a'"), "{badging}");
     assert!(notes.contains("aapt2 dump badging：package:"), "{notes}");
 
+    // zipalign 的**结果**断言（不信命令本身）：参数顺序错了 Linux 也能侥幸通过，只有
+    // 校验能抓住——见 android.rs 里 `-p -f 4` 顺序的注释（macOS getopt 不容忍另一种写法）。
+    if let Some(zipalign) = &tools.zipalign {
+        let check = Command::new(zipalign)
+            .args(["-c", "-p", "4"])
+            .arg(&apk)
+            .output()
+            .expect("跑 zipalign -c");
+        assert!(
+            check.status.success(),
+            "APK 未按 4 字节 + 页对齐（zipalign -c -p 4）：{}",
+            String::from_utf8_lossy(&check.stderr)
+        );
+    }
+
     if tools.bundletool.is_some() && tools.java.is_some() {
         assert!(
             artifact.path.ends_with("pax-notes-1.2.3.aab"),
@@ -712,44 +727,89 @@ fn package_builds_unsigned_apk_and_aab() {
     }
 }
 
+/// 参与可复现比对的产物清单：未签名 APK 恒在；bundletool + java 在场时加 AAB 与 APK 集，
+/// 缺席时加降级产物（模块 zip = 声明产物）。只列**真实存在**的件。
+fn watched(apk: &Path, aab: &Path, apks: &Path, declared: &Path, full: bool) -> Vec<PathBuf> {
+    let mut out = vec![apk.to_path_buf()];
+    if full {
+        out.push(aab.to_path_buf());
+        out.push(apks.to_path_buf());
+    } else {
+        out.push(declared.to_path_buf());
+    }
+    out
+}
+
+/// 产物的 `(文件名, sha256)` 清单（按名排序，便于整体比较）。
+fn digests(paths: &[PathBuf]) -> Vec<(String, String)> {
+    let mut out: Vec<(String, String)> = paths
+        .iter()
+        .filter(|path| path.is_file())
+        .map(|path| {
+            (
+                path.file_name()
+                    .unwrap_or_default()
+                    .to_string_lossy()
+                    .into_owned(),
+                sha256(path),
+            )
+        })
+        .collect();
+    out.sort();
+    out
+}
+
 #[test]
 fn second_run_is_byte_identical() {
     let Some(tools) = sdk() else { return };
+    // AAB / APK 集取决于 bundletool + java：缺席时打包器如实降级为「模块 zip + 未签名
+    // APK」（见 android.rs），本用例只比对**真实产出物**，不对降级环境说谎
+    // （CI 的 ubuntu 腿与 mobile-contract android 列正是这一环境）。
+    let full = tools.bundletool.is_some() && tools.java.is_some();
     let base = scratch("repro");
     let bundle = inputs(&base, &tools);
     let (apk, aab, apks) = artifacts(&bundle);
 
-    AndroidAab.package(&bundle, &spec("aab")).expect("首跑");
-    let first = (sha256(&apk), sha256(&aab), sha256(&apks));
+    let first_artifact = AndroidAab.package(&bundle, &spec("aab")).expect("首跑");
+    let watch = watched(&apk, &aab, &apks, &first_artifact.path, full);
+    assert!(apk.is_file(), "未签名 APK 缺失：{}", apk.display());
+    assert_eq!(
+        digests(&watch).len(),
+        if full { 3 } else { 2 },
+        "产物件数与 bundletool 可用性不符（full={full}）：{:?}",
+        digests(&watch)
+    );
+    let first = digests(&watch);
+
     // 二跑：同一工程同一命令（输出目录整份重建）。
     let _ = std::fs::remove_dir_all(&bundle.out_dir);
     std::fs::create_dir_all(&bundle.out_dir).expect("重建输出目录");
     AndroidAab.package(&bundle, &spec("aab")).expect("二跑");
-    let second = (sha256(&apk), sha256(&aab), sha256(&apks));
+    let second = digests(&watch);
 
-    eprintln!("首跑 APK sha256 = {}", first.0);
-    eprintln!("二跑 APK sha256 = {}", second.0);
-    assert_eq!(first.0, second.0, "未签名 APK 二跑字节必须一致");
-    assert_eq!(first.1, second.1, "AAB 二跑字节必须一致");
-    assert_eq!(first.2, second.2, "APK 集二跑字节必须一致");
+    for (name, sha) in &first {
+        eprintln!("首跑 {name} sha256 = {sha}");
+    }
+    assert_eq!(first, second, "同目录二跑必须逐字节一致（full={full}）");
 
     // 跨构建目录：aapt2 会把资源**源路径**嵌进 proto 资源表（AAB），故 compile 走
     // cwd + 相对目录名（见 android.rs）；换个绝对路径重建必须仍字节一致，
     // 否则 `poly verify --reproducible` 在不同工作目录下会假红。
     let other = scratch("repro-elsewhere");
     let moved = inputs(&other, &tools);
-    AndroidAab.package(&moved, &spec("aab")).expect("异地重建");
+    let moved_artifact = AndroidAab.package(&moved, &spec("aab")).expect("异地重建");
     let (moved_apk, moved_aab, moved_apks) = artifacts(&moved);
-    assert_eq!(
-        first.0,
-        sha256(&moved_apk),
-        "换构建目录后未签名 APK 必须字节一致"
+    let moved_watch = watched(
+        &moved_apk,
+        &moved_aab,
+        &moved_apks,
+        &moved_artifact.path,
+        full,
     );
-    assert_eq!(first.1, sha256(&moved_aab), "换构建目录后 AAB 必须字节一致");
     assert_eq!(
-        first.2,
-        sha256(&moved_apks),
-        "换构建目录后 APK 集必须字节一致"
+        first,
+        digests(&moved_watch),
+        "换构建目录后必须逐字节一致（full={full}）"
     );
 }
 

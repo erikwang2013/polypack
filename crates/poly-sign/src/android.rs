@@ -437,6 +437,9 @@ impl Drop for TempDir {
 
 /// 建 0700 目录（Windows 无等价 API，忽略权限）。
 fn create_private_dir(path: &Path) -> std::io::Result<()> {
+    // `mut` 只在 unix 的 `.mode(0o700)` 分支用到：Windows 上 `-D warnings` 会把 unused_mut
+    // 判红，故按平台静音（安全语义不降级——Windows 靠临时目录随 `TempDir` 整体删除）。
+    #[cfg_attr(not(unix), allow(unused_mut))]
     let mut builder = std::fs::DirBuilder::new();
     #[cfg(unix)]
     {
