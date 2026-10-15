@@ -274,7 +274,9 @@ fn simulator_call_parity(inputs: &BundleInputs) {
     };
     let target = format!("{arch}-apple-ios{sdk_version}-simulator");
 
-    let call = inputs.out_dir.join("sim-call.swift");
+    // 必须叫 `main.swift`：多文件编译时顶层表达式只允许出现在入口文件（swiftc 规则），
+    // 否则 `expressions are not allowed at the top level`（macos-14 首次真跑实证）
+    let call = inputs.out_dir.join("main.swift");
     std::fs::write(
         &call,
         "print(\"PAX_ADD_NEG=\\(paxAdd(-5, 3))\")\n\

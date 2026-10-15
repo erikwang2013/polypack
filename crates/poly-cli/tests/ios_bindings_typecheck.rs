@@ -93,7 +93,9 @@ fn generated_swift_bindings_typecheck_with_apple_toolchain() {
 
     // Apple 工具链：真产物 + 真调用面一起 typecheck。部署目标取 SDK 版本（写死版本号会随
     // runner 的 Xcode 升降而红）。
-    let caller = root.join("caller.swift");
+    // `main.swift`：多文件编译时顶层表达式仅限入口文件（与 `ios_real_run.rs` 的
+    // simulator 调用面同规则；-typecheck 同判）
+    let caller = root.join("main.swift");
     std::fs::write(&caller, CALLER).expect("调用面可写");
     let sdk = xcrun(&["--sdk", "iphonesimulator", "--show-sdk-path"]);
     let sdk_version = xcrun(&["--sdk", "iphonesimulator", "--show-sdk-version"]);
