@@ -51,19 +51,16 @@ jobs:
 
       - name: Android SDK（cmdline-tools + sdkmanager）
         if: env.POLY_CONTRACT_REAL == '1'
-        uses: android-actions/setup-android@v3
+        uses: android-actions/setup-android@v4
         with:
-          # 关掉 action 自带的许可接受：它在本 runner 上会卡在「(y/N)?」后失败
-          # （真模式 dispatch 38688497283 实证，失败在本步、我们的修复步还没轮到）。
-          # 接受职责全交给下一步的 `yes | sdkmanager --licenses`。
-          accept-android-sdk-licenses: "false"
+          # 许可仍由 action 自带（它喂 10 个 y 进 stdin；38688497283 实证「All SDK package licenses accepted」），
+          # 只关条款全文打印——那上千行正文曾把一次成功的接受误读成「卡在 (y/N)」。
+          # v3→v4：v3 默认 packages 含早已下架的死包 `tools`（两轮 dispatch 的真根因），v4 起显式跳过。
+          log-accepted-android-sdk-licenses: "false"
 
       - name: build-tools / platform 与 bundletool（真跑）
         if: env.POLY_CONTRACT_REAL == '1'
         run: |
-          # 无 TTY 时 sdkmanager 打印许可条款后 exit 1（真模式 dispatch 38686285041 实证）：
-          # 先非交互全量接受。`|| true` 兜住 yes 的 SIGPIPE（许可已接受时 sdkmanager 立即退出）。
-          yes | sdkmanager --licenses > /dev/null 2>&1 || true
           sdkmanager "platforms;android-36" "build-tools;36.0.0"
           # 打包器按 AndroidInputs.bundletool → $POLYPACK_BUNDLETOOL → PATH → ~/.cache/polypack/tools/
           # 依次解析（crates/poly-bundle/src/tools.rs）：落缓存目录即被自动发现。
@@ -74,6 +71,10 @@ jobs:
           java -jar "$HOME/.cache/polypack/tools/bundletool-all.jar" version
 
       - name: android 打包 / 签名链测试（mock 或真跑）
+        env:
+          # 临时根与归档 glob 同基准：macOS 的 std::env::temp_dir() 取 $TMPDIR（/var/folders/…），
+          # 写死 /tmp 的上传 glob 会空转（dispatch 38690074497 ios 腿实证：IPA 真落在 /var/folders 下）。
+          TMPDIR: ${{ runner.temp }}
         run: |
           cargo test -p poly-bundle --test packagers_android --no-fail-fast -- --nocapture
           cargo test -p poly-sign --no-fail-fast -- --nocapture
@@ -87,8 +88,9 @@ jobs:
           # 产物在 `.polypack/`（隐藏目录）：v4 默认跳过隐藏文件，须显式打开
           include-hidden-files: true
           path: |
-            /tmp/poly-contract-m2-android-*/.polypack/packages/android/**
-          # CLI 未接线前「无产物」是合法 NOTE：保持 warn；m2-core 接线落地后翻 error（空上传转硬失败）
+            ${{ runner.temp }}/poly-contract-m2-android-*/.polypack/packages/android/**
+          # 暂留 warn：CLI 侧 android 产物至今是「如实 NOTE」（dispatch 38690074497 该腿未跑到打包），
+          # 翻 error 前须先见一次真落盘（仅此一路 glob，无产物即整步失败）。ios 侧已翻，见下。
           if-no-files-found: warn
           retention-days: 14
 
@@ -117,6 +119,10 @@ jobs:
         run: xcodebuild -version
 
       - name: ios 打包 / 签名链测试（mock 或真跑）
+        env:
+          # 临时根与归档 glob 同基准：macOS 的 std::env::temp_dir() 取 $TMPDIR（/var/folders/…），
+          # 写死 /tmp 的上传 glob 会空转（dispatch 38690074497 ios 腿实证：IPA 真落在 /var/folders 下）。
+          TMPDIR: ${{ runner.temp }}
         run: |
           cargo test -p poly-bundle --test packagers_ios --no-fail-fast -- --nocapture
           cargo test -p poly-bundle --test ios_real_run --no-fail-fast -- --nocapture
@@ -131,8 +137,9 @@ jobs:
           # `.polypack` 是隐藏目录：v4 默认跳过隐藏文件，须显式打开
           include-hidden-files: true
           path: |
-            /tmp/poly-ios-real-*/export/**
-            /tmp/poly-contract-m2-ios-*/.polypack/packages/ios/**
-          # CLI 未接线前「无产物」是合法 NOTE：保持 warn；m2-core 接线落地后翻 error（空上传转硬失败）
-          if-no-files-found: warn
+            ${{ runner.temp }}/poly-ios-real-*/export/**
+            ${{ runner.temp }}/poly-contract-m2-ios-*/.polypack/packages/ios/**
+          # error 只在「所有 glob 皆空」时触发：首路（打包器真跑的 IPA）已实证必然命中
+          # （dispatch 38690074497：4804 字节 3 条目），故此处空上传=真异常。CLI 侧那路仍是如实 NOTE。
+          if-no-files-found: error
           retention-days: 14
