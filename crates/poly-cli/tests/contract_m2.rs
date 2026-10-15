@@ -160,6 +160,14 @@ fn assert_golden_shape(target: &str) {
             artifact["extension"].is_null() || artifact["extension"].is_string(),
             "{target} 金样 {format} 的 extension 应为字符串或 null：{artifact}"
         );
+        // `name`（可选）是文件形态产物的**按名锚定**依据：给了就必须是非空字符串，
+        // 否则「锚定」会静默退化成按扩展名取最新（中间件抢位的老毛病）。
+        assert!(
+            artifact
+                .get("name")
+                .is_none_or(|name| name.as_str().is_some_and(|name| !name.is_empty())),
+            "{target} 金样 {format} 的 name 应为非空字符串：{artifact}"
+        );
     }
     // 声明格式（artifacts[0]）的扩展名必须可由格式推导（real 侧按它找产物）。
     let declared = artifacts(&golden)[0]["format"].as_str().expect("声明格式");
@@ -385,8 +393,12 @@ fn golden_drift_is_reported_with_diff() {
 
 // ---------------------------------------------------------------- real 模式
 
-/// `poly build` 的产物快照 / 打包落点内按扩展名发现产物（大小写不敏感）。
-fn find_artifact(root: &Path, extension: &str) -> Option<PathBuf> {
+/// `poly build` 的产物快照 / 打包落点内发现产物：金样声明了 `name` 即**按名锚定**
+/// （同名多件取最新），否则按扩展名取最新一件（大小写不敏感）。
+///
+/// 按名锚定不是洁癖：android 的 AAB 模块 zip 与 aapt2 的 `generated-res.zip` 等中间件同扩展，
+/// 只看 mtime 会选中中间件（dispatch 38696103225 实证：包了中间件却报金样漂移）。
+fn find_artifact(root: &Path, extension: &str, name: Option<&str>) -> Option<PathBuf> {
     let suffix = format!(".{extension}");
     let mut stack = vec![root.to_path_buf()];
     let mut files: Vec<PathBuf> = Vec::new();
@@ -400,12 +412,15 @@ fn find_artifact(root: &Path, extension: &str) -> Option<PathBuf> {
                 stack.push(path);
                 continue;
             }
-            let name = path
+            let file_name = path
                 .file_name()
                 .and_then(|name| name.to_str())
-                .unwrap_or_default()
-                .to_lowercase();
-            if name.ends_with(&suffix) {
+                .unwrap_or_default();
+            let matched = match name {
+                Some(name) => file_name.eq_ignore_ascii_case(name),
+                None => file_name.to_lowercase().ends_with(&suffix),
+            };
+            if matched {
                 files.push(path);
             }
         }
@@ -484,9 +499,13 @@ fn install_ios_core_fixture(root: &Path) {
     }
 }
 
-/// 文件形态产物：按扩展名取最新一件，读 zip 条目名。
-fn artifact_file_entries(root: &Path, extension: &str) -> Option<(PathBuf, Vec<String>)> {
-    let path = find_artifact(root, extension)?;
+/// 文件形态产物：按金样声明的文件名（缺省则按扩展名）定位，读 zip 条目名。
+fn artifact_file_entries(
+    root: &Path,
+    extension: &str,
+    name: Option<&str>,
+) -> Option<(PathBuf, Vec<String>)> {
+    let path = find_artifact(root, extension, name)?;
     let names = poly_bundle::zipwrite::entry_names(&path)
         .unwrap_or_else(|err| panic!("{} 产物条目清单读取失败：{err}", path.display()));
     Some((path, names))
@@ -610,7 +629,9 @@ fn real_artifact_check(target: &str) {
         let format = artifact["format"].as_str().expect("声明格式").to_string();
         // 文件形态按扩展名找 zip；目录形态（extension = null，如 xcframework）按 `*.<format>` 找目录。
         let found = match artifact["extension"].as_str() {
-            Some(extension) => artifact_file_entries(&workdir, extension),
+            Some(extension) => {
+                artifact_file_entries(&workdir, extension, artifact["name"].as_str())
+            }
             None => artifact_dir_entries(&workdir, &format),
         };
         let Some((path, names)) = found else {
@@ -728,6 +749,62 @@ fn xcframework_directory_entries_match_golden_patterns() {
         unmatched_patterns(&expected, &after),
         vec!["*.xcframework/ios-arm64_x86_64-simulator/Headers/module.modulemap".to_string()],
         "缺少的条目应被精确报出"
+    );
+    let _ = std::fs::remove_dir_all(&root);
+}
+
+/// 文件形态产物的取件锚定：金样声明 `name` 时**按名**取，不按 mtime 抢新。
+///
+/// dispatch 38696103225 实证：aapt2 的中间件 `generated-res.zip`（比 `base.zip` 新）被取成
+/// module-zip，条目断言随即误报漂移。本用例刻意把中间件造得更新，断言仍取中 `base.zip`。
+#[test]
+fn module_zip_lookup_is_anchored_by_name() {
+    let golden = load_golden("android");
+    let artifact = artifact_of(&golden, "module-zip");
+    let expected = value_str_list(&artifact["entries"]);
+    let name = artifact["name"]
+        .as_str()
+        .expect("module-zip 声明了按名锚定（与 android.rs 的 `base.zip` 同源）");
+
+    let root = std::env::temp_dir().join(format!("poly-contract-m2-anchor-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&root);
+    let stage = root.join("polypack-app-android.stage");
+    std::fs::create_dir_all(&stage).expect("暂存目录可建");
+
+    let manifest = stage.join("AndroidManifest.xml");
+    std::fs::write(&manifest, b"<manifest/>").expect("清单可写");
+    let resources = stage.join("resources.pb");
+    std::fs::write(&resources, b"resources").expect("资源表可写");
+    poly_bundle::zipwrite::write_zip(
+        &[
+            ("manifest/AndroidManifest.xml".to_string(), manifest),
+            ("resources.pb".to_string(), resources),
+        ],
+        &stage.join(name),
+    )
+    .expect("base.zip 可写");
+    // 中间件写得**更晚**（mtime 更新）——这正是缺陷成立的前提，本用例先反证它。
+    let flat = stage.join("values_strings.arsc.flat");
+    std::fs::write(&flat, b"flat").expect("中间件内容可写");
+    poly_bundle::zipwrite::write_zip(
+        &[("values_strings.arsc.flat".to_string(), flat)],
+        &stage.join("generated-res.zip"),
+    )
+    .expect("generated-res.zip 可写");
+
+    let (newest, _) = artifact_file_entries(&root, "zip", None).expect("按扩展名定位");
+    assert_eq!(
+        newest.file_name().expect("文件名"),
+        "generated-res.zip",
+        "中间件确实更新（缺陷前提成立，锚定才是必需的）"
+    );
+
+    let (path, names) = artifact_file_entries(&root, "zip", Some(name)).expect("按名锚定命中");
+    assert_eq!(path.file_name().expect("文件名"), name);
+    assert!(
+        unmatched_patterns(&expected, &names).is_empty(),
+        "锚定后条目应命中金样：\n{}",
+        entries_report(&expected, &names)
     );
     let _ = std::fs::remove_dir_all(&root);
 }

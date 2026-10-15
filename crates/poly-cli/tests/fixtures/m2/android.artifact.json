@@ -16,6 +16,7 @@
     {
       "format": "module-zip",
       "extension": "zip",
+      "name": "base.zip",
       "entries": [
         "manifest/AndroidManifest.xml",
         "resources.pb"
