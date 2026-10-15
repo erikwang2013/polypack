@@ -3,7 +3,7 @@
 > Derived from the milestone breakdown in [ROADMAP.en.md](ROADMAP.en.md) §9; produced in parallel by a four-person planning group and merged after cross-reconciliation: **116 tasks**, all cross-milestone references verified in two passes (existence + description match, zero dangling), Chinese/English task IDs aligned one-to-one.
 > Chinese original: [TASKS.md](TASKS.md). This file falls under the documentation sync convention (ROADMAP §11): task additions/removals must land in both files in the same commit, and drift is caught in CI by the structural checker delivered in T-M0-10.
 > Extension directions (E1–E8) are incubated and intentionally absent from this task table — see [ROADMAP.en.md](ROADMAP.en.md) §13.
-> Progress (2026-10-15): **M0 11/11** · **M1 delivered 15/15** (11 ✅; the matching CI legs for T-M1-02/05/06/07 are green — remaining tool-level notes live in the task entries) · **M2 delivered 15/15** (7 ✅: T-M2-02/06/07/09/11/14/15; T-M2-01/03/04/05/08/10/12/13 carry host/stage/settings notes — see each entry) · **CI green on all three hosts** (rust-ci#38654820649) plus four new M2 workflows (secret-scan ×3 hosts / mobile-contract mock-per-push + nightly real / bridge nightly real).
+> Progress (2026-10-15): **M0 11/11** · **M1 delivered 15/15** (11 ✅; the matching CI legs for T-M1-02/05/06/07 are green — remaining tool-level notes live in the task entries) · **M2 delivered 15/15** (8 ✅: T-M2-02/06/07/08/09/11/14/15; T-M2-01/03/04/05/10/12/13 carry host/stage/settings notes — see each entry) · **CI green on all three hosts** (rust-ci#38654820649) plus four new M2 workflows (secret-scan ×3 hosts / mobile-contract mock-per-push + nightly real / bridge nightly real).
 
 ## Team roster
 
@@ -280,7 +280,7 @@
 - Deliverable: the core compiled to JNI `.so` per ABI triple + generated Kotlin bindings, assembled into an AAR (minimal manifest/resources) as the input to Android packaging.
 - Acceptance: the AAR loads in the Android contract test; Kotlin-side calls to the sample interface return the same results as the Rust unit tests; the AAR goes through the library-level cache and hits on the second run.
 
-### T-M2-03 · Swift binding artifact (XCFramework) (triple/lipo structure + tamper checks complete; real xcodebuild link pending a macOS host)
+### T-M2-03 · Swift binding artifact (XCFramework) (triple/lipo structure + tamper checks complete; the macos-14 real run now covers cargo ×3 cross-compilation + lipo merge + a real `xcodebuild -create-xcframework` link and archive chain; Swift runtime call parity awaits a device)
 
 - Role: platforms
 - Deps: T-M2-01
@@ -320,7 +320,7 @@
 - Deliverable: bundletool emit-and-verify chain: `build-bundle` / `build-apks` assembly, `bundletool validate` verification, and a device install-smoke script.
 - Acceptance: `bundletool validate` passes; the sample APK installs and cold-starts on an emulator/device; artifact structure assertions (manifest, ABIs, resource table) are emitted on the event stream.
 
-### T-M2-08 · iOS packager (archive + Payload-ditto) (macos-14 real run: unsigned IPA 4,804 B / 3 entries produced and archived; CLI-integration artifact placement awaiting the two-step-flow ruling (routed to m2-core); exportArchive semantics reserved for the signed flow with a Team)
+### T-M2-08 · ✅ iOS packager (archive + Payload-ditto) (macos-14 real-run chain closed end to end: CLI → XCFramework built on demand → skeleton → archive → unsigned IPA (4.8 KB / 3 entries) → both artifacts match the golden → archived; exportArchive semantics reserved for the signed flow with a Team)
 
 - Role: packagers
 - Deps: T-M2-03, T-M2-04, T-M0-09, T-M1-05
@@ -368,7 +368,7 @@
 - Deliverable: farm protocol v0: JobSpec serialization format + worker pull-execute-report loop (worker registration and capability declaration), with local and remote runs sharing one DAG implementation.
 - Acceptance: a Linux host initiates an iOS-target build → a macOS worker produces the IPA and signature verification passes (the R3 acceptance path); worker-side failures return complete error codes and fix hints; cross-machine cache sharing is verified through the object-storage backend.
 
-### T-M2-14 · ✅ Mobile CI integration and contract-test goldens (three-host mock columns all green; real-mode dispatch passed both legs with archived artifacts — ios-real-artifacts 9,062 B / android-real-artifacts 9,770 B; golden drift fails with a diff)
+### T-M2-14 · ✅ Mobile CI integration and contract-test goldens (three-host mock columns all green; real-mode both legs passed with archived artifacts — ios 9,062 B / android 9,770 B; the iOS contract leg runs a lib-form fixture with dual-artifact (ipa + xcframework) real comparison, android lookup anchored by name (base.zip); golden drift fails with a diff; windows msi / macos dmg entries await packager checkers for assertion coverage)
 
 - Role: infra
 - Deps: T-M2-07, T-M2-10, T-M1-13, T-M0-02

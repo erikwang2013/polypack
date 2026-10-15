@@ -947,10 +947,20 @@ fn linux_deb_end_to_end() {
                 .args(["Package", "Version", "Architecture"])
                 .output()
             {
-                Ok(info) => assert_deb_control(
-                    &String::from_utf8_lossy(&info.stdout),
-                    &deb.display().to_string(),
-                ),
+                // 能启动但读不到 control（缺成员即 exit 2）须响亮失败——`--contents` 只列数据段，
+                // 控制段缺失不会被清单发现，只能靠这里兜住（实测：空 stdout 会顺手带出断言）。
+                Ok(info) => {
+                    assert!(
+                        info.status.success(),
+                        "dpkg-deb --field 失败（{}）：{}",
+                        info.status,
+                        String::from_utf8_lossy(&info.stderr)
+                    );
+                    assert_deb_control(
+                        &String::from_utf8_lossy(&info.stdout),
+                        &deb.display().to_string(),
+                    );
+                }
                 Err(err) => eprintln!("SKIP linux deb 控制字段深检：dpkg-deb 不可用（{err}）"),
             }
         }
@@ -1087,6 +1097,8 @@ fn artifact_entries(artifact: &Path, format: &str) -> Result<Vec<String>, String
 }
 
 /// deb 内容清单（`./` 前缀与尾斜杠归一化后的相对路径）。
+/// 只列数据段（data.tar）：控制段不在 `--contents` 输出里（实测命中 0），故金样 entries
+/// 不得声明 `DEBIAN/control`（恒不满足）；控制段存在性由 `--field` 三字段断言兜住。
 fn deb_entries(deb: &Path) -> Result<Vec<String>, String> {
     let output = Command::new("dpkg-deb")
         .arg("--contents")

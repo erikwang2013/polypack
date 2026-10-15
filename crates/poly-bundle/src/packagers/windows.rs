@@ -544,7 +544,10 @@ fn sanitize(rel: &str) -> String {
 }
 
 /// XML 属性 / 文本转义（产品名等已由 `inputs` 白名单限制，裸产物路径可能含任意字符）。
-fn xml_escape(text: &str) -> String {
+///
+/// 公开给契约测试按**同一口径**构造 `Source="…"` needle：宿主路径合法可含 `&`/`>`
+/// （如 `C:\Users\R&D\…`），测试自建转义表会与实际产物漂移。
+pub fn xml_escape(text: &str) -> String {
     text.replace('&', "&amp;")
         .replace('<', "&lt;")
         .replace('>', "&gt;")

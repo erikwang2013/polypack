@@ -3,7 +3,7 @@
 > 派生自 [ROADMAP.md](ROADMAP.md) §9 的里程碑分解；由 4 人规划小组并行产出、交叉对账后合并：**116 个任务**，跨里程碑引用经「存在性 + 描述匹配」两轮校验零悬空，中英任务 ID 逐一对齐。
 > 英文版：[TASKS.en.md](TASKS.en.md)。本文件受「文档同步约定」管辖（见 ROADMAP §11）：任务增删须双文件同一次提交更新，并由 T-M0-10 的结构级校验器在 CI 拦截漂移。
 > 扩展方向（E1–E8）已立项孵化，不占本任务表：见 [ROADMAP.md](ROADMAP.md) §13。
-> 进度（2026-10-15）：**M0 11/11** · **M1 已交付 15/15**（11 项 ✅；T-M1-02/05/06/07 的对应 CI 腿已全绿，余下工具级注记见任务条目）· **M2 已交付 15/15**（7 项 ✅：T-M2-02/06/07/09/11/14/15；T-M2-01/03/04/05/08/10/12/13 带宿主/阶段/设置注记，逐项见任务条目）· **CI 三宿主全绿**（rust-ci#38654820649）+ M2 新增四工作流（secret-scan 三宿主 / mobile-contract mock+夜跑真列 / bridge 夜跑真跑）。
+> 进度（2026-10-15）：**M0 11/11** · **M1 已交付 15/15**（11 项 ✅；T-M1-02/05/06/07 的对应 CI 腿已全绿，余下工具级注记见任务条目）· **M2 已交付 15/15**（8 项 ✅：T-M2-02/06/07/08/09/11/14/15；T-M2-01/03/04/05/10/12/13 带宿主/阶段/设置注记，逐项见任务条目）· **CI 三宿主全绿**（rust-ci#38654820649）+ M2 新增四工作流（secret-scan 三宿主 / mobile-contract mock+夜跑真列 / bridge 夜跑真跑）。
 
 ## 团队编制与角色
 
@@ -280,7 +280,7 @@
 - 交付物: 核心编译为各 ABI triple 的 JNI `.so` + 生成的 Kotlin 绑定，组装为 AAR（清单/资源最小化），作为 Android 打包阶段的输入。
 - 验收: AAR 在 Android 契约测试中加载成功；Kotlin 侧调用示例接口结果与 Rust 单测一致；AAR 走库级缓存，二跑命中。
 
-### T-M2-03 · Swift 绑定产物（XCFramework）（三 triple/lipo/结构与篡改校验完备；xcodebuild 真链接待 macOS 宿主）
+### T-M2-03 · Swift 绑定产物（XCFramework）（三 triple/lipo/结构与篡改校验完备；macos-14 真跑已覆盖 cargo×3 交叉编译 + lipo 合并 + `xcodebuild -create-xcframework` 真链接与 archive 链；Swift 运行时调用对拍留待真机）
 
 - 角色: platforms
 - 依赖: T-M2-01
@@ -320,7 +320,7 @@
 - 交付物: bundletool 直出与校验链：`build-bundle` / `build-apks` 组装、`bundletool validate` 校验、设备安装冒烟脚本。
 - 验收: `bundletool validate` 通过；样本 APK 在模拟器/真机安装并冷启动成功；产物结构断言（清单、ABI、资源表）以事件流输出。
 
-### T-M2-08 · iOS Packager（archive + Payload 直压）（macos-14 真跑实证：真出未签名 IPA 4,804B/3 条目并留档；CLI 集成层产物落位待两步流程裁决（转 m2-core）；exportArchive 语义留给有 Team 的签名流）
+### T-M2-08 · ✅ iOS Packager（archive + Payload 直压）（macos-14 真跑全链闭合：CLI → XCFramework 现建 → 骨架 → archive → 未签名 IPA（4.8KB/3 条目）→ 双产物命中金样 → 留档；exportArchive 语义留给有 Team 的签名流）
 
 - 角色: packagers
 - 依赖: T-M2-03、T-M2-04、T-M0-09、T-M1-05
@@ -368,7 +368,7 @@
 - 交付物: 农场协议 v0：JobSpec 序列化格式 + worker 拉取-执行-回传循环（worker 注册与能力声明），本地与远程共用同一 DAG 执行实现。
 - 验收: Linux 宿主发起 iOS 目标构建 → macOS worker 出 IPA，签名校验通过（R3 验收路径打通）；worker 端失败时错误码与修复提示完整回传；缓存跨机复用经对象存储后端验证。
 
-### T-M2-14 · ✅ 移动目标 CI 接入与契约测试金样（mock 列三宿主全绿；真模式 dispatch 两腿通过并留档——ios-real-artifacts 9,062B / android-real-artifacts 9,770B；金样漂移即红含 diff）
+### T-M2-14 · ✅ 移动目标 CI 接入与契约测试金样（mock 列三宿主全绿；真模式两腿通过并留档——ios 9,062B / android 9,770B；契约 ios 腿走库形态夹具 + 双产物（ipa + xcframework）真比对、android 取件按名锚定 base.zip；金样漂移即红含 diff；windows msi / macos dmg 条目待打包器检查器落地后补断言）
 
 - 角色: infra
 - 依赖: T-M2-07、T-M2-10、T-M1-13、T-M0-02

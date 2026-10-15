@@ -9,7 +9,7 @@
 use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
 
-use poly_bundle::packagers::windows::{Nsis, WixMsi};
+use poly_bundle::packagers::windows::{Nsis, WixMsi, xml_escape};
 use poly_bundle::{
     BareProduct, BundleError, BundleInputs, BundlePlan, Icon, IconKind, Packager, ProductInfo,
     codes, exec,
@@ -145,8 +145,9 @@ fn msi_plan_is_wix_v3_with_tree_shortcut_and_ui() {
     ] {
         // 与产物同构：Source 由目录遍历逐段 `dir.join(file_name)` 拼出，测试也逐段 join；
         // 整串 `root.join("resources/index.html")` 在 Windows 上会产出混合分隔符而不匹配。
+        // 转义走打包器同一函数：宿主路径合法可含 `&`/`>`（如 `C:\Users\R&D\…`）。
         let abs = rel.split('/').fold(root.clone(), |p, seg| p.join(seg));
-        let source = format!("Source=\"{}\"", abs.display());
+        let source = format!("Source=\"{}\"", xml_escape(&abs.display().to_string()));
         assert!(wxs.contains(&source), "wxs 缺少文件条目 {source}：\n{wxs}");
     }
 
