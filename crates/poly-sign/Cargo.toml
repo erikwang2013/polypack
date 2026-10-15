@@ -8,5 +8,35 @@ license.workspace = true
 repository.workspace = true
 publish = false
 
+[dependencies]
+poly-core.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+# 载荷契约 base64(JSON)；与 keyring 的传递依赖同主版本，共用同一份编译产物。
+base64 = "0.22"
+
+# keyring v3 无 default feature，必须按平台显式选后端（否则落到其内置 mock store）。
+# Linux 用 async-secret-service（secret-service + zbus，纯 Rust）：只依赖会话总线，
+# 不需要系统 libdbus（sync-secret-service / dbus-secret-service 才会链到 libdbus）。
+[target.'cfg(target_os = "linux")'.dependencies]
+keyring = { version = "3.6.3", default-features = false, features = [
+    "async-secret-service",
+    "async-io",
+    "crypto-rust",
+] }
+[target.'cfg(target_os = "macos")'.dependencies]
+keyring = { version = "3.6.3", default-features = false, features = ["apple-native"] }
+[target.'cfg(target_os = "windows")'.dependencies]
+keyring = { version = "3.6.3", default-features = false, features = ["windows-native"] }
+# 其余平台（BSD 等）没有原生后端：退回 keyring 内置 mock store 保证可编译，
+# 运行时 `available()` 探测失败并给出改用 Env / Memory 注入的提示。
+[target.'cfg(not(any(target_os = "linux", target_os = "macos", target_os = "windows")))'.dependencies]
+keyring = { version = "3.6.3", default-features = false }
+
+[dev-dependencies]
+# 测试自造最小 APK（zip 容器）；与 poly-bundle 同版本同 feature，不引入新的第三方树。
+zip = { version = "9.0.3", default-features = false, features = ["deflate"] }
+
 [lints]
 workspace = true

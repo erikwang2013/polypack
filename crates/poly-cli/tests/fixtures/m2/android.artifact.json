@@ -1,0 +1,25 @@
+{
+  "target": "android",
+  "builder": "android-aapt2",
+  "signing": "android-keystore",
+  "verifiers": ["apksigner-verify", "bundletool-validate"],
+  "artifacts": [
+    {
+      "format": "aab",
+      "extension": "aab",
+      "entries": [
+        "BundleConfig.pb",
+        "base/manifest/AndroidManifest.xml",
+        "base/resources.pb"
+      ]
+    },
+    {
+      "format": "module-zip",
+      "extension": null,
+      "entries": [
+        "manifest/AndroidManifest.xml",
+        "resources.pb"
+      ]
+    }
+  ]
+}

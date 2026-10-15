@@ -42,7 +42,7 @@ v0 传输为**共享目录双信箱**（`DirTransport`）：主端写 `<目录>/
 poly farm worker --dir /srv/polypack-farm --id mac-mini-1 --target ios --jobs 1 --idle 60
 ```
 
-`--target` 声明本 worker 能构建的目标（可重复，缺省 = 不限，按本机宿主接受任务）；`--jobs` 是处理多少个任务后退出，`--idle` 是空闲等待上限（超时即正常退出——无任务可做不是失败）。
+`--target` 声明本 worker 能构建的目标（可重复；缺省 = 按本机宿主可达的全部已声明目标）；`--jobs` 是处理多少个任务后退出，`--idle` 是空闲等待上限（超时即正常退出——无任务可做不是失败）。
 
 4. **发起投递**：在 Linux 上指向同一目录投递：
 
@@ -50,7 +50,7 @@ poly farm worker --dir /srv/polypack-farm --id mac-mini-1 --target ios --jobs 1 
 poly farm submit --dir /srv/polypack-farm --config /srv/proj/polypack.toml --target ios --wait 600
 ```
 
-主端先等 `hello`，按任务目标的**声明宿主**做注册准入（宿主不在目标任务声明的宿主内、或 worker 未声明可构建全部任务目标 → `hello_ack accepted=false` + `poly::E_FARM_0002`）；准入通过后投递 `job` 并等 `result`（超时 → `poly::E_FARM_0003`）。worker 端失败不吞错：远端错误码与修复提示经 `RemoteDiagnostic` 完整回传，主端以 `poly::E_FARM_0003` 包装上抛并退出码 1。
+显式 `--target <id>` 不做发起地可达性过滤——按注册表中各目标声明的宿主解析，因此 Linux 上也能投递 `ios` 去等一台 macOS worker；缺省 `--target all` 与 `poly build` 一致，只取发起地可达的子集（跨宿主投递请显式列出目标 id）。主端先等 `hello`，按任务目标的**声明宿主**做注册准入（宿主不在目标任务声明的宿主内、或 worker 未声明可构建全部任务目标 → `hello_ack accepted=false` + `poly::E_FARM_0002`）；准入通过后投递 `job` 并等 `result`（超时 → `poly::E_FARM_0003`）。worker 端失败不吞错：远端错误码与修复提示经 `RemoteDiagnostic` 完整回传，主端以 `poly::E_FARM_0003` 包装上抛并退出码 1。
 
 5. **跨机缓存**：`--cache local` 用工程本地 CAS（`<工程根>/.polypack/cache`，默认）；`--cache <共享目录>` 换成共享对象存储后端。缓存键公式不含绝对路径（ROADMAP §5.2），因此同一工程在两个构建地之间可直接命中；命中情况在任务完成事件里如实报告（`缓存命中 N/M`）。
 
@@ -99,5 +99,4 @@ worker 已注册：mac-mini-1（aarch64-apple-darwin，宿主 Macos）
 
 - 传输只有共享目录双信箱（HTTP / SSH 在 M3+ 接入同一 trait）；协议 v0 假定工程已在构建地同路径可见。
 - 签名链（`poly-sign`：codesign / notarytool / stapler、apksigner）尚未接入 package 阶段——当前农场链路产出的是**未签名**产物（iOS 归档阶段 `CODE_SIGNING_ALLOWED=NO`），签名与公证随 T-M2-10 接线；在此之前请把上表当作产物核验清单。
-- 发起地按宿主过滤目标的问题（Linux 上 `poly farm submit --target ios` 报 `poly::E_TGT_0002` 目标不可达）随 T-M2-13 收口修复，示例命令以修复后的语义为准。
 - 农场 v1（部署指南 + 并发 / 隔离 / 缓存共享）在 M8（ROADMAP §9）。

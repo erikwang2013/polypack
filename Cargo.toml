@@ -13,6 +13,7 @@ repository = "https://github.com/erikwang2013/polypack"
 poly-bundle = { path = "crates/poly-bundle" }
 poly-cache = { path = "crates/poly-cache" }
 poly-core = { path = "crates/poly-core" }
+poly-sign = { path = "crates/poly-sign" }
 poly-targets = { path = "crates/poly-targets" }
 poly-toolchain = { path = "crates/poly-toolchain" }
 serde = { version = "1", features = ["derive"] }
@@ -22,6 +23,7 @@ thiserror = "2"
 clap = { version = "4", features = ["derive"] }
 schemars = "0.8"
 blake3 = "1"
+zip = { version = "9.0.3", default-features = false, features = ["deflate"] }
 
 [workspace.lints.rust]
 unsafe_code = "forbid"

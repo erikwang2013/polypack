@@ -1,0 +1,130 @@
+# 移动目标契约测试（T-M2-14）：Android 于 ubuntu-latest、iOS 于 macos-14。
+#
+# - **mock 模式（默认，每提交 / PR）**：不依赖 Android SDK 与 Xcode 的真实产物，断言打包 /
+#   签名链的命令组装与结构契约（`cargo test` 全绿，缺工具处按测试内 SKIP 纪律打印后通过）。
+# - **真实模式（每夜 18:37 UTC + 手动触发）**：`POLY_CONTRACT_REAL=1`，装齐工具链（Android
+#   build-tools + bundletool；rustup Apple triple）后真跑打包链，产物（.aab / .ipa）随作业
+#   留档 14 天。真跑失败即红——绝不静默降级。
+#
+# iOS 腿固定在 macos-14：Apple 工具链（xcodebuild / lipo / codesign）不随 ubuntu 提供，
+# `hosts = [Macos]` 的目标在 Linux 上无从真跑（Linux 发起走远程农场，T-M2-13）。
+
+name: mobile-contract
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    # 每夜真实模式：避开整点（UTC 18:37）
+    - cron: "37 18 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  android:
+    name: android / ubuntu-latest
+    runs-on: ubuntu-latest
+    env:
+      # schedule / 手动触发 = 真实模式；push / PR = mock（空串即 mock）
+      POLY_CONTRACT_REAL: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && '1' || '' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Rust toolchain（stable + rustfmt）
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+
+      - name: 构建缓存
+        uses: Swatinem/rust-cache@v2
+
+      # 真实模式才装 Android 工具链：mock 腿保持零第三方依赖、秒级完成
+      - name: JDK 17（真跑：bundletool / apksigner 需 java）
+        if: env.POLY_CONTRACT_REAL == '1'
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Android SDK（cmdline-tools + sdkmanager）
+        if: env.POLY_CONTRACT_REAL == '1'
+        uses: android-actions/setup-android@v3
+
+      - name: build-tools / platform 与 bundletool（真跑）
+        if: env.POLY_CONTRACT_REAL == '1'
+        run: |
+          sdkmanager "platforms;android-36" "build-tools;36.0.0"
+          # 打包器按 AndroidInputs.bundletool → $POLYPACK_BUNDLETOOL → PATH → ~/.cache/polypack/tools/
+          # 依次解析（crates/poly-bundle/src/tools.rs）：落缓存目录即被自动发现。
+          mkdir -p "$HOME/.cache/polypack/tools"
+          # -f：404 直接在下载步失败，别把错误页当 jar 拖到 java 那步才现形
+          curl -fsSL -o "$HOME/.cache/polypack/tools/bundletool-all.jar" \
+            https://github.com/google/bundletool/releases/download/1.18.2/bundletool-all-1.18.2.jar
+          java -jar "$HOME/.cache/polypack/tools/bundletool-all.jar" version
+
+      - name: android 打包 / 签名链测试（mock 或真跑）
+        run: |
+          cargo test -p poly-bundle --test packagers_android --no-fail-fast -- --nocapture
+          cargo test -p poly-sign --no-fail-fast -- --nocapture
+          cargo test -p poly-cli --test contract_m2 --no-fail-fast -- --nocapture
+
+      - name: 留产物（真跑；测试失败也留，便于定位）
+        if: ${{ always() && env.POLY_CONTRACT_REAL == '1' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-real-artifacts
+          # 产物在 `.polypack/`（隐藏目录）：v4 默认跳过隐藏文件，须显式打开
+          include-hidden-files: true
+          path: |
+            /tmp/poly-contract-m2-android-*/.polypack/packages/android/**
+          # CLI 未接线前「无产物」是合法 NOTE：保持 warn；m2-core 接线落地后翻 error（空上传转硬失败）
+          if-no-files-found: warn
+          retention-days: 14
+
+  ios:
+    name: ios / macos-14
+    runs-on: macos-14
+    env:
+      POLY_CONTRACT_REAL: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && '1' || '' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Rust toolchain（stable + rustfmt）
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+
+      - name: 构建缓存
+        uses: Swatinem/rust-cache@v2
+
+      - name: Apple 交叉编译 target（真跑）
+        if: env.POLY_CONTRACT_REAL == '1'
+        run: rustup target add aarch64-apple-ios aarch64-apple-ios-sim x86_64-apple-ios
+
+      - name: Xcode 留痕（真跑）
+        if: env.POLY_CONTRACT_REAL == '1'
+        run: xcodebuild -version
+
+      - name: ios 打包 / 签名链测试（mock 或真跑）
+        run: |
+          cargo test -p poly-bundle --test packagers_ios --no-fail-fast -- --nocapture
+          cargo test -p poly-bundle --test ios_real_run --no-fail-fast -- --nocapture
+          cargo test -p poly-sign --test ios_sign --no-fail-fast -- --nocapture
+          cargo test -p poly-cli --test contract_m2 --no-fail-fast -- --nocapture
+
+      - name: 留产物（真跑；测试失败也留，便于定位）
+        if: ${{ always() && env.POLY_CONTRACT_REAL == '1' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-real-artifacts
+          # `.polypack` 是隐藏目录：v4 默认跳过隐藏文件，须显式打开
+          include-hidden-files: true
+          path: |
+            /tmp/poly-ios-real-*/export/**
+            /tmp/poly-contract-m2-ios-*/.polypack/packages/ios/**
+          # CLI 未接线前「无产物」是合法 NOTE：保持 warn；m2-core 接线落地后翻 error（空上传转硬失败）
+          if-no-files-found: warn
+          retention-days: 14

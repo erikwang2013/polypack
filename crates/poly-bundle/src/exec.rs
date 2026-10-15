@@ -47,6 +47,7 @@ pub fn run(command: &Command) -> Result<Output, BundleError> {
     if let Some(cwd) = &command.cwd {
         cmd.current_dir(cwd);
     }
+    cmd.envs(command.env.iter().map(|(k, v)| (k, v)));
     let output = cmd.output().map_err(|source| {
         if source.kind() == std::io::ErrorKind::NotFound {
             BundleError::ToolMissing {
@@ -90,6 +91,17 @@ pub(crate) fn install_hint(tool: &str) -> String {
         "dpkg-deb" => "安装 dpkg（Debian / Ubuntu 宿主通常已预装）".to_string(),
         "appimagetool" => "从 github.com/AppImage/appimagetool 下载，或改用 deb 打包器".to_string(),
         "hdiutil" => "hdiutil 仅随 macOS 提供；DMG 打包需 macOS 宿主".to_string(),
+        "xcodebuild" | "xcrun" | "plutil" | "lipo" => {
+            "该工具随 Xcode / macOS 命令行工具提供（xcode-select --install）：iOS 链路需 macOS 宿主"
+                .to_string()
+        }
+        "codesign" => {
+            "codesign 随 macOS 命令行工具提供（xcode-select --install）：签名链路需 macOS 宿主"
+                .to_string()
+        }
+        "uniffi-bindgen" => {
+            "安装与核心 crate 的 uniffi 版本一致的 CLI：cargo install uniffi-bindgen".to_string()
+        }
         "candle" | "light" => "安装 WiX Toolset v3（windows-2022 runner 已预装）".to_string(),
         "makensis" => {
             "安装 NSIS ≥ 3.08（Linux：apt install nsis；Windows：choco install nsis）".to_string()

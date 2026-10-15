@@ -16,6 +16,7 @@ path = "src/main.rs"
 poly-bundle.workspace = true
 poly-cache.workspace = true
 poly-core.workspace = true
+poly-sign = { workspace = true }
 poly-targets.workspace = true
 poly-toolchain.workspace = true
 clap.workspace = true

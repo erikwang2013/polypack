@@ -1,13 +1,18 @@
 //! `poly` 命令行入口（ROADMAP §4.1）。
 
+mod bridge;
 mod build;
 mod clean;
 mod dev;
 mod doctor;
+mod farm;
 mod init;
 mod mood;
 mod package;
 mod project;
+mod retry;
+mod scan;
+mod verify;
 
 use clap::{Parser, Subcommand};
 
@@ -37,6 +42,16 @@ enum Command {
     Dev(dev::Args),
     /// 清理构建缓存与产物快照（默认 dry-run）。
     Clean(clean::Args),
+    /// 跨语言桥：由单处接口定义生成 Kotlin / Swift 绑定，并组装 Android AAR。
+    Bridge(bridge::Args),
+    /// 远程农场：worker 注册与拉取-执行-回传循环。
+    Farm(farm::Args),
+    /// secret-scan：提交与构建双重密钥检查。
+    Scan(scan::Args),
+    /// 从签名阶段独立重跑（重新拉取凭据、重签未签名 APK）。
+    Retry(retry::Args),
+    /// 产物校验：`--reproducible` 做同输入二跑的可复现比对。
+    Verify(verify::Args),
 }
 
 fn main() -> std::process::ExitCode {
@@ -51,6 +66,11 @@ fn main() -> std::process::ExitCode {
         Command::Build(args) => build::run(&args, cli.json),
         Command::Dev(args) => dev::run(&args, cli.json),
         Command::Clean(args) => clean::run(&args, cli.json),
+        Command::Bridge(args) => bridge::run(&args, cli.json),
+        Command::Farm(args) => farm::run(&args, cli.json),
+        Command::Scan(args) => scan::run(&args, cli.json),
+        Command::Retry(args) => retry::run(&args, cli.json),
+        Command::Verify(args) => verify::run(&args, cli.json),
     };
     if !cli.json {
         let (face, text) = match &result {

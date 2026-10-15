@@ -42,7 +42,7 @@ Transport in v0 is a **shared-directory double mailbox** (`DirTransport`): the m
 poly farm worker --dir /srv/polypack-farm --id mac-mini-1 --target ios --jobs 1 --idle 60
 ```
 
-`--target` declares the targets this worker can build (repeatable; omitted = unrestricted, accepts jobs per its own host); `--jobs` is how many jobs to handle before exiting, `--idle` the idle wait limit (timing out is a normal exit — having nothing to do is not a failure).
+`--target` declares the targets this worker can build (repeatable; omitted = every declared target reachable from this host); `--jobs` is how many jobs to handle before exiting, `--idle` the idle wait limit (timing out is a normal exit — having nothing to do is not a failure).
 
 4. **Submit from the origin**: on Linux, point at the same directory:
 
@@ -50,7 +50,7 @@ poly farm worker --dir /srv/polypack-farm --id mac-mini-1 --target ios --jobs 1 
 poly farm submit --dir /srv/polypack-farm --config /srv/proj/polypack.toml --target ios --wait 600
 ```
 
-The master waits for `hello` and admits the worker against the **declared hosts** of the job's targets (a host outside the declared hosts, or a worker that cannot build every target of the job → `hello_ack accepted=false` plus `poly::E_FARM_0002`); once admitted it sends `job` and waits for `result` (timeout → `poly::E_FARM_0003`). Worker-side failures are never swallowed: the remote code and fix hint come back through `RemoteDiagnostic`, and the master re-raises them wrapped in `poly::E_FARM_0003` with exit code 1.
+An explicit `--target <id>` is never filtered by origin-side reachability — it is resolved against the hosts each target declares in the registry, so Linux can submit `ios` and wait for a macOS worker; the default `--target all` matches `poly build` and takes the origin-reachable subset only (list target ids explicitly to submit across hosts). The master waits for `hello` and admits the worker against the **declared hosts** of the job's targets (a host outside the declared hosts, or a worker that cannot build every target of the job → `hello_ack accepted=false` plus `poly::E_FARM_0002`); once admitted it sends `job` and waits for `result` (timeout → `poly::E_FARM_0003`). Worker-side failures are never swallowed: the remote code and fix hint come back through `RemoteDiagnostic`, and the master re-raises them wrapped in `poly::E_FARM_0003` with exit code 1.
 
 5. **Cross-machine cache**: `--cache local` uses the project-local CAS (`<project root>/.polypack/cache`, the default); `--cache <shared dir>` switches to the shared object-store backend. The cache-key formula excludes absolute paths (ROADMAP §5.2), so the same project hits the cache across build sites; hit counts are reported truthfully on job completion (`cache hits N/M`).
 
@@ -99,5 +99,4 @@ These commands correspond one-to-one with the verifiers declared in the target r
 
 - Transport is the shared-directory double mailbox only (HTTP / SSH land in M3+ behind the same trait); protocol v0 assumes the project is visible at the same path on the build site.
 - The signing chain (`poly-sign`: codesign / notarytool / stapler, apksigner) is not wired into the package stage yet — the farm path currently produces **unsigned** artifacts (the iOS archive step uses `CODE_SIGNING_ALLOWED=NO`); signing and notarization follow with T-M2-10. Until then, treat the table above as the artifact acceptance checklist.
-- Submitting with host filtering on the origin side (on Linux, `poly farm submit --target ios` reports `poly::E_TGT_0002`, target unreachable) is being fixed under T-M2-13; the example commands follow the post-fix semantics.
 - Farm v1 (deployment guide + concurrency / isolation / shared cache) is scheduled for M8 (ROADMAP §9).

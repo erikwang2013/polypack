@@ -131,6 +131,85 @@ pub struct Icon {
     pub size: Option<u32>,
 }
 
+/// Android 原生库（T-M2-02 产物的一枚 `.so`，按 ABI 归档）。
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct NativeLib {
+    /// ABI 目录名（`arm64-v8a` / `armeabi-v7a` / `x86_64` / `x86`）。
+    pub abi: String,
+    /// `.so` 文件路径。
+    pub path: PathBuf,
+}
+
+/// Android 打包输入（T-M2-06）。
+///
+/// 可选字段在缺省时由产品元数据 / 图标 / UI 产物派生（最小清单、mipmap 图标、assets），
+/// 使 `poly build --target android` 在只有 UI 产物的工程上也能直出产物；显式字段优先。
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AndroidInputs {
+    /// `AndroidManifest.xml`（缺省 → 由 [`ProductInfo`] 生成最小清单）。
+    pub manifest: Option<PathBuf>,
+    /// `res/` 资源目录（可多个：宿主 + 桥产物；缺省 → 用 PNG 图标生成 mipmap）。
+    pub res: Vec<PathBuf>,
+    /// `assets/` 目录（RN bundle 等；缺省 → 用 `BundleInputs.ui_dist`）。
+    pub assets: Option<PathBuf>,
+    /// 原生库（T-M2-02 AAR / jniLibs）。
+    pub native_libs: Vec<NativeLib>,
+    /// Java 侧输入：`classes.jar` / `*.dex`（无 Java 侧时为空，产物无 dex 属正常）。
+    pub dex_inputs: Vec<PathBuf>,
+    /// ABI 裁剪（空 → 取 [`Self::native_libs`] 出现的 ABI，顺序固定）。
+    pub abi_filters: Vec<String>,
+    /// 语言裁剪（aapt2 `--config`；空 → 不裁，保留全部语言资源）。
+    pub locales: Vec<String>,
+    /// `minSdkVersion`。
+    pub min_sdk: u32,
+    /// `targetSdkVersion`（`0` → 取 SDK 内最新 `platforms/android-NN`）。
+    pub target_sdk: u32,
+    /// `versionCode`（缺省 → 由语义化版本派生 `主*10000+次*100+补`）。
+    pub version_code: Option<u32>,
+    /// Android SDK 根覆盖（缺省 → `$ANDROID_HOME` / `$ANDROID_SDK_ROOT` / `~/Android/Sdk`）。
+    pub sdk_root: Option<PathBuf>,
+    /// `bundletool-all.jar` 覆盖（缺省 → `$POLYPACK_BUNDLETOOL` / PATH / 本地工具缓存）。
+    pub bundletool: Option<PathBuf>,
+}
+
+impl Default for AndroidInputs {
+    fn default() -> Self {
+        Self {
+            manifest: None,
+            res: Vec::new(),
+            assets: None,
+            native_libs: Vec::new(),
+            dex_inputs: Vec::new(),
+            abi_filters: Vec::new(),
+            locales: Vec::new(),
+            min_sdk: 24,
+            target_sdk: 0,
+            version_code: None,
+            sdk_root: None,
+            bundletool: None,
+        }
+    }
+}
+
+/// iOS 打包输入（T-M2-03 / T-M2-08）。
+///
+/// `core_crate` + `lib_name` 是 XCFramework 静态库切片的构建输入（cargo 在核心 crate 上
+/// 按 Apple triple 构建 `lib<lib_name>.a`）；`host_project` 指向 RN 宿主工程根，其中的
+/// `ios/<产品名>.xcodeproj` 存在即复用，否则由打包器生成工程骨架；
+/// `bindings_dir` 是 T-M2-01 生成器的 Swift 三件套落点（`<工程根>/bridge/swift`），
+/// 缺省回落到 `<out_dir>/bridge/swift`（无生成器的老路径 / 测试）。
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct IosInputs {
+    /// 核心 crate 根目录（cargo 构建静态库切片的 cwd）。
+    pub core_crate: Option<PathBuf>,
+    /// 核心库基础名（`lib<name>.a` 的 `<name>`，crate lib 名的下划线形态）。
+    pub lib_name: Option<String>,
+    /// 宿主工程根（含 RN 宿主模板产出的 `ios/` 目录；缺省 → 生成工程骨架）。
+    pub host_project: Option<PathBuf>,
+    /// Swift 绑定目录（T-M2-01 生成器落点 `<工程根>/bridge/swift`；缺省见结构体文档）。
+    pub bindings_dir: Option<PathBuf>,
+}
+
 /// 裸产物（T-M1-03 输出）：Linux AppDir 根 / Windows 产物目录 / macOS `.app`。
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BareProduct {
@@ -157,6 +236,10 @@ pub struct BundleInputs {
     pub icons: Vec<Icon>,
     /// PWA manifest（T-M1-04 生成，Web 目标）。
     pub web_manifest: Option<PathBuf>,
+    /// Android 打包输入（T-M2-06；`None` → 打包器按产品元数据 + 图标 + `ui_dist` 派生）。
+    pub android: Option<AndroidInputs>,
+    /// iOS 打包输入（T-M2-03 / T-M2-08；`None` → iOS 打包器报缺输入）。
+    pub ios: Option<IosInputs>,
     /// 输出目录。
     pub out_dir: PathBuf,
 }
@@ -171,6 +254,8 @@ impl BundleInputs {
             ui_dist: None,
             icons: Vec::new(),
             web_manifest: None,
+            android: None,
+            ios: None,
             out_dir: out_dir.into(),
         }
     }

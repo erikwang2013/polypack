@@ -13,7 +13,7 @@ ui/adapters/native/
 │   ├── example.js         # 示例页面组件树（原语注入；react 依赖）
 │   └── native-registry.js # 原生模块注册位（T-M2-02 AAR/JNI 挂载点）
 ├── host/                  # Android RN 宿主骨架（RN 模板 0.87.2 形态；见 host/README.md）
-└── test/                  # node:test 测试（36 项；无 node_modules 时 5 项跳过、不失败）
+└── test/                  # node:test 测试（37 项；无 node_modules 时 5 项跳过、不失败）
 ```
 
 ## RendererAdapter 契约（ROADMAP §6）
@@ -24,7 +24,7 @@ adapter.mount({ appKey: "PaxApp" }, App);        // RN 宿主装配 = AppRegistr
 adapter.platformStyle(tokens, { compact });      // → 蒙皮为 RN 样式片段（数值即 dp）
 adapter.capabilities();                          // → { focusNav, safeArea, gestures }（恰好契约三键）
 adapter.degradations({ pointer: "none" }, { compact: true });  // → 降级分支清单（闭合可枚举）
-adapter.native.register({ artifact, entryClass });             // 桥产物挂载点（T-M2-02）
+adapter.native.register({ artifact, entryClass, libraryName }); // 桥产物挂载点（T-M2-02；libraryName 可省）
 ```
 
 - **runtime 显式注入**：装配层不臆测宿主（Metro/CI 无需真装 react-native），测试注入桩即可覆盖契约。
@@ -51,7 +51,7 @@ traversalSnapshot(engine.graph); // 快照断言用；reachableFrom / hasNoDeadE
 
 | 测试 | 断言 |
 |---|---|
-| `contract.test.js` | 契约对象形状、mount 装配、边界校验、原生注册位 |
+| `contract.test.js` | 契约对象形状、mount 装配、边界校验、原生注册位 + T-M2-02 口径哨兵（对照真跑夹具） |
 | `capabilities.test.js` | 矩阵 ↔ builtin.rs 漂移哨兵（含 react-native 承载目标）、降级分支闭合集、确定性 |
 | `tokens.test.js` | token 值与模板 tokens.css 双向齐全、RN 合法形态、compact 降级 |
 | `focus.test.js` | 遍历图快照、焦点顺序稳定、Back 记忆、无死路 + 全图可达、构造边界 |
@@ -62,8 +62,9 @@ traversalSnapshot(engine.graph); // 快照断言用；reachableFrom / hasNoDeadE
 未安装时 skip 不 fail（CI 三宿主一致性；只吞「react 未安装」一类失败，本包加载错误照常炸出）。
 
 **CI**：`.github/workflows/rust-ci.yml` 三宿主跑 `working-directory: ui/adapters/native` + `node --test`。
-CI 不装依赖（不引 npm registry 网络依赖）：31 项 react-free 测试直接 import `src/` 守回归，
-5 项代理渲染 skip 不 fail；本机 `npm install` 后 36 项全真跑。
+CI 不装依赖（不引 npm registry 网络依赖）：37 项中 31 项无外部依赖、常驻守 `src/` 回归，
+5 项代理渲染缺 react 时 skip 不 fail，1 项 T-M2-02 口径哨兵随真跑夹具
+（`crates/poly-core/tests/fixtures/bridge_core`）入库后生效；本机 `npm install` + 夹具在场时 37 项全真跑。
 
 ## 阻塞清单（宿主/设备，不伪造证据）
 
@@ -71,7 +72,7 @@ CI 不装依赖（不引 npm registry 网络依赖）：31 项 react-free 测试
 |---|---|---|
 | Android RN 宿主真机渲染 | **阻塞**：无 Android SDK / 模拟器 / Gradle | `render.test.js` 代理渲染 + `host-structure.test.js` 结构断言 |
 | 方向键完成核心任务（真机冒烟） | **阻塞**：需设备 + 原生按键事件源 | `focus.test.js` 键路由/遍历/Back 断言（冒烟形态见 T-M4-05） |
-| AAR/JNI 真加载 | **阻塞**：同上；接口以 T-M2-02 报告为准 | 注册位契约测试 + gradle `fileTree` 挂载点结构断言 |
+| AAR/JNI 真加载 | **阻塞**：同上；口径已定（T-M2-02：`bridge/android/<核心库名>.aar` + `uniffi.<ns>.<Ns>Kt` + `libraryName`） | 注册位契约测试 + 口径哨兵 + gradle `fileTree` 挂载点结构断言 |
 
 ## 落位说明
 

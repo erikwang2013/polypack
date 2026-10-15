@@ -13,13 +13,16 @@
 use std::path::{Path, PathBuf};
 
 use poly_bundle::error::BundleError;
-use poly_bundle::inputs::{BundleInputs, Icon, IconKind, ProductInfo};
+use poly_bundle::inputs::{
+    AndroidInputs, BundleInputs, Icon, IconKind, IosInputs, NativeLib, ProductInfo,
+};
+use poly_core::bridge;
 use poly_core::diagnostics::{Code, Diagnostic};
-use poly_core::events::BuildEvent;
+use poly_core::events::{BuildEvent, EventSink};
 use poly_core::job::JobSpec;
 use poly_core::pipeline;
 use poly_core::plan::{Stage, StageContext, StageError, StageOutcome};
-use poly_targets::{Host, Runtime, TargetSpec, current_host};
+use poly_targets::{Bridge, Host, TargetSpec, current_host};
 
 use crate::project;
 
@@ -98,81 +101,20 @@ fn package_target(
 ) -> Result<bool, StageError> {
     let out_dir = project::packages_root(&project.root).join(&spec.id);
     let Some(packager) = poly_bundle::for_spec(spec) else {
-        return Ok(skip(
-            ctx,
+        skip(
+            ctx.events,
             spec,
             &out_dir,
             &format!(
                 "无内建打包器（format = {}，矩阵 T-M1-05..08 未覆盖）",
                 spec.package.format
             ),
-        ));
+        )?;
+        return Ok(false);
     };
-
-    // 图标（T-M1-14）：手工放置的 `<root>/icons/` 优先，否则从项目图标 svg 现场派生。
-    // 桌面包内必须带图标（金样 `linux.artifact.json` 要求 hicolor 图标、macOS 要求 icns），
-    // 两个来源都没有时不出半成品包，如实告警跳过。
-    let manual = collect_icons(&project.root);
-    // 只有桌面目标吃图标（Web 的 PWA 图标走 dist/icon.svg，见 web.rs）；派生一次要起
-    // rsvg-convert，不为用不上的目标白跑
-    let icon_svg = if manual.is_empty() && spec.runtime == Runtime::Native {
-        project_icon_svg(project)
-    } else {
-        None
+    let Some(inputs) = assemble_inputs(project, spec, host, &out_dir, ctx.events)? else {
+        return Ok(false);
     };
-    if spec.runtime == Runtime::Native && manual.is_empty() && icon_svg.is_none() {
-        return Ok(skip(
-            ctx,
-            spec,
-            &out_dir,
-            &format!(
-                "无图标：既没有 {ICONS_DIR}/ 也没有 {ICON_SVG}（T-M1-14 派生源）——桌面包内必须带图标"
-            ),
-        ));
-    }
-
-    // 确实要打包了才建暂存目录：跳过时不留空目录，免得快照里出现空的 packages/
-    std::fs::remove_dir_all(&out_dir).ok();
-    // 与 dist 不同：包是整份替换，每次构建重写该目标的暂存目录，免得旧版安装包残留
-    std::fs::create_dir_all(&out_dir)
-        .map_err(|err| project::io_error("创建打包暂存目录", &out_dir, err))?;
-
-    let mut inputs = BundleInputs::new(product_info(&project.config.package), &out_dir);
-    inputs.core_binary = pipeline::artifact_path(project)
-        .ok()
-        .filter(|path| path.is_file());
-    let dist = project.root.join("dist");
-    if dist.is_dir() {
-        inputs.web_manifest = MANIFEST_NAMES
-            .iter()
-            .map(|name| dist.join(name))
-            .find(|path| path.is_file());
-        inputs.ui_dist = Some(dist);
-    }
-    inputs.icons = match &icon_svg {
-        // 派生 PNG 16..256 + ICO 落到暂存目录；缺 rsvg-convert 等由 environment 决定跳过
-        Some(svg) => match poly_bundle::icons::derive(svg, &out_dir) {
-            Ok(set) => {
-                for note in &set.notes {
-                    ctx.events.emit(&BuildEvent::Warning {
-                        stage: "package".to_string(),
-                        message: format!("图标派生：{note}"),
-                    });
-                }
-                set.icons
-            }
-            Err(err) => return environment(ctx, spec, &out_dir, err),
-        },
-        None => manual,
-    };
-
-    if spec.runtime == Runtime::Native {
-        // 裸产物（T-M1-03）：核心可执行 + WebView 资源 + 平台元数据，桌面打包器的必需输入
-        match poly_bundle::tauri::bare_product(&inputs, host) {
-            Ok(bare) => inputs.bare = Some(bare),
-            Err(err) => return environment(ctx, spec, &out_dir, err),
-        }
-    }
 
     match packager.package(&inputs, spec) {
         Ok(artifact) => {
@@ -189,20 +131,207 @@ fn package_target(
             }
             Ok(true)
         }
-        Err(err) => environment(ctx, spec, &out_dir, err),
+        Err(err) => environment_slot(ctx.events, spec, &out_dir, err).map(|slot| slot.is_some()),
     }
 }
 
-/// 环境性缺失（宿主工具 / 输入未就绪）→ 告警跳过；其余（配置非法、命令失败）→ 硬失败。
-fn environment(
-    ctx: &mut StageContext<'_>,
+/// 组装一次打包的全部输入。
+///
+/// 抽出来是为了让 `poly verify --reproducible` 复用**同一份组装**：二跑的输入必须同源，
+/// 否则比对的是两份不同的输入而不是同一次构建的确定性。
+///
+/// `Ok(None)` = 环境性缺失（宿主缺工具 / 输入未就绪）：已发告警并清掉暂存目录，调用方跳过该目标。
+pub(crate) fn assemble_inputs(
+    project: &poly_core::Project,
+    spec: &TargetSpec,
+    host: Host,
+    out_dir: &Path,
+    events: &mut dyn EventSink,
+) -> Result<Option<BundleInputs>, StageError> {
+    // 桌面（Tauri IPC）才需要 Tauri 裸产物、才「包内必须带图标」：Android / iOS 的原生产物
+    // 由各自打包器从桥产物与 UI 产物组装，套 Tauri 布局只会得到缺输入、整目标被跳过
+    let desktop = spec.bridge == Bridge::TauriIpc;
+
+    // 图标（T-M1-14）：手工放置的 `<root>/icons/` 优先，否则从项目图标 svg 现场派生。
+    // 桌面包内必须带图标（金样 `linux.artifact.json` 要求 hicolor 图标、macOS 要求 icns），
+    // 两个来源都没有时不出半成品包，如实告警跳过。
+    let manual = collect_icons(&project.root);
+    // 派生一次要起 rsvg-convert，不为用不上的目标白跑
+    let icon_svg = if manual.is_empty() && desktop {
+        project_icon_svg(project)
+    } else {
+        None
+    };
+    if desktop && manual.is_empty() && icon_svg.is_none() {
+        return skip(
+            events,
+            spec,
+            out_dir,
+            &format!(
+                "无图标：既没有 {ICONS_DIR}/ 也没有 {ICON_SVG}（T-M1-14 派生源）——桌面包内必须带图标"
+            ),
+        );
+    }
+
+    // 确实要打包了才建暂存目录：跳过时不留空目录，免得快照里出现空的 packages/
+    std::fs::remove_dir_all(out_dir).ok();
+    // 与 dist 不同：包是整份替换，每次构建重写该目标的暂存目录，免得旧版安装包残留
+    std::fs::create_dir_all(out_dir)
+        .map_err(|err| project::io_error("创建打包暂存目录", out_dir, err))?;
+
+    let mut inputs = BundleInputs::new(product_info(&project.config.package), out_dir);
+    inputs.core_binary = pipeline::artifact_path(project)
+        .ok()
+        .filter(|path| path.is_file());
+    let dist = project.root.join("dist");
+    if dist.is_dir() {
+        inputs.web_manifest = MANIFEST_NAMES
+            .iter()
+            .map(|name| dist.join(name))
+            .find(|path| path.is_file());
+        inputs.ui_dist = Some(dist.clone());
+    }
+    inputs.icons = match &icon_svg {
+        // 派生 PNG 16..256 + ICO 落到暂存目录；缺 rsvg-convert 等由 environment_slot 决定跳过
+        Some(svg) => match poly_bundle::icons::derive(svg, out_dir) {
+            Ok(set) => {
+                for note in &set.notes {
+                    events.emit(&BuildEvent::Warning {
+                        stage: "package".to_string(),
+                        message: format!("图标派生：{note}"),
+                    });
+                }
+                set.icons
+            }
+            Err(err) => return environment_slot(events, spec, out_dir, err),
+        },
+        None => manual,
+    };
+
+    if desktop {
+        // 裸产物（T-M1-03）：核心可执行 + WebView 资源 + 平台元数据，桌面打包器的必需输入
+        match poly_bundle::tauri::bare_product(&inputs, host) {
+            Ok(bare) => inputs.bare = Some(bare),
+            Err(err) => return environment_slot(events, spec, out_dir, err),
+        }
+    }
+
+    match spec.package.format.as_str() {
+        // 移动端打包器的 UI 回落链是 `android.assets` → `ui_dist`：两者都空会打出**没有界面**
+        // 的包而不报错（见 poly-bundle android 的 `asset_entries`）。不静默，如实告警。
+        // 不硬失败：android/ios 声明的是 react-native UI，`bundle` 阶段只认 react-dom，
+        // 故「本次构建没有 dist/」是常态；硬错会把所有 RN-only 构建连同真跑契约门一起打红。
+        "aab" | "apk" => {
+            no_ui_warning(events, spec, &dist, &inputs);
+            inputs.android = Some(android_inputs(project, out_dir, events)?);
+        }
+        "ipa" => {
+            no_ui_warning(events, spec, &dist, &inputs);
+            inputs.ios = Some(ios_inputs(project)?);
+        }
+        _ => {}
+    }
+    Ok(Some(inputs))
+}
+
+/// 移动端无 UI 载荷（`ui_dist` 与 `android.assets` 均缺）时如实告警——产物能构建、但没有界面。
+fn no_ui_warning(
+    events: &mut dyn EventSink,
+    spec: &TargetSpec,
+    dist: &Path,
+    inputs: &BundleInputs,
+) {
+    let has_assets = inputs
+        .android
+        .as_ref()
+        .is_some_and(|android| android.assets.is_some());
+    if inputs.ui_dist.is_some() || has_assets {
+        return;
+    }
+    events.emit(&BuildEvent::Warning {
+        stage: "package".to_string(),
+        message: format!(
+            "目标 {}：无 UI 载荷（{} 不存在）——产物不含界面资源（react-native 侧 UI 打包归 M2 的 RN 支线）",
+            spec.id,
+            dist.display()
+        ),
+    });
+}
+
+/// Android 打包输入：桥产物 AAR（有则解包取 `jni/<abi>/*.so` 与 `classes.jar`）。
+///
+/// 其余字段留空——manifest / res / assets 由打包器按产品元数据 + 图标 + `ui_dist` 派生，
+/// CLI 不重复造一遍。没有 AAR 时给最小输入：打包器仍能出包（只是不含原生库）。
+fn android_inputs(
+    project: &poly_core::Project,
+    out_dir: &Path,
+    events: &mut dyn EventSink,
+) -> Result<AndroidInputs, StageError> {
+    let mut inputs = AndroidInputs::default();
+    let Some(aar) = bridge_aar(project) else {
+        return Ok(inputs);
+    };
+    let unpacked = bridge::aar::unpack(&aar, out_dir)?;
+    inputs.native_libs = unpacked
+        .libs
+        .into_iter()
+        .map(|(abi, path)| NativeLib {
+            abi: abi.dir.to_string(),
+            path,
+        })
+        .collect();
+    inputs.dex_inputs = unpacked.classes_jar.into_iter().collect();
+    events.emit(&BuildEvent::Warning {
+        stage: "package".to_string(),
+        message: format!(
+            "Android 输入：{}（{} 个 ABI，classes.jar {}）",
+            aar.display(),
+            inputs.native_libs.len(),
+            if inputs.dex_inputs.is_empty() {
+                "缺——无 Java 侧时产物无 dex 属正常"
+            } else {
+                "随包"
+            }
+        ),
+    });
+    Ok(inputs)
+}
+
+/// 桥产出的 AAR（`<根>/bridge/android/*.aar`；多个取排序首个）。
+fn bridge_aar(project: &poly_core::Project) -> Option<PathBuf> {
+    let dir = project.root.join("bridge").join("android");
+    let mut aars: Vec<PathBuf> = std::fs::read_dir(dir)
+        .ok()?
+        .flatten()
+        .map(|entry| entry.path())
+        .filter(|path| path.extension().is_some_and(|ext| ext == "aar"))
+        .collect();
+    aars.sort();
+    aars.into_iter().next()
+}
+
+/// iOS 打包输入：核心 crate + 静态库名 + Swift 绑定目录（XCFramework 切片的构建输入）。
+fn ios_inputs(project: &poly_core::Project) -> Result<IosInputs, StageError> {
+    let core_crate = project.root.join(&project.config.core.crate_path);
+    Ok(IosInputs {
+        lib_name: Some(poly_core::compile::read_crate_name(&core_crate)?.replace('-', "_")),
+        core_crate: Some(core_crate),
+        host_project: Some(project.root.clone()),
+        // T-M2-01 生成器的 Swift 落点，与 poly-bundle 的 bridge_dir 约定同源
+        bindings_dir: Some(project.root.join("bridge").join("swift")),
+    })
+}
+
+/// 环境性缺失（宿主工具 / 输入未就绪）→ 告警跳过（`None`）；其余（配置非法、命令失败）→ 硬失败。
+fn environment_slot(
+    events: &mut dyn EventSink,
     spec: &TargetSpec,
     out_dir: &Path,
     err: BundleError,
-) -> Result<bool, StageError> {
+) -> Result<Option<BundleInputs>, StageError> {
     match err {
         BundleError::ToolMissing { .. } | BundleError::MissingInput { .. } => {
-            Ok(skip(ctx, spec, out_dir, &err.to_string()))
+            skip(events, spec, out_dir, &err.to_string())
         }
         other => {
             let mut diagnostic = Diagnostic::error(
@@ -218,13 +347,18 @@ fn environment(
 }
 
 /// 告警并跳过本目标的打包；顺带清掉已建的暂存目录（跳过时不留半成品 / 空目录）。
-fn skip(ctx: &mut StageContext<'_>, spec: &TargetSpec, out_dir: &Path, reason: &str) -> bool {
+fn skip(
+    events: &mut dyn EventSink,
+    spec: &TargetSpec,
+    out_dir: &Path,
+    reason: &str,
+) -> Result<Option<BundleInputs>, StageError> {
     std::fs::remove_dir_all(out_dir).ok();
-    ctx.events.emit(&BuildEvent::Warning {
+    events.emit(&BuildEvent::Warning {
         stage: "package".to_string(),
         message: format!("目标 {} 未打包：{reason}", spec.id),
     });
-    false
+    Ok(None)
 }
 
 /// 项目图标 svg（T-M1-14 派生源）：优先 UI 目录下的 `public/icon.svg`（模板约定），
@@ -290,6 +424,29 @@ fn collect_icons(root: &Path) -> Vec<Icon> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use poly_core::events::HumanSink;
+
+    /// 最小工程配置（`bridge.rs` 集成测试同源文本，保持单一口径）。
+    const FIXTURE_TOML: &str = "[package]\nname = \"fixture-app\"\nversion = \"0.0.1\"\n[ui]\nframework = \"react\"\nentry = \"index.html\"\n[core]\ncrate = \"core\"\n";
+
+    /// 建最小工程骨架（核心 crate 名带 `-`，用于验证下划线化）；返回临时根目录。
+    fn fixture(tag: &str) -> (PathBuf, poly_core::Project) {
+        let root = std::env::temp_dir().join(format!("polypack-pkg-{tag}-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        std::fs::create_dir_all(root.join("core/src")).expect("建核心 crate");
+        std::fs::write(
+            root.join("core/Cargo.toml"),
+            "[package]\nname = \"pax-core\"\nversion = \"0.0.0\"\n",
+        )
+        .expect("写核心 Cargo.toml");
+        let config =
+            poly_core::config::PolypackConfig::parse(FIXTURE_TOML).expect("fixture 配置应合法");
+        let project = poly_core::Project {
+            root: root.clone(),
+            config,
+        };
+        (root, project)
+    }
 
     #[test]
     fn icon_collection_needs_size_in_name() {
@@ -326,5 +483,137 @@ mod tests {
         assert_eq!(product.kebab_name(), "pax-notes");
         // 派生值必须过 poly-bundle 的注入白名单（打包脚本边界）
         product.validate("test").expect("派生元数据应合法");
+    }
+
+    /// Android 不是 Tauri 目标：无图标、无裸产物也必须组装出输入，否则整目标被跳过
+    /// （T-M2-06「直出 AAB/APK」就不成立）。这条同时钉住 `desktop` 分支的作用域。
+    #[test]
+    fn android_target_assembles_without_tauri_bare_product() {
+        let (root, project) = fixture("android-slot");
+        let registry = poly_targets::Registry::builtin();
+        let spec = registry.get("android").expect("内建 android 目标");
+        let out_dir = project::packages_root(&root).join("android");
+        let mut sink = HumanSink { out: Vec::new() };
+
+        let slot = assemble_inputs(&project, spec, Host::Linux, &out_dir, &mut sink)
+            .expect("无图标不是错误");
+        let inputs = slot.expect("Android 目标不该被跳过");
+        assert!(inputs.bare.is_none(), "Android 不套 Tauri 裸产物");
+        assert!(inputs.android.is_some(), "应填好 Android 输入");
+        assert!(out_dir.is_dir(), "真要打包才建暂存目录");
+        // 无 dist/ 时产物不含界面：必须如实告警，不许静默出空包
+        let notes = String::from_utf8_lossy(&sink.out);
+        assert!(notes.contains("无 UI 载荷"), "缺 UI 载荷应告警: {notes}");
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    /// 桌面（TauriIpc）无图标即跳过，且跳过时不留空暂存目录（快照里不该出现空 packages/）。
+    #[test]
+    fn desktop_target_without_icons_is_skipped_cleanly() {
+        let (root, project) = fixture("desktop-skip");
+        let registry = poly_targets::Registry::builtin();
+        let spec = registry.get("linux").expect("内建 linux 目标");
+        let out_dir = project::packages_root(&root).join("linux");
+        let mut sink = HumanSink { out: Vec::new() };
+
+        let slot = assemble_inputs(&project, spec, Host::Linux, &out_dir, &mut sink)
+            .expect("环境性缺失不是错误");
+        assert!(slot.is_none(), "无图标应跳过");
+        assert!(!out_dir.exists(), "跳过时不留暂存目录");
+        let notes = String::from_utf8_lossy(&sink.out);
+        assert!(notes.contains("无图标"), "应告警原因: {notes}");
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    /// 桥产物 AAR → `native_libs`（ABI 用目录名、按 ABIS 表序）与 `dex_inputs`。
+    #[test]
+    fn android_inputs_take_libs_and_dex_from_bridge_aar() {
+        let (root, project) = fixture("android-aar");
+        let out_dir = project::packages_root(&root).join("android");
+        // 用生产组装器造 AAR（不手搓 zip）：两个 ABI 的假 .so + 假 classes.jar
+        let libs_dir = root.join("libs");
+        std::fs::create_dir_all(&libs_dir).expect("建库目录");
+        let mut libs = Vec::new();
+        for abi in [bridge::aar::ABIS[2], bridge::aar::ABIS[0]] {
+            let path = libs_dir.join(format!("libpax_core-{}.so", abi.dir));
+            std::fs::write(&path, b"\x7fELF").expect("写假 .so");
+            libs.push((abi, path));
+        }
+        let jar = libs_dir.join("pax_core.classes.jar");
+        std::fs::write(&jar, b"PK").expect("写假 classes.jar");
+        let aar = root.join("bridge/android/pax_core.aar");
+        bridge::aar::assemble(
+            &aar,
+            &bridge::aar::manifest_xml(
+                "com.polypack.fixture",
+                bridge::aar::DEFAULT_MIN_SDK,
+                "0.0.1",
+            ),
+            &libs,
+            Some(&jar),
+            &libs_dir,
+        )
+        .expect("组装 AAR");
+
+        let mut sink = HumanSink { out: Vec::new() };
+        let inputs = android_inputs(&project, &out_dir, &mut sink).expect("解包 AAR");
+
+        assert_eq!(
+            inputs
+                .native_libs
+                .iter()
+                .map(|lib| lib.abi.as_str())
+                .collect::<Vec<_>>(),
+            ["arm64-v8a", "x86_64"],
+            "ABI 用 Android 目录名，且按 ABIS 表序（与写入顺序无关）"
+        );
+        for lib in &inputs.native_libs {
+            assert!(lib.path.is_file(), "{:?} 应已解包落地", lib.path);
+            assert!(
+                lib.path.starts_with(out_dir.join("jniLibs")),
+                "{:?} 应在 jniLibs 下",
+                lib.path
+            );
+        }
+        assert_eq!(
+            inputs.dex_inputs,
+            vec![out_dir.join("pax_core.classes.jar")]
+        );
+        assert_eq!(inputs.min_sdk, 24, "缺省 minSdk 与打包器同口径");
+        let notes = String::from_utf8_lossy(&sink.out);
+        assert!(notes.contains("Android 输入"), "应发一条输入告警: {notes}");
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    /// 无桥产物（纯 UI 工程）给最小输入：打包器仍能出包，只是不含原生库 / dex。
+    #[test]
+    fn android_inputs_without_bridge_aar_are_minimal() {
+        let (root, project) = fixture("android-min");
+        let out_dir = project::packages_root(&root).join("android");
+        let mut sink = HumanSink { out: Vec::new() };
+
+        let inputs = android_inputs(&project, &out_dir, &mut sink).expect("无 AAR 不是错误");
+        assert!(inputs.native_libs.is_empty());
+        assert!(inputs.dex_inputs.is_empty());
+        assert_eq!(inputs.min_sdk, 24);
+        assert!(sink.out.is_empty(), "无 AAR 时不必告警");
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    /// iOS 输入：`lib<name>.a` 用 crate 名的下划线形态，绑定落点与 poly-bundle 约定同源。
+    #[test]
+    fn ios_inputs_carry_crate_lib_name_and_bindings_dir() {
+        let (root, project) = fixture("ios");
+        let inputs = ios_inputs(&project).expect("iOS 输入");
+
+        assert_eq!(
+            inputs.lib_name.as_deref(),
+            Some("pax_core"),
+            "`-` 应转下划线（cargo 库文件名形态）"
+        );
+        assert_eq!(inputs.core_crate, Some(root.join("core")));
+        assert_eq!(inputs.host_project, Some(root.clone()));
+        assert_eq!(inputs.bindings_dir, Some(root.join("bridge/swift")));
+        let _ = std::fs::remove_dir_all(&root);
     }
 }

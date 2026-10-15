@@ -4,9 +4,8 @@ android/app/build/
 android/.gradle/
 android/local.properties
 
-# 桥产物挂载点（T-M2-02 经 poly build 注入，不入库）
-android/app/libs/*.aar
-android/app/libs/*.so
+# 桥产物（T-M2-02：`poly bridge aar --out bridge/android` 的输出，不入库）
+bridge/
 android/app/src/main/jniLibs/
 
 # 凭据不入库（RN 模板 _gitignore 同款；debug.keystore 由 keytool 生成）

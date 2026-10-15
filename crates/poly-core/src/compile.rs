@@ -194,7 +194,9 @@ pub(crate) fn ensure_lockfile(crate_dir: &Path) -> Result<(), StageError> {
 }
 
 /// 读 crate 目录的 `Cargo.toml`，取 `[package].name`。
-pub(crate) fn read_crate_name(crate_dir: &Path) -> Result<String, StageError> {
+///
+/// 公开：CLI 的 package 阶段要用它填 iOS 的 `lib<name>.a` 与 Android 的 `lib<name>.so` 名。
+pub fn read_crate_name(crate_dir: &Path) -> Result<String, StageError> {
     let manifest = crate_dir.join("Cargo.toml");
     let text = std::fs::read_to_string(&manifest).map_err(|err| {
         Diagnostic::error(

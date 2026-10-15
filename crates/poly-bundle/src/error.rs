@@ -18,6 +18,8 @@ pub mod codes {
     pub const E_BND_0004: &str = "poly::E_BND_0004";
     /// 产物 IO 失败。
     pub const E_BND_0005: &str = "poly::E_BND_0005";
+    /// 产物 zip 归档读写失败。
+    pub const E_BND_0006: &str = "poly::E_BND_0006";
 }
 
 /// 打包失败。
@@ -72,6 +74,14 @@ pub enum BundleError {
         #[source]
         source: std::io::Error,
     },
+    /// 产物 zip 归档读写失败（结构非法 / 压缩方式不支持）。
+    #[error("产物归档失败：{path}（{reason}）")]
+    Archive {
+        /// 出错的归档路径。
+        path: PathBuf,
+        /// 归档器给出的原因。
+        reason: String,
+    },
 }
 
 impl BundleError {
@@ -83,6 +93,7 @@ impl BundleError {
             Self::InvalidInput { .. } => codes::E_BND_0003,
             Self::ToolFailed { .. } => codes::E_BND_0004,
             Self::Io { .. } => codes::E_BND_0005,
+            Self::Archive { .. } => codes::E_BND_0006,
         }
     }
 
@@ -110,6 +121,9 @@ impl BundleError {
             }
             Self::ToolFailed { .. } => Some("查看上方 stderr；打包脚本与命令已落盘，可手动重跑"),
             Self::Io { .. } => Some("检查输出目录权限与磁盘空间"),
+            Self::Archive { .. } => Some(
+                "归档由本工具链产出（aapt2 / bundletool / zip 组装），结构非法多为工具版本不匹配",
+            ),
         }
     }
 }

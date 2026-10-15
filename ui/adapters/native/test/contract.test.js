@@ -2,9 +2,14 @@
 // 零依赖（node:test）；runtime 用桩注入，不要求安装 react-native。
 
 import assert from "node:assert/strict";
+import fs from "node:fs";
+import path from "node:path";
 import { test } from "node:test";
+import { fileURLToPath } from "node:url";
 
 import { CAPABILITY_KEYS, createAdapter } from "../src/index.js";
+
+const HERE = path.dirname(fileURLToPath(import.meta.url));
 
 const stubRuntime = (registered = []) => ({
   registered,
@@ -78,16 +83,47 @@ test("原生模块注册位：默认空，登记描述符后校验生效（T-M2-
   assert.equal(adapter.native.has(), false);
   assert.equal(adapter.native.get(), null);
   assert.throws(() => adapter.native.register({ artifact: "", entryClass: "a.B" }), /artifact/);
-  assert.throws(() => adapter.native.register({ artifact: "libs/core.aar" }), /entryClass/);
+  assert.throws(() => adapter.native.register({ artifact: "bridge/android/x.aar" }), /entryClass/);
+  assert.throws(
+    () => adapter.native.register({ artifact: "a.aar", entryClass: "a.B", libraryName: "" }),
+    /libraryName/,
+  );
 
+  // 口径样例（T-M2-02）：AAR 路径 + Kotlin 门面类 + .so 基名
   const descriptor = adapter.native.register({
-    artifact: "libs/polypack-core.aar",
-    entryClass: "org.polypack.core.CoreBridge",
+    artifact: "bridge/android/pax_core.aar",
+    entryClass: "uniffi.pax.PaxKt",
+    libraryName: "pax_core",
   });
   assert.deepEqual(descriptor, {
-    artifact: "libs/polypack-core.aar",
-    entryClass: "org.polypack.core.CoreBridge",
+    artifact: "bridge/android/pax_core.aar",
+    entryClass: "uniffi.pax.PaxKt",
+    libraryName: "pax_core",
   });
   assert.equal(adapter.native.has(), true);
   assert.ok(Object.isFrozen(descriptor), "描述符应冻结（登记后不可被宿主改写）");
+
+  // 最小描述符仍可用：libraryName 省略 → 归一到 null
+  assert.deepEqual(adapter.native.register({ artifact: "a.aar", entryClass: "a.B" }), {
+    artifact: "a.aar",
+    entryClass: "a.B",
+    libraryName: null,
+  });
+});
+
+test("T-M2-02 口径哨兵：host 示例描述符与真跑夹具一致（库名 / UDL namespace）", (t) => {
+  const fixture = path.resolve(HERE, "../../../../crates/poly-core/tests/fixtures/bridge_core");
+  const cargo = path.join(fixture, "Cargo.toml");
+  const udl = path.join(fixture, "src/pax.udl");
+  if (!fs.existsSync(cargo) || !fs.existsSync(udl)) {
+    t.skip("真跑夹具未入库（m2-core 在途）");
+    return;
+  }
+  const libraryName = fs.readFileSync(cargo, "utf8").match(/^name = "([^"]+)"/m)[1];
+  const ns = fs.readFileSync(udl, "utf8").match(/^namespace (\w+)/m)[1];
+  const entryClass = `uniffi.${ns}.${ns[0].toUpperCase()}${ns.slice(1)}Kt`;
+  const index = fs.readFileSync(path.resolve(HERE, "../host/index.js"), "utf8");
+  assert.ok(index.includes(`bridge/android/${libraryName}.aar`), `host 示例 AAR 路径须为 bridge/android/${libraryName}.aar`);
+  assert.ok(index.includes(entryClass), `host 示例入口类须为 ${entryClass}`);
+  assert.ok(index.includes(`"${libraryName}"`), `host 示例 libraryName 须为 ${libraryName}`);
 });

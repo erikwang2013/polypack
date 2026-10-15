@@ -3,7 +3,7 @@
 > Derived from the milestone breakdown in [ROADMAP.en.md](ROADMAP.en.md) §9; produced in parallel by a four-person planning group and merged after cross-reconciliation: **116 tasks**, all cross-milestone references verified in two passes (existence + description match, zero dangling), Chinese/English task IDs aligned one-to-one.
 > Chinese original: [TASKS.md](TASKS.md). This file falls under the documentation sync convention (ROADMAP §11): task additions/removals must land in both files in the same commit, and drift is caught in CI by the structural checker delivered in T-M0-10.
 > Extension directions (E1–E8) are incubated and intentionally absent from this task table — see [ROADMAP.en.md](ROADMAP.en.md) §13.
-> Progress (2026-10-15): **M0 11/11** · **M1 delivered 15/15** (11 ✅; the matching CI legs for T-M1-02/05/06/07 are green — remaining tool-level notes live in the task entries) · **M2 in progress 3/15** (T-M2-04/05 ✅: adapter v0 + focus baseline, 36 tests; T-M2-15 ✅: bilingual FARM docs, checker extended to four pairs) · **CI green on all three hosts** (rust-ci#38654820649: ubuntu 201 / macos-14 194 / windows-2022 192 tests passed — the differences are exactly the per-host gating surface; docs-check and the ui test step are green too).
+> Progress (2026-10-15): **M0 11/11** · **M1 delivered 15/15** (11 ✅; the matching CI legs for T-M1-02/05/06/07 are green — remaining tool-level notes live in the task entries) · **M2 delivered 15/15** (5 ✅: T-M2-06/07/09/11/15; T-M2-01/02/03/04/05/08/10/12/13/14 carry host/stage/settings notes — see each entry) · **CI green on all three hosts** (rust-ci#38654820649) plus four new M2 workflows (secret-scan ×3 hosts / mobile-contract mock-per-push + nightly real / bridge nightly real).
 
 ## Team roster
 
@@ -264,7 +264,7 @@
 
 > Prerequisites: T-M0-01 (workspace), T-M0-02 (three-host CI), T-M0-04/T-M0-05 (TargetSpec DSL and L1 declarations), T-M0-06/T-M0-07 (JobSpec and diagnostics framework), T-M0-09 (toolchain probes), T-M1-05 (Packager trait), T-M1-09 (poly-cache), T-M1-11 (sample-app template) | Exit criteria: sample APK/IPA installs and signatures verify; zero keys in-repo (secret-scan green); a Linux host produces an IPA through the remote farm
 
-### T-M2-01 · uniffi bridge generator (single interface source → Kotlin/Swift bindings)
+### T-M2-01 · uniffi bridge generator (UDL single source → Kotlin/Swift bindings; digest in the cache key, four exits registered; Kotlin really compiled + dual-ABI .so real runs — Swift compile pending a macOS host)
 
 - Role: core
 - Deps: T-M0-01, T-M1-11
@@ -272,7 +272,7 @@
 - Deliverable: workspace interface generator: from one Rust interface definition it emits Kotlin and Swift bindings (uniffi), versioned as `bridge/v1`; the generator structure keeps napi / wasm-bindgen / cffi outlets open (consumed by M3) so no bridge is ever hand-written four times.
 - Acceptance: one command emits both binding sets for the sample core and both toolchains compile them; an interface change busts the library-level cache (cache key includes the interface digest); generated output matches the actual Rust export signatures (test assertion).
 
-### T-M2-02 · Kotlin/JNI binding artifact (AAR)
+### T-M2-02 · Kotlin/JNI binding artifact (AAR) (dual-ABI real cross-compile; AAR 499,948 B byte-identical on re-run; on-device loadLibrary pending — substitution: library-name/symbol three-way alignment asserts)
 
 - Role: core
 - Deps: T-M2-01, T-M1-09
@@ -280,7 +280,7 @@
 - Deliverable: the core compiled to JNI `.so` per ABI triple + generated Kotlin bindings, assembled into an AAR (minimal manifest/resources) as the input to Android packaging.
 - Acceptance: the AAR loads in the Android contract test; Kotlin-side calls to the sample interface return the same results as the Rust unit tests; the AAR goes through the library-level cache and hits on the second run.
 
-### T-M2-03 · Swift binding artifact (XCFramework)
+### T-M2-03 · Swift binding artifact (XCFramework) (triple/lipo structure + tamper checks complete; real xcodebuild link pending a macOS host)
 
 - Role: platforms
 - Deps: T-M2-01
@@ -288,7 +288,7 @@
 - Deliverable: the core compiled to a device + simulator slice XCFramework (staticlib) + generated Swift bindings and modulemap.
 - Acceptance: a minimal host project links it via xcodebuild on a macOS host; Swift-side calls to the sample interface match Rust output; slices are enumerable and verifiable (`lipo -info`).
 
-### T-M2-04 · ✅ @polypack/adapter-native v0 (RN host + capabilities contract; 36 tests green)
+### T-M2-04 · @polypack/adapter-native v0 (RN host + capabilities contract; 37 tests green; real-device RN render pending — proxy render substitution)
 
 - Role: ui-adapters
 - Deps: T-M1-04, T-M1-11
@@ -296,7 +296,7 @@
 - Deliverable: `@polypack/adapter-native` v0: the RN host assembly layer implementing the §6 RendererAdapter contract (`mount` / `platformStyle(tokens)` / `capabilities(): { focusNav, safeArea, gestures }`), with a native-module registration slot for bridge artifacts.
 - Acceptance: the same page component tree renders in an Android RN host; `capabilities()` output matches TargetSpec/host capability; degradation paths are driven by the declared capabilities (no pointer → focus-ring branch enumerable; the full traversal graph waits for M4).
 
-### T-M2-05 · ✅ adapter-native focus/navigation baseline (traversal graph + back-stack + key routing)
+### T-M2-05 · adapter-native focus/navigation baseline (traversal graph + back-stack + key routing; snapshot asserts in place; on-device d-pad smoke pending a host)
 
 - Role: ui-adapters
 - Deps: T-M2-04
@@ -304,7 +304,7 @@
 - Deliverable: baseline focus model: minimal D-pad traversal graph, focus-ring rendering, Back-key focus-memory interface — a shared kernel for the M4 TV focus navigation system.
 - Acceptance: the sample app completes one core task with the D-pad in an Android host (external keyboard/debug mode); focus order is stable (snapshot assertion); Back returns to the previous focus and no dead ends occur without a pointer.
 
-### T-M2-06 · Android packager (AAPT2, Gradle-free)
+### T-M2-06 · ✅ Android packager (AAPT2, Gradle-free) (real contract 3 consecutive greens matching the golden; zero-warning channel anti-false-green; SOURCE_DATE_EPOCH re-runs byte-identical across absolute build dirs)
 
 - Role: packagers
 - Deps: T-M2-02, T-M0-09, T-M1-05
@@ -312,7 +312,7 @@
 - Deliverable: `poly-bundle` Android packager: AAPT2 compile/link for resources and manifest (ABI and locale trimming, reproducible flags) producing unsigned AAB/APK intermediates (the signing slot is wired by T-M2-09); no Gradle anywhere.
 - Acceptance: `poly build --target android` emits both AAB and APK; AAPT2 link is warning-free; with `SOURCE_DATE_EPOCH` injected, a second run is byte-identical apart from signatures and timestamps (`poly verify --reproducible`).
 
-### T-M2-07 · Android artifact assembly and verification (bundletool)
+### T-M2-07 · ✅ Android artifact assembly and verification (bundletool) (validate real run; emulator-5554 install + cold start "Status: ok"; structure asserts in the event stream)
 
 - Role: packagers
 - Deps: T-M2-06
@@ -320,7 +320,7 @@
 - Deliverable: bundletool emit-and-verify chain: `build-bundle` / `build-apks` assembly, `bundletool validate` verification, and a device install-smoke script.
 - Acceptance: `bundletool validate` passes; the sample APK installs and cold-starts on an emulator/device; artifact structure assertions (manifest, ABIs, resource table) are emitted on the event stream.
 
-### T-M2-08 · iOS packager (xcodebuild archive + exportArchive)
+### T-M2-08 · iOS packager (xcodebuild archive + exportArchive) (skeleton/reuse/host gating complete, CLI wiring landed; real macOS IPA pending nightly)
 
 - Role: packagers
 - Deps: T-M2-03, T-M2-04, T-M0-09, T-M1-05
@@ -328,7 +328,7 @@
 - Deliverable: `poly-bundle` iOS packager: generates/reuses the Xcode project skeleton and produces an unsigned IPA via `xcodebuild archive` + `exportArchive` (export method configurable); macOS hosts only, host eligibility decided at the probe stage.
 - Acceptance: the sample app emits an IPA on a macOS host; `plutil`/`xcrun` checks confirm Info.plist and architectures; provisioning profiles and certificates appear only as credential references (no plaintext).
 
-### T-M2-09 · Android signing (apksigner + keystore reference)
+### T-M2-09 · ✅ Android signing (apksigner + keystore reference) (real signing v2+v3 schemes + DN asserts; plan fail-fast; zero temp-key residue, zero secret leakage)
 
 - Role: release-sec
 - Deps: T-M2-07, T-M2-11
@@ -336,7 +336,7 @@
 - Deliverable: `poly-sign` Android signer: `CredentialRef` → keystore resolution → apksigner signing, with key material only in memory/temp dirs; `apksigner verify` runs automatically after signing.
 - Acceptance: the sample APK passes `apksigner verify --print-certs`; a missing/wrong reference fails fast at the plan stage (stable error code + fix hint); a post-sign assertion shows no leftover key material.
 
-### T-M2-10 · iOS signing and notarization (codesign + notarytool)
+### T-M2-10 · iOS signing and notarization (codesign + notarytool) (library chain/credential refs/receipt slot ready; verify-stage hookup and real notarization pending an Apple environment)
 
 - Role: release-sec
 - Deps: T-M2-08, T-M2-11
@@ -344,7 +344,7 @@
 - Deliverable: `poly-sign` iOS chain: codesign (certificate/profile via credential references) + `notarytool submit --wait` + stapler; `codesign --verify` and `spctl` checks wired into the verify stage.
 - Acceptance: the sample IPA notarizes and staples successfully; `codesign --verify --deep` and `spctl -a -vv` pass; the notarization receipt is archived into the submission-level cache record.
 
-### T-M2-11 · Vault integration (keyring + Vault backend trait)
+### T-M2-11 · ✅ Vault integration (keyring + Vault backend trait) (backend chain + redaction asserts; retry --from sign re-fetches credentials across two real signing rounds; real bus/Vault HTTP pending a real host)
 
 - Role: release-sec
 - Deps: T-M0-06
@@ -352,7 +352,7 @@
 - Deliverable: credential resolution layer: `CredentialRef` → backend chain (local keyring + Vault backend trait + CI memory injection); the sign stage pulls on demand and discards immediately; plaintext credentials in the repo fail the build.
 - Acceptance: the same JobSpec resolves against both the keyring and Vault backends; credential values never appear in the event stream/logs (redaction assertion); `poly retry --from sign` reruns independently and re-pulls credentials.
 
-### T-M2-12 · secret-scan (commit and build double-check)
+### T-M2-12 · secret-scan (commit and build double-check) (constructed samples all hit + full-history real scan of 823 files clean + three-host CI workflow; required-check branch protection pending repo settings)
 
 - Role: release-sec
 - Deps: T-M0-02
@@ -360,7 +360,7 @@
 - Deliverable: built-in rule set (keystore/JKS, certificate private keys, API-key patterns) plus a commit hook and a CI job as double checks; a hit fails immediately with a fix hint (error-code scheme).
 - Acceptance: crafted samples for every rule class are all caught; a full-history repo scan is green; secret-scan is a required check in CI (all three hosts).
 
-### T-M2-13 · Remote-farm protocol v0 (JobSpec serialization + worker pull-and-execute)
+### T-M2-13 · Remote-farm protocol v0 (JobSpec serialization + worker pull-and-execute) (frames/mailboxes/shared-object-store cache reuse real runs; R3 admission semantics ✓; real macOS worker IPA pending nightly; master-side stale frames deferred to v1)
 
 - Role: core
 - Deps: T-M2-08, T-M2-10, T-M1-09
@@ -368,7 +368,7 @@
 - Deliverable: farm protocol v0: JobSpec serialization format + worker pull-execute-report loop (worker registration and capability declaration), with local and remote runs sharing one DAG implementation.
 - Acceptance: a Linux host initiates an iOS-target build → a macOS worker produces the IPA and signature verification passes (the R3 acceptance path); worker-side failures return complete error codes and fix hints; cross-machine cache sharing is verified through the object-storage backend.
 
-### T-M2-14 · Mobile CI integration and contract-test goldens
+### T-M2-14 · Mobile CI integration and contract-test goldens (workflow + goldens landed, mock 6/6 locally; three-host mock columns and nightly real columns await their first run)
 
 - Role: infra
 - Deps: T-M2-07, T-M2-10, T-M1-13, T-M0-02

@@ -15,6 +15,7 @@ serde_json.workspace = true
 thiserror.workspace = true
 # SRI 哈希只认 sha256/384/512（T-M1-08），RustCrypto 纯 Rust 实现无 C 依赖。
 sha2 = "0.10"
+zip = { workspace = true }
 
 [lints]
 workspace = true

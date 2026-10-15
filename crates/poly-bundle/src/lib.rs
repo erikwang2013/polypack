@@ -17,10 +17,14 @@ pub mod packager;
 pub mod packagers;
 pub mod sri;
 pub mod tauri;
+pub mod tools;
+pub mod zipwrite;
 
 pub use error::{BundleError, codes};
 pub use icons::{IconSet, derive as derive_icons};
-pub use inputs::{BareProduct, BundleInputs, Icon, IconKind, ProductInfo};
+pub use inputs::{
+    AndroidInputs, BareProduct, BundleInputs, Icon, IconKind, IosInputs, NativeLib, ProductInfo,
+};
 pub use packager::{
     Artifact, ArtifactKind, BundlePlan, Command, Packager, ScriptFile, Skipped, builtin, find,
     for_spec,

@@ -1,0 +1,29 @@
+{
+  "target": "ios",
+  "builder": "ios-xcodebuild",
+  "signing": "apple-codesign",
+  "verifiers": ["codesign-verify", "spctl"],
+  "artifacts": [
+    {
+      "format": "ipa",
+      "extension": "ipa",
+      "entries": [
+        "Payload/*.app/Info.plist",
+        "Payload/*.app/*"
+      ]
+    },
+    {
+      "format": "xcframework",
+      "extension": null,
+      "entries": [
+        "*.xcframework/Info.plist",
+        "*.xcframework/ios-arm64/*.a",
+        "*.xcframework/ios-arm64/Headers/module.modulemap",
+        "*.xcframework/ios-arm64/Headers/*.h",
+        "*.xcframework/ios-arm64_x86_64-simulator/*.a",
+        "*.xcframework/ios-arm64_x86_64-simulator/Headers/module.modulemap",
+        "*.xcframework/ios-arm64_x86_64-simulator/Headers/*.h"
+      ]
+    }
+  ]
+}

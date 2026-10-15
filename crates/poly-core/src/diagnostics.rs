@@ -61,6 +61,28 @@ pub mod codes {
     pub const E_INIT_0001: Code = Code::new("poly::E_INIT_0001");
     /// `poly dev` 失败（端口占用 / 监听失败）。
     pub const E_DEV_0001: Code = Code::new("poly::E_DEV_0001");
+    /// 桥生成失败（引擎缺失 / 接口定义非法 / 生成产物缺失）。
+    pub const E_BRIDGE_0001: Code = Code::new("poly::E_BRIDGE_0001");
+    /// 桥接口版本不受支持（非 `bridge/v1`）。
+    pub const E_BRIDGE_0002: Code = Code::new("poly::E_BRIDGE_0002");
+    /// AAR 组装失败（ABI 缺失 / 清单写入失败 / 归档失败）。
+    pub const E_BRIDGE_0003: Code = Code::new("poly::E_BRIDGE_0003");
+    /// secret-scan 命中密钥材料。
+    pub const E_SCAN_0001: Code = Code::new("poly::E_SCAN_0001");
+    /// secret-scan 执行失败（IO / 仓库不可读）。
+    pub const E_SCAN_0002: Code = Code::new("poly::E_SCAN_0002");
+    /// 农场协议帧非法（序列化格式 / 版本 / 字段缺失）。
+    pub const E_FARM_0001: Code = Code::new("poly::E_FARM_0001");
+    /// worker 注册被拒（能力声明与任务需求不匹配）。
+    pub const E_FARM_0002: Code = Code::new("poly::E_FARM_0002");
+    /// worker 执行失败（错误码与修复提示回传）。
+    pub const E_FARM_0003: Code = Code::new("poly::E_FARM_0003");
+    /// 产物二跑不一致（`poly verify --reproducible`）。
+    pub const E_VERIFY_0001: Code = Code::new("poly::E_VERIFY_0001");
+    /// 没有可比对的产物 / 未接入该目标的校验器。
+    pub const E_VERIFY_0002: Code = Code::new("poly::E_VERIFY_0002");
+    /// 未找到可重签的未签名产物（`poly retry --from sign`）。
+    pub const E_RETRY_0001: Code = Code::new("poly::E_RETRY_0001");
     /// IO 错误。
     pub const E_IO_0001: Code = Code::new("poly::E_IO_0001");
 }

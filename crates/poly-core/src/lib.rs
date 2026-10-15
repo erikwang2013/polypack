@@ -2,13 +2,16 @@
 //!
 //! 依赖方向（ROADMAP §4.1）：`poly-core` → `poly-targets` / `poly-toolchain` / `poly-cache`。
 
+pub mod bridge;
 pub mod compile;
 pub mod config;
 pub mod diagnostics;
 pub mod events;
+pub mod farm;
 pub mod job;
 pub mod pipeline;
 pub mod plan;
+pub mod scan;
 pub mod web;
 
 pub use compile::{CompileResult, CompileStage, compile_core, host_triple};

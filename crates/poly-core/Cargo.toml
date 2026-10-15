@@ -17,6 +17,9 @@ serde_json.workspace = true
 toml.workspace = true
 thiserror.workspace = true
 schemars.workspace = true
+# T-M2-02 AAR（zip 归档）与 T-M2-12/13 无关；与 poly-bundle 的 T-M2-06 用同一版本与特性，
+# 不引入新的供应链表面（同一 crate 同一锁条目）。
+zip = { workspace = true }
 
 [lints]
 workspace = true

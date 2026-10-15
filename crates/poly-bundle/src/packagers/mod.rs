@@ -4,8 +4,12 @@
 //! - [`dmg`]：macOS DMG（T-M1-06，hdiutil 组装 + 拖拽安装布局）
 //! - [`linux`]：deb 与 AppImage（T-M1-07）
 //! - [`web`]：Web 静态站点（T-M1-08，含 SRI 清单）
+//! - [`android`]：AAB（T-M2-06 / T-M2-07，AAPT2 免 Gradle + bundletool）
+//! - [`ios`]：IPA（T-M2-03 / T-M2-08，XCFramework 绑定 + xcodebuild archive / exportArchive）
 
+pub mod android;
 pub mod dmg;
+pub mod ios;
 pub mod linux;
 pub mod web;
 pub mod windows;

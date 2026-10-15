@@ -34,7 +34,6 @@ test("宿主骨架文件齐备（RN 模板 0.87.2 形态）", () => {
     "android/app/src/main/res/drawable/rn_edit_text_material.xml",
     `${KOTLIN_DIR}/MainActivity.kt`,
     `${KOTLIN_DIR}/MainApplication.kt`,
-    "android/app/libs/README.md",
   ];
   for (const file of files) {
     assert.ok(exists(file), `缺宿主文件: ${file}`);
@@ -74,14 +73,15 @@ test("清单与主题：MainApplication / MainActivity 注册完整", () => {
   assert.match(manifest, /android.intent.category.LAUNCHER/);
 });
 
-test("桥产物挂载点就位：gradle fileTree + 装配层注册位 + 说明文件", () => {
+test("桥产物挂载点就位：gradle fileTree 指向 T-M2-02 口径路径 + 装配层注册位 + 产物不入库", () => {
   assert.match(
     read("android/app/build.gradle"),
-    /fileTree\(dir: "libs", include: \["\*\.aar"\]\)/,
-    "app/build.gradle 须保留 AAR 挂载点",
+    /fileTree\(dir: "\$\{rootProject\.projectDir\}\/\.\.\/bridge\/android", include: \["\*\.aar"\]\)/,
+    "app/build.gradle 须挂 <工程根>/bridge/android（`poly bridge aar` 的输出目录，非 libs/）",
   );
+  assert.ok(!exists("android/app/libs"), "libs/ 挂载点已按 T-M2-02 口径移除");
   assert.match(read("index.js"), /adapter\.native\.register/, "装配层须保留桥产物注册位");
-  assert.match(read("android/app/libs/README.md"), /T-M2-02/);
+  assert.match(read(".gitignore"), /^bridge\/$/m, "桥产物目录不入库");
 });
 
 test("宿主依赖与阻塞说明：adapter 本地接线、react-native 引入、阻塞项成文", () => {

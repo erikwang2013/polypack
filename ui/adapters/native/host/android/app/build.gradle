@@ -108,8 +108,11 @@ android {
 }
 
 dependencies {
-    // 桥产物挂载点（T-M2-02）：AAR 就位即随包编译；空目录时 fileTree 为空、无副作用
-    implementation fileTree(dir: "libs", include: ["*.aar"])
+    // 桥产物挂载点（T-M2-02 口径）：`poly bridge aar` 输出在 <工程根>/bridge/android/<核心库名>.aar
+    // （不是 maven 坐标、不放 libs/）。前置：host 骨架铺在工程根（android/ 与 polypack.toml、bridge/ 同级），
+    // shortcut: 宿主挂子目录时此 `../` 层数写死会失配，届时应改为 gradle property 注入。
+    // AAR 就位即随包编译，缺失时 fileTree 为空、无副作用
+    implementation fileTree(dir: "${rootProject.projectDir}/../bridge/android", include: ["*.aar"])
 
     // The version of react-native is set by the React Native Gradle Plugin
     implementation("com.facebook.react:react-android")

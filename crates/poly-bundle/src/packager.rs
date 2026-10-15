@@ -49,6 +49,8 @@ pub struct Command {
     pub args: Vec<String>,
     /// 工作目录。
     pub cwd: Option<PathBuf>,
+    /// 附加环境变量（凭据一律以 `env:NAME` 形式引用，值不进 [`Command::line`]）。
+    pub env: Vec<(String, String)>,
 }
 
 impl Command {
@@ -61,12 +63,23 @@ impl Command {
             program: program.into(),
             args: args.into_iter().map(Into::into).collect(),
             cwd: None,
+            env: Vec::new(),
         }
     }
 
     /// 指定工作目录。
     pub fn in_dir(mut self, cwd: impl Into<PathBuf>) -> Self {
         self.cwd = Some(cwd.into());
+        self
+    }
+
+    /// 附加一个环境变量。
+    ///
+    /// 值**不得**是凭据明文（凭据经 `CredentialRef` 在签名阶段以内存态注入，见 poly-sign）；
+    /// 此处的常规用途是 `SOURCE_DATE_EPOCH` / `ANDROID_HOME` 等构建参数。
+    #[must_use]
+    pub fn with_env(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
+        self.env.push((key.into(), value.into()));
         self
     }
 
@@ -169,15 +182,17 @@ pub trait Packager: Send + Sync {
     fn package(&self, inputs: &BundleInputs, spec: &TargetSpec) -> Result<Artifact, BundleError>;
 }
 
-/// 内建打包器集合（M1：msi / nsis / dmg / deb / appimage / static-site）。
+/// 内建打包器集合（M1：msi / nsis / dmg / deb / appimage / static-site；M2：aab / ipa）。
 pub fn builtin() -> Vec<Box<dyn Packager>> {
     vec![
         Box::new(crate::packagers::windows::WixMsi),
         Box::new(crate::packagers::windows::Nsis),
         Box::new(crate::packagers::dmg::Dmg),
+        Box::new(crate::packagers::ios::Ios),
         Box::new(crate::packagers::linux::Deb),
         Box::new(crate::packagers::linux::AppImage),
         Box::new(crate::packagers::web::StaticSite),
+        Box::new(crate::packagers::android::AndroidAab),
     ]
 }
 

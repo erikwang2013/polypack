@@ -22,8 +22,14 @@ const { App, onKey } = createExampleApp(primitives, adapter);
 
 adapter.mount({ appKey: "PaxApp" }, App);
 
-// 原生模块注册位（T-M2-02 的 AAR/JNI 就位后启用；描述符字段以 T-M2-02 报告为准）
-// adapter.native.register({ artifact: "libs/polypack-core.aar", entryClass: "org.polypack.core.CoreBridge" });
+// 原生模块注册位（T-M2-02 口径）：AAR 由 `poly bridge aar` 产出到 <工程根>/bridge/android/，
+// entryClass = uniffi.<UDL namespace>.<Ns>Kt，libraryName = .so 基名（System.loadLibrary 入参）。
+// 示例取 T-M2-01/02 真跑夹具（pax.udl + pax_core）：
+// adapter.native.register({
+//   artifact: "bridge/android/pax_core.aar",
+//   entryClass: "uniffi.pax.PaxKt",
+//   libraryName: "pax_core",
+// });
 
 // 方向键 / Back 事件源：Android 侧由原生按键事件（或调试模式）注入 onKey。
 // 冒烟形态（同 T-M4-05）＝ 无指针完成核心任务：方向键遍历 → 激活 → Back 返回上一焦点。

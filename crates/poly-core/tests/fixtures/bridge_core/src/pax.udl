@@ -1,0 +1,6 @@
+// T-M2-01 的**单处接口定义**：Kotlin / Swift 绑定都由这一份经 uniffi 生成，
+// 仓库里不手写任何一份绑定。
+namespace pax {
+  string greet(string name);
+  u32 add(u32 a, u32 b);
+};

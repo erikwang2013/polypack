@@ -3,7 +3,7 @@
 > 派生自 [ROADMAP.md](ROADMAP.md) §9 的里程碑分解；由 4 人规划小组并行产出、交叉对账后合并：**116 个任务**，跨里程碑引用经「存在性 + 描述匹配」两轮校验零悬空，中英任务 ID 逐一对齐。
 > 英文版：[TASKS.en.md](TASKS.en.md)。本文件受「文档同步约定」管辖（见 ROADMAP §11）：任务增删须双文件同一次提交更新，并由 T-M0-10 的结构级校验器在 CI 拦截漂移。
 > 扩展方向（E1–E8）已立项孵化，不占本任务表：见 [ROADMAP.md](ROADMAP.md) §13。
-> 进度（2026-10-15）：**M0 11/11** · **M1 已交付 15/15**（11 项 ✅；T-M1-02/05/06/07 的对应 CI 腿已全绿，余下工具级注记见任务条目）· **M2 进行中 3/15**（T-M2-04/05 ✅：适配层 v0 + 焦点基线，36 测试；T-M2-15 ✅：FARM 双语文档，校验器已扩至四对）· **CI 三宿主全绿**（rust-ci#38654820649：ubuntu 201 / macos-14 194 / windows-2022 192 项测试全过，差分恰为各宿主门控面；docs-check 与 ui 测试步同绿）。
+> 进度（2026-10-15）：**M0 11/11** · **M1 已交付 15/15**（11 项 ✅；T-M1-02/05/06/07 的对应 CI 腿已全绿，余下工具级注记见任务条目）· **M2 已交付 15/15**（5 项 ✅：T-M2-06/07/09/11/15；T-M2-01/02/03/04/05/08/10/12/13/14 带宿主/阶段/设置注记，逐项见任务条目）· **CI 三宿主全绿**（rust-ci#38654820649）+ M2 新增四工作流（secret-scan 三宿主 / mobile-contract mock+夜跑真列 / bridge 夜跑真跑）。
 
 ## 团队编制与角色
 
@@ -264,7 +264,7 @@
 
 > 前置依赖: T-M0-01（workspace）、T-M0-02（三宿主 CI）、T-M0-04/T-M0-05（TargetSpec DSL 与 L1 声明）、T-M0-06/T-M0-07（JobSpec 与诊断框架）、T-M0-09（工具链探测）、T-M1-05（Packager 接口）、T-M1-09（poly-cache）、T-M1-11（示例应用模板）｜出口条件: 示例 APK/IPA 可安装且签名可验证；密钥零入库（secret-scan 全绿）；Linux 宿主经远程农场出 IPA
 
-### T-M2-01 · uniffi 桥生成器（接口单源 → Kotlin/Swift 绑定）
+### T-M2-01 · uniffi 桥生成器（UDL 单源 → Kotlin/Swift 绑定；摘要入缓存键、四出口登记；Kotlin 真编译 + 双 ABI .so 真跑，Swift 编译待 macOS 宿主）
 
 - 角色: core
 - 依赖: T-M0-01、T-M1-11
@@ -272,7 +272,7 @@
 - 交付物: 工作区接口生成器：从单处 Rust 接口定义产出 Kotlin 与 Swift 绑定（uniffi），接口按 `bridge/v1` 版本化；生成器结构预留 napi / wasm-bindgen / cffi 出口（M3 消费），桥接代码不得手写四份。
 - 验收: 对示例核心一键生成两端绑定代码且可被两端工具链编译；接口变更即触发库级缓存失效（缓存键含接口摘要）；生成产物与实际 Rust 导出签名一致（测试断言）。
 
-### T-M2-02 · Kotlin/JNI 绑定产物（AAR）
+### T-M2-02 · Kotlin/JNI 绑定产物（AAR）（双 ABI 真交叉编译 + AAR 499,948B 二跑字节一致；上机 loadLibrary 待设备，以库名/符号三方对齐断言替代）
 
 - 角色: core
 - 依赖: T-M2-01、T-M1-09
@@ -280,7 +280,7 @@
 - 交付物: 核心编译为各 ABI triple 的 JNI `.so` + 生成的 Kotlin 绑定，组装为 AAR（清单/资源最小化），作为 Android 打包阶段的输入。
 - 验收: AAR 在 Android 契约测试中加载成功；Kotlin 侧调用示例接口结果与 Rust 单测一致；AAR 走库级缓存，二跑命中。
 
-### T-M2-03 · Swift 绑定产物（XCFramework）
+### T-M2-03 · Swift 绑定产物（XCFramework）（三 triple/lipo/结构与篡改校验完备；xcodebuild 真链接待 macOS 宿主）
 
 - 角色: platforms
 - 依赖: T-M2-01
@@ -288,7 +288,7 @@
 - 交付物: 核心编译为 device + simulator 切片的 XCFramework（staticlib）+ 生成的 Swift 绑定与 modulemap。
 - 验收: 最小宿主工程在 macOS 宿主用 xcodebuild 链接通过；Swift 侧调用示例接口与 Rust 输出一致；切片架构可枚举校验（`lipo -info`）。
 
-### T-M2-04 · ✅ @polypack/adapter-native v0（RN 宿主 + capabilities 契约；36 测试绿）
+### T-M2-04 · @polypack/adapter-native v0（RN 宿主 + capabilities 契约；37 测试绿；真机 RN 渲染待设备，代理渲染替代）
 
 - 角色: ui-adapters
 - 依赖: T-M1-04、T-M1-11
@@ -296,7 +296,7 @@
 - 交付物: `@polypack/adapter-native` v0：实现 §6 RendererAdapter 契约（`mount` / `platformStyle(tokens)` / `capabilities(): { focusNav, safeArea, gestures }`）的 RN 宿主装配层，原生模块注册位预留桥产物挂载点。
 - 验收: 同一示例页面组件树在 Android RN 宿主渲染；`capabilities()` 输出与 TargetSpec/宿主能力一致；降级路径由 capabilities 声明驱动（无指针 → 焦点环分支可枚举，完整导航图留待 M4）。
 
-### T-M2-05 · ✅ adapter-native 焦点/导航基线（遍历图 + Back 记忆栈 + 键路由）
+### T-M2-05 · adapter-native 焦点/导航基线（遍历图 + Back 记忆栈 + 键路由；快照断言齐；设备方向键冒烟待宿主）
 
 - 角色: ui-adapters
 - 依赖: T-M2-04
@@ -304,7 +304,7 @@
 - 交付物: 基线焦点模型：方向键遍历的最小遍历图、焦点环渲染、Back 键焦点记忆接口——作为共享内核供 M4 TV 焦点导航系统复用。
 - 验收: 示例应用在 Android 宿主以方向键完成一个核心任务（外接键盘/调试模式）；焦点顺序稳定（快照断言）；Back 返回上一焦点，无指针环境不出现死路。
 
-### T-M2-06 · Android Packager（AAPT2 免 Gradle 直出）
+### T-M2-06 · ✅ Android Packager（AAPT2 免 Gradle 直出；真契约 3 连绿命中金样；零告警通道防假绿；SOURCE_DATE_EPOCH 二跑逐字节一致、跨绝对目录稳定）
 
 - 角色: packagers
 - 依赖: T-M2-02、T-M0-09、T-M1-05
@@ -312,7 +312,7 @@
 - 交付物: `poly-bundle` Android 打包器：AAPT2 compile/link 资源与清单（含 ABI 与语言裁剪、可复现参数），产出未签名 AAB/APK 中间产物（签名位由 T-M2-09 接入）；全程不依赖 Gradle。
 - 验收: `poly build --target android` 直出 AAB 与 APK；AAPT2 链接零告警；注入 `SOURCE_DATE_EPOCH`，二跑产物除签名与时间戳外字节一致（`poly verify --reproducible`）。
 
-### T-M2-07 · Android 产物组装与校验（bundletool）
+### T-M2-07 · ✅ Android 产物组装与校验（bundletool）（validate 真跑；emulator-5554 安装冷启动 Status: ok；结构断言入事件流）
 
 - 角色: packagers
 - 依赖: T-M2-06
@@ -320,7 +320,7 @@
 - 交付物: bundletool 直出与校验链：`build-bundle` / `build-apks` 组装、`bundletool validate` 校验、设备安装冒烟脚本。
 - 验收: `bundletool validate` 通过；样本 APK 在模拟器/真机安装并冷启动成功；产物结构断言（清单、ABI、资源表）以事件流输出。
 
-### T-M2-08 · iOS Packager（xcodebuild archive + exportArchive）
+### T-M2-08 · iOS Packager（xcodebuild archive + exportArchive）（骨架/复用/宿主门控完备，CLI 接线已落；macOS 真出 IPA 待 nightly）
 
 - 角色: packagers
 - 依赖: T-M2-03、T-M2-04、T-M0-09、T-M1-05
@@ -328,7 +328,7 @@
 - 交付物: `poly-bundle` iOS 打包器：生成/复用 Xcode 工程骨架，`xcodebuild archive` + `exportArchive` 产出未签名 IPA（导出方式可配）；仅 macOS 宿主可执行，宿主判定接入 probe 阶段。
 - 验收: 示例应用在 macOS 宿主直出 IPA；`plutil`/`xcrun` 检查 Info.plist 与架构正确；描述文件与证书只以凭据引用出现（无明文）。
 
-### T-M2-09 · Android 签名（apksigner + keystore 引用）
+### T-M2-09 · ✅ Android 签名（apksigner + keystore 引用）（真签 v2+v3 双方案 + DN 断言；plan fail-fast；临时密钥零残留、口令零泄露）
 
 - 角色: release-sec
 - 依赖: T-M2-07、T-M2-11
@@ -336,7 +336,7 @@
 - 交付物: `poly-sign` Android Signer：`CredentialRef` → keystore 解析 → apksigner 签名，密钥材料只落内存/临时目录；签名后自动 `apksigner verify`。
 - 验收: 示例 APK `apksigner verify --print-certs` 通过；缺失/错误引用在 plan 阶段快速失败（稳定错误码 + 修复提示）；签名后断言无临时密钥残留。
 
-### T-M2-10 · iOS 签名与公证（codesign + notarytool）
+### T-M2-10 · iOS 签名与公证（codesign + notarytool）（库级链路/凭据引用/回执槽就绪；verify 阶段接入与真机公证待 Apple 环境）
 
 - 角色: release-sec
 - 依赖: T-M2-08、T-M2-11
@@ -344,7 +344,7 @@
 - 交付物: `poly-sign` iOS 链路：codesign（证书/描述文件经凭据引用）+ `notarytool submit --wait` 公证 + stapler 装订；`codesign --verify` 与 `spctl` 校验接入 verify 阶段。
 - 验收: 示例 IPA 公证成功并装订；`codesign --verify --deep` 与 `spctl -a -vv` 通过；公证回执归档入提审级缓存记录。
 
-### T-M2-11 · 密钥库集成（keyring + Vault 后端 trait）
+### T-M2-11 · ✅ 密钥库集成（keyring + Vault 后端 trait）（后端链 + 脱敏断言；retry --from sign 真签两轮重拉凭据；真总线/Vault HTTP 待真机）
 
 - 角色: release-sec
 - 依赖: T-M0-06
@@ -352,7 +352,7 @@
 - 交付物: 凭据解析层：`CredentialRef` → 后端链（本地 keyring + Vault 后端 trait + CI 内存注入），签名阶段按需拉取、用后即弃；仓库内明文凭据即构建失败。
 - 验收: 同一 JobSpec 分别在 keyring 与 Vault 后端解析成功；事件流/日志中凭据值不可见（脱敏断言）；`poly retry --from sign` 独立重跑并重新拉取凭据。
 
-### T-M2-12 · secret-scan（提交与构建双重检查）
+### T-M2-12 · secret-scan（提交与构建双重检查）（构造样本全命中 + 全历史 823 文件真扫零命中 + CI 三宿主工作流；「必过检查项」branch protection 标记待仓库设置）
 
 - 角色: release-sec
 - 依赖: T-M0-02
@@ -360,7 +360,7 @@
 - 交付物: 内置规则集（keystore/JKS、证书私钥、API key 模式）+ 提交钩子与 CI 作业双重检查，命中即失败并输出修复提示（错误码体系）。
 - 验收: 各类规则的构造样本全部命中；仓库全历史扫描绿灯；CI 中 secret-scan 为必过检查项（三宿主）。
 
-### T-M2-13 · 远程农场协议 v0（JobSpec 序列化 + worker 拉取执行）
+### T-M2-13 · 远程农场协议 v0（JobSpec 序列化 + worker 拉取执行）（帧/双信箱/共享对象存储缓存复用真跑；R3 准入语义 ✓；macOS worker 真出 IPA 待 nightly；master 陈旧帧留 v1）
 
 - 角色: core
 - 依赖: T-M2-08、T-M2-10、T-M1-09
@@ -368,7 +368,7 @@
 - 交付物: 农场协议 v0：JobSpec 序列化格式 + worker 拉取-执行-回传循环（worker 注册与能力声明），本地与远程共用同一 DAG 执行实现。
 - 验收: Linux 宿主发起 iOS 目标构建 → macOS worker 出 IPA，签名校验通过（R3 验收路径打通）；worker 端失败时错误码与修复提示完整回传；缓存跨机复用经对象存储后端验证。
 
-### T-M2-14 · 移动目标 CI 接入与契约测试金样
+### T-M2-14 · 移动目标 CI 接入与契约测试金样（工作流 + 金样入库、mock 本地 6/6；三宿主 mock 列与 nightly 真列待首跑）
 
 - 角色: infra
 - 依赖: T-M2-07、T-M2-10、T-M1-13、T-M0-02

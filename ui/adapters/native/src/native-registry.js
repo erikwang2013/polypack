@@ -1,7 +1,9 @@
-// 原生模块注册位（T-M2-04）：桥产物挂载点。
-// T-M2-02 的 AAR（JNI .so + Kotlin 绑定）就位后在此接入加载与模块解析；
-// v0 只登记与校验描述符。字段以 T-M2-02 报告为准，当前最小集：artifact / entryClass。
-// 仓库当前无 Android SDK/模拟器，AAR 真加载为阻塞项（见 README「阻塞与挂载点」）。
+// 原生模块注册位（T-M2-04）：桥产物挂载点，字段口径以 T-M2-02 真跑产物为准。
+//   artifact    = AAR 路径 <工程根>/bridge/android/<核心库名>.aar（`poly bridge aar` 产出；
+//                 不是 maven 坐标、不放 libs/）
+//   entryClass  = Kotlin 门面类 uniffi.<UDL namespace>.<Ns>Kt（namespace pax → uniffi.pax.PaxKt）
+//   libraryName = 可选，.so 基名 = System.loadLibrary 入参（= 核心 crate 名下划线形态）；缺省 null
+// v0 只登记与校验（可注入描述符），RN 侧包装是宿主的事；真加载为阻塞项（无 Android SDK/模拟器）。
 
 /** 创建注册位（每次 createAdapter 一个实例）。 */
 export function createNativeRegistry() {
@@ -11,13 +13,19 @@ export function createNativeRegistry() {
     register(desc) {
       const artifact = desc?.artifact;
       const entryClass = desc?.entryClass;
+      const libraryName = desc?.libraryName ?? null;
       if (typeof artifact !== "string" || artifact.trim() === "") {
-        throw new TypeError("native: artifact 须为非空字符串（AAR 路径或坐标）");
+        throw new TypeError(
+          "native: artifact 须为非空字符串（AAR 路径 <工程根>/bridge/android/<核心库名>.aar）",
+        );
       }
       if (typeof entryClass !== "string" || entryClass.trim() === "") {
-        throw new TypeError("native: entryClass 须为非空字符串（Kotlin 入口类）");
+        throw new TypeError("native: entryClass 须为非空字符串（Kotlin 门面类 uniffi.<ns>.<Ns>Kt）");
       }
-      descriptor = Object.freeze({ artifact, entryClass });
+      if (libraryName !== null && (typeof libraryName !== "string" || libraryName.trim() === "")) {
+        throw new TypeError("native: libraryName 须为非空字符串或省略（.so 基名）");
+      }
+      descriptor = Object.freeze({ artifact, entryClass, libraryName });
       return descriptor;
     },
     /** 当前描述符；未登记为 null。 */

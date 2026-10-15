@@ -59,6 +59,28 @@ pub fn sink(json: bool) -> Box<dyn poly_core::EventSink> {
     }
 }
 
+/// 命令报告输出：`--json` 打一行 JSON（stdout 保持纯 JSON Lines），否则逐字段人读。
+///
+/// `value` 须带 `event` 字段（对象其余字段按插入序打印）；字符串值按原样打印，
+/// 人读通道不背 JSON 引号（多行证据也照原样落屏）。
+pub fn report(command: &str, json: bool, value: serde_json::Value) {
+    if json {
+        println!("{}", serde_json::to_string(&value).expect("报告可序列化"));
+        return;
+    }
+    let event = value["event"].as_str().unwrap_or(command);
+    println!("poly {command} · {event}");
+    for (key, item) in value.as_object().into_iter().flatten() {
+        if key == "event" {
+            continue;
+        }
+        match item {
+            serde_json::Value::String(text) => println!("  {key}: {text}"),
+            other => println!("  {key}: {other}"),
+        }
+    }
+}
+
 /// IO 失败 → 稳定诊断。
 pub fn io_error(action: &str, path: &Path, err: std::io::Error) -> Diagnostic {
     Diagnostic::error(
