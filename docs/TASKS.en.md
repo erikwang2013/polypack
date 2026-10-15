@@ -264,7 +264,7 @@
 
 > Prerequisites: T-M0-01 (workspace), T-M0-02 (three-host CI), T-M0-04/T-M0-05 (TargetSpec DSL and L1 declarations), T-M0-06/T-M0-07 (JobSpec and diagnostics framework), T-M0-09 (toolchain probes), T-M1-05 (Packager trait), T-M1-09 (poly-cache), T-M1-11 (sample-app template) | Exit criteria: sample APK/IPA installs and signatures verify; zero keys in-repo (secret-scan green); a Linux host produces an IPA through the remote farm
 
-### T-M2-01 · uniffi bridge generator (UDL single source → Kotlin/Swift bindings; digest in the cache key, four exits registered; Kotlin really compiled + dual-ABI .so real runs — Swift compile leg built: real generator output passes swiftc -typecheck, macos-14 real-mode first proof pending)
+### T-M2-01 · uniffi bridge generator (UDL single source → Kotlin/Swift bindings; digest in the cache key, four exits registered; Kotlin really compiled + dual-ABI .so real runs — Swift compile proven: real generator output + real calling surface pass swiftc -typecheck (macos-14 real-mode evidence))
 
 - Role: core
 - Deps: T-M0-01, T-M1-11
@@ -280,7 +280,7 @@
 - Deliverable: the core compiled to JNI `.so` per ABI triple + generated Kotlin bindings, assembled into an AAR (minimal manifest/resources) as the input to Android packaging.
 - Acceptance: the AAR loads in the Android contract test; Kotlin-side calls to the sample interface return the same results as the Rust unit tests; the AAR goes through the library-level cache and hits on the second run.
 
-### T-M2-03 · Swift binding artifact (XCFramework) (triple/lipo structure + tamper checks complete; the macos-14 real run now covers cargo ×3 cross-compilation + lipo merge + a real `xcodebuild -create-xcframework` link and archive chain; simulator call-parity leg built — simctl spawn really runs paxAdd symbol surface and i32 wraparound, macos-14 real-mode first proof pending)
+### T-M2-03 · Swift binding artifact (XCFramework) (triple/lipo structure + tamper checks complete; the macos-14 real run now covers cargo ×3 cross-compilation + lipo merge + a real `xcodebuild -create-xcframework` link and archive chain; simulator call parity proven — simctl spawn really runs paxAdd(-5,3)=-2 and i32 wraparound (macos-14 real-mode evidence))
 
 - Role: platforms
 - Deps: T-M2-01
@@ -368,7 +368,7 @@
 - Deliverable: farm protocol v0: JobSpec serialization format + worker pull-execute-report loop (worker registration and capability declaration), with local and remote runs sharing one DAG implementation.
 - Acceptance: a Linux host initiates an iOS-target build → a macOS worker produces the IPA and signature verification passes (the R3 acceptance path); worker-side failures return complete error codes and fix hints; cross-machine cache sharing is verified through the object-storage backend.
 
-### T-M2-14 · ✅ Mobile CI integration and contract-test goldens (three-host mock columns all green; real-mode both legs passed with archived artifacts — ios 9,062 B / android 9,770 B; the iOS contract leg runs a lib-form fixture with dual-artifact (ipa + xcframework) real comparison, android lookup anchored by name (base.zip); golden drift fails with a diff; windows msi / macos dmg real checkers landed (all green locally; real compile surface awaits windows/macos CI legs' first proof))
+### T-M2-14 · ✅ Mobile CI integration and contract-test goldens (three-host mock columns all green; real-mode both legs passed with archived artifacts — ios 9,062 B / android 9,770 B; the iOS contract leg runs a lib-form fixture with dual-artifact (ipa + xcframework) real comparison, android lookup anchored by name (base.zip); golden drift fails with a diff; windows msi / macos dmg real checkers landed (all green locally; real compile surface awaits windows/macos CI legs' first proof); real mode evidenced via manual dispatch as of 2026-10-16 (the schedule event has never fired — platform-side to investigate))
 
 - Role: infra
 - Deps: T-M2-07, T-M2-10, T-M1-13, T-M0-02

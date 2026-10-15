@@ -264,7 +264,7 @@
 
 > 前置依赖: T-M0-01（workspace）、T-M0-02（三宿主 CI）、T-M0-04/T-M0-05（TargetSpec DSL 与 L1 声明）、T-M0-06/T-M0-07（JobSpec 与诊断框架）、T-M0-09（工具链探测）、T-M1-05（Packager 接口）、T-M1-09（poly-cache）、T-M1-11（示例应用模板）｜出口条件: 示例 APK/IPA 可安装且签名可验证；密钥零入库（secret-scan 全绿）；Linux 宿主经远程农场出 IPA
 
-### T-M2-01 · uniffi 桥生成器（UDL 单源 → Kotlin/Swift 绑定；摘要入缓存键、四出口登记；Kotlin 真编译 + 双 ABI .so 真跑；Swift 编译腿已建——真生成器产物过 swiftc -typecheck，macos-14 真模式待首证）
+### T-M2-01 · uniffi 桥生成器（UDL 单源 → Kotlin/Swift 绑定；摘要入缓存键、四出口登记；Kotlin 真编译 + 双 ABI .so 真跑；Swift 编译真证——真生成器 uniffi 产物 + 真调用面过 swiftc -typecheck（macos-14 真模式实证））
 
 - 角色: core
 - 依赖: T-M0-01、T-M1-11
@@ -280,7 +280,7 @@
 - 交付物: 核心编译为各 ABI triple 的 JNI `.so` + 生成的 Kotlin 绑定，组装为 AAR（清单/资源最小化），作为 Android 打包阶段的输入。
 - 验收: AAR 在 Android 契约测试中加载成功；Kotlin 侧调用示例接口结果与 Rust 单测一致；AAR 走库级缓存，二跑命中。
 
-### T-M2-03 · Swift 绑定产物（XCFramework）（三 triple/lipo/结构与篡改校验完备；macos-14 真跑已覆盖 cargo×3 交叉编译 + lipo 合并 + `xcodebuild -create-xcframework` 真链接与 archive 链；simulator 调用对拍腿已建——simctl spawn 真跑 paxAdd 符号面与 i32 回绕，待 macos-14 真模式首证）
+### T-M2-03 · Swift 绑定产物（XCFramework）（三 triple/lipo/结构与篡改校验完备；macos-14 真跑已覆盖 cargo×3 交叉编译 + lipo 合并 + `xcodebuild -create-xcframework` 真链接与 archive 链；simulator 调用对拍真证——simctl spawn 真跑 paxAdd(-5,3)=-2 与 i32 回绕（macos-14 真模式实证））
 
 - 角色: platforms
 - 依赖: T-M2-01
@@ -368,7 +368,7 @@
 - 交付物: 农场协议 v0：JobSpec 序列化格式 + worker 拉取-执行-回传循环（worker 注册与能力声明），本地与远程共用同一 DAG 执行实现。
 - 验收: Linux 宿主发起 iOS 目标构建 → macOS worker 出 IPA，签名校验通过（R3 验收路径打通）；worker 端失败时错误码与修复提示完整回传；缓存跨机复用经对象存储后端验证。
 
-### T-M2-14 · ✅ 移动目标 CI 接入与契约测试金样（mock 列三宿主全绿；真模式两腿通过并留档——ios 9,062B / android 9,770B；契约 ios 腿走库形态夹具 + 双产物（ipa + xcframework）真比对、android 取件按名锚定 base.zip；金样漂移即红含 diff；windows msi / macos dmg 真检查器已落（本机全绿；真编译面待 windows/macos CI 腿首证））
+### T-M2-14 · ✅ 移动目标 CI 接入与契约测试金样（mock 列三宿主全绿；真模式两腿通过并留档——ios 9,062B / android 9,770B；契约 ios 腿走库形态夹具 + 双产物（ipa + xcframework）真比对、android 取件按名锚定 base.zip；金样漂移即红含 diff；windows msi / macos dmg 真检查器已落（本机全绿；真编译面待 windows/macos CI 腿首证）；真实模式 2026-10-16 起走手动 dispatch 实证（schedule 事件历史 0 次触发——平台侧待查））
 
 - 角色: infra
 - 依赖: T-M2-07、T-M2-10、T-M1-13、T-M0-02
