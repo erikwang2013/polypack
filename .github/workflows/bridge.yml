@@ -39,7 +39,11 @@ jobs:
         uses: Swatinem/rust-cache@v2
 
       - name: Android SDK（cmdline-tools + sdkmanager）
-        uses: android-actions/setup-android@v3
+        # v3→v4：v3 默认 packages 含早已下架的死包 `tools`（本 workflow 两次 dispatch 的真根因，
+        # 与 mobile-contract 同款修复——那边白天已换 v4，这边今夜首次真派才发现漏网）。
+        uses: android-actions/setup-android@v4
+        with:
+          log-accepted-android-sdk-licenses: "false"
 
       - name: NDK（真跑：JNI .so 的链接器）
         # 装进 SDK 根的 ndk/：与生产探测同路径（$ANDROID_NDK_HOME → <sdk>/ndk/<版本最大>），
