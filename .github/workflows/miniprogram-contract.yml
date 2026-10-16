@@ -1,0 +1,123 @@
+# 小程序契约测试（T-M3-11）：微信 / 支付宝 / 抖音三端 devtools CLI 校验腿 + Taro 代码包契约腿。
+#
+# - **mock 模式（默认，每提交 / PR）**：不依赖任何开发者工具——断言注册表 verify 声明 ↔ CLI 表
+#   一致、调用面组装（程序 / 参数 / 环境）、登录态注入与脱敏（0600 临时文件、值不进 line() /
+#   日志）、Taro 代码包结构与金样逐条比对；缺工具处按测试内 SKIP-with-print 纪律打印后通过。
+# - **真实模式（每夜 18:47 UTC + 手动触发）**：`POLY_CONTRACT_REAL=1`。Taro 工具链真装
+#   （宿主工程 npm install）后真编译三端代码包；devtools CLI 在场且登录态已注入时才真调起预览
+#   （有界 180s），**输出做脱敏断言**（登录态值绝不入日志）；三端 CLI 全缺席 = 逐端
+#   SKIP-with-print 注记（GitHub 托管 runner 装不了微信开发者工具 GUI 版），绝不静默降级。
+#
+# 登录态经 GitHub secrets → 同名环境变量 → `CredentialRef { Env }` 注入（T-M2-11 模型）：
+# 只以**路径**交付子进程（POLYPACK_DEVTOOLS_LOGIN_FILE，支付宝另按官方 ALIPAY_IDENTITY_KEY_PATH
+# 同值），值只活在内存与 0600 临时文件（用后即弃）。secret 未配置 = 空串 = 未注入 → 测试内
+# NOTE 跳过（不是错误）。自装 devtools 的宿主（自托管 runner）用仓库变量 *POLYPACK_<T>_DEVTOOLS_CLI*
+# 指路（未设置 = 空串 = 走探测链：常见落点 → PATH）。
+
+name: miniprogram-contract
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    # 每夜真实模式：与 mobile-contract（18:37）错峰（schedule 实测延迟可达 ~3h，错峰减小并发）
+    - cron: "47 18 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  mock:
+    name: mock / ubuntu-latest
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Rust toolchain（stable + rustfmt）
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+
+      - name: 构建缓存
+        uses: Swatinem/rust-cache@v2
+
+      # mock 腿零第三方依赖（无 npm / 无开发者工具）：秒级完成，缺工具处按纪律打印后通过
+      - name: 小程序契约（mock：devtools 校验腿 + 代码包 / 金样腿）
+        env:
+          TMPDIR: ${{ runner.temp }}
+        run: |
+          cargo test -p poly-cli --test contract_m3_miniapp --test contract_m3_devtools \
+            --no-fail-fast -- --nocapture
+
+  real:
+    name: real / macos-14
+    # 仅 schedule / 手动触发 = 真实模式：secrets 不进 push / PR 事件
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: macos-14
+    env:
+      POLY_CONTRACT_REAL: "1"
+      # 自装 devtools 的宿主由仓库变量指路（未设置 = 空串 → 测试探测链兜底）
+      POLYPACK_WECHAT_DEVTOOLS_CLI: ${{ vars.POLYPACK_WECHAT_DEVTOOLS_CLI }}
+      POLYPACK_ALIPAY_DEVTOOLS_CLI: ${{ vars.POLYPACK_ALIPAY_DEVTOOLS_CLI }}
+      POLYPACK_DOUYIN_DEVTOOLS_CLI: ${{ vars.POLYPACK_DOUYIN_DEVTOOLS_CLI }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Rust toolchain（stable + rustfmt）
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+
+      - name: 构建缓存
+        uses: Swatinem/rust-cache@v2
+
+      - name: Node.js 20（Taro 宿主真编译）
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Taro 工具链（真跑；@tarojs 4.3.0）
+        # 宿主工程未入库锁文件（npm install 即生成）；装不上即红——真编译的前提，不做静默降级
+        run: npm install --prefix ui/adapters/taro/host --no-audit --no-fund
+
+      - name: 三方 devtools CLI（尽力而为）
+        # 支付宝 minidev / 抖音 tt-ide-cli 走 npm 分发，可无头安装；装不上不翻红——「缺 devtools
+        # = SKIP-with-print + 注记」是该档文档化行为，CLI 在场与否由测试探测链独立决定
+        continue-on-error: true
+        run: npm install -g minidev tt-ide-cli --no-audit --no-fund
+
+      - name: 环境侦察（注记：夜里排障先看这里）
+        run: |
+          node --version
+          which minidev tma || true
+          ls /Applications | grep -i -E "wechat|微信" || echo "无微信开发者工具（GUI + 扫码登录，不入托管 runner）"
+
+      - name: 小程序契约（真实：devtools 预览腿 + Taro 真编译 / 金样腿）
+        env:
+          # 临时根与归档 glob 同基准：macOS 的 std::env::temp_dir() 取 $TMPDIR（/var/folders/…），
+          # 写死 /tmp 的上传 glob 会空转（mobile-contract 的 ios 腿实证）
+          TMPDIR: ${{ runner.temp }}
+          # 登录态（T-M2-11 凭据引用）：未配置的 secret = 空串 = 未注入 → 测试内 NOTE。
+          # 只在测试步注入（不进其余步骤的环境）；值只被写进 0600 临时文件，日志里只有路径
+          POLYPACK_WECHAT_DEVTOOLS_LOGIN: ${{ secrets.POLYPACK_WECHAT_DEVTOOLS_LOGIN }}
+          POLYPACK_ALIPAY_DEVTOOLS_LOGIN: ${{ secrets.POLYPACK_ALIPAY_DEVTOOLS_LOGIN }}
+          POLYPACK_DOUYIN_DEVTOOLS_LOGIN: ${{ secrets.POLYPACK_DOUYIN_DEVTOOLS_LOGIN }}
+        run: |
+          cargo test -p poly-cli --test contract_m3_miniapp --test contract_m3_devtools \
+            --no-fail-fast -- --nocapture
+
+      - name: 留产物（真跑；测试失败也留，便于定位）
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: miniprogram-real-artifacts
+          # `.polypack` 是隐藏目录：v4 默认跳过隐藏文件，须显式打开
+          include-hidden-files: true
+          path: |
+            ${{ runner.temp }}/poly-contract-m3-*/.polypack/packages/**
+          # 首夜先 warn：devtools 腿无工具时会 SKIP（不建临时工程），glob 可能部分空转；
+          # 实证非空后翻 error（M2 教训：先证明再收紧，勿把首夜空转误判为异常）
+          if-no-files-found: warn
+          retention-days: 14
