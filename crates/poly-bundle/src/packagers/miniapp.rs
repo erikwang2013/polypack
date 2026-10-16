@@ -686,10 +686,10 @@ pub fn quickapp_hap_root() -> Result<PathBuf, String> {
 /// 腿误判「未校验」）；去前缀后仍是同一实路径（回到 Win32 常规形态）。UNC 等非盘符形态原样保留。
 fn strip_verbatim_prefix(path: PathBuf) -> PathBuf {
     #[cfg(windows)]
-    if let Some(rest) = path.to_string_lossy().strip_prefix(r"\\?\") {
-        if rest.as_bytes().get(1) == Some(&b':') {
-            return PathBuf::from(rest);
-        }
+    if let Some(rest) = path.to_string_lossy().strip_prefix(r"\\?\")
+        && rest.as_bytes().get(1) == Some(&b':')
+    {
+        return PathBuf::from(rest);
     }
     path
 }
