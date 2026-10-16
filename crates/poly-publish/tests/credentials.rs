@@ -161,6 +161,107 @@ fn provider_chain_falls_through_to_memory_and_records_source() {
 }
 
 #[test]
+fn alipay_payload_parses_with_optional_app_auth_token() {
+    use poly_publish::secret::alipay_credentials;
+
+    let key_line = common::test_private_key_pem()
+        .lines()
+        .nth(1)
+        .expect("PEM 有正文行")
+        .to_string();
+    for (payload, expected_token) in [
+        (
+            serde_json::json!({"app_id": "2021000000000000", "private_key": common::test_private_key_pem()}),
+            None,
+        ),
+        (
+            serde_json::json!({
+                "app_id": "2021000000000000",
+                "private_key": common::test_private_key_pem(),
+                "app_auth_token": "app-auth-token-123456",
+            }),
+            Some("app-auth-token-123456"),
+        ),
+    ] {
+        let reference = CredentialRef {
+            name: "alipay-mini".to_string(),
+            source: CredentialSource::Keyring,
+        };
+        let providers: Vec<Box<dyn CredentialProvider>> = vec![Box::new(
+            MemoryProvider::with_entry("alipay-mini", common::payload(&payload)),
+        )];
+        let creds = alipay_credentials(&reference, &providers).expect("载荷合法");
+        assert_eq!(creds.app_id, "2021000000000000");
+        assert_eq!(creds.app_auth_token.as_deref(), expected_token);
+        assert_eq!(creds.source, "memory");
+
+        let debug = format!("{creds:?}");
+        assert!(debug.contains("<脱敏>"), "{debug}");
+        assert!(!debug.contains(&key_line), "私钥材料不得进 Debug：{debug}");
+        if let Some(token) = expected_token {
+            assert!(!debug.contains(token), "授权 token 不得进 Debug：{debug}");
+        }
+    }
+
+    // 缺 private_key（必填）→ 指名缺字段，不触网不可能发生在这里，但错误文本要可诊断。
+    let reference = CredentialRef {
+        name: "alipay-mini".to_string(),
+        source: CredentialSource::Keyring,
+    };
+    let providers: Vec<Box<dyn CredentialProvider>> = vec![Box::new(MemoryProvider::with_entry(
+        "alipay-mini",
+        common::payload(&serde_json::json!({"app_id": "2021000000000000"})),
+    ))];
+    let err = alipay_credentials(&reference, &providers).expect_err("缺必填须拒");
+    assert_eq!(err.code(), codes::E_PUB_0001);
+    assert!(err.to_string().contains("private_key"), "点名缺字段：{err}");
+}
+
+#[test]
+fn douyin_payload_parses_and_redacts_debug() {
+    use poly_publish::secret::douyin_credentials;
+
+    // 抖音凭据 = access_token 外部注入（铸造链路未确证 → 客户端不做；never fake）。
+    let token = common::hex32();
+    let reference = CredentialRef {
+        name: "douyin-mini".to_string(),
+        source: CredentialSource::Keyring,
+    };
+    let providers: Vec<Box<dyn CredentialProvider>> = vec![Box::new(MemoryProvider::with_entry(
+        "douyin-mini",
+        common::payload(&serde_json::json!({"access_token": token})),
+    ))];
+    let creds = douyin_credentials(&reference, &providers).expect("载荷合法");
+    assert_eq!(creds.access_token, token);
+    assert_eq!(creds.source, "memory");
+
+    let debug = format!("{creds:?}");
+    assert!(debug.contains("<脱敏>"), "{debug}");
+    assert!(
+        !debug.contains(&token),
+        "access_token 不得进 Debug：{debug}"
+    );
+    assert!(
+        creds
+            .redactor()
+            .redact(&format!("x={token}"))
+            .contains("<脱敏>")
+    );
+
+    // 缺 access_token（必填）→ 指名缺字段。
+    let providers: Vec<Box<dyn CredentialProvider>> = vec![Box::new(MemoryProvider::with_entry(
+        "douyin-mini",
+        common::payload(&serde_json::json!({"appid": "tt1234567890abcdef"})),
+    ))];
+    let err = douyin_credentials(&reference, &providers).expect_err("缺必填须拒");
+    assert_eq!(err.code(), codes::E_PUB_0001);
+    assert!(
+        err.to_string().contains("access_token"),
+        "点名缺字段：{err}"
+    );
+}
+
+#[test]
 fn env_source_resolves_injected_payload() {
     // 载荷的 private_key 用占位文本：env 腿只验解析链，不碰签名（避免父进程把私钥塞进环境）。
     let placeholder = "env-test-placeholder";

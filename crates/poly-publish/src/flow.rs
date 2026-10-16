@@ -2,9 +2,9 @@
 //! 「建包 → 查回执 → 上传 / 提审 / 轮询（断点续走）→ 归档」。
 //!
 //! 幂等 / 去重口径：
-//! - [`Package`] 把代码包目录读成**容器无关**的文件清单 + blake3 内容摘要（路径、长度、
-//!   字节逐条混入；排序后调用 → 内容一致 → 摘要一致），与各平台上传容器（微信 B 协议 /
-//!   zip）无关——换容器不改摘要；
+//! - [`Package`]（目录 / 单文件两种载具，摘要口径见其文档）给**容器无关**的 blake3 内容摘要：
+//!   目录载具 / 单文件载具（如快应用 `.rpk`）两种形态同走本驱动——载具只定身份，与各平台
+//!   上传容器（微信 B 协议 / zip）无关，换容器不改摘要；
 //! - 回执键 = 渠道 + appid + 版本 + 摘要前 16 hex，重跑同键：
 //!   终态 → no-op（不触网，只加 `runs`）；`uploaded` → 只提审；`submitted` / `in_review`
 //!   / `delayed` → 只轮询；
@@ -14,97 +14,22 @@
 //! R4：自动化止步提审；轮询超预算返回 [`PublishError::PollTimeout`]（回执已带状态流水
 //! 落盘，重跑只续轮询）。
 
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::time::{Duration, Instant};
 
 use poly_core::CredentialRef;
 
 use crate::archive::{Archive, AuditState, PollEntry, Receipt, receipt_key};
 use crate::error::PublishError;
+use crate::package::Package;
 use crate::secret::CredentialProvider;
 use crate::time::unix_now;
 use crate::{Job, Publisher};
 
-/// 代码包（T-M3-06 产物目录 → 文件清单 + 容器无关摘要）。
-pub struct Package {
-    /// 相对路径（`/` 分隔、升序）→ 内容。
-    files: Vec<(String, Vec<u8>)>,
-    /// 内容摘要（blake3 hex，64 字符）。
-    digest: String,
-}
-
-impl Package {
-    /// 读代码包目录（T-M3-06 产物 `<…>/miniapp/dist`；根须有 `app.json`——四端产物同款）。
-    pub fn load(dir: &Path) -> Result<Self, PublishError> {
-        if !dir.is_dir() {
-            return Err(input_err(
-                dir,
-                std::io::ErrorKind::NotFound,
-                "代码包应是目录（T-M3-06 产物 <…>/miniapp/dist）",
-            ));
-        }
-        let mut files = Vec::new();
-        collect(dir, dir, &mut files)?;
-        if files.is_empty() {
-            return Err(input_err(
-                dir,
-                std::io::ErrorKind::InvalidData,
-                "代码包目录里没有任何文件",
-            ));
-        }
-        files.sort_by(|a, b| a.0.cmp(&b.0));
-        if !files.iter().any(|(name, _)| name == "app.json") {
-            return Err(input_err(
-                dir,
-                std::io::ErrorKind::InvalidData,
-                "代码包根缺 app.json（应指向 Taro 产物 dist 目录，而不是其上级）",
-            ));
-        }
-        Ok(Self {
-            digest: digest_of(&files),
-            files,
-        })
-    }
-
-    /// 文件清单（升序）。
-    pub fn files(&self) -> &[(String, Vec<u8>)] {
-        &self.files
-    }
-
-    /// 内容摘要（hex）。
-    pub fn digest(&self) -> &str {
-        &self.digest
-    }
-
-    /// 确定性 zip（条目排序、Stored、时间戳 1980-01-01、权限 0644；口径同
-    /// `poly-bundle::zipwrite`——同内容二跑字节一致）。支付宝 / 抖音客户端用。
-    pub fn zip_bytes(&self) -> Result<Vec<u8>, PublishError> {
-        use std::io::Write as _;
-
-        let options = zip::write::SimpleFileOptions::default()
-            .compression_method(zip::CompressionMethod::Stored)
-            .last_modified_time(zip::DateTime::DEFAULT)
-            .unix_permissions(0o644);
-        let mut writer = zip::ZipWriter::new(std::io::Cursor::new(Vec::new()));
-        for (name, body) in &self.files {
-            writer
-                .start_file(name.as_str(), options)
-                .map_err(|err| zip_err(Path::new(name), err))?;
-            writer
-                .write_all(body)
-                .map_err(|source| PublishError::Input {
-                    path: PathBuf::from(name),
-                    source,
-                })?;
-        }
-        let cursor = writer
-            .finish()
-            .map_err(|err| zip_err(Path::new("<zip>"), err))?;
-        Ok(cursor.into_inner())
-    }
-}
-
 /// 轮询策略（默认 60s × 15min；重跑只续轮询、不重复提审）。
+///
+/// 亦为平台**构建等待**的预算来源（如支付宝 `build.query` 轮询——客户端实现内消费
+/// [`Job::poll`]），口径统一：等待耗尽 → [`PublishError::PollTimeout`]。
 #[derive(Debug, Clone)]
 pub struct PollPolicy {
     /// 两次查询间隔。
@@ -130,7 +55,8 @@ pub struct PublishRequest {
     pub version: String,
     /// 版本描述（上传 / 提审都会带上）。
     pub description: String,
-    /// 代码包目录（T-M3-06 产物）。
+    /// 代码包载具路径：目录（T-M3-06 产物，如 `<…>/miniapp/dist`）或单文件
+    /// （如快应用 `.rpk`）——形态由 [`Package::load`] 自动判别。
     pub package: PathBuf,
     /// 凭据引用（T-M2-11 引用模型）。
     pub credential: CredentialRef,
@@ -231,6 +157,7 @@ pub fn publish(
         package: &package,
         credential: &request.credential,
         providers,
+        poll: &request.poll,
     };
 
     // 阶段 1：上传（仅全新执行；已有回执视为已上传）。
@@ -279,171 +206,5 @@ pub fn publish(
             });
         }
         std::thread::sleep(request.poll.interval);
-    }
-}
-
-/// 递归收集（跟随软链；shortcut: 不设环检测——Taro 产物无软链环）。
-fn collect(root: &Path, dir: &Path, out: &mut Vec<(String, Vec<u8>)>) -> Result<(), PublishError> {
-    let entries = std::fs::read_dir(dir).map_err(|source| PublishError::Input {
-        path: dir.to_path_buf(),
-        source,
-    })?;
-    for entry in entries {
-        let entry = entry.map_err(|source| PublishError::Input {
-            path: dir.to_path_buf(),
-            source,
-        })?;
-        let path = entry.path();
-        let meta = std::fs::metadata(&path).map_err(|source| PublishError::Input {
-            path: path.clone(),
-            source,
-        })?;
-        if meta.is_dir() {
-            collect(root, &path, out)?;
-        } else if meta.is_file() {
-            let rel = path.strip_prefix(root).map_err(|err| PublishError::Input {
-                path: path.clone(),
-                source: std::io::Error::other(format!("相对路径：{err}")),
-            })?;
-            let name = rel.to_string_lossy().replace('\\', "/");
-            let body = std::fs::read(&path).map_err(|source| PublishError::Input {
-                path: path.clone(),
-                source,
-            })?;
-            out.push((name, body));
-        }
-    }
-    Ok(())
-}
-
-/// 容器无关摘要：逐条混入（路径、长度、字节）+ 头部版本串；清单已排序 → 确定性。
-fn digest_of(files: &[(String, Vec<u8>)]) -> String {
-    let mut hasher = blake3::Hasher::new();
-    hasher.update(b"poly-publish/package/1");
-    for (name, body) in files {
-        hasher.update(name.as_bytes());
-        hasher.update(b"\0");
-        hasher.update(&(body.len() as u64).to_le_bytes());
-        hasher.update(body);
-    }
-    hasher.finalize().to_hex().to_string()
-}
-
-/// 输入错误（带路径与原因的 [`PublishError::Input`]）。
-pub(crate) fn input_err(
-    path: &Path,
-    kind: std::io::ErrorKind,
-    message: impl std::fmt::Display,
-) -> PublishError {
-    PublishError::Input {
-        path: path.to_path_buf(),
-        source: std::io::Error::new(kind, message.to_string()),
-    }
-}
-
-/// zip crate 错误 → [`PublishError::Input`]（IO 原样，结构类转 `io::Error::other`）。
-fn zip_err(path: &Path, err: zip::result::ZipError) -> PublishError {
-    match err {
-        zip::result::ZipError::Io(source) => PublishError::Input {
-            path: path.to_path_buf(),
-            source,
-        },
-        other => PublishError::Input {
-            path: path.to_path_buf(),
-            source: std::io::Error::other(other),
-        },
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    fn scratch(tag: &str) -> PathBuf {
-        let dir = std::env::temp_dir().join(format!("poly-publish-{tag}-{}", std::process::id()));
-        let _ = std::fs::remove_dir_all(&dir);
-        std::fs::create_dir_all(&dir).expect("建临时目录");
-        dir
-    }
-
-    fn write_miniapp(dir: &Path) {
-        std::fs::create_dir_all(dir.join("pages/index")).expect("建目录");
-        std::fs::write(dir.join("app.json"), r#"{"pages":["pages/index/index"]}"#).expect("写");
-        std::fs::write(dir.join("app.js"), "App({})").expect("写");
-        std::fs::write(dir.join("pages/index/index.js"), "Page({})").expect("写");
-    }
-
-    #[test]
-    fn digest_is_content_addressed_and_order_free() {
-        let base = scratch("digest");
-        let a = base.join("a");
-        let b = base.join("b");
-        write_miniapp(&a);
-        write_miniapp(&b);
-        let pa = Package::load(&a).expect("读 a");
-        let pb = Package::load(&b).expect("读 b");
-        assert_eq!(
-            pa.digest(),
-            pb.digest(),
-            "内容一致 → 摘要一致（与目录无关）"
-        );
-
-        std::fs::write(a.join("app.js"), "App({v:2})").expect("改内容");
-        let changed = Package::load(&a).expect("重读");
-        assert_ne!(pa.digest(), changed.digest(), "内容变 → 摘要变");
-
-        std::fs::write(a.join("app.js"), "App({})").expect("改回");
-        assert_eq!(
-            Package::load(&a).expect("三读").digest(),
-            pa.digest(),
-            "改回 → 摘要复原（确定性）"
-        );
-        let _ = std::fs::remove_dir_all(&base);
-    }
-
-    #[test]
-    fn package_requires_app_json_at_root() {
-        let base = scratch("appjson");
-        let dir = base.join("dist");
-        std::fs::create_dir_all(dir.join("inner")).expect("建目录");
-        std::fs::write(dir.join("inner/app.json"), "{}").expect("写");
-        let err = Package::load(&dir).err().expect("根缺 app.json 须拒");
-        assert!(
-            err.to_string().contains("app.json"),
-            "报错要点名 app.json：{err}"
-        );
-
-        std::fs::write(dir.join("app.json"), "{}").expect("写");
-        Package::load(&dir).expect("补齐后通过");
-        let _ = std::fs::remove_dir_all(&base);
-    }
-
-    #[test]
-    fn zip_bytes_is_deterministic_with_sorted_entries() {
-        let base = scratch("zip");
-        let dir = base.join("dist");
-        write_miniapp(&dir);
-        let package = Package::load(&dir).expect("读");
-        let first = package.zip_bytes().expect("zip 一");
-        let second = package.zip_bytes().expect("zip 二");
-        assert_eq!(first, second, "同内容二跑字节一致");
-
-        let mut archive = zip::ZipArchive::new(std::io::Cursor::new(first)).expect("读 zip");
-        let names: Vec<String> = (0..archive.len())
-            .map(|i| {
-                archive
-                    .by_index(i)
-                    .expect("条目")
-                    .name()
-                    .expect("名")
-                    .into_owned()
-            })
-            .collect();
-        assert_eq!(
-            names,
-            ["app.js", "app.json", "pages/index/index.js"],
-            "升序"
-        );
-        let _ = std::fs::remove_dir_all(&base);
     }
 }
