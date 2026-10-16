@@ -1,0 +1,20 @@
+{
+  "name": "@polypack/tv-smoke",
+  "version": "0.1.0",
+  "private": true,
+  "description": "T-M4-13 遥控器冒烟框架：仅用方向键 + OK + Back + 数字键驱动 TV 示例应用完成核心任务，输出结构化结果与失败定位",
+  "license": "Apache-2.0",
+  "type": "module",
+  "scripts": {
+    "test": "node --test",
+    "build": "vite build --config host/vite.config.mjs"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "devDependencies": {
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "vite": "^7.0.0"
+  }
+}

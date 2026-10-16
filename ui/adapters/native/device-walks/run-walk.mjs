@@ -9,8 +9,9 @@
 // 真机期望 = 零新增 POLYPACK_KEY 行 + 计数不变（焦点不动）；内核直喂的 {type:"ignored"}
 // 一行只在 JS 层出现，由 JS 单测覆盖。
 //
-// 用法：node device-walks/run-walk.mjs --serial <adb serial> --logs <dir> [--apk <宿主 apk>] [--walk <id>]...
+// 用法：node device-walks/run-walk.mjs --serial <adb serial> --logs <dir> [--apk <宿主 apk>] [--walk <id>]... [--json <file>]
 // 前置：宿主 app 已装（com.polypack.host）；TV 形态须无指针编译（host/app.json polypack.pointer="none"）。
+// --json：机器可读走查记录（T-M4-13 冒烟套件汇入 result.json 用；不加时输出与行为不变）。
 
 import { execFileSync } from "node:child_process";
 import { isDeepStrictEqual } from "node:util";
@@ -32,10 +33,11 @@ const only = args.flatMap((a, i) => (a === "--walk" ? [args[i + 1]] : []));
 const serial = opt("serial") ?? process.env.ANDROID_SERIAL ?? null;
 const logs = opt("logs");
 const apk = opt("apk");
+const jsonOut = opt("json");
 
 if (serial === null || logs === null || serial.startsWith("--") || logs.startsWith("--")) {
   console.error(
-    "用法：node device-walks/run-walk.mjs --serial <adb serial> --logs <dir> [--apk <宿主 apk>] [--walk <id>]...",
+    "用法：node device-walks/run-walk.mjs --serial <adb serial> --logs <dir> [--apk <宿主 apk>] [--walk <id>]... [--json <file>]",
   );
   process.exit(2);
 }
@@ -110,8 +112,10 @@ async function main() {
   const reachable = new Set(expectations.keymap.map((m) => m.kernel));
 
   const failures = [];
+  const records = [];
   for (const walk of walks) {
     const frames = [];
+    const steps = [];
     let locate = null;
     // 前置重置：重启宿主回初始焦点与初始计数（每走查独立，前步状态不渗漏）
     for (const cmd of expectations.precondition.reset) shell(cmd);
@@ -171,14 +175,26 @@ async function main() {
           `界面证据：${xml.split("\n").filter((l) => l.includes("点击计数")).join(" ").slice(0, 400)}`,
         ].join("\n"),
       );
-      if (!ok && locate === null) {
-        locate = forwarded
+      const stepLocate = ok
+        ? null
+        : forwarded
           ? `[${walk.id}] 第 ${i + 1} 键（${walk.keys[i]}）不符：期望 ${JSON.stringify(expected)} / 计数 ${walk.expect.clicks[i]}，实际 ${JSON.stringify(got)} / 计数 ${gotClicks}${parseNote}`
           : `[${walk.id}] 第 ${i + 1} 键（${walk.keys[i]}）不符：未映射键真机应零新增行，实际 ${lines.length} 行 / 计数 ${gotClicks}`;
-      }
+      if (stepLocate !== null && locate === null) locate = stepLocate;
+      steps.push({
+        index: i + 1,
+        key: walk.keys[i],
+        adb: walk.adb[i],
+        forwarded,
+        expect: { result: expected, clicks: walk.expect.clicks[i] },
+        actual: { result: got, clicks: gotClicks, lineCount: lines.length },
+        ok,
+        locate: stepLocate,
+      });
     }
 
     const pass = locate === null;
+    records.push({ id: walk.id, purpose: walk.purpose, keys: walk.keys, ok: pass, locate, steps });
     if (!pass) failures.push({ id: walk.id, locate });
     writeFileSync(
       path.join(logs, `${walk.id}.log`),
@@ -193,6 +209,12 @@ async function main() {
   }
 
   console.log(`日志归档：${logs}`);
+  if (jsonOut !== null && !jsonOut.startsWith("--")) {
+    writeFileSync(
+      jsonOut,
+      `${JSON.stringify({ schema: "polypack/tv-smoke/android-walk/v1", serial, apk, logs, ok: failures.length === 0, walks: records }, null, 2)}\n`,
+    );
+  }
   if (failures.length === 0) {
     console.log(
       `无指针完成核心任务：PASS（${walks.length}/${walks.length} 走查仅由 D-pad / OK / Back 键事件驱动，逐键对拍内核期望）`,

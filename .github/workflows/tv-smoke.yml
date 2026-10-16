@@ -1,0 +1,131 @@
+# TV 冒烟套件（T-M4-13）：仅用方向键 + OK + Back + 数字键驱动 TV 示例应用完成核心任务
+# （浏览 → 详情 → 播放占位 → 返回），输出结构化 result.json 与失败定位（任一目标焦点死路即失败）。
+#
+# - **mock 模式（默认，每提交 / PR）**：零 npm install——期望漂移哨兵 / 死路与节点覆盖 /
+#   失败定位自证 / 两腿键表同源；履约哨兵（镜像 ≡ 真示例页）在 react 缺席时 SKIP-with-print。
+# - **真实模式（每夜 18:57 UTC + 手动触发）**：
+#   · web 系腿（**替代腿**，如实标注——非模拟器本体）：vite build 出 web 宿主 dist，无头 Chrome +
+#     CDP 真跑 tizen-tv / webos-tv 两目标分支（键协议与 UI 产物同源，缺 Chrome 自动 SKIP-with-print）；
+#   · Android TV 腿：KVM + google-tv x86 模拟器 + 预构建 RN 宿主 release APK（仓库变量
+#     vars.POLYPACK_TV_HOST_APK 指路；RN gradlew 不入库、keystore 现生成，托管 runner 装不动
+#     整条 RN gradle 链）真装真跑（run-walk.mjs，T-M4-05 基建）。KVM 与预构建 APK 任一缺席 =
+#     SKIP-with-print 注记，绝不静默降级——ADB 级证据以本机/blessed runner 的真跑为准；
+#   · 证据（POLY_TV_SMOKE_LOGS：result.json + 目标日志 + 逐键截图 + 走查 log）留档 14 天。
+
+name: tv-smoke
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    # 每夜真实模式：与 mobile-contract（18:37）/ miniprogram-contract（18:47）错峰
+    - cron: "57 18 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  mock:
+    name: mock / ubuntu-latest
+    runs-on: ubuntu-latest
+    # mock 腿零 npm install：秒级完成，缺 react 处按测试内 SKIP-with-print 纪律打印后通过
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Node 22（内建 WebSocket——web 腿 CDP 面；mock 腿仅需 --test）
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: TV 冒烟（mock：漂移哨兵 + 死路覆盖 + 定位格式 + 键表同源）
+        run: node --test "ui/smoke/tv/test/*.test.js"
+
+  real:
+    name: real / ubuntu-latest
+    # 仅 schedule / 手动触发 = 真实模式（secrets 不进 push / PR 事件）
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    env:
+      POLY_TV_SMOKE_LOGS: ${{ runner.temp }}/poly-tv-smoke-logs
+      # 预构建宿主 APK（blessed / 自托管 runner 用仓库变量指路）。RN gradlew 不入库
+      # （模板生成物，host/README「构建环境前置」），keystore 须现生成——GH 托管 runner
+      # 装不动整条 RN gradle 链，故 APK 由外部预置；未设 = 空 = 设备腿 SKIP-with-print。
+      POLYPACK_TV_HOST_APK: ${{ vars.POLYPACK_TV_HOST_APK }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Node 22（web 腿 CDP 需内建 WebSocket / fetch）
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: web 宿主依赖与 dist（vite build；tizen-tv / webos-tv 共用同一产物）
+        run: |
+          npm --prefix ui/smoke/tv install --no-audit --no-fund
+          npm --prefix ui/smoke/tv run build
+
+      - name: adapter-tv 依赖（履约哨兵 react 在场即真跑，不再 SKIP）
+        run: npm --prefix ui/adapters/tv install --no-audit --no-fund
+
+      - name: mock 腿（含履约哨兵真跑）
+        run: node --test "ui/smoke/tv/test/*.test.js"
+
+      - name: 设备腿门（KVM + 预构建宿主 APK；任一缺席 → SKIP-with-print 注记）
+        id: gate
+        run: |
+          if [ ! -e /dev/kvm ]; then
+            echo "device=0" >> "$GITHUB_OUTPUT"
+            echo "SKIP：runner 无 /dev/kvm——Android TV 设备腿未执行（web 系腿与模拟器探测照常）"
+            echo "::warning::无 /dev/kvm：Android TV 设备腿跳过（如实注记，非静默降级）"
+          elif [ -z "$POLYPACK_TV_HOST_APK" ] || [ ! -f "$POLYPACK_TV_HOST_APK" ]; then
+            echo "device=0" >> "$GITHUB_OUTPUT"
+            echo "SKIP：无预构建宿主 APK（vars.POLYPACK_TV_HOST_APK 未设或缺文件）——Android TV 腿按宿主包缺席 SKIP-with-print；本机构建命令见 ui/adapters/native/host/README「构建环境前置」"
+            echo "::warning::宿主 APK 未预置：Android TV 设备腿跳过（如实注记）"
+          else
+            echo "device=1" >> "$GITHUB_OUTPUT"
+            echo "设备腿门通过：/dev/kvm + 宿主 APK（$POLYPACK_TV_HOST_APK）"
+          fi
+
+      - name: Android SDK（cmdline-tools；许可由 action 自带）
+        if: steps.gate.outputs.device == '1'
+        uses: android-actions/setup-android@v4
+        with:
+          log-accepted-android-sdk-licenses: "false"
+
+      - name: AVD（google-tv x86——TV 镜像上游只有 32 位 x86 形态）
+        if: steps.gate.outputs.device == '1'
+        run: |
+          SDK="${ANDROID_SDK_ROOT:-$ANDROID_HOME}"
+          export PATH="$SDK/cmdline-tools/latest/bin:$SDK/emulator:$SDK/platform-tools:$PATH"
+          sdkmanager "platform-tools" "emulator" "platforms;android-36" "build-tools;36.0.0" \
+            "system-images;android-36;google-tv;x86"
+          echo no | avdmanager create avd -n polypack-tv-smoke -k "system-images;android-36;google-tv;x86" -d tv_1080p --force
+
+      - name: 启动模拟器（无窗口 + swiftshader；等 boot_completed）
+        if: steps.gate.outputs.device == '1'
+        run: |
+          SDK="${ANDROID_SDK_ROOT:-$ANDROID_HOME}"
+          export PATH="$SDK/emulator:$SDK/platform-tools:$PATH"
+          emulator -avd polypack-tv-smoke -no-window -no-audio -no-boot-anim -no-snapshot -gpu swiftshader_indirect -port 5554 &
+          adb wait-for-device
+          for i in $(seq 1 120); do
+            [ "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = "1" ] && break
+            sleep 5
+          done
+          adb devices
+          adb shell getprop ro.product.cpu.abilist
+
+      - name: 全腿（Android TV 真跑 + web 系替代腿 + tizen/webOS 模拟器探测注记）
+        run: node ui/smoke/tv/run.mjs --leg all --serial emulator-5554 --logs "$POLY_TV_SMOKE_LOGS"
+
+      - name: 留证据（result.json + 目标日志 + 截图 + 走查 log；失败也留）
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tv-smoke-evidence
+          path: ${{ runner.temp }}/poly-tv-smoke-logs/**
+          # result.json 恒写（全 SKIP 也写）：空上传=真异常
+          if-no-files-found: error
+          retention-days: 14

@@ -1,0 +1,468 @@
+{
+  "schema": "polypack/tv-smoke/v1",
+  "profile": "tv-example",
+  "derivedFrom": {
+    "kernel": "ui/adapters/tv/src/focus.js",
+    "layers": "ui/adapters/tv/src/layers.js",
+    "shortcuts": "ui/adapters/tv/src/shortcuts.js",
+    "nodes": "ui/adapters/tv/src/example-nodes.js"
+  },
+  "scenes": [
+    {
+      "id": "core-task",
+      "purpose": "核心任务：浏览 → 详情 → 播放占位 → 返回（逐层 Back + 焦点记忆）",
+      "keys": [
+        "DPAD_RIGHT",
+        "DPAD_LEFT",
+        "DPAD_DOWN",
+        "DPAD_RIGHT",
+        "DPAD_LEFT",
+        "DPAD_CENTER",
+        "DPAD_CENTER",
+        "Back",
+        "Back",
+        "Back"
+      ],
+      "initial": {
+        "focus": "counter",
+        "clicks": 0,
+        "depth": 0,
+        "exitRequested": false
+      },
+      "results": [
+        {
+          "type": "move",
+          "direction": "right",
+          "from": "counter",
+          "to": "reset"
+        },
+        {
+          "type": "move",
+          "direction": "left",
+          "from": "reset",
+          "to": "counter"
+        },
+        {
+          "type": "move",
+          "direction": "down",
+          "from": "counter",
+          "to": "detail"
+        },
+        {
+          "type": "move",
+          "direction": "right",
+          "from": "detail",
+          "to": "exit"
+        },
+        {
+          "type": "move",
+          "direction": "left",
+          "from": "exit",
+          "to": "detail"
+        },
+        {
+          "type": "activate",
+          "id": "detail"
+        },
+        {
+          "type": "activate",
+          "id": "modal-play"
+        },
+        {
+          "type": "back",
+          "route": "layer",
+          "layer": "player",
+          "from": "player-stop",
+          "to": "modal-play"
+        },
+        {
+          "type": "back",
+          "route": "layer",
+          "layer": "detail",
+          "from": "modal-play",
+          "to": "detail"
+        },
+        {
+          "type": "back",
+          "route": "memory",
+          "from": "detail",
+          "to": "exit"
+        }
+      ],
+      "focus": [
+        "reset",
+        "counter",
+        "detail",
+        "exit",
+        "detail",
+        "modal-play",
+        "player-stop",
+        "modal-play",
+        "detail",
+        "exit"
+      ],
+      "state": [
+        {
+          "focus": "reset",
+          "clicks": 0,
+          "depth": 0,
+          "exitRequested": false
+        },
+        {
+          "focus": "counter",
+          "clicks": 0,
+          "depth": 0,
+          "exitRequested": false
+        },
+        {
+          "focus": "detail",
+          "clicks": 0,
+          "depth": 0,
+          "exitRequested": false
+        },
+        {
+          "focus": "exit",
+          "clicks": 0,
+          "depth": 0,
+          "exitRequested": false
+        },
+        {
+          "focus": "detail",
+          "clicks": 0,
+          "depth": 0,
+          "exitRequested": false
+        },
+        {
+          "focus": "modal-play",
+          "clicks": 0,
+          "depth": 1,
+          "exitRequested": false
+        },
+        {
+          "focus": "player-stop",
+          "clicks": 0,
+          "depth": 2,
+          "exitRequested": false
+        },
+        {
+          "focus": "modal-play",
+          "clicks": 0,
+          "depth": 1,
+          "exitRequested": false
+        },
+        {
+          "focus": "detail",
+          "clicks": 0,
+          "depth": 0,
+          "exitRequested": false
+        },
+        {
+          "focus": "exit",
+          "clicks": 0,
+          "depth": 0,
+          "exitRequested": false
+        }
+      ]
+    },
+    {
+      "id": "digit-shortcuts",
+      "purpose": "数字键直达（宿主域）与层内拦截（blocked，不穿透）",
+      "keys": [
+        "Digit3",
+        "DPAD_CENTER",
+        "Digit1",
+        "Back",
+        "Numpad2",
+        "1",
+        "DPAD_CENTER"
+      ],
+      "initial": {
+        "focus": "counter",
+        "clicks": 0,
+        "depth": 0,
+        "exitRequested": false
+      },
+      "results": [
+        {
+          "type": "shortcut",
+          "digit": "3",
+          "from": "counter",
+          "to": "detail"
+        },
+        {
+          "type": "activate",
+          "id": "detail"
+        },
+        {
+          "type": "shortcut",
+          "digit": "1",
+          "blocked": true
+        },
+        {
+          "type": "back",
+          "route": "layer",
+          "layer": "detail",
+          "from": "modal-play",
+          "to": "detail"
+        },
+        {
+          "type": "shortcut",
+          "digit": "2",
+          "from": "detail",
+          "to": "reset"
+        },
+        {
+          "type": "shortcut",
+          "digit": "1",
+          "from": "reset",
+          "to": "counter"
+        },
+        {
+          "type": "activate",
+          "id": "counter"
+        }
+      ],
+      "focus": [
+        "detail",
+        "modal-play",
+        "modal-play",
+        "detail",
+        "reset",
+        "counter",
+        "counter"
+      ],
+      "state": [
+        {
+          "focus": "detail",
+          "clicks": 0,
+          "depth": 0,
+          "exitRequested": false
+        },
+        {
+          "focus": "modal-play",
+          "clicks": 0,
+          "depth": 1,
+          "exitRequested": false
+        },
+        {
+          "focus": "modal-play",
+          "clicks": 0,
+          "depth": 1,
+          "exitRequested": false
+        },
+        {
+          "focus": "detail",
+          "clicks": 0,
+          "depth": 0,
+          "exitRequested": false
+        },
+        {
+          "focus": "reset",
+          "clicks": 0,
+          "depth": 0,
+          "exitRequested": false
+        },
+        {
+          "focus": "counter",
+          "clicks": 0,
+          "depth": 0,
+          "exitRequested": false
+        },
+        {
+          "focus": "counter",
+          "clicks": 1,
+          "depth": 0,
+          "exitRequested": false
+        }
+      ]
+    },
+    {
+      "id": "edge-holds",
+      "purpose": "边界自环与单节点域自环（无死路：期望移动而原地即移动）",
+      "keys": [
+        "DPAD_UP",
+        "DPAD_LEFT",
+        "DPAD_DOWN",
+        "DPAD_CENTER",
+        "DPAD_UP",
+        "DPAD_LEFT",
+        "DPAD_RIGHT",
+        "DPAD_LEFT"
+      ],
+      "initial": {
+        "focus": "counter",
+        "clicks": 0,
+        "depth": 0,
+        "exitRequested": false
+      },
+      "results": [
+        {
+          "type": "move",
+          "direction": "up",
+          "from": "counter",
+          "to": "counter"
+        },
+        {
+          "type": "move",
+          "direction": "left",
+          "from": "counter",
+          "to": "counter"
+        },
+        {
+          "type": "move",
+          "direction": "down",
+          "from": "counter",
+          "to": "detail"
+        },
+        {
+          "type": "activate",
+          "id": "detail"
+        },
+        {
+          "type": "move",
+          "direction": "up",
+          "from": "modal-play",
+          "to": "modal-play"
+        },
+        {
+          "type": "move",
+          "direction": "left",
+          "from": "modal-play",
+          "to": "modal-play"
+        },
+        {
+          "type": "move",
+          "direction": "right",
+          "from": "modal-play",
+          "to": "modal-close"
+        },
+        {
+          "type": "move",
+          "direction": "left",
+          "from": "modal-close",
+          "to": "modal-play"
+        }
+      ],
+      "focus": [
+        "counter",
+        "counter",
+        "detail",
+        "modal-play",
+        "modal-play",
+        "modal-play",
+        "modal-close",
+        "modal-play"
+      ],
+      "state": [
+        {
+          "focus": "counter",
+          "clicks": 0,
+          "depth": 0,
+          "exitRequested": false
+        },
+        {
+          "focus": "counter",
+          "clicks": 0,
+          "depth": 0,
+          "exitRequested": false
+        },
+        {
+          "focus": "detail",
+          "clicks": 0,
+          "depth": 0,
+          "exitRequested": false
+        },
+        {
+          "focus": "modal-play",
+          "clicks": 0,
+          "depth": 1,
+          "exitRequested": false
+        },
+        {
+          "focus": "modal-play",
+          "clicks": 0,
+          "depth": 1,
+          "exitRequested": false
+        },
+        {
+          "focus": "modal-play",
+          "clicks": 0,
+          "depth": 1,
+          "exitRequested": false
+        },
+        {
+          "focus": "modal-close",
+          "clicks": 0,
+          "depth": 1,
+          "exitRequested": false
+        },
+        {
+          "focus": "modal-play",
+          "clicks": 0,
+          "depth": 1,
+          "exitRequested": false
+        }
+      ]
+    },
+    {
+      "id": "exit-route",
+      "purpose": "空历史 Back 的退出裁决（route=exit + 退出锚点文案）",
+      "keys": [
+        "Back",
+        "Back",
+        "Back"
+      ],
+      "initial": {
+        "focus": "counter",
+        "clicks": 0,
+        "depth": 0,
+        "exitRequested": false
+      },
+      "results": [
+        {
+          "type": "back",
+          "route": "exit",
+          "from": "counter",
+          "to": null
+        },
+        {
+          "type": "back",
+          "route": "exit",
+          "from": "counter",
+          "to": null
+        },
+        {
+          "type": "back",
+          "route": "exit",
+          "from": "counter",
+          "to": null
+        }
+      ],
+      "focus": [
+        "counter",
+        "counter",
+        "counter"
+      ],
+      "state": [
+        {
+          "focus": "counter",
+          "clicks": 0,
+          "depth": 0,
+          "exitRequested": true
+        },
+        {
+          "focus": "counter",
+          "clicks": 0,
+          "depth": 0,
+          "exitRequested": true
+        },
+        {
+          "focus": "counter",
+          "clicks": 0,
+          "depth": 0,
+          "exitRequested": true
+        }
+      ]
+    }
+  ]
+}
