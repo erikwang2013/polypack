@@ -5,12 +5,14 @@
 //! 校验器、发布渠道、备注；tier 均为 1，凭据只以密钥库引用形式出现。
 //! M3 增补 L2 小程序族四目标（wechat / alipay / douyin / quickapp，tier 2，ROADMAP §3.3
 //! 前四行，T-M3-05 / T-M3-06）：Taro 承载（ui = "taro"）、wasm 进宿主沙箱、签名在平台侧。
-//! M4 增补 L3 web 系 TV 四目标（tizen-tv / webos-tv / vidaa-tv / smartcast-tv，tier 3，
-//! ROADMAP §3.4，T-M4-08/09/10）：wasm 核心 + react-dom UI，wgt / ipk / web-app 出包。
+//! M4 增补 L3 电视族（tier 3，ROADMAP §3.4）：Apple tvOS（T-M4-07，RN-tvOS 承载 UI、
+//! 复用 iOS Xcode 链，产物格式同 `ipa` 按目标切 SDK / 切片）与 web 系 TV 四目标
+//! （tizen-tv / webos-tv / vidaa-tv / smartcast-tv，T-M4-08/09/10：wasm 核心 + react-dom UI，
+//! wgt / ipk / web-app 出包）。
 
 use crate::spec::{Bridge, Host, PackageSpec, Runtime, TargetSpec};
 
-/// 全部内建目标（L1 七 + L2 小程序族四）。
+/// 全部内建目标（L1 七 + L2 小程序族四 + L3 电视族五：tvos + web 系四）。
 pub fn builtin() -> Vec<TargetSpec> {
     vec![
         TargetSpec {
@@ -49,6 +51,24 @@ pub fn builtin() -> Vec<TargetSpec> {
             publish: vec!["app-store-connect".to_string()],
             experimental: false,
             notes: Some("需 macOS 宿主".to_string()),
+        },
+        // ---- L3 电视族（M4，ROADMAP §3.4）：Apple tvOS（T-M4-07，复用 iOS Xcode 链） ----
+        TargetSpec {
+            id: "tvos".to_string(),
+            tier: 3,
+            hosts: vec![Host::Macos],
+            runtime: Runtime::Native,
+            bridge: Bridge::Uniffi,
+            ui: vec!["react-native-tvos".to_string()],
+            package: PackageSpec {
+                format: "ipa".to_string(),
+                builder: "tvos-xcodebuild".to_string(),
+            },
+            signing: Some("apple-codesign".to_string()),
+            verify: vec!["codesign-verify".to_string(), "spctl".to_string()],
+            publish: vec!["app-store-connect".to_string()],
+            experimental: false,
+            notes: Some("RN-tvOS 承载 UI；需 macOS 宿主".to_string()),
         },
         TargetSpec {
             id: "harmonyos".to_string(),

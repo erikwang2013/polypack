@@ -4,11 +4,14 @@
 
 /** 目标 id → 能力基线。只列本包（RN / RNOH）承载的目标；react-dom 族是 adapter-dom 的职责，
  *  经本包询问会以「未知目标」快速失败——避免为一个不承载的宿主给出能力答复。
- *  新增 RN 承载目标（如 M4 的 RN-tvOS）先补 builtin.rs 声明，再在此增行。 */
+ *  新增 RN 承载目标先补 builtin.rs 声明，再在此增行。 */
 export const CAPABILITY_MATRIX = Object.freeze({
   android: Object.freeze({ focusNav: false, safeArea: true, gestures: true }),
   ios: Object.freeze({ focusNav: false, safeArea: true, gestures: true }),
   harmonyos: Object.freeze({ focusNav: false, safeArea: true, gestures: true }),
+  // T-M4-06 RN-tvOS：TV 基线（同 adapter-tv 矩阵口径——遥控器恒无指针 → focusNav 常开；
+  // 无系统返回手势 → 走显式 Back 入口降级分支）。host 提示仍可覆盖。
+  tvos: Object.freeze({ focusNav: true, safeArea: true, gestures: false }),
 });
 
 /** 契约三键（输出顺序即此顺序）。 */

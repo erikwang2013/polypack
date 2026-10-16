@@ -299,8 +299,9 @@ fn farm_loopback_returns_worker_failure_with_code_and_hint() {
     assert!(failed["hint"].is_string(), "失败事件带修复提示: {failed}");
 }
 
-/// R3 宿主阻断：农场投递**不**按发起地过滤目标——`--target ios`（Linux 发起）应保留进任务并
-/// 等 macOS worker 注册（此处无 worker → 等待注册超时），绝不报「目标不可达」。
+/// R3 宿主阻断：农场投递**不**按发起地过滤目标——`--target ios` / `--target tvos`（Linux
+/// 发起，声明宿主 = macOS）应保留进任务并等 macOS worker 注册（此处无 worker → 等待注册
+/// 超时），绝不报「目标不可达」。
 /// 宿主准入由 master 对 worker 的能力判据把关（语义见 core 侧 `farm_remote.rs` 的 mock 契约）。
 #[test]
 fn farm_submit_keeps_foreign_host_target_for_worker_admission() {
@@ -309,35 +310,38 @@ fn farm_submit_keeps_foreign_host_target_for_worker_admission() {
     write_project(&project, true);
     let farm = temp.path().join("farm");
 
-    let out = poly(
-        &[
-            "farm",
-            "submit",
-            "--config",
-            "polypack.toml",
-            "--dir",
-            farm.to_str().expect("路径为 UTF-8"),
-            "--target",
-            "ios",
-            "--wait",
-            "0",
-        ],
-        &project,
-    );
-    assert_eq!(
-        out.status.code(),
-        Some(1),
-        "无 worker 时等待注册超时必须失败"
-    );
-    let stderr = String::from_utf8_lossy(&out.stderr);
-    assert!(
-        stderr.contains("poly::E_FARM_0002"),
-        "应停在「等待 worker 注册」: {stderr}"
-    );
-    assert!(
-        !stderr.contains("E_TGT_0002"),
-        "投递侧不得按发起地判「目标不可达」: {stderr}"
-    );
+    // ios（T-M2-13 既有）与 tvos（T-M4-07：同一投递语义，声明宿主同为 macOS）
+    for target in ["ios", "tvos"] {
+        let out = poly(
+            &[
+                "farm",
+                "submit",
+                "--config",
+                "polypack.toml",
+                "--dir",
+                farm.to_str().expect("路径为 UTF-8"),
+                "--target",
+                target,
+                "--wait",
+                "0",
+            ],
+            &project,
+        );
+        assert_eq!(
+            out.status.code(),
+            Some(1),
+            "{target}：无 worker 时等待注册超时必须失败"
+        );
+        let stderr = String::from_utf8_lossy(&out.stderr);
+        assert!(
+            stderr.contains("poly::E_FARM_0002"),
+            "{target} 应停在「等待 worker 注册」: {stderr}"
+        );
+        assert!(
+            !stderr.contains("E_TGT_0002"),
+            "{target}：投递侧不得按发起地判「目标不可达」: {stderr}"
+        );
+    }
 }
 
 /// 跨机缓存：两个构建地点共用同一对象存储后端 → 第二处全命中（产物摘要一致）。

@@ -17,7 +17,7 @@ use poly_bundle::error::BundleError;
 use poly_bundle::inputs::{
     AndroidInputs, BundleInputs, HarmonyInputs, Icon, IconKind, IosInputs, NativeLib, ProductInfo,
 };
-use poly_bundle::packagers::ios::swift;
+use poly_bundle::packagers::ios::{apple_platform, swift};
 use poly_core::bridge;
 use poly_core::diagnostics::{Code, Diagnostic};
 use poly_core::events::{BuildEvent, EventSink};
@@ -40,12 +40,18 @@ const ICON_SVG_ROOT: &str = "icon.svg";
 /// PWA manifest 候选文件名（T-M1-04 产物，web 打包器必需输入）。
 const MANIFEST_NAMES: &[&str] = &["manifest.webmanifest", "manifest.json"];
 
-/// Apple 交叉目标：`swift::package` 三条 cargo 命令对应的 triple（缺一即造不出 XCFramework）。
-const APPLE_TRIPLES: [&str; 3] = [
-    swift::DEVICE_TRIPLE,
-    swift::SIM_ARM64_TRIPLE,
-    swift::SIM_X86_64_TRIPLE,
-];
+/// Apple 交叉目标：`swift::package` 的 cargo `--target` 清单（缺一即造不出 XCFramework）。
+///
+/// T-M4-07：按目标平台从描述符派生（ios 设备 + 双模拟器 / tvos 设备 + 单模拟器）——
+/// 不另持一份清单，杜绝「加了 triple 忘了前置检查」的漂移。
+fn apple_triples(target_id: &str) -> Option<Vec<&'static str>> {
+    let platform = apple_platform(target_id)?;
+    Some(
+        std::iter::once(platform.device_triple)
+            .chain(platform.sim_triples.iter().copied())
+            .collect(),
+    )
+}
 
 /// `package` 阶段。
 pub struct PackageStage;
@@ -252,13 +258,14 @@ pub(crate) fn assemble_inputs(
         "ipa" => {
             no_ui_warning(events, spec, &dist, &inputs);
             inputs.ios = Some(ios_inputs(project)?);
-            // XCFramework（T-M2-03）是 iOS 打包器的必需输入，而会造它的只有 `swift::package`
-            // （`poly bridge generate` 只产绑定）——缺则现建，否则打包器必 MissingInput 整目标跳过。
+            // XCFramework（T-M2-03）是 Apple 打包器（ios / tvos）的必需输入，而会造它的只有
+            // `swift::package`（`poly bridge generate` 只产绑定）——缺则现建，否则打包器必
+            // MissingInput 整目标跳过。
             if !swift::xcframework_path(&inputs).is_dir() {
                 // 缺 std 交叉目标属工具链缺失：cargo 会在 swift::package 里硬失败，
                 // 按 skip-if-missing 先如实跳过并点名要装的 triple（rustup 不在场则不拦）
                 let installed = rustup_targets();
-                if let Some(missing) = first_missing_apple_triple(installed.as_deref()) {
+                if let Some(missing) = first_missing_apple_triple(installed.as_deref(), &spec.id) {
                     return skip(
                         events,
                         spec,
@@ -479,13 +486,17 @@ fn rustup_targets() -> Option<Vec<String>> {
     )
 }
 
-/// 已装清单里缺的第一个 Apple 交叉目标；`None`（rustup 不在场/调用失败）→ `None`（放行给 cargo）。
+/// 已装清单里缺的第一个 Apple 交叉目标（清单按目标平台派生：ios 三 / tvos 二）；
+/// `None`（rustup 不在场/调用失败）→ `None`（放行给 cargo）。
 ///
 /// 清单为空串与「rustup 不可用」必须分开：前者是真没装任何目标（点名要装的 triple），
 /// 后者只是查不到——查不到就拦会把非 rustup 工具链的机器误判成缺目标。
-fn first_missing_apple_triple(installed: Option<&[String]>) -> Option<&'static str> {
+fn first_missing_apple_triple(
+    installed: Option<&[String]>,
+    target_id: &str,
+) -> Option<&'static str> {
     let installed = installed?;
-    APPLE_TRIPLES
+    apple_triples(target_id)?
         .into_iter()
         .find(|triple| !installed.iter().any(|have| have.as_str() == *triple))
 }
@@ -782,55 +793,82 @@ mod tests {
         let _ = std::fs::remove_dir_all(&root);
     }
 
-    /// 缺哪个交叉目标由 rustup 清单点名（skip 原因可直接拷进终端）；查不到清单不拦。
+    /// 缺哪个交叉目标由 rustup 清单点名（skip 原因可直接拷进终端）；查不到清单不拦；
+    /// 清单按目标平台取（T-M4-07：tvos 只两条 target）。
     #[test]
     fn missing_apple_triple_is_named_from_installed_list() {
-        let all: Vec<String> = APPLE_TRIPLES
+        let all: Vec<String> = apple_triples("ios")
+            .unwrap()
             .iter()
-            .map(|triple| (*triple).to_string())
+            .map(|t| t.to_string())
             .collect();
-        assert_eq!(first_missing_apple_triple(Some(&all)), None);
+        assert_eq!(first_missing_apple_triple(Some(&all), "ios"), None);
         let without_sim_arm64: Vec<String> = ["aarch64-apple-ios", "x86_64-apple-ios"]
             .map(str::to_string)
             .to_vec();
         assert_eq!(
-            first_missing_apple_triple(Some(&without_sim_arm64)),
+            first_missing_apple_triple(Some(&without_sim_arm64), "ios"),
             Some(swift::SIM_ARM64_TRIPLE)
         );
         assert_eq!(
-            first_missing_apple_triple(Some(&[])),
+            first_missing_apple_triple(Some(&[]), "ios"),
             Some(swift::DEVICE_TRIPLE),
             "清单在但空 = 真没装：点名要装的 triple"
         );
         assert_eq!(
-            first_missing_apple_triple(None),
+            first_missing_apple_triple(None, "ios"),
             None,
             "rustup 不在场 → 放行，由 cargo 报真错"
+        );
+
+        // tvOS：清单只有设备 + 单模拟器两条；缺模拟器立即点名
+        let tvos_all: Vec<String> = apple_triples("tvos")
+            .unwrap()
+            .iter()
+            .map(|t| t.to_string())
+            .collect();
+        assert_eq!(tvos_all.len(), 2, "tvOS 交叉目标两条");
+        assert_eq!(first_missing_apple_triple(Some(&tvos_all), "tvos"), None);
+        let tvos_device_only: Vec<String> = vec!["aarch64-apple-tvos".to_string()];
+        assert_eq!(
+            first_missing_apple_triple(Some(&tvos_device_only), "tvos"),
+            Some("aarch64-apple-tvos-sim")
+        );
+        assert_eq!(
+            first_missing_apple_triple(Some(&tvos_device_only), "ios"),
+            Some(swift::DEVICE_TRIPLE),
+            "同一份清单按目标切换期望（ios 缺设备 triple 先点名）"
         );
     }
 
     /// 不变式：前置校验清单须与 `swift::package` 真跑的 cargo `--target` 同源——
-    /// 漏一个新 triple 会让缺工具链的机器绕过跳过、直接硬失败。
+    /// 漏一个新 triple 会让缺工具链的机器绕过跳过、直接硬失败。ios / tvos 两目标同断言。
     #[test]
     fn apple_triple_precheck_matches_swift_chain() {
         let (root, project) = fixture("ios-triples");
         let mut inputs = BundleInputs::new(product_info(&project.config.package), root.clone());
         inputs.ios = Some(ios_inputs(&project).expect("iOS 输入"));
-        let spec = TargetSpec::new_stub("ios", 1, &[Host::Macos]);
 
-        let plan = swift::plan(&inputs, &spec).expect("纯组装，任意宿主可跑");
-        let mut built: Vec<&str> = plan
-            .commands
-            .iter()
-            .filter(|command| command.program == "cargo")
-            .flat_map(|command| command.args.windows(2))
-            .filter(|pair| pair[0] == "--target")
-            .map(|pair| pair[1].as_str())
-            .collect();
-        built.sort_unstable();
-        let mut expected = APPLE_TRIPLES;
-        expected.sort_unstable();
-        assert_eq!(built, expected, "前置校验清单须覆盖 swift 链的全部交叉目标");
+        for target_id in ["ios", "tvos"] {
+            let mut spec = TargetSpec::new_stub(target_id, 1, &[Host::Macos]);
+            spec.package.format = "ipa".to_string();
+            let plan = swift::plan(&inputs, &spec).expect("纯组装，任意宿主可跑");
+            let mut built: Vec<&str> = plan
+                .commands
+                .iter()
+                .filter(|command| command.program == "cargo")
+                .flat_map(|command| command.args.windows(2))
+                .filter(|pair| pair[0] == "--target")
+                .map(|pair| pair[1].as_str())
+                .collect();
+            built.sort_unstable();
+            let mut expected = apple_triples(target_id).expect("Apple 平台描述符");
+            expected.sort_unstable();
+            assert_eq!(
+                built, expected,
+                "{target_id} 前置校验清单须覆盖 swift 链的全部交叉目标"
+            );
+        }
         let _ = std::fs::remove_dir_all(&root);
     }
 }

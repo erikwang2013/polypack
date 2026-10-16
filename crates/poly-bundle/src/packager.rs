@@ -172,18 +172,26 @@ impl BundlePlan {
 
 /// 打包器契约（ROADMAP §4.1）。
 pub trait Packager: Send + Sync {
-    /// 目标 id（`TargetSpec.id`，如 `windows` / `linux`）。
+    /// 打包器 id（缺省与服务目标同名；共链打包器可另取，见 [`Packager::serves`]）。
     fn id(&self) -> &'static str;
     /// 产物格式（如 `msi` / `deb`；同一目标可有多个打包器）。
     fn format(&self) -> &'static str;
+    /// 本打包器是否服务该目标（缺省 = 与 `id` 同名）。
+    ///
+    /// T-M4-07：Apple 链一条实现服务 `ios` / `tvos` 两目标——[`find`] 以本方法判定
+    /// 服务范围，不再要求 `id` 与目标全等（产物格式仍须逐字一致）。
+    fn serves(&self, target_id: &str) -> bool {
+        target_id == self.id()
+    }
     /// 生成打包计划：只读取输入元数据，不写文件系统、不执行外部工具。
     fn plan(&self, inputs: &BundleInputs, spec: &TargetSpec) -> Result<BundlePlan, BundleError>;
     /// 执行打包：落盘脚本 → 执行命令 → 汇总产物。
     fn package(&self, inputs: &BundleInputs, spec: &TargetSpec) -> Result<Artifact, BundleError>;
 }
 
-/// 内建打包器集合（M1：msi / nsis / dmg / deb / appimage / static-site；M2：aab / ipa；
-/// M3：小程序族 weapp / alipay / tt / rpk + hap；M4：TV 家族 wgt / ipk / web-app）。
+/// 内建打包器集合（M1：msi / nsis / dmg / deb / appimage / static-site；M2：aab / ipa
+/// （Apple 链 ios / tvos 共用一条实现，T-M4-07）；M3：小程序族 weapp / alipay / tt / rpk + hap；
+/// M4：TV 家族 wgt / ipk / web-app）。
 pub fn builtin() -> Vec<Box<dyn Packager>> {
     vec![
         Box::new(crate::packagers::windows::WixMsi),
@@ -206,11 +214,11 @@ pub fn builtin() -> Vec<Box<dyn Packager>> {
     ]
 }
 
-/// 按（目标 id，产物格式）查找内建打包器。
+/// 按（目标 id，产物格式）查找内建打包器（服务范围经 [`Packager::serves`] 判定）。
 pub fn find(target_id: &str, format: &str) -> Option<Box<dyn Packager>> {
     builtin()
         .into_iter()
-        .find(|p| p.id() == target_id && p.format() == format)
+        .find(|p| p.serves(target_id) && p.format() == format)
 }
 
 /// 目标声明的默认打包器（按 `TargetSpec.package.format` 查找）。

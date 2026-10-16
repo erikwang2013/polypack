@@ -52,14 +52,14 @@ fn all_on_linux_excludes_windows_only_and_l7_with_reasons() {
     let excluded: BTreeSet<&str> = resolved.excluded.iter().map(|e| e.id.as_str()).collect();
     assert_eq!(
         excluded,
-        BTreeSet::from(["ios", "macos", "windows", "vendor-console"])
+        BTreeSet::from(["ios", "macos", "tvos", "windows", "vendor-console"])
     );
 
     for target in &resolved.excluded {
         assert!(!target.reason.trim().is_empty(), "{} 缺排除原因", target.id);
         match target.id.as_str() {
             // 宿主不可达：原因须点明宿主
-            "ios" | "macos" | "windows" => {
+            "ios" | "macos" | "tvos" | "windows" => {
                 assert!(
                     target.reason.contains("宿主"),
                     "{}: {}",
@@ -140,7 +140,7 @@ fn allow_unreachable_keeps_all_targets() {
     let selected = selected_ids(&registry_with_l7(), &[Host::Linux], true);
     assert_eq!(
         selected.len(),
-        16, // L1 七 + L2 四 + L3 web 系 TV 四 + L7 一
+        17, // L1 七 + L2 四 + L3 电视族五 + L7 一
         "allow_unreachable 下 All 应全选: {selected:?}"
     );
 

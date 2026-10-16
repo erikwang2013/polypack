@@ -1,0 +1,23 @@
+{
+  "name": "@polypack/host-tvos",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Apple tvOS（RN-tvOS）RN 宿主工程骨架（T-M4-06）：装配 @polypack/adapter-native + ios/ 工程位（T-M4-07 打包链）",
+  "scripts": {
+    "start": "react-native start"
+  },
+  "dependencies": {
+    "@polypack/adapter-native": "file:../..",
+    "react": "19.2.3",
+    "react-native": "npm:react-native-tvos@0.87.1-1"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.25.2",
+    "@react-native-community/cli": "20.2.0",
+    "@react-native/babel-preset": "0.87.1",
+    "@react-native/metro-config": "0.87.1"
+  },
+  "engines": {
+    "node": ">= 22.11.0"
+  }
+}
