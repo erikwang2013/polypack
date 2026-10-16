@@ -29,14 +29,14 @@ test("契约对象形状：mount / platformStyle / capabilities 三件套齐备�
   assert.ok(Object.isFrozen(adapter), "契约对象应冻结（宿主不得改写装配层）");
 });
 
-test("target → 电视目标面：矩阵四目标齐备且均可装配", () => {
+test("target → 电视目标面：L3 六枚齐备且均可装配", () => {
   for (const target of Object.keys(CAPABILITY_MATRIX)) {
     assert.equal(makeAdapter({ target }).target, target, target);
   }
   assert.deepEqual(
     Object.keys(CAPABILITY_MATRIX).sort(),
-    ["smartcast-tv", "tizen-tv", "vidaa-tv", "webos-tv"],
-    "电视目标面（react-dom 承载；poly-targets 登记落位后由 capabilities 哨兵收口）",
+    ["android-tv", "fire-tv", "smartcast-tv", "tizen-tv", "vidaa-tv", "webos-tv"],
+    "L3 目标面（lead 定案六枚；poly-targets 登记落位后由 capabilities 哨兵收口）",
   );
 });
 

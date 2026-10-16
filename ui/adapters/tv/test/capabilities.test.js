@@ -35,15 +35,17 @@ function parseBuiltinTargets() {
 
 const builtinTargets = parseBuiltinTargets();
 
-test("poly-targets 哨兵：内建 react-dom 电视目标（*-tv）⊆ 本矩阵（登记落位后自动收口）", () => {
+test("poly-targets 哨兵：内建 L3 电视目标（*-tv）⊆ 本矩阵（登记落位后自动收口）", () => {
   assert.ok(builtinTargets.length >= 7, `内建目标解析异常（${builtinTargets.length} 个）`);
-  const webTv = builtinTargets.filter(
-    (t) => t.ui.includes("react-dom") && typeof t.id === "string" && t.id.endsWith("-tv"),
+  // L3 六枚口径（lead 定案）：android-tv / fire-tv / tizen-tv / webos-tv / vidaa-tv /
+  // smartcast-tv——凡内建目标 id 以 -tv 结尾者必在本矩阵（tvos 不带后缀，不在本哨兵面）。
+  const tvTargets = builtinTargets.filter(
+    (t) => typeof t.id === "string" && t.id.endsWith("-tv"),
   );
-  for (const t of webTv) {
+  for (const t of tvTargets) {
     assert.ok(
       Object.hasOwn(CAPABILITY_MATRIX, t.id),
-      `内建目标 "${t.id}" 声明了 react-dom 承载的电视形态，但 adapter-tv 矩阵缺行——请补 capabilities.js`,
+      `内建目标 "${t.id}" 是 L3 电视目标，但 adapter-tv 矩阵缺行——请补 capabilities.js`,
     );
   }
 });

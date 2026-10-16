@@ -5,9 +5,14 @@
 //    不取消焦点环；与 RN 侧「pointer none → focusNav」的推导方向相反）；
 //  - 无触摸手势（gestures false）→ back-affordance 降级由遥控器 Back 键承接（分层 Back 语义）。
 //
-// 目标 id 口径见 ROADMAP §3.4（示例 `tizen-tv`）；poly-targets 登记（T-M4-04/08/09/10 落位）
-// 后由 test/capabilities.test.js 的哨兵断言收口（内建 react-dom 电视目标 ⊆ 本矩阵）。
+// 目标 id 口径：L3 六枚（lead 定案——android-tv / fire-tv / tizen-tv / webos-tv / vidaa-tv /
+// smartcast-tv；导出面不带 -tv 后缀的 tvos 归 T-M4-07 单独声明，不在本矩阵）。android-tv /
+// fire-tv 由 RN 承载（adapter-native），能力面与 web 电视族同口径（TV 基线）——本矩阵是
+// L3 能力声明的单一入口。poly-targets 登记（T-M4-04/08/09/10 落位）后由
+// test/capabilities.test.js 哨兵收口（内建 `*-tv` 目标 ⊆ 本矩阵）。
 export const CAPABILITY_MATRIX = Object.freeze({
+  "android-tv": Object.freeze({ focusNav: true, safeArea: true, gestures: false }),
+  "fire-tv": Object.freeze({ focusNav: true, safeArea: true, gestures: false }),
   "tizen-tv": Object.freeze({ focusNav: true, safeArea: true, gestures: false }),
   "webos-tv": Object.freeze({ focusNav: true, safeArea: true, gestures: false }),
   "vidaa-tv": Object.freeze({ focusNav: true, safeArea: true, gestures: false }),
