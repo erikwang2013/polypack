@@ -33,7 +33,7 @@ fn all_on_linux_excludes_windows_only_and_l7_with_reasons() {
     assert_eq!(
         selected,
         // L1 宿主可达者 + L2 小程序族四（Taro 编译不绑定本地宿主，任何宿主下都入选）
-        // + L3 电视两（均不绑定本地宿主，任何宿主下都入选）
+        // + L3 电视两（复用 Android 工具链，三宿主声明）+ roku（三宿主声明）
         // + L3 web 系 TV 四（T-M4-08/09/10，web 运行时三宿主全可达）
         BTreeSet::from([
             "android",
@@ -50,6 +50,7 @@ fn all_on_linux_excludes_windows_only_and_l7_with_reasons() {
             "webos-tv",
             "vidaa-tv",
             "smartcast-tv",
+            "roku",
         ])
     );
 
@@ -151,7 +152,7 @@ fn allow_unreachable_keeps_all_targets() {
     // 未开 allow_unreachable 时排除清单非空，两态互为对照
     assert_eq!(
         selected_ids(&registry_with_l7(), &[Host::Linux], false).len(),
-        14 // L1 四（Linux 可达）+ L2 四 + L3 两 + L3 web 系 TV 四
+        15 // L1 四（Linux 可达）+ L2 四 + L3 电视族七（两 + web 系四 + roku）——tvos 为 macOS 专宿主
     );
 }
 
