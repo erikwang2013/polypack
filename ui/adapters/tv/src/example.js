@@ -1,13 +1,15 @@
-// 示例页面（T-M4-01 验收的「同一页面组件树」）：与 poly init 模板页
+// 示例页面（T-M4-01/02 验收的「同一页面组件树」）：与 poly init 模板页
 // （crates/poly-cli/templates/app/ui/main.jsx）语义同形——图标 / 标题 / 版本行 /
-// 计数按钮 / 提示行；TV 增量：10-foot 蒙皮、安全区外框、焦点环（遥控器无指针恒开）。
+// 计数按钮 / 提示行；TV 增量：10-foot 蒙皮、安全区外框、2×2 几何遍历网格（四向可达）、
+// 焦点环（遥控器无指针恒开）。
 // 原语由宿主注入（react-dom 元素）；测试传 DOM 标签做代理渲染（test/helpers/dom-primitives.js）。
 // 可焦点节点带 data-focus="true"（当前焦点锚点）——T-M4-13 遥控器冒烟的 DOM 观测通道。
 
 import { createElement as h, useSyncExternalStore } from "react";
 
 import { EXAMPLE_FOCUS_NODES } from "./example-nodes.js";
-import { createFocusEngine, handleKey } from "./focus.js";
+// 键路由集中走 ./focus.js（T-M4-03 起为 handleTvKey：分层 Back + 数字键；当前直挂共享内核）
+import { createTvFocus, handleKey } from "./focus.js";
 
 export { EXAMPLE_FOCUS_NODES } from "./example-nodes.js";
 
@@ -18,14 +20,14 @@ export { EXAMPLE_FOCUS_NODES } from "./example-nodes.js";
  * @param {ReturnType<import("./index.js").createAdapter>} adapter
  * @returns {{ Page: Function, onKey: (key: string) => object, focus: (id: string) => string,
  *   getState: () => { focus: string, clicks: number } }}
- *   onKey：宿主事件源统一入口（键盘 / 遥控器）——遍历 / 激活全部经此（T-M4-03 起含 Back / 数字键）。
+ *   onKey：宿主事件源统一入口（键盘 / 遥控器）——遍历 / 激活经此（T-M4-03 起含 Back / 数字键）。
  *   focus：宿主直接置焦点；getState：宿主诊断与冒烟断言。
  */
 export function createExamplePage(primitives, adapter) {
   const { View, Text, Pressable, Image, iconSource } = primitives;
   const styles = adapter.platformStyle();
   const caps = adapter.capabilities();
-  const engine = createFocusEngine({ nodes: EXAMPLE_FOCUS_NODES, initial: "counter" });
+  const engine = createTvFocus({ nodes: EXAMPLE_FOCUS_NODES, initial: "counter" });
 
   // 宿主可见状态（焦点 + 计数）经 useSyncExternalStore 供 React 订阅：核心任务在 React 之外
   // 可驱动（无指针环境的 OK 键通路），与 adapter-native / adapter-taro 口径一致。
@@ -63,21 +65,27 @@ export function createExamplePage(primitives, adapter) {
   };
 
   function Page() {
-    const focus2 = useSyncExternalStore(subscribe, () => store.focus, () => store.focus);
+    const focused = useSyncExternalStore(subscribe, () => store.focus, () => store.focus);
     const clicks = useSyncExternalStore(subscribe, () => store.clicks, () => store.clicks);
-    // 焦点环：无指针（focusNav）环境渲染——TV 基线恒真。
+    // 焦点环：TV 基线 focusNav 恒真。
     // 样式为 react-dom 合法对象（单对象合并，非数组）；button 常驻透明边框（同环宽）→ 聚焦零抖动。
-    const ring = (id) => (caps.focusNav && focus2 === id ? styles.focusRing : null);
+    const ring = (id) => (caps.focusNav && focused === id ? styles.focusRing : null);
     const button = (id, label) =>
       h(
         Pressable,
         {
           testID: id,
-          "data-focus": focus2 === id ? "true" : undefined,
+          "data-focus": focused === id ? "true" : undefined,
           style: ring(id) ? { ...styles.button, ...ring(id) } : styles.button,
           onPress: () => press(id),
         },
         h(Text, { style: styles.buttonLabel }, label),
+      );
+    const row = (children) =>
+      h(
+        View,
+        { style: { display: "flex", justifyContent: "center", gap: styles.space[3] } },
+        children,
       );
 
     return h(
@@ -105,14 +113,14 @@ export function createExamplePage(primitives, adapter) {
           { style: styles.muted },
           `版本 0.1.0 · 由 PolyPack 构建（poly build --target ${adapter.target}）`,
         ),
-        button("counter", `点击计数：${clicks}`),
-        button("reset", "重置"),
+        row([button("counter", `点击计数：${clicks}`), button("reset", "重置")]),
+        row([button("detail", "详情"), button("exit", "退出")]),
         h(
           Text,
           { style: styles.muted },
           caps.focusNav
-            ? "遥控器：方向键移动焦点；OK 激活。焦点环随焦点移动。"
-            : "点击按钮计数。",
+            ? "遥控器：四向键移动焦点；OK 激活；焦点环随焦点移动。"
+            : "点击按钮交互。",
         ),
       ),
     );

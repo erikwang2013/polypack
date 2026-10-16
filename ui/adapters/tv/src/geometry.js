@@ -56,7 +56,9 @@ function geometricNeighbors(node, others) {
   return row;
 }
 
-/** focusOrder 全量覆盖：按给定序连成线性链（主轴按中心差裁定：竖向优先 down/up，横向 right/left）。 */
+/** focusOrder 全量覆盖：按给定序连成线性链（逐对沿主轴带符号裁定方向——键指向邻居而非背离）。
+ *  已知边界：两个邻居落在同一方向的锯齿序会互相覆盖（后写胜）；线性覆盖宜用于序与几何走向
+ *  一致的行 / 列，逐向微调请用节点 neighbors。 */
 function chainNeighbors(nodes, focusOrder) {
   const ids = nodes.map((n) => n.id);
   const valid =
@@ -69,16 +71,17 @@ function chainNeighbors(nodes, focusOrder) {
   }
   const byId = new Map(nodes.map((n) => [n.id, n]));
   const row = Object.fromEntries(ids.map((id) => [id, {}]));
-  for (let i = 0; i + 1 < focusOrder.length; i += 1) {
-    const [a, b] = [focusOrder[i], focusOrder[i + 1]];
+  /** 由 a 指向 b：主轴（|dy| >= |dx| 取竖向）带符号 → 前进键；反向即 b 的回退键。 */
+  const link = (a, b) => {
     const [ra, rb] = [byId.get(a).rect, byId.get(b).rect];
-    if (Math.abs(cy(rb) - cy(ra)) >= Math.abs(cx(rb) - cx(ra))) {
-      row[a].down = b;
-      row[b].up = a;
-    } else {
-      row[a].right = b;
-      row[b].left = a;
-    }
+    const [dx, dy] = [cx(rb) - cx(ra), cy(rb) - cy(ra)];
+    const forward = Math.abs(dy) >= Math.abs(dx) ? (dy >= 0 ? "down" : "up") : dx >= 0 ? "right" : "left";
+    const backward = { down: "up", up: "down", left: "right", right: "left" }[forward];
+    row[a][forward] = b;
+    row[b][backward] = a;
+  };
+  for (let i = 0; i + 1 < focusOrder.length; i += 1) {
+    link(focusOrder[i], focusOrder[i + 1]);
   }
   return row;
 }
