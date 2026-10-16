@@ -122,6 +122,11 @@ pub(crate) fn install_hint(tool: &str) -> String {
         "magick" => {
             "安装 ImageMagick（Debian / Ubuntu：apt install imagemagick）——ICO 派生所需".to_string()
         }
+        "hvigorw" | "ohpm" => {
+            "装 HarmonyOS command-line-tools（含 bin/hvigorw 与 bin/ohpm）并设 $HARMONYOS_TOOLS \
+             指向其根"
+                .to_string()
+        }
         other => format!("安装 {other} 后重试"),
     }
 }

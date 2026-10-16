@@ -6,9 +6,11 @@
 //! - [`web`]：Web 静态站点（T-M1-08，含 SRI 清单）
 //! - [`android`]：AAB（T-M2-06 / T-M2-07，AAPT2 免 Gradle + bundletool）
 //! - [`ios`]：IPA（T-M2-03 / T-M2-08，XCFramework 绑定 + xcodebuild archive / 归档 Payload 直压）
+//! - [`harmony`]：HAP（T-M3-03，工程配置生成 + hvigor 调用 + 结构检查）
 
 pub mod android;
 pub mod dmg;
+pub mod harmony;
 pub mod ios;
 pub mod linux;
 pub mod web;

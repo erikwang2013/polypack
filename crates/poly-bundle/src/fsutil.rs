@@ -14,6 +14,15 @@ pub fn write_text(path: &Path, contents: &str) -> Result<(), BundleError> {
     normalize_mode(path, 0o644)
 }
 
+/// 写文本文件，内容与现文件逐字节相同时不动（保住 mtime——hvigor 增量构建按工程文件
+/// 状态判缓存，重写同内容会白白击穿「二跑缓存命中」）。
+pub fn write_text_if_changed(path: &Path, contents: &str) -> Result<(), BundleError> {
+    if std::fs::read(path).is_ok_and(|current| current == contents.as_bytes()) {
+        return Ok(());
+    }
+    write_text(path, contents)
+}
+
 /// 拷贝单个文件（自动建父目录；`exec` 为真时置 0755）。
 ///
 /// 权限按发行包惯例归一：保留可执行位与读位、去掉组 / 其他可写位（构建树常带

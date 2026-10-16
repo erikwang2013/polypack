@@ -182,7 +182,7 @@ pub trait Packager: Send + Sync {
     fn package(&self, inputs: &BundleInputs, spec: &TargetSpec) -> Result<Artifact, BundleError>;
 }
 
-/// 内建打包器集合（M1：msi / nsis / dmg / deb / appimage / static-site；M2：aab / ipa）。
+/// 内建打包器集合（M1：msi / nsis / dmg / deb / appimage / static-site；M2：aab / ipa；M3：hap）。
 pub fn builtin() -> Vec<Box<dyn Packager>> {
     vec![
         Box::new(crate::packagers::windows::WixMsi),
@@ -193,6 +193,7 @@ pub fn builtin() -> Vec<Box<dyn Packager>> {
         Box::new(crate::packagers::linux::AppImage),
         Box::new(crate::packagers::web::StaticSite),
         Box::new(crate::packagers::android::AndroidAab),
+        Box::new(crate::packagers::harmony::HarmonyHap),
     ]
 }
 

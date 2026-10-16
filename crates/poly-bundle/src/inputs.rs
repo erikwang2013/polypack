@@ -131,7 +131,9 @@ pub struct Icon {
     pub size: Option<u32>,
 }
 
-/// Android 原生库（T-M2-02 产物的一枚 `.so`，按 ABI 归档）。
+/// 原生库（T-M2-02 Android AAR / T-M3 NAPI 桥产物的一枚 `.so`，按 ABI 目录名归档）。
+///
+/// Android 与 HarmonyOS 共用 ABI 目录命名（`arm64-v8a` / `armeabi-v7a` / `x86_64` / `x86`）。
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct NativeLib {
     /// ABI 目录名（`arm64-v8a` / `armeabi-v7a` / `x86_64` / `x86`）。
@@ -210,6 +212,28 @@ pub struct IosInputs {
     pub bindings_dir: Option<PathBuf>,
 }
 
+/// HarmonyOS 打包输入（T-M3-03）。
+///
+/// `host_project` 指向用户工程根：其 `harmony/` 目录（含 `build-profile.json5`）存在即复用
+/// （T-M3-01 宿主模板实例 / 用户自置工程），否则打包器在 `<host_project>/harmony/` 生成
+/// 最小工程骨架（探针实证可构建）。工程恒落在 out_dir **之外**：out_dir 每次构建被清空，
+/// hvigor 增量缓存（`entry/build` 与 `.hvigor`）跨构建留存是「二跑缓存命中」的前提。
+/// `native_libs` 是 `poly bridge ohos` 的 `.so`（`<工程根>/bridge/harmonyos/<abi>/`），
+/// 打包器注入 `<harmony>/entry/libs/<abi>/`。
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct HarmonyInputs {
+    /// 宿主工程根（含 `harmony/` 模板实例；缺省 → 在其下生成工程骨架）。
+    pub host_project: Option<PathBuf>,
+    /// 原生库（按 ABI 目录名归档；注入 `entry/libs/<abi>/`）。
+    pub native_libs: Vec<NativeLib>,
+    /// `hvigorw` 覆盖（缺省 → `$HARMONYOS_TOOLS` / PATH）。
+    pub hvigorw: Option<PathBuf>,
+    /// `ohpm` 覆盖（复用工程装依赖用；骨架工程无依赖，不需要）。
+    pub ohpm: Option<PathBuf>,
+    /// `versionCode` 覆盖（缺省 → 由语义化版本派生，与 Android 同口径）。
+    pub version_code: Option<u32>,
+}
+
 /// 裸产物（T-M1-03 输出）：Linux AppDir 根 / Windows 产物目录 / macOS `.app`。
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BareProduct {
@@ -240,6 +264,8 @@ pub struct BundleInputs {
     pub android: Option<AndroidInputs>,
     /// iOS 打包输入（T-M2-03 / T-M2-08；`None` → iOS 打包器报缺输入）。
     pub ios: Option<IosInputs>,
+    /// HarmonyOS 打包输入（T-M3-03；`None` → 按产品元数据在其宿主根下落骨架工程）。
+    pub harmony: Option<HarmonyInputs>,
     /// 输出目录。
     pub out_dir: PathBuf,
 }
@@ -256,6 +282,7 @@ impl BundleInputs {
             web_manifest: None,
             android: None,
             ios: None,
+            harmony: None,
             out_dir: out_dir.into(),
         }
     }
