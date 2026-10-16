@@ -10,3 +10,14 @@ export const EXAMPLE_FOCUS_NODES = Object.freeze([
   Object.freeze({ id: "detail", rect: Object.freeze({ x: 400, y: 600, width: 320, height: 120 }) }),
   Object.freeze({ id: "exit", rect: Object.freeze({ x: 780, y: 600, width: 320, height: 120 }) }),
 ]);
+
+/** 详情弹层域（1×2：播放 / 关闭）——层域与宿主域图不连通（域隔离，跨域无边）。 */
+export const TV_MODAL_FOCUS_NODES = Object.freeze([
+  Object.freeze({ id: "modal-play", rect: Object.freeze({ x: 620, y: 700, width: 320, height: 120 }) }),
+  Object.freeze({ id: "modal-close", rect: Object.freeze({ x: 1000, y: 700, width: 320, height: 120 }) }),
+]);
+
+/** 播放器子层域（单节点：停止）——单节点图四向自环（检查器不判陷阱）。 */
+export const TV_PLAYER_FOCUS_NODES = Object.freeze([
+  Object.freeze({ id: "player-stop", rect: Object.freeze({ x: 780, y: 760, width: 400, height: 120 }) }),
+]);

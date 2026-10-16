@@ -116,7 +116,7 @@ test("安全区外框：padding 由 platformStyle().safeArea 派生（CSS 百分
 
 test("交互路径：OK 键激活推进计数（无指针环境的中心键通路）", { skip }, () => {
   const { page } = setup();
-  assert.deepEqual(page.getState(), { focus: "counter", clicks: 0 });
+  assert.deepEqual(page.getState(), { focus: "counter", clicks: 0, depth: 0, exitRequested: false });
   assert.deepEqual(page.onKey("Enter"), { type: "activate", id: "counter" });
   assert.equal(page.getState().clicks, 1, "计数按钮推进");
   page.onKey("ArrowRight");
@@ -134,4 +134,79 @@ test("data-focus 观测锚点：恒有且仅有一个当前焦点节点（T-M4-1
     const matches = html.match(/data-focus="true"/g) ?? [];
     assert.equal(matches.length, 1, `每帧恰一个 data-focus 锚点（键 ${key} 后）`);
   }
+});
+
+test("分层 Back（T-M4-03）：弹层/子层逐层打开后 Back 逐层关闭并恢复原焦点", { skip }, () => {
+  const { page } = setup();
+  page.onKey("ArrowDown"); // counter → detail
+  assert.deepEqual(page.onKey("Enter"), { type: "activate", id: "detail" }, "详情激活打开弹层");
+  let html = render(page);
+  assert.match(html, /data-testid="tv-overlay"/, "弹层渲染");
+  assert.equal(focusedId(html), "modal-play", "层内初始焦点");
+  assert.equal(ringCount(html), 1, "环只在活动域（宿主域无残留）");
+
+  assert.deepEqual(page.onKey("ArrowRight"), {
+    type: "move",
+    direction: "right",
+    from: "modal-play",
+    to: "modal-close",
+  });
+  assert.equal(focusedId(render(page)), "modal-close", "层内四向走查");
+  assert.deepEqual(page.onKey("ArrowLeft"), {
+    type: "move",
+    direction: "left",
+    from: "modal-close",
+    to: "modal-play",
+  });
+  assert.deepEqual(page.onKey("DPAD_CENTER"), { type: "activate", id: "modal-play" }, "播放打开子层");
+  assert.equal(page.getState().depth, 2);
+  assert.equal(focusedId(render(page)), "player-stop", "子层焦点");
+
+  assert.deepEqual(page.onKey("Back"), {
+    type: "back",
+    route: "layer",
+    layer: "player",
+    from: "player-stop",
+    to: "modal-play",
+  });
+  assert.equal(page.getState().depth, 1);
+  assert.equal(focusedId(render(page)), "modal-play", "子层关闭恢复层内原焦点");
+
+  assert.deepEqual(page.onKey("Back"), {
+    type: "back",
+    route: "layer",
+    layer: "detail",
+    from: "modal-play",
+    to: "detail",
+  });
+  assert.equal(page.getState().depth, 0);
+  html = render(page);
+  assert.equal(focusedId(html), "detail", "弹层关闭恢复打开前焦点");
+  assert.equal(ringCount(html), 1);
+  assert.ok(!html.includes("tv-overlay"), "弹层卸载");
+});
+
+test("数字键快捷（T-M4-03）：四键族直达焦点；弹层打开时被拦截不穿透", { skip }, () => {
+  const { page } = setup();
+  assert.deepEqual(page.onKey("3"), { type: "shortcut", digit: "3", from: "counter", to: "detail" });
+  assert.equal(focusedId(render(page)), "detail", "数字键直达渲染锚点");
+  assert.deepEqual(page.onKey("Numpad1"), { type: "shortcut", digit: "1", from: "detail", to: "counter" });
+  assert.deepEqual(page.onKey("KEY_2"), { type: "shortcut", digit: "2", from: "counter", to: "reset" });
+  // 数字键跳转后 Back 走焦点记忆（恢复跳转前焦点）
+  assert.deepEqual(page.onKey("Back"), { type: "back", route: "memory", from: "reset", to: "counter" });
+  assert.equal(focusedId(render(page)), "counter");
+
+  page.onKey("3");
+  assert.deepEqual(page.onKey("Enter"), { type: "activate", id: "detail" });
+  assert.deepEqual(page.onKey("1"), { type: "shortcut", digit: "1", blocked: true });
+  assert.equal(focusedId(render(page)), "modal-play", "弹层打开时数字键不穿透");
+});
+
+test("Back 第三层：焦点历史空 → 退出请求（宿主裁决），提示行切换", { skip }, () => {
+  const { page } = setup();
+  assert.deepEqual(page.onKey("Back"), { type: "back", route: "exit", from: "counter", to: null });
+  assert.equal(page.getState().exitRequested, true);
+  const html = render(page);
+  assert.equal(focusedId(html), "counter", "退出请求不移动焦点");
+  assert.match(html, /已请求退出应用/, "提示行切换（宿主接管）");
 });
