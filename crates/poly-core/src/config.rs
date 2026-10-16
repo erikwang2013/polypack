@@ -11,7 +11,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use crate::diagnostics::{Diagnostic, codes};
-use crate::job::{Budget, CredentialRef, CredentialSource, JobSpec, Profile};
+use crate::job::{Budget, CredentialRef, CredentialSource, JobSpec, Profile, SizePolicy};
 
 /// 当前支持的配置 schema 版本。
 pub const CONFIG_SCHEMA: u32 = 1;
@@ -154,6 +154,22 @@ impl Default for RetentionSection {
     }
 }
 
+/// `[budget]` 段（ROADMAP §2 原则 4「预算式构建」；T-M3-08 体积门禁）。
+///
+/// `size` 是每个打包产物的体积上限（字节）：出产物后按 [`Budget::size`] 判定，
+/// 超预算按 `policy` 告警（`warn`）或失败（`fail`，`poly::E_BUDGET_0001`）。
+/// 缺省不设门禁（体积报告照常进事件流）。
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct BudgetSection {
+    /// 产物体积上限（字节）。
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub size: Option<u64>,
+    /// 超预算策略（`warn` 告警 / `fail` 失败）。
+    #[serde(default)]
+    pub policy: SizePolicy,
+}
+
 /// `polypack.toml` 的完整模型。
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
@@ -179,6 +195,9 @@ pub struct PolypackConfig {
     /// `[retention]`。
     #[serde(default)]
     pub retention: RetentionSection,
+    /// `[budget]`。
+    #[serde(default)]
+    pub budget: BudgetSection,
 }
 
 impl PolypackConfig {
@@ -300,7 +319,12 @@ impl PolypackConfig {
             targets: resolved.selected,
             excluded: resolved.excluded,
             secrets,
-            budget: Budget::default(),
+            // `[budget]`（T-M3-08）：体积上限 + 超预算策略；`startup_ms` 尚无采集来源（M3+）
+            budget: Budget {
+                size: self.budget.size,
+                startup_ms: None,
+                policy: self.budget.policy,
+            },
         })
     }
 }

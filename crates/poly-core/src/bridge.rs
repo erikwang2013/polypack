@@ -39,6 +39,7 @@ pub mod kotlinc;
 pub mod napi;
 pub mod udl;
 pub mod wasm;
+pub mod wasm_opt;
 
 pub use engine::UniffiEngine;
 

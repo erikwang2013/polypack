@@ -238,6 +238,59 @@ fn wasm_pipeline_runs_in_node_sandbox() {
         out.display()
     );
 
+    // —— 体积元数据（T-M3-08）：裁剪时机 = 出口目录生成后、随包拷贝前，随包字节即裁剪后字节
+    let size = product.manifest.size.clone();
+    match wasm::WasmOpt::discover() {
+        Some(tool) => {
+            // 真裁剪：applied 且有下降；工具标识带版本（缓存键与报告同源）
+            assert!(
+                size.wasm_opt.applied,
+                "wasm-opt 在场时必须真裁剪（applied=false 的 note：{:?}）",
+                size.wasm_opt.note
+            );
+            let fingerprint = tool.fingerprint();
+            assert_eq!(
+                size.wasm_opt.tool.as_deref(),
+                Some(fingerprint.as_str()),
+                "元数据里的工具标识 = 现场指纹"
+            );
+            assert!(
+                size.wasm_opt.before > size.wasm_opt.after,
+                "真裁剪必须体积下降：{} → {}",
+                size.wasm_opt.before,
+                size.wasm_opt.after
+            );
+            eprintln!(
+                "证据：wasm-opt 裁剪 {} → {} 字节（-{}%，{}）",
+                size.wasm_opt.before,
+                size.wasm_opt.after,
+                (size.wasm_opt.before - size.wasm_opt.after) * 100 / size.wasm_opt.before,
+                fingerprint
+            );
+        }
+        None => {
+            // 工具缺席时元数据如实记「未裁」，绝不静默（真实裁剪腿在装了 wasm-opt 的机器上跑）
+            eprintln!("NOTE：本机无 wasm-opt——体积元数据如实记 applied=false");
+            assert!(!size.wasm_opt.applied);
+            assert_eq!(size.wasm_opt.before, size.wasm_opt.after);
+            assert!(size.wasm_opt.note.is_some(), "未裁必须写明原因");
+        }
+    }
+    // 元数据 ↔ 落盘字节：随包（出口目录）里的 wasm 就是裁剪后的那一份
+    assert_eq!(
+        size.wasm_bytes,
+        wasm_bytes.len() as u64,
+        "wasm_bytes = 落盘字节"
+    );
+    assert_eq!(size.wasm_opt.after, size.wasm_bytes, "after = 随包字节");
+    assert_eq!(size.wasm_opt.args, "-Oz", "裁剪参数如实入清单");
+    // 回读路径（CLI 缓存命中的同一条）：清单里的体积块可反序列化且与内存一致
+    assert_eq!(
+        bridge::wasm_opt::read_size(&out).as_ref(),
+        Some(&size),
+        "清单里的体积元数据可回读（缓存命中不重算）"
+    );
+
     // —— 真沙箱执行：Node 模拟小程序沙箱（无 TextEncoder/Decoder、无 process/fs/fetch）
     let report = run_sandbox(
         &out,
@@ -280,6 +333,15 @@ fn wasm_pipeline_runs_in_node_sandbox() {
         "缓存应命中"
     );
     let restored = std::fs::read(out.join(format!("{LIB}_wasm_bg.wasm"))).expect("还原的 wasm");
-    assert_eq!(restored, wasm_bytes, "还原字节与生成字节一致");
+    assert_eq!(
+        restored, wasm_bytes,
+        "还原字节与生成字节一致（缓存存的是裁剪后产物）"
+    );
+    // 体积报告随树还原：清单即元数据载体，缓存命中路径不必重跑 wasm-opt
+    assert_eq!(
+        bridge::wasm_opt::read_size(&out).as_ref(),
+        Some(&size),
+        "还原后的体积元数据与生成时一致"
+    );
     eprintln!("证据：缓存键 {} 命中还原，字节一致", key.as_str());
 }

@@ -381,7 +381,9 @@ fn build_wasm(args: &WasmArgs, json: bool) -> Result<i32, Diagnostic> {
             )
             .with_hint("poly clean --all 后重跑 poly bridge wasm")
         })?;
-        report_wasm(json, true, Some(key), &out, &files, None);
+        // 体积元数据随清单还原（缓存命中不必重跑 wasm-opt）
+        let size = bridge::wasm_opt::read_size(&out);
+        report_wasm(json, true, Some(key), &out, &files, None, size);
         return Ok(0);
     }
 
@@ -402,6 +404,7 @@ fn build_wasm(args: &WasmArgs, json: bool) -> Result<i32, Diagnostic> {
         &product.dir,
         &product.files,
         Some(product.manifest.functions.len()),
+        Some(product.manifest.size.clone()),
     );
     Ok(0)
 }
@@ -414,6 +417,7 @@ fn report_wasm(
     dir: &std::path::Path,
     files: &[PathBuf],
     functions: Option<usize>,
+    size: Option<bridge::wasm::SizeInfo>,
 ) {
     let mut value = serde_json::json!({
         "event": "bridge-wasm",
@@ -426,6 +430,10 @@ fn report_wasm(
     });
     if let Some(functions) = functions {
         value["functions"] = serde_json::json!(functions);
+    }
+    // 体积元数据（T-M3-08）：wasm 落盘字节 + wasm-opt 前后对比
+    if let Some(size) = size {
+        value["size"] = serde_json::to_value(size).expect("体积元数据可序列化");
     }
     report(json, value);
 }

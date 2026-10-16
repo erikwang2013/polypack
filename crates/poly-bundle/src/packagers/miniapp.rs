@@ -701,10 +701,31 @@ fn stage_wasm_bridge(
     }
     let dest = dest_root.join(BRIDGE_REL);
     fsutil::copy_tree(src, &dest)?;
+    // 只是拷，不重编：随包字节 = 出口目录当前字节（T-M3-08 的裁剪时机在出口层，
+    // 「出口目录生成后、随包拷贝前」——打包器不做二次处理）
     let bytes = fsutil::tree_bytes(&dest)?;
+    let wasm = match wasm_leaf_bytes(&dest)? {
+        Some(wasm) => format!("，其中 wasm {wasm} 字节"),
+        None => String::new(),
+    };
     Ok(Some(format!(
-        "wasm 沙箱出口随包：{BRIDGE_REL}/（{bytes} 字节；加载契约 polypack-loader.js 的 load(bytes)）"
+        "wasm 沙箱出口随包：{BRIDGE_REL}/（{bytes} 字节{wasm}；随包字节即出口层 wasm-opt 裁剪后字节；\
+         加载契约 polypack-loader.js 的 load(bytes)）"
     )))
+}
+
+/// 出口目录内 `.wasm` 文件的字节数（T-M3-08 体积报告；T-M3-07 四文件形态下恰一个）。
+fn wasm_leaf_bytes(dir: &Path) -> Result<Option<u64>, BundleError> {
+    let mut total: Option<u64> = None;
+    for entry in std::fs::read_dir(dir).map_err(io_err(dir))? {
+        let entry = entry.map_err(io_err(dir))?;
+        let path = entry.path();
+        if path.extension().is_some_and(|ext| ext == "wasm") {
+            let len = entry.metadata().map_err(io_err(&path))?.len();
+            total = Some(total.unwrap_or(0) + len);
+        }
+    }
+    Ok(total)
 }
 
 /// 读文本（错误带路径）。
