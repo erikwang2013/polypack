@@ -1,0 +1,31 @@
+{
+  "name": "@polypack/adapter-tv",
+  "version": "0.1.0",
+  "description": "RendererAdapter 契约的电视（10-foot）装配层：react-dom 挂载 + 焦点导航内核（遍历图 / 焦点环 / 分层 Back / 数字键）",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "./src/index.js",
+  "exports": {
+    ".": "./src/index.js",
+    "./example": "./example.js"
+  },
+  "files": [
+    "src",
+    "example.js",
+    "golden"
+  ],
+  "scripts": {
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=20.11"
+  },
+  "peerDependencies": {
+    "react": ">=18",
+    "react-dom": ">=18"
+  },
+  "devDependencies": {
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0"
+  }
+}
