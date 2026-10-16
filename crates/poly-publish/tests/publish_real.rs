@@ -19,7 +19,8 @@
 //!   `POLY_PUBLISH_ARCHIVE_ROOT`（回执归档根，默认系统临时目录下 `poly-publish-real`）。
 //!
 //! 各渠道真腿的未确证边界（如实注记）：支付宝包体不上传（版本创建走平台模板通道，
-//! PACKAGE 仅用于回执键摘要）、响应签未校验；抖音 token 铸造链路未实测。
+//! PACKAGE 仅用于回执键摘要；minidev 私有协议备选不做）、响应签未校验；
+//! 抖音 token 铸造链路未实测。
 
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -50,7 +51,8 @@ fn real_alipay_walk() {
         eprintln!(
             "SKIP: 未设 POLY_PUBLISH_REAL_ALIPAY=1——支付宝真腿需要开放平台应用（app_id + RSA2 \
              应用私钥 [+ app_auth_token]）与模板（materials {{\"template_id\":…}}）；\n\
-             未确证边界（如实）：①包体不上传——版本创建走平台模板通道，PACKAGE 仅用于回执键摘要；\n\
+             未确证边界（如实）：①包体不上传——版本创建走平台模板通道，PACKAGE 仅用于回执键摘要\
+             （minidev 私有协议备选不做——不造未验证的第二条路）；\n\
              ②响应签未校验（凭据契约未含支付宝公钥）；③文件类材料（app_logo / 截图等）未实现，\
              materials 带了即明拒；\n\
              mock 契约测试见 tests/alipay.rs（网关封套 / RSA2 签名独立复算 / 平铺提审字段 / \

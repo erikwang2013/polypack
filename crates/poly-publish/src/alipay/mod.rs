@@ -30,6 +30,7 @@
 //!    GRAY 灰度中 / OFFLINE 下架 / ONLINE 上架（文档镜像逐字）。
 //!
 //! 已知边界（如实注记）：响应签（平台公钥验签）未实现（凭据契约未含支付宝公钥）；
+//! 包体走版本模板通道（见 §2），minidev 私有协议备选不做——不造未验证的第二条路；
 //! v3 模型新增状态 `BASE_AUDIT_PASS` / `AUDIT_OFFLINE` 未逐字确证 → 归 Unknown 不硬猜。
 
 use std::time::Instant;
