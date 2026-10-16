@@ -54,6 +54,13 @@ impl TempDir {
 
 impl Drop for TempDir {
     fn drop(&mut self) {
+        // CI 留产物通道：`POLY_KEEP_TEMP=1` 时保留目录（bridge-real 的 upload-artifact 消费）。
+        // 此前 RAII 先删、「留产物」步在其后运行——自落地起空转（2026-10-16 排查实证：日志里
+        // 产物确在 /tmp/polypack-bridge-real-*，上传时两个成功 run 均 0 产物）。
+        // 默认（本机）行为不变：照旧自清，产物绝不落进仓库树。
+        if std::env::var("POLY_KEEP_TEMP").as_deref() == Ok("1") {
+            return;
+        }
         let _ = std::fs::remove_dir_all(&self.0);
     }
 }

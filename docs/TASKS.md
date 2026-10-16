@@ -368,7 +368,7 @@
 - 交付物: 农场协议 v0：JobSpec 序列化格式 + worker 拉取-执行-回传循环（worker 注册与能力声明），本地与远程共用同一 DAG 执行实现。
 - 验收: Linux 宿主发起 iOS 目标构建 → macOS worker 出 IPA，签名校验通过（R3 验收路径打通）；worker 端失败时错误码与修复提示完整回传；缓存跨机复用经对象存储后端验证。
 
-### T-M2-14 · ✅ 移动目标 CI 接入与契约测试金样（mock 列三宿主全绿；真模式两腿通过并留档——ios 9,062B / android 9,770B；契约 ios 腿走库形态夹具 + 双产物（ipa + xcframework）真比对、android 取件按名锚定 base.zip；金样漂移即红含 diff；windows msi / macos dmg 真检查器已落（本机全绿；真编译面待 windows/macos CI 腿首证）；真实模式 2026-10-16 起走手动 dispatch 实证（schedule 事件历史 0 次触发——平台侧待查））
+### T-M2-14 · ✅ 移动目标 CI 接入与契约测试金样（mock 列三宿主全绿；真模式两腿通过并留档——ios 9,062B / android 9,770B；契约 ios 腿走库形态夹具 + 双产物（ipa + xcframework）真比对、android 取件按名锚定 base.zip；金样漂移即红含 diff；windows msi / macos dmg 真检查器已落（本机全绿；真编译面待 windows/macos CI 腿首证）；schedule 首夜已实证（2026-10-16，best-effort 调度延迟约 3h）：mobile-contract 真模式两腿 ✓ 并留档；bridge-real 首跑因 NDK 下载瞬态损坏中断（同 SHA 重派 38849101630 ✓，已加 retry 加固）；其留产物步自落地起空转（RAII 先删临时工程）已修）
 
 - 角色: infra
 - 依赖: T-M2-07、T-M2-10、T-M1-13、T-M0-02

@@ -48,7 +48,16 @@ jobs:
       - name: NDK（真跑：JNI .so 的链接器）
         # 装进 SDK 根的 ndk/：与生产探测同路径（$ANDROID_NDK_HOME → <sdk>/ndk/<版本最大>），
         # 不额外钉环境变量——CI 走的发现路径与开发者本机就是同一条。
-        run: sdkmanager "ndk;27.0.12077973"
+        # retry 加固：2026-10-16 首夜 schedule 真跑于 33% 处下载损坏（"Error reading Zip content
+        # from a SeekableByteChannel"）；同 SHA 手动重派全绿（run 38849101630）判瞬态。损坏残片
+        # 留在 SDK 的 .temp/，重试前清掉再装；3 次仍失败照旧红，不静默降级。
+        run: |
+          for i in 1 2 3; do
+            if sdkmanager "ndk;27.0.12077973"; then exit 0; fi
+            echo "::warning::NDK 安装第 $i 次失败（瞬态下载类），清理 .temp 后重试"
+            rm -rf "${ANDROID_SDK_ROOT}/.temp"
+          done
+          exit 1
 
       # Kotlin 绑定要真编译成 classes.jar：kotlinc + JNA 落工具缓存即被自动发现
       # （crates/poly-core/src/bridge/kotlinc.rs 的定位顺序；缺则按 skip-if-missing 跳过该步）。
@@ -68,6 +77,10 @@ jobs:
 
       - name: 桥真跑（生成 + 交叉编译 + AAR + classes.jar）
         # 单线程：真跑会各自建 uniffi 夹具的 target 目录，串行更省磁盘与网络
+        # POLY_KEEP_TEMP=1：测试临时工程默认 RAII 即删，而「留产物」步在其后运行——此前空转
+        # （日志实证产物确在 /tmp/polypack-bridge-real-*，上传时已被删）。置位后目录留给上传步。
+        env:
+          POLY_KEEP_TEMP: "1"
         run: cargo test -p poly-core --test bridge_real --no-fail-fast -- --nocapture --test-threads=1
 
       - name: 无工具面回归（判据不因真跑而漂）
@@ -81,5 +94,6 @@ jobs:
         with:
           name: bridge-real-artifacts
           path: /tmp/polypack-bridge-real-*/**
+          # 待首次非空上传回执后翻 error（对齐 mobile-contract：空上传=真异常）
           if-no-files-found: warn
           retention-days: 14
