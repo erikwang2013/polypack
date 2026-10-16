@@ -98,8 +98,8 @@ fn builtin_has_seven_valid_targets() {
     );
     assert_eq!(
         registry.all().count(),
-        11,
-        "M3 起内建 = L1 七 + L2 小程序族四（wechat / alipay / douyin / quickapp）"
+        13,
+        "M4 起内建 = L1 七 + L2 小程序族四（wechat / alipay / douyin / quickapp）+ L3 电视两（android-tv / fire-tv）"
     );
     for spec in registry.all() {
         spec.validate()
@@ -139,6 +139,14 @@ fn builtin_ids_are_the_l1_set() {
         .into_iter()
         .collect();
     assert_eq!(l2, expected_l2, "L2 恰为小程序族四目标");
+
+    let l3: BTreeSet<String> = registry
+        .all()
+        .filter(|spec| spec.tier == 3)
+        .map(|spec| spec.id.clone())
+        .collect();
+    let expected_l3: BTreeSet<String> = ["android-tv", "fire-tv"].map(String::from).into_iter().collect();
+    assert_eq!(l3, expected_l3, "L3 恰为电视两目标（android-tv / fire-tv）");
 }
 
 #[test]
@@ -207,7 +215,19 @@ fn linux_host_resolves_four_l1_targets_from_all() {
         BTreeSet::from(["wechat", "alipay", "douyin", "quickapp"]),
         "小程序族四目标应全部入选"
     );
-    assert_eq!(selected.len(), l1.len() + l2.len());
+    // L3 电视两目标同声明三宿主（复用 Android 工具链）→ Linux 宿主下也全部入选
+    let l3: BTreeSet<&str> = resolved
+        .selected
+        .iter()
+        .filter(|s| s.tier == 3)
+        .map(|s| s.id.as_str())
+        .collect();
+    assert_eq!(
+        l3,
+        BTreeSet::from(["android-tv", "fire-tv"]),
+        "电视两目标应全部入选"
+    );
+    assert_eq!(selected.len(), l1.len() + l2.len() + l3.len());
 
     let excluded: BTreeSet<&str> = resolved.excluded.iter().map(|e| e.id.as_str()).collect();
     assert_eq!(excluded, BTreeSet::from(["ios", "macos", "windows"]));
@@ -269,5 +289,54 @@ fn builtin_matches_roadmap_3_3_mini_programs() {
         );
         assert_eq!(spec.hosts.len(), 3, "{id}: Taro 编译不绑定本地宿主");
         assert!(spec.notes.is_some(), "{id}: 需边界 / 降级说明");
+    }
+}
+
+/// T-M4-04 验收（声明侧）：L3 电视两目标按 ROADMAP §3.4 前两行逐列对齐。
+/// §3.4「产物校验」列 = `bundletool + 焦点导航冒烟`：bundletool 落到 `bundletool-validate`
+/// （另列 apksigner-verify 覆盖签名链取证）；焦点冒烟是设备侧走查（T-M4-05），不产生校验器 id。
+#[allow(clippy::type_complexity)] // 同上：测试数据表与表格对照优先
+const L3_COLUMNS: &[(&str, &str, &str, &str, &str)] = &[
+    // id / package.format / builder / publish[0] / notes 判词
+    ("android-tv", "apk", "android-aapt2", "google-play-tv", "Leanback"),
+    ("fire-tv", "apk", "android-aapt2", "amazon-appstore", "Android TV"),
+];
+
+#[test]
+fn builtin_matches_roadmap_3_4_tv() {
+    let registry = Registry::builtin();
+    for (id, format, builder, publish, note) in L3_COLUMNS {
+        let spec = registry.get(id).unwrap_or_else(|| panic!("缺少目标 {id}"));
+        assert_eq!(spec.tier, 3, "{id}: 电视族为 L3");
+        assert_eq!(spec.runtime, Runtime::Native, "{id}: native 运行时");
+        assert_eq!(spec.bridge, Bridge::Uniffi, "{id}: uniffi 桥");
+        assert_eq!(
+            spec.ui.iter().map(String::as_str).collect::<Vec<_>>(),
+            vec!["react-native"],
+            "{id}: RN 承载 UI"
+        );
+        assert_eq!(spec.package.format, *format, "{id}: package.format");
+        assert_eq!(spec.package.builder, *builder, "{id}: package.builder");
+        assert_eq!(
+            spec.signing.as_deref(),
+            Some("android-keystore"),
+            "{id}: 签名同 Android（§3.4「同 Android」列）"
+        );
+        assert_eq!(
+            spec.verify,
+            ["apksigner-verify", "bundletool-validate"].map(String::from),
+            "{id}: 校验器（bundletool 覆盖 §3.4「产物校验」列）"
+        );
+        assert_eq!(
+            spec.publish,
+            [(*publish).to_string()],
+            "{id}: 发布渠道（§3.4 发布列）"
+        );
+        assert_eq!(spec.hosts.len(), 3, "{id}: 三宿主");
+        assert!(
+            spec.notes.as_deref().unwrap_or("").contains(note),
+            "{id}: 备注应含 {note}"
+        );
+        assert!(!spec.experimental, "{id}: 非实验目标");
     }
 }

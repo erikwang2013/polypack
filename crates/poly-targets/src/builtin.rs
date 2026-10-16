@@ -5,10 +5,13 @@
 //! 校验器、发布渠道、备注；tier 均为 1，凭据只以密钥库引用形式出现。
 //! M3 增补 L2 小程序族四目标（wechat / alipay / douyin / quickapp，tier 2，ROADMAP §3.3
 //! 前四行，T-M3-05 / T-M3-06）：Taro 承载（ui = "taro"）、wasm 进宿主沙箱、签名在平台侧。
+//! M4 增补 L3 电视两目标（android-tv / fire-tv，tier 3，ROADMAP §3.4 前两行，T-M4-04）：
+//! 两目标复用同一条 Android 打包链（`apk` / `android-aapt2`），差异只在清单（Leanback）
+//! 与发布渠道（TV 轨道 / 亚马逊应用商店）。
 
 use crate::spec::{Bridge, Host, PackageSpec, Runtime, TargetSpec};
 
-/// 全部内建目标（L1 七 + L2 小程序族四）。
+/// 全部内建目标（L1 七 + L2 小程序族四 + L3 电视两）。
 pub fn builtin() -> Vec<TargetSpec> {
     vec![
         TargetSpec {
@@ -221,6 +224,51 @@ pub fn builtin() -> Vec<TargetSpec> {
                 "快应用 `.rpk`（hap-toolkit 构建）；lint 入 verify、提审走联盟商店（T-M3-12）"
                     .to_string(),
             ),
+        },
+        // ---- L3 电视与大屏（T-M4-04，ROADMAP §3.4 前两行）：Android TV / Fire TV ----
+        // 两目标复用同一条 Android 打包链（format = `apk`、builder = `android-aapt2`），
+        // 签名引用与校验器同 Android（§3.4「同 Android」列）；差异只在清单形态（Leanback）
+        // 与发布渠道（TV 轨道 / 亚马逊应用商店）。§3.4「产物校验」列的「焦点导航冒烟」是
+        // 设备侧走查（T-M4-05），不产生校验器 id，因此 verify 只列 bundletool（+ apksigner 取证）。
+        TargetSpec {
+            id: "android-tv".to_string(),
+            tier: 3,
+            hosts: vec![Host::Win, Host::Linux, Host::Macos],
+            runtime: Runtime::Native,
+            bridge: Bridge::Uniffi,
+            ui: vec!["react-native".to_string()],
+            package: PackageSpec {
+                format: "apk".to_string(),
+                builder: "android-aapt2".to_string(),
+            },
+            signing: Some("android-keystore".to_string()),
+            verify: vec![
+                "apksigner-verify".to_string(),
+                "bundletool-validate".to_string(),
+            ],
+            publish: vec!["google-play-tv".to_string()],
+            experimental: false,
+            notes: Some("Leanback 清单（android.software.leanback）".to_string()),
+        },
+        TargetSpec {
+            id: "fire-tv".to_string(),
+            tier: 3,
+            hosts: vec![Host::Win, Host::Linux, Host::Macos],
+            runtime: Runtime::Native,
+            bridge: Bridge::Uniffi,
+            ui: vec!["react-native".to_string()],
+            package: PackageSpec {
+                format: "apk".to_string(),
+                builder: "android-aapt2".to_string(),
+            },
+            signing: Some("android-keystore".to_string()),
+            verify: vec![
+                "apksigner-verify".to_string(),
+                "bundletool-validate".to_string(),
+            ],
+            publish: vec!["amazon-appstore".to_string()],
+            experimental: false,
+            notes: Some("复用 Android TV 同一 APK 链，渠道指向亚马逊应用商店".to_string()),
         },
     ]
 }
