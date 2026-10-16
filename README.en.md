@@ -4,7 +4,7 @@
 
 [简体中文](README.md) · [Roadmap](docs/ROADMAP.en.md) · [Architecture](#architecture) · [Platforms](#platform-matrix)
 
-> **Project status: M2 mobile & bridge ecosystem delivered and closed** (2026-10-16). Available commands: `poly doctor` / `poly init` / `poly build` (real deb / AppDir / web static bundles; **Android AAB/APK direct**; **iOS unsigned IPA** on macOS hosts; sign/verify wired into the DAG) / `poly bridge` (uniffi generator) / `poly farm worker|submit` (remote farm) / `poly scan` (secret scan) / `poly verify --reproducible` / `poly retry --from sign` / `poly dev` / `poly clean`. Five workflows green across three hosts; RN host device walks 6/6 + 6/6 across both forms with ring-pixel evidence (real emulator run); real mode green via manual dispatch (the `schedule` trigger has never fired — platform-side, under investigation). Later milestones follow [docs/ROADMAP.en.md](docs/ROADMAP.en.md).
+> **Project status: M3 HarmonyOS & mini-programs in delivery** (2026-10-16, 11/12 — T-M3-12 quick-app wrap-up in flight). Available commands: `poly doctor` / `poly init` / `poly build` (deb / AppDir / web static bundles; **Android AAB/APK**; **iOS unsigned IPA** on macOS hosts; **HarmonyOS HAP packaging + hap-sign-tool signing/verification**; **WeChat/Alipay/Douyin/Quick-App bundles** (wasm sandbox outlet shipped inside); sign/verify wired into the DAG; `[budget]` size gate warn/fail) / `poly bridge` (uniffi + **ohos NAPI** + **wasm** outlets) / `poly farm worker|submit` (remote farm) / `poly scan` (secret scan) / `poly verify --reproducible` / `poly retry --from sign` / `poly dev` / `poly clean`. Six workflows green across three hosts; the Harmony chain and the four mini-program targets are all real-run evidenced (NAPI cross-compile load parity, real hvigor builds, real hap-sign signing, Taro four-target builds + goldens + second-run cache); the `schedule` trigger is proven (first night fired ~3 h late under best-effort scheduling; mobile-contract real mode green via schedule). Later milestones follow [docs/ROADMAP.en.md](docs/ROADMAP.en.md).
 >
 > **Note on diagram labels:** the embedded diagrams are labeled in Chinese (the project's primary language). English-labeled variants are scheduled for milestone M1.
 
@@ -253,7 +253,7 @@ polypack/
     └── build-pax.mjs        # Pax generator: expressions + icon + contact sheet + playground
 ```
 
-(M0 delivered: the 9-crate workspace skeleton plus `poly-cli` / `poly-core` / `poly-targets` / `poly-toolchain`; since M2 `ui/` has landed — `ui/adapters/native` native adapter v0 + RN host skeleton (T-M2-04/05); `app/` remains target shape.)
+(M0 delivered: the 9-crate workspace skeleton plus `poly-cli` / `poly-core` / `poly-targets` / `poly-toolchain`; since M2 `ui/` has landed — `ui/adapters/native` native adapter v0 + RN host skeleton (T-M2-04/05); M3 adds `ui/adapters/taro` (mini-program family) and the `ui/adapters/native/host/harmony` RNOH host template; `app/` remains target shape.)
 
 ## Documentation sync convention
 

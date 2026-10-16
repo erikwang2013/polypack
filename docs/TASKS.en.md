@@ -3,7 +3,7 @@
 > Derived from the milestone breakdown in [ROADMAP.en.md](ROADMAP.en.md) §9; produced in parallel by a four-person planning group and merged after cross-reconciliation: **116 tasks**, all cross-milestone references verified in two passes (existence + description match, zero dangling), Chinese/English task IDs aligned one-to-one.
 > Chinese original: [TASKS.md](TASKS.md). This file falls under the documentation sync convention (ROADMAP §11): task additions/removals must land in both files in the same commit, and drift is caught in CI by the structural checker delivered in T-M0-10.
 > Extension directions (E1–E8) are incubated and intentionally absent from this task table — see [ROADMAP.en.md](ROADMAP.en.md) §13.
-> Progress (2026-10-16): **M0 11/11** · **M1 delivered 15/15** (11 ✅; the matching CI legs for T-M1-02/05/06/07 are green — remaining tool-level notes live in the task entries) · **M2 delivered 15/15** (8 ✅: T-M2-02/06/07/08/09/11/14/15; T-M2-01/03/04/05/10/12/13 carry host/stage/settings notes — see each entry) · **CI green on all three hosts** (rust-ci#38654820649) plus four new M2 workflows (secret-scan ×3 hosts / mobile-contract mock-per-push + nightly real / bridge nightly real) · **M3 in progress (9/12)**: T-M3-01/02/03/04/05/06/07/09/11 delivered — see each entry.
+> Progress (2026-10-16): **M0 11/11** · **M1 delivered 15/15** (11 ✅; the matching CI legs for T-M1-02/05/06/07 are green — remaining tool-level notes live in the task entries) · **M2 delivered 15/15** (8 ✅: T-M2-02/06/07/08/09/11/14/15; T-M2-01/03/04/05/10/12/13 carry host/stage/settings notes — see each entry) · **CI green on all three hosts** (rust-ci#38654820649) plus four new M2 workflows (secret-scan ×3 hosts / mobile-contract mock-per-push + nightly real / bridge nightly real) · **M3 in progress (11/12)**: T-M3-01–11 delivered (only T-M3-12 in flight) — see each entry.
 
 ## Team roster
 
@@ -444,7 +444,7 @@
 - Deliverable: wasm-bindgen output wired into the mini-program sandbox: an API allowlist (exposing only the sandbox-safe interface subset) and a load/init adapter shipped inside the bundle.
 - Acceptance: the sample core executes the sample interface as wasm inside the mini-program sandbox; interfaces outside the allowlist are rejected at compile/load time (negative tests); the artifact has no native-module dependency.
 
-### T-M3-08 · Size budget (budget.size) gate and wasm-opt trimming
+### T-M3-08 · ✅ Size budget (budget.size) gate and wasm-opt trimming (wasm-opt@133 real run 56,445→27,179 B (−51%); the trimming moment is locked inside the outlet generation, before the per-package copy — package bytes ≡ post-trim bytes byte-for-byte (quickapp sha256 cross-check); [budget] per-artifact warn (Budgeted event + E_BUDGET_0001) / fail (DAG aborts, sign/verify skipped) both real; size report into the event stream and the manifest size block; cache hits re-read via read_size)
 
 - Role: core
 - Deps: T-M3-06, T-M3-07
@@ -460,7 +460,7 @@
 - Deliverable: the `poly-publish` WeChat Open Platform client: bundle upload → submit for review → review-status polling + receipt archiving (automation stops at submission, per R4).
 - Acceptance: one full upload+submit cycle runs on a test account and the script is re-runnable (idempotent/deduplicated); polling states and receipt-archive format are fixed; credentials are injected via the reference model.
 
-### T-M3-10 · Alipay / Douyin publish clients (shared-skeleton reuse)
+### T-M3-10 · ✅ Alipay / Douyin publish clients (shared-skeleton reuse) (Alipay gateway v1: RSA2 signature independently recomputed in tests, version.upload → build.query wait → audit.apply flat submit → detail.query polling, idempotent resume; Douyin: err_no envelope + access-token header, version create → get_audit_hosts → audit v2 → version polling, 11303 idempotent; single-file carrier Package::load_file (domain-separated digest, rename doesn't change the receipt key, directory digest byte-identical) → Channel::QuickApp; three channels, zero-fork, same four-step driver; boundary notes: Alipay file materials loudly refused with E_PUB_0004 / response signature unverified (credential contract has no public key) / minidev fallback intentionally not built / Douyin token minting external; real platform legs SKIP×3 as-is)
 
 - Role: release-sec
 - Deps: T-M3-09
