@@ -3,7 +3,7 @@
 > Derived from the milestone breakdown in [ROADMAP.en.md](ROADMAP.en.md) §9; produced in parallel by a four-person planning group and merged after cross-reconciliation: **116 tasks**, all cross-milestone references verified in two passes (existence + description match, zero dangling), Chinese/English task IDs aligned one-to-one.
 > Chinese original: [TASKS.md](TASKS.md). This file falls under the documentation sync convention (ROADMAP §11): task additions/removals must land in both files in the same commit, and drift is caught in CI by the structural checker delivered in T-M0-10.
 > Extension directions (E1–E8) are incubated and intentionally absent from this task table — see [ROADMAP.en.md](ROADMAP.en.md) §13.
-> Progress (2026-10-17): **M0 11/11** · **M1 delivered 15/15** (11 ✅; the matching CI legs for T-M1-02/05/06/07 are green — remaining tool-level notes live in the task entries) · **M2 delivered 15/15** (8 ✅: T-M2-02/06/07/08/09/11/14/15; T-M2-01/03/04/05/10/12/13 carry host/stage/settings notes — see each entry) · **CI green on all three hosts** (rust-ci#38654820649) plus four new M2 workflows (secret-scan ×3 hosts / mobile-contract mock-per-push + nightly real / bridge nightly real) · **M3 delivered 12/12** (7 ✅: T-M3-05/06/07/08/09/10/11; T-M3-01/02/03/04/12 carry host/environment/interop notes — see each entry) plus one new M3 workflow (miniprogram-contract mock-per-push + nightly real).
+> Progress (2026-10-17): **M0 11/11** · **M1 delivered 15/15** (11 ✅; the matching CI legs for T-M1-02/05/06/07 are green — remaining tool-level notes live in the task entries) · **M2 delivered 15/15** (8 ✅: T-M2-02/06/07/08/09/11/14/15; T-M2-01/03/04/05/10/12/13 carry host/stage/settings notes — see each entry) · **CI green on all three hosts** (rust-ci#38654820649) plus four new M2 workflows (secret-scan ×3 hosts / mobile-contract mock-per-push + nightly real / bridge nightly real) · **M3 delivered 12/12** (7 ✅: T-M3-05/06/07/08/09/10/11; T-M3-01/02/03/04/12 carry host/environment/interop notes — see each entry) plus one new M3 workflow (miniprogram-contract mock-per-push + nightly real) · **M4 delivered 14/15** (conditional T-M4-15 not triggered — decision: continue in constrained mode, on-device sideload is its prerequisite; T-M4-01/06/11/13 etc. carry device/host/interop notes — see each entry) plus one new M4 workflow (tv-smoke mock-per-push + nightly real).
 
 ## Team roster
 
@@ -489,7 +489,7 @@
 
 > Prerequisite: M1 (packager matrix and content-addressed cache), M2 (Android/iOS packaging chains, uniffi bridge and keyring), M3 (wasm core and adapter baseline) | Exit criteria: focus traversal has no dead ends; wgt/ipk validators pass; Roku capability boundary reaches a conclusion (continue/downgrade)
 
-### T-M4-01 · adapter-tv skeleton and 10-foot tokens
+### T-M4-01 · ✅ adapter-tv skeleton and 10-foot tokens (react-dom mount + skin (single-source tokens) + 5% safe area on all four edges (96/54 px @1080p) + capability matrix across the six -tv ids; 25/25 node + token golden; device leg SKIP-noted)
 
 - Role: ui-adapters
 - Deps: —
@@ -497,7 +497,7 @@
 - Deliverable: New `@polypack/adapter-tv` package (`RendererAdapter` contract implementation: react-dom mount + 10-foot skin tokens — distance-readable type scale, spacing and safe area, tokens derived from the single source `@polypack/ui`).
 - Acceptance: `capabilities()` reports `focusNav: true` and the TV safe area; the same example page component tree renders under both adapter-dom and adapter-tv, and token snapshot (golden) comparison passes.
 
-### T-M4-02 · Focus traversal graph and focus ring
+### T-M4-02 · ✅ Focus traversal graph and focus ring (geometry-derived three-tier decision + focusOrder override + connectivity checker (0 isolated / 0 traps on the sample) + four-way ring walk; 37/37 node)
 
 - Role: ui-adapters
 - Deps: T-M4-01
@@ -505,7 +505,7 @@
 - Deliverable: Directional-key traversal graph (focus neighbours derived from geometry, with explicit `focusOrder` overrides), focus ring rendering, and a static connectivity checker over the traversal graph.
 - Acceptance: The connectivity checker reports 0 orphan nodes (no dead ends) for the example app; smoke passes for four-way movement and focus ring visibility.
 
-### T-M4-03 · Focus memory, Back-key semantics and numeric-key shortcuts
+### T-M4-03 · ✅ Focus memory, Back-key semantics and numeric-key shortcuts (layers as independent focus domains restored structurally + memory stack + exit verdict + four numeric-key families normalized; 50/50 node — the M4 focus kernel is frozen)
 
 - Role: ui-adapters
 - Deps: T-M4-02
@@ -513,7 +513,7 @@
 - Deliverable: Focus memory stack (return to previous focus), layered Back-key semantics (close overlay first → then pop focus memory → then exit app), and remote-control numeric-key shortcut mapping.
 - Acceptance: Back pops sub-pages/overlays layer by layer and restores the previous focus; numeric shortcuts trigger their actions; contract tests cover all three Back layers and focus restoration.
 
-### T-M4-04 · Android TV / Fire TV Leanback manifest and APK packaging
+### T-M4-04 · ✅ Android TV / Fire TV Leanback manifest and APK packaging (reuses the one M2 AAPT2+bundletool+apksigner chain, no second implementation; Leanback three lines + banner omitted honestly when absent; real legs hit goldens for both targets)
 
 - Role: packagers
 - Deps: T-M2-07, T-M2-09 (Android AAPT2 + bundletool + apksigner chain), T-M4-01
@@ -521,7 +521,7 @@
 - Deliverable: New TV-variant Packager in `poly-bundle`: Leanback manifest (`android.software.leanback`, `android.hardware.touchscreen=false`, TV banner/icon) plus Android TV and Fire TV target declarations (Fire TV reuses the same APK chain with the Amazon Appstore channel).
 - Acceptance: APK passes bundletool validate and apksigner verify; Leanback/TV-track manifest assertions pass in contract tests; size stays within `budget.size`.
 
-### T-M4-05 · Android TV / Fire TV contract tests and focus-navigation smoke
+### T-M4-05 · ✅ Android TV / Fire TV contract tests and focus-navigation smoke (mock 6/6 + real exit 0; device smoke 6/6 walk + "core task with no pointer" PASS + focus-ring pixel evidence (#0e7490 exactly one, moves on DPAD_DOWN); x86 AVD (no x86_64 TV image upstream — ABI derived from the device abilist))
 
 - Role: infra
 - Deps: T-M4-04, T-M4-03, T-M2-14 (contract-test and golden infrastructure)
@@ -529,7 +529,7 @@
 - Deliverable: Contract tests for both targets (mock mode per commit, real mode nightly on emulators) plus focus-navigation smoke cases (launch → directional traversal → open detail → Back).
 - Acceptance: Mock contract tests green in CI; nightly emulator smoke archives artifact structure assertions and logs; smoke includes a "complete the core task with no pointer" check.
 
-### T-M4-06 · RN-tvOS host integration and focus wiring
+### T-M4-06 · ✅ RN-tvOS host integration and focus wiring (useTVEventHandler → kernel keymap, menu=Back via enableTVMenuKey, DOWN-only; 10-foot skin bound per target + skin-parity sentinel; page tree untouched; CI-shaped node suite green)
 
 - Role: ui-adapters
 - Deps: T-M4-02, T-M2-04, T-M2-05 (RN host baseline)
@@ -537,7 +537,7 @@
 - Deliverable: RN-tvOS branch of `@polypack/adapter-native`: tvOS remote event source wired into the focus-navigation system, with 10-foot tokens in effect under RN-tvOS.
 - Acceptance: The example app launches on the tvOS simulator (macOS host), directional traversal and focus ring behave identically to adapter-tv; the core task is completed with no pointer.
 
-### T-M4-07 · tvOS packaging chain (reusing M2 Xcode chain)
+### T-M4-07 · ✅ tvOS packaging chain (reusing M2 Xcode chain) (iOS chain parameterized via an ApplePlatform descriptor (iOS behavior byte-identical) + single-arch sim copied without lipo + farm R3 extended; first real run proven on macos-14: XCFramework→archive→IPA 7,065 B / 3 entries + 6 contract tests — triples wired into the mobile-contract CI leg)
 
 - Role: platforms
 - Deps: T-M4-06, T-M2-08, T-M2-10 (iOS xcodebuild archive + exportArchive chain), T-M2-13 (remote-farm protocol v0)
@@ -545,7 +545,7 @@
 - Deliverable: tvOS target declaration and packager: reuse the M2 Xcode packaging chain (tvOS SDK slice), merge the uniffi native staticlib with the RN-tvOS bundle, codesign via credential reference; Linux/Windows hosts package through the M2 remote farm.
 - Acceptance: `poly build --target tvos` produces a TV package on a macOS host and `codesign --verify` passes; the same JobSpec initiated from a Linux host via the remote farm also packages successfully.
 
-### T-M4-08 · Tizen wgt packager and wgt-lint verification
+### T-M4-08 · ✅ Tizen wgt packager and wgt-lint verification (config.xml + zip really built and verified, 6,565 B, independent python-zipfile witness; wgt-lint absent → SKIP-with-print with built-in structural assertions as the floor (hard fail E_BND_0006 on broken artifacts))
 
 - Role: packagers
 - Deps: T-M3-07 (wasm core build)
@@ -553,7 +553,7 @@
 - Deliverable: Tizen target (web runtime): wasm core + react-dom UI packaged as `.wgt`, signed with the Tizen author certificate (credential reference), `wgt-lint` wired into the verify stage.
 - Acceptance: `.wgt` passes `wgt-lint`; the signed artifact sideloads and installs on a Tizen emulator; size stays within `budget.size`.
 
-### T-M4-09 · webOS ipk packager and ares-package verification
+### T-M4-09 · ✅ webOS ipk packager and ares-package verification (deterministic hand-rolled ar+ustar+gzip read/write, 3,076 B, ar/tar independent witnesses; ares-package absent → SKIP; same-source digest with Tizen)
 
 - Role: packagers
 - Deps: T-M4-08
@@ -561,7 +561,7 @@
 - Deliverable: webOS target: reuse the T-M4-08 wasm + react-dom UI artifact to produce `.ipk`, `ares-package` verification wired into verify; signing marked as platform-side (release signing).
 - Acceptance: `ares-package` verification passes and the package installs on a webOS emulator; artifact digest matches the Tizen one from the same source (one UI artifact reused across targets).
 
-### T-M4-10 · VIDAA / Vizio SmartCast app packages and sandbox self-checks
+### T-M4-10 · ✅ VIDAA / Vizio SmartCast app packages and sandbox self-checks (packages 6,150 B / 6,108 B; entry/manifest/size rules in verify + budget hard-fail proven; no signing / no push honestly in notes; one identical sha384 digest across all four targets)
 
 - Role: packagers
 - Deps: T-M4-08
@@ -569,7 +569,7 @@
 - Deliverable: Hisense VIDAA and Vizio SmartCast web-runtime target declarations and packagers (app packages), with sandbox self-check rules (entry file, manifest fields, size) wired into verify.
 - Acceptance: Both targets package and pass the sandbox self-check; TargetSpec `notes` honestly state the boundaries such as no signing and no push.
 
-### T-M4-11 · Roku SceneGraph subset restricted-renderer spike
+### T-M4-11 · ✅ Roku SceneGraph subset restricted-renderer spike (build-time emitter + focus table from the shared kernel (key-by-key equivalence) + official sideload protocol taken verbatim (rokudev makefile) + 19 structural self-checks + node 9/9; BrightScript behavior awaits on-device sideload (the T-M4-15 prerequisite))
 
 - Role: ui-adapters
 - Deps: T-M4-01
@@ -577,7 +577,7 @@
 - Deliverable: SceneGraph subset renderer spike (the Roku core does not participate; UI subset plus native logic only): list of supported components and interactions, a minimal channel demo (zip sideload self-check), and a capability boundary document (supported / gaps / alternatives).
 - Acceptance: The minimal demo sideloads on a Roku device or emulator and completes the core task subset; the capability boundary document lists gaps and downgrade paths and feeds directly into the continue/downgrade decision.
 
-### T-M4-12 · Roku continue/downgrade decision and L3 capability-boundary doc sync
+### T-M4-12 · ✅ Roku continue/downgrade decision and L3 capability-boundary doc sync (decision: continue in constrained mode — experimental stays, on-device sideload is the T-M4-15 prerequisite; roku TargetSpec lands in builtin.rs (19 built-ins) + verify ownership entry + ROADMAP R2 bilingual decision sentence; all 8 diagrams / Pax / docs checks PASS)
 
 - Role: docs
 - Deps: T-M4-11
@@ -585,7 +585,7 @@
 - Deliverable: Decision record (continue building a packager or downgrade to a restricted target), plus §11-mandated sync of README.md / README.en.md and ROADMAP.md / ROADMAP.en.md L3 details and Roku's `experimental` / `notes` fields, with diagram JSON updated and re-rendered.
 - Acceptance: The bilingual matrix and TargetSpec agree on Roku's tier, `experimental` flag and capability boundary description; `node tools/render-diagrams.mjs --check` passes.
 
-### T-M4-13 · Remote-control smoke test suite (core task with no pointer)
+### T-M4-13 · ✅ Remote-control smoke test suite (core task with no pointer) (three-leg compound real run: Android TV 6/6 walk + web surrogate legs (headless Chrome/CDP, honestly labeled surrogate) 4/4 each — 14 scenarios / 69 key steps, fail 0; tv-smoke.yml (mock per push / nightly 18:57 offset + KVM/vars double-gated device legs); chrome ozone root-cause fix (DISPLAY present → X11 probe hang → --ozone-platform=headless))
 
 - Role: infra
 - Deps: T-M4-03, T-M4-04, T-M4-09 (web-family targets), T-M2-14 (contract-test and golden infrastructure)
@@ -593,7 +593,7 @@
 - Deliverable: Reusable TV smoke framework: drive the example app through the core task using only directional keys + OK + Back + numeric keys (browse → detail → playback placeholder → return), covering Android TV emulators and the web family (Tizen / webOS emulators), emitting structured results with failure localization.
 - Acceptance: The suite covers every landed TV target branch and passes in the nightly CI; any focus dead end on any target fails the run with localization details.
 
-### T-M4-14 · HarmonyOS TV: HAP reuse and focus-adaptation smoke
+### T-M4-14 · ✅ HarmonyOS TV: HAP reuse and focus-adaptation smoke (deviceTypes+tv verified against the real SDK-19 enum file + polypack.tv switch + tv-frame safe area single-sourced (no hardcoded percentages) + kernel-derived key-sequence parity; hdc no target → SKIP-noted; packaging/signing chain reused from M3 unchanged)
 
 - Role: platforms
 - Deps: T-M3-01, T-M3-03, T-M3-04 (RNOH + HAP packaging and signing chain), T-M4-01

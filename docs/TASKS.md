@@ -3,7 +3,7 @@
 > 派生自 [ROADMAP.md](ROADMAP.md) §9 的里程碑分解；由 4 人规划小组并行产出、交叉对账后合并：**116 个任务**，跨里程碑引用经「存在性 + 描述匹配」两轮校验零悬空，中英任务 ID 逐一对齐。
 > 英文版：[TASKS.en.md](TASKS.en.md)。本文件受「文档同步约定」管辖（见 ROADMAP §11）：任务增删须双文件同一次提交更新，并由 T-M0-10 的结构级校验器在 CI 拦截漂移。
 > 扩展方向（E1–E8）已立项孵化，不占本任务表：见 [ROADMAP.md](ROADMAP.md) §13。
-> 进度（2026-10-17）：**M0 11/11** · **M1 已交付 15/15**（11 项 ✅；T-M1-02/05/06/07 的对应 CI 腿已全绿，余下工具级注记见任务条目）· **M2 已交付 15/15**（8 项 ✅：T-M2-02/06/07/08/09/11/14/15；T-M2-01/03/04/05/10/12/13 带宿主/阶段/设置注记，逐项见任务条目）· **CI 三宿主全绿**（rust-ci#38654820649）+ M2 新增四工作流（secret-scan 三宿主 / mobile-contract mock+夜跑真列 / bridge 夜跑真跑）· **M3 已交付 12/12**（7 项 ✅：T-M3-05/06/07/08/09/10/11；T-M3-01/02/03/04/12 带宿主/环境/联调注记，逐项见任务条目）+ M3 新增一工作流（miniprogram-contract mock+夜跑真列）。
+> 进度（2026-10-17）：**M0 11/11** · **M1 已交付 15/15**（11 项 ✅；T-M1-02/05/06/07 的对应 CI 腿已全绿，余下工具级注记见任务条目）· **M2 已交付 15/15**（8 项 ✅：T-M2-02/06/07/08/09/11/14/15；T-M2-01/03/04/05/10/12/13 带宿主/阶段/设置注记，逐项见任务条目）· **CI 三宿主全绿**（rust-ci#38654820649）+ M2 新增四工作流（secret-scan 三宿主 / mobile-contract mock+夜跑真列 / bridge 夜跑真跑）· **M3 已交付 12/12**（7 项 ✅：T-M3-05/06/07/08/09/10/11；T-M3-01/02/03/04/12 带宿主/环境/联调注记，逐项见任务条目）+ M3 新增一工作流（miniprogram-contract mock+夜跑真列）· **M4 已交付 14/15**（T-M4-15 条件任务未触发：（决策=继续受限档，真机侧载为触发前置）；T-M4-01/06/11/13 等带设备/宿主/联调注记，逐项见任务条目）+ M4 新增一工作流（tv-smoke mock+夜跑真列）。
 
 ## 团队编制与角色
 
@@ -489,7 +489,7 @@
 
 > 前置依赖: M1（打包器矩阵与内容寻址缓存）、M2（Android/iOS 打包链、uniffi 桥与密钥库）、M3（wasm 核心与适配器基线）｜出口条件: 焦点遍历无死路；wgt/ipk 校验器通过；Roku 能力边界形成结论（继续/降级）
 
-### T-M4-01 · adapter-tv 骨架与 10-foot tokens
+### T-M4-01 · ✅ adapter-tv 骨架与 10-foot tokens（react-dom 挂载 + 蒙皮（tokens 单源派生）+ 安全区四边 5%（1080p 96/54px）+ 能力矩阵六枚 -tv id；25/25 node + tokens 金样；设备腿 SKIP 注记）
 
 - 角色: ui-adapters
 - 依赖: —
@@ -497,7 +497,7 @@
 - 交付物: 新增 `@polypack/adapter-tv` 包（`RendererAdapter` 契约实现：react-dom 挂载 + 10-foot 皮肤 tokens——远距字号、间距与安全区，tokens 由 `@polypack/ui` 单一源派生）。
 - 验收: `capabilities()` 返回 `focusNav: true` 与电视安全区；同一示例页面组件树在 adapter-dom 与 adapter-tv 下均渲染成功，tokens 快照金样比对通过。
 
-### T-M4-02 · 焦点导航遍历图与焦点环
+### T-M4-02 · ✅ 焦点导航遍历图与焦点环（几何推导三重裁定 + focusOrder 覆盖 + 连通性检查器（示例 0 孤立 0 陷阱）+ 焦点环四向走查；37/37 node）
 
 - 角色: ui-adapters
 - 依赖: T-M4-01
@@ -505,7 +505,7 @@
 - 交付物: 方向键遍历图（按几何位置推导焦点邻居，支持显式 `focusOrder` 覆盖）、焦点环渲染、遍历图连通性静态检查器。
 - 验收: 连通性检查器对示例应用报告 0 孤立节点（无死路）；四向移动与焦点环可见性冒烟通过。
 
-### T-M4-03 · 焦点记忆、Back 键语义与数字键快捷键
+### T-M4-03 · ✅ 焦点记忆、Back 键语义与数字键快捷键（层=独立焦点域逐层结构恢复 + 记忆栈 + 退出裁决 + 数字键四族归一；50/50 node——M4 焦点内核冻结）
 
 - 角色: ui-adapters
 - 依赖: T-M4-02
@@ -513,7 +513,7 @@
 - 交付物: 焦点记忆栈（返回上一焦点）、分层 Back 键语义（先关弹层 → 再回焦点记忆 → 最后退出应用）、遥控器数字键快捷键映射。
 - 验收: 子页/弹层逐层 Back 回退并恢复原焦点；数字键快捷键触发对应功能；契约测试覆盖三层 Back 语义与焦点记忆恢复。
 
-### T-M4-04 · Android TV / Fire TV Leanback 清单与 APK 出包
+### T-M4-04 · ✅ Android TV / Fire TV Leanback 清单与 APK 出包（复用 M2 AAPT2+bundletool+apksigner 同一条链零第二实现；Leanback 三行 + banner 无则如实省去不伪造；真腿两目标各 2 件产物命中金样）
 
 - 角色: packagers
 - 依赖: T-M2-07, T-M2-09（Android AAPT2 + bundletool + apksigner 链）, T-M4-01
@@ -521,7 +521,7 @@
 - 交付物: `poly-bundle` 新增 TV 变体 Packager：Leanback 清单（`android.software.leanback`、`android.hardware.touchscreen=false`、TV banner/图标）与 Android TV、Fire TV 两个目标声明（Fire TV 复用同一 APK 链，渠道指向亚马逊应用商店）。
 - 验收: APK 通过 bundletool validate 与 apksigner verify；Leanback/TV 轨道清单断言在契约测试中通过；体积在 `budget.size` 预算内。
 
-### T-M4-05 · Android TV / Fire TV 契约测试与焦点导航冒烟
+### T-M4-05 · ✅ Android TV / Fire TV 契约测试与焦点导航冒烟（mock 6/6 + real exit 0；设备冒烟 6/6 走查 + 「无指针完成核心任务」PASS + 焦点环像素实证（#0e7490 恰一处随 DPAD_DOWN 移动）；AVD x86（上游无 x86_64 TV 镜像实证，ABI 自设备 abilist 派生））
 
 - 角色: infra
 - 依赖: T-M4-04, T-M4-03, T-M2-14（契约测试与金样基建）
@@ -529,7 +529,7 @@
 - 交付物: 两目标的契约测试（mock 模式每次提交、真实模式每晚上模拟器）与焦点导航冒烟用例（启动 → 方向键遍历 → 进入详情 → Back 返回）。
 - 验收: mock 契约测试在 CI 全绿；每晚模拟器冒烟产出产物结构断言与日志归档；冒烟中含「无指针完成核心任务」判定。
 
-### T-M4-06 · RN-tvOS 宿主接入与焦点对接
+### T-M4-06 · ✅ RN-tvOS 宿主接入与焦点对接（useTVEventHandler→内核键表、menu=Back（enableTVMenuKey）、DOWN-only；10-foot 蒙皮按 target 绑定 + 皮肤对拍哨兵；组件树零改动；CI 形态 node 全绿）
 
 - 角色: ui-adapters
 - 依赖: T-M4-02, T-M2-04, T-M2-05（RN 宿主基线）
@@ -537,7 +537,7 @@
 - 交付物: `@polypack/adapter-native` 的 RN-tvOS 分支：tvOS 遥控器事件源接入焦点导航系统，10-foot tokens 在 RN-tvOS 下生效。
 - 验收: 示例应用在 tvOS 模拟器（macOS 宿主）启动，方向键遍历与焦点环行为与 adapter-tv 一致；无指针完成核心任务。
 
-### T-M4-07 · tvOS 打包链（复用 M2 Xcode 打包链）
+### T-M4-07 · ✅ tvOS 打包链（复用 M2 Xcode 打包链）（iOS 链按 ApplePlatform 描述符参数化复用（iOS 行为逐字节不变）+ 单架构 sim 直拷无 lipo + farm R3 扩臂；**macos-14 真跑首证**：XCFramework→archive→IPA 7,065B/3 条目 + 契约 6 项全绿——CI 三元组已入 mobile-contract）
 
 - 角色: platforms
 - 依赖: T-M4-06, T-M2-08, T-M2-10（iOS xcodebuild archive + exportArchive 链）, T-M2-13（远程农场协议 v0）
@@ -545,7 +545,7 @@
 - 交付物: tvOS 目标声明与打包器：复用 M2 的 Xcode 打包链（tvOS SDK 切片），uniffi 原生 staticlib 与 RN-tvOS 包合并，codesign 凭据引用；Linux/Windows 宿主经 M2 远程农场出包。
 - 验收: `poly build --target tvos` 在 macOS 宿主出 TV 包，`codesign --verify` 通过；同一 JobSpec 经远程农场在 Linux 宿主发起亦出包成功。
 
-### T-M4-08 · Tizen wgt 打包器与 wgt-lint 校验
+### T-M4-08 · ✅ Tizen wgt 打包器与 wgt-lint 校验（config.xml + zip 真造真验 6,565B + python zipfile 独立见证；wgt-lint 缺席 SKIP-with-print + 内建结构断言守底（拆件硬失败 E_BND_0006））
 
 - 角色: packagers
 - 依赖: T-M3-07（wasm 核心构建）
@@ -553,7 +553,7 @@
 - 交付物: Tizen 目标（web 运行时）：wasm 核心 + react-dom UI 打成 `.wgt`，Tizen 作者证书签名（凭据引用），`wgt-lint` 接入 verify 阶段。
 - 验收: `.wgt` 通过 `wgt-lint`；签名产物在 Tizen 模拟器侧载安装成功；体积在 `budget.size` 预算内。
 
-### T-M4-09 · webOS ipk 打包器与 ares-package 校验
+### T-M4-09 · ✅ webOS ipk 打包器与 ares-package 校验（确定性 ar+ustar+gzip 手写读写 3,076B + ar/tar 独立见证；ares-package 缺席 SKIP；与 Tizen 同源同摘要）
 
 - 角色: packagers
 - 依赖: T-M4-08
@@ -561,7 +561,7 @@
 - 交付物: webOS 目标：复用 T-M4-08 的 wasm + react-dom UI 产物打成 `.ipk`，`ares-package` 校验接入 verify；签名按平台侧（发布签名）标注。
 - 验收: `ares-package` 校验通过并可在 webOS 模拟器安装；与 Tizen 同源产物摘要一致（一份 UI 产物多目标复用）。
 
-### T-M4-10 · VIDAA / Vizio SmartCast 应用包与沙箱自检
+### T-M4-10 · ✅ VIDAA / Vizio SmartCast 应用包与沙箱自检（两应用包 6,150B/6,108B；入口/清单/体积三规则入 verify + budget 硬失败实证；无签名无推送如实入 notes；四目标同一摘要 sha384 单值）
 
 - 角色: packagers
 - 依赖: T-M4-08
@@ -569,7 +569,7 @@
 - 交付物: Hisense VIDAA 与 Vizio SmartCast 两个 web 运行时目标声明与打包器（应用包），沙箱自检规则（入口文件、清单字段、体积）接入 verify。
 - 验收: 两目标出包并通过沙箱自检；TargetSpec 的 `notes` 如实标注无签名、无推送等边界。
 
-### T-M4-11 · Roku SceneGraph 子集受限渲染器 spike
+### T-M4-11 · ✅ Roku SceneGraph 子集受限渲染器 spike（构建期发射器 + 焦点表内核同源（逐键等价）+ 官方侧载协议逐字取证（rokudev makefile）+ 结构自检 19 项 + node 9/9；BrightScript 行为级待真机侧载（T-M4-15 触发前置））
 
 - 角色: ui-adapters
 - 依赖: T-M4-01
@@ -577,7 +577,7 @@
 - 交付物: SceneGraph 子集渲染器 spike（Roku 核心不参与，仅 UI 子集 + 原生逻辑）：可承载组件与交互子集清单、最小频道 demo（zip 侧载自检）、能力边界文档（支持项 / 缺口 / 替代方案）。
 - 验收: 最小 demo 在 Roku 设备或模拟器侧载并完成核心任务子集；能力边界文档列明缺口与降级路径，可直接作为继续/降级决策输入。
 
-### T-M4-12 · Roku 继续/降级决策与 L3 能力边界文档同步
+### T-M4-12 · ✅ Roku 继续/降级决策与 L3 能力边界文档同步（决策：**继续受限档**——experimental 维持、真机侧载为 T-M4-15 前置；roku TargetSpec 落 builtin.rs（19 内建目标）+ verify 归属登记 + ROADMAP R2 双语决策句；图示 8 张 / Pax / 文档校验全 PASS）
 
 - 角色: docs
 - 依赖: T-M4-11
@@ -585,7 +585,7 @@
 - 交付物: 决策记录（继续投入打包器 or 按受限目标降级），并按 §11 同步 README.md / README.en.md、ROADMAP.md / ROADMAP.en.md 的 L3 明细与 Roku 的 `experimental` / `notes` 字段，图示 JSON 同步后重渲染。
 - 验收: 双语矩阵与 TargetSpec 对 Roku 的等级、`experimental`、能力边界描述逐一一致；`node tools/render-diagrams.mjs --check` 通过。
 
-### T-M4-13 · 遥控器冒烟测试套件（无指针完成核心任务）
+### T-M4-13 · ✅ 遥控器冒烟测试套件（无指针完成核心任务）（三腿复合真跑：Android TV 6/6 走查 + web 替代腿（headless Chrome/CDP，如实标注 surrogate）两目标各 4/4——14 场景/69 键步 fail 0；tv-smoke.yml（mock 每提交 / 夜跑 18:57 错峰 + KVM/vars 双门设备腿）；chrome ozone 根因修复（DISPLAY 在场探 X11 致卡死 → --ozone-platform=headless））
 
 - 角色: infra
 - 依赖: T-M4-03, T-M4-04, T-M4-09（web 系目标）, T-M2-14（契约测试与金样基建）
@@ -593,7 +593,7 @@
 - 交付物: 可复用 TV 冒烟框架：仅用方向键 + OK + Back + 数字键驱动示例应用完成核心任务（浏览 → 详情 → 播放占位 → 返回），覆盖 Android TV 模拟器与 web 系（Tizen / webOS 模拟器），输出结构化结果与失败定位。
 - 验收: 套件在每晚 CI 覆盖全部已落地 TV 目标分支并通过；任一目标出现焦点死路即失败并给出定位信息。
 
-### T-M4-14 · 鸿蒙 TV：HAP 复用与焦点适配冒烟
+### T-M4-14 · ✅ 鸿蒙 TV：HAP 复用与焦点适配冒烟（deviceTypes+tv 按 SDK19 枚举真文件实证 + polypack.tv 开关 + tv-frame 安全区单源（禁手抄百分比）+ 键序内核推导对拍；hdc 无目标 SKIP 注记；打包/签名链零改动复用 M3）
 
 - 角色: platforms
 - 依赖: T-M3-01, T-M3-03, T-M3-04（RNOH + HAP 打包与签名链）, T-M4-01

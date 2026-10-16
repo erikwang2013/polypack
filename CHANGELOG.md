@@ -6,6 +6,18 @@ Notable changes are recorded here; since v1.0.0, tags and releases follow `vX.Y.
 
 ## [Unreleased]
 
+## [1.6.0] — 2026-10-17
+
+### Added
+- **M4 TV 家族交付**（2026-10-17，14/15；T-M4-15 条件任务未触发）：`@polypack/adapter-tv` v0——10-foot tokens（单源派生）+ 几何推导焦点遍历图 + 连通性检查器 + 焦点记忆 / 分层 Back / 数字键（焦点内核冻结，50/50）；Android TV / Fire TV（Leanback 清单，复用 M2 同一条 Android 链零第二实现；设备冒烟 6/6 走查 + 「无指针完成核心任务」+ 焦点环像素实证）；tvOS（iOS 链按 ApplePlatform 描述符参数化复用 + RN-tvOS 宿主；**macos-14 真跑首证：XCFramework→archive→IPA**）+ 远程农场 R3 扩臂；Tizen `.wgt` / webOS `.ipk`（确定性容器手写读写 + 结构硬失败）/ VIDAA / Vizio SmartCast 应用包（四目标同源同摘要 sha384 单值）；Roku SceneGraph 子集受限渲染器 spike + 决策（**继续受限档**：`experimental` 维持、官方侧载协议逐字取证、真机侧载为 T-M4-15 前置）；鸿蒙 TV（deviceTypes 加 `tv` 按 SDK19 枚举真文件实证）；遥控器冒烟套件（Android TV 真机 + web 替代腿（如实标注），14 场景 / 69 键步 fail 0）+ `tv-smoke` 新工作流（mock 每提交 / 夜跑 18:57 错峰）。**七工作流三宿主全绿。**
+
+*M4 TV-family delivery (14/15; conditional T-M4-15 not triggered): adapter-tv with the frozen focus kernel, Android TV / Fire TV on the shared Android chain with real device-walk evidence, tvOS reusing the iOS chain via an ApplePlatform descriptor with a first real macos-14 run, Tizen/webOS/VIDAA/Vizio web-tier packagers on one same-source digest, the Roku subset-renderer spike with a "continue in constrained mode" decision, HarmonyOS TV adaptation, and the remote-control smoke suite plus its new workflow. Seven workflows green on three hosts.*
+
+### Fixed
+- chrome ozone 根因（DISPLAY 在场探 X11 后端致 DevTools 口卡死 >90s → `--ozone-platform=headless` 2s 就绪；CI 无 DISPLAY 不受影响，此旗标为确定化）；adapter-native 能力矩阵补 android-tv / fire-tv 行（RN 承载哨兵实测抓出）；registry / 内建计数随 L3 电视族八目标聚合（19/20）。
+
+*Fixed: the chrome ozone hang on desktop hosts with DISPLAY set; the RN-host capability-matrix rows the sentinel caught for android-tv / fire-tv; and the L3 count aggregation to eight TV targets.*
+
 ## [1.5.0] — 2026-10-17
 
 ### Added

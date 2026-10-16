@@ -4,7 +4,7 @@
 
 [English](README.en.md) · [详细规划](docs/ROADMAP.md) · [架构](#项目架构) · [平台矩阵](#支持平台矩阵)
 
-> **项目状态：M3 鸿蒙与小程序已交付并收口**（2026-10-17）。可用命令：`poly doctor` / `poly init` / `poly build`（deb / AppDir / Web 静态包；**Android AAB/APK**；**iOS 未签名 IPA**（macOS 宿主）；**鸿蒙 HAP 打包 + hap-sign-tool 签名校验**；**微信/支付宝/抖音/快应用代码包**（含 wasm 沙箱出口随包）；sign/verify 入 DAG；`[budget]` 体积门禁 warn/fail）/ `poly bridge`（uniffi + **ohos NAPI** + **wasm** 三出口）/ `poly farm worker|submit`（远程农场）/ `poly scan`（密钥扫描）/ `poly verify --reproducible` / `poly retry --from sign` / `poly dev` / `poly clean`。六工作流三宿主全绿；鸿蒙链与小程序四端均真跑实证（NAPI 交叉编译装载对拍、hvigor 真构建、hap-sign 真签、Taro 四端 + 金样 + 二跑缓存）；`schedule` 已实证触发（首夜 best-effort 延迟约 3h；mobile-contract 真实模式经 schedule 全绿）。后续里程碑按 [docs/ROADMAP.md](docs/ROADMAP.md) 推进。
+> **项目状态：M4 TV 家族已交付并收口**（2026-10-17，14/15——T-M4-15 条件任务未触发：Roku 决策=继续受限档，真机侧载为触发前置）。可用命令：`poly doctor` / `poly init` / `poly build`（deb / AppDir / Web 静态包；**Android AAB/APK**；**iOS 未签名 IPA**（macOS 宿主）；**鸿蒙 HAP 打包 + hap-sign-tool 签名校验**；**微信/支付宝/抖音/快应用代码包**（含 wasm 沙箱出口随包）；**TV 家族：android-tv / fire-tv（Leanback）、tvos（复用 Apple 链）、tizen-tv / webos-tv / vidaa-tv / smartcast-tv（web 系）**；sign/verify 入 DAG；`[budget]` 体积门禁 warn/fail）/ `poly bridge`（uniffi + **ohos NAPI** + **wasm** 三出口）/ `poly farm worker|submit`（远程农场）/ `poly scan`（密钥扫描）/ `poly verify --reproducible` / `poly retry --from sign` / `poly dev` / `poly clean`。七工作流三宿主全绿；tvOS 打包链 macos-14 真跑首证（XCFramework→archive→IPA 7,065B）；Android TV 设备冒烟 6/6 走查 + 「无指针完成核心任务」+ 焦点环像素实证；遥控器冒烟三腿复合 14 场景 / 69 键步全过。后续里程碑按 [docs/ROADMAP.md](docs/ROADMAP.md) 推进。
 
 ---
 
