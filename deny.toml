@@ -4,6 +4,12 @@
 [advisories]
 # 漏洞（RUSTSEC vulnerability）恒为 error，无需开关，本段存在的意义是显式声明检查启用。
 # 其余保持默认：unmaintained 全图检查、unsound 限工作区、yanked = warn。
+ignore = [
+    # RUSTSEC-2023-0071：rsa crate 的 Marvin 计时侧信道——RustCrypto 无修复版本
+    # （"No safe upgrade is available"）。本仓用途仅本地对自有私钥做 PKCS#1 v1.5 **签名**
+    # （T-M3-09 微信 CI 协议），不含服务端解密面。触发复查：引入 RSA 解密路径、或上游出修复版。
+    "RUSTSEC-2023-0071",
+]
 
 [bans]
 # 禁通配版本依赖（"*"）
