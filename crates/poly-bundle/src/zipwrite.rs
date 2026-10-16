@@ -9,7 +9,7 @@
 //! 且固定值比环境变量更可复现；`SOURCE_DATE_EPOCH` 只注入 aapt2 / java（见 android.rs）。
 
 use std::fs::File;
-use std::io::{BufReader, BufWriter, Write};
+use std::io::{BufReader, BufWriter, Read, Write};
 use std::path::{Path, PathBuf};
 
 use zip::write::SimpleFileOptions;
@@ -57,6 +57,20 @@ pub fn entry_names(path: &Path) -> Result<Vec<String>, BundleError> {
         }
     }
     Ok(names)
+}
+
+/// 读 zip 内单个条目的文本内容（`None` = 条目不存在；HAP 结构检查的清单解析用）。
+pub fn entry_text(path: &Path, name: &str) -> Result<Option<String>, BundleError> {
+    let file = File::open(path).map_err(io_err(path))?;
+    let mut archive = ZipArchive::new(BufReader::new(file)).map_err(|err| zip_err(path, err))?;
+    let mut entry = match archive.by_name(name) {
+        Ok(entry) => entry,
+        Err(zip::result::ZipError::FileNotFound) => return Ok(None),
+        Err(err) => return Err(zip_err(path, err)),
+    };
+    let mut text = String::new();
+    entry.read_to_string(&mut text).map_err(io_err(path))?;
+    Ok(Some(text))
 }
 
 /// 建产物文件与 zip 写入器（父目录自动建）。

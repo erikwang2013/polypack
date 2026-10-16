@@ -7,10 +7,12 @@
 //! - **凭据引用非法**（`E_SIG_0002`）与**外部命令失败**（`E_SIG_0003` / IO `E_SIG_0004`）
 //!   → 硬失败——没签成却报绿是假绿。
 //!
-//! 目标覆盖（M2）：**android**（apksigner 重签打包暂存目录里的未签名 APK）与 **ios**
-//! （`codesign` 硬化运行时 + 安全时间戳签 `export/Payload/<产品>.app`）。两腿都是 poly-sign 的
+//! 目标覆盖（M2/M3）：**android**（apksigner 重签打包暂存目录里的未签名 APK）、**ios**
+//! （`codesign` 硬化运行时 + 安全时间戳签 `export/Payload/<产品>.app`）与 **harmonyos**
+//! （hap-sign-tool `sign-app` + `verify-app` 签未签名 HAP，T-M3-04）。三腿都是 poly-sign 的
 //! 「计划 → 执行」两段式：计划先 fail-fast（缺工具 / 输入非法 / 引用不可用都在碰密钥之前报错），
-//! 凭据只以引用出现（值零入库；口令经环境变量注入、临时材料用后即清）。
+//! 凭据只以引用出现（值零入库；apksigner 口令经环境变量注入、hap-sign-tool 只能经 argv 且展示
+//! 全量脱敏；临时材料用后即清）。
 //!
 //! iOS 的签名**单元是 `.app`**（未签名 IPA 只是它的 zip 快照）：签在 `.app` 上，公证链
 //! （`ditto` 重新压 zip → notarytool → stapler）见 [`poly_sign::ios`] 的计划出口，M2 不在 DAG 里
@@ -28,7 +30,7 @@ use poly_core::events::{BuildEvent, EventSink};
 use poly_core::job::JobSpec;
 use poly_core::plan::{Stage, StageContext, StageError, StageOutcome};
 use poly_core::{CredentialRef, codes};
-use poly_sign::{AndroidSigner, SignError, SignRequest, ios};
+use poly_sign::{AndroidSigner, HarmonySignRequest, HarmonySigner, SignError, SignRequest, ios};
 use poly_targets::{TargetSpec, current_host};
 
 use crate::project;
@@ -103,6 +105,7 @@ fn sign_target(
     match spec.package.format.as_str() {
         "aab" | "apk" => sign_android(project, spec, &profile, ctx),
         "ipa" => sign_ios(project, spec, &profile, ctx),
+        "hap" => sign_harmony(project, spec, &profile, ctx),
         other => {
             // 该签却没签成必须发声：`Skipped` 不是事件，逐目标告警是唯一可见通道
             warning(
@@ -124,7 +127,6 @@ fn signing_owner(format: &str) -> Option<&'static str> {
     match format {
         "dmg" | "msi" => Some("桌面签名链（codesign / signtool）归 M2 之后"),
         "deb" | "appimage" => Some("Linux 仓库 GPG 签名归 M3"),
-        "hap" => Some("鸿蒙签名链归 M2 之后"),
         "static-site" => Some("静态站点无内建签名（SRI 清单已由打包器产出）"),
         _ => None,
     }
@@ -186,6 +188,70 @@ fn sign_android(
         ctx.events,
         &format!(
             "目标 {} 已签名：{} → {}（{}，{} 字节）",
+            spec.id,
+            plan.tool.display(),
+            artifact.path.display(),
+            artifact.verify_evidence,
+            artifact.bytes
+        ),
+    );
+    Ok(true)
+}
+
+/// HarmonyOS 腿：打包暂存目录里的未签名 HAP → hap-sign-tool `sign-app` + `verify-app`（T-M3-04）。
+fn sign_harmony(
+    project: &poly_core::Project,
+    spec: &TargetSpec,
+    profile: &str,
+    ctx: &mut StageContext<'_>,
+) -> Result<bool, StageError> {
+    let Some(input) = unsigned_hap(project, spec) else {
+        warning(
+            ctx.events,
+            &format!(
+                "目标 {} 未签名：{} 下没有未签名 HAP（package 阶段未产出或已跳过）",
+                spec.id,
+                project::packages_root(&project.root)
+                    .join(&spec.id)
+                    .display()
+            ),
+        );
+        return Ok(false);
+    };
+    let credential = match credential_ref(ctx.job, spec, None) {
+        Ok(credential) => credential,
+        Err(err) => {
+            warning(
+                ctx.events,
+                &format!("目标 {} 未签名：{}", spec.id, err.message),
+            );
+            return Ok(false);
+        }
+    };
+    let request = HarmonySignRequest {
+        input,
+        out: None,
+        credential,
+    };
+
+    let signer = HarmonySigner::with_default_backends();
+    // fail-fast：工具 / 输入 / 凭据引用与载荷字段都在碰密钥之前报错（E_SIG_0001/0002/0004 透传）
+    let plan = match signer.plan(&request) {
+        Ok(plan) => plan,
+        Err(err) => return skip_or_fail(ctx.events, spec, err),
+    };
+    // 每次调用重新解析凭据（`poly retry --from sign` 的独立重跑语义）；临时密钥材料用后即清
+    let artifact = match signer.sign(&request) {
+        Ok(artifact) => artifact,
+        Err(err) => return skip_or_fail(ctx.events, spec, err),
+    };
+    ctx.events.emit(&BuildEvent::Signed {
+        profile: profile.to_string(),
+    });
+    warning(
+        ctx.events,
+        &format!(
+            "目标 {} 已签名：hap-sign-tool（{}）→ {}（{}，{} 字节）",
             spec.id,
             plan.tool.display(),
             artifact.path.display(),
@@ -296,12 +362,23 @@ pub(crate) fn ios_app(project: &poly_core::Project, spec: &TargetSpec) -> PathBu
 /// 未签名 APK：打包暂存目录里按命名约定找（`<kebab 名称>-<版本>-unsigned.apk`，否则退化为
 /// `*-unsigned.apk` 扫描取名字序第一份）。
 pub(crate) fn unsigned_apk(project: &poly_core::Project, spec: &TargetSpec) -> Option<PathBuf> {
+    find_unsigned(project, spec, "apk")
+}
+
+/// 未签名 HAP：与 APK 同一约定（`<kebab 名称>-<版本>-unsigned.hap`，见 poly-bundle HAP 打包器）。
+pub(crate) fn unsigned_hap(project: &poly_core::Project, spec: &TargetSpec) -> Option<PathBuf> {
+    find_unsigned(project, spec, "hap")
+}
+
+/// 打包暂存目录里的未签名产物：命名约定优先，缺失时退化为 `*-unsigned.<ext>` 扫描。
+fn find_unsigned(project: &poly_core::Project, spec: &TargetSpec, ext: &str) -> Option<PathBuf> {
     let staged = project::packages_root(&project.root).join(&spec.id);
-    let preferred = staged.join(unsigned_name(project));
+    let preferred = staged.join(unsigned_name_for(project, ext));
     if preferred.is_file() {
         return Some(preferred);
     }
-    // 命名约定之外的落点（如手工放置）退化为扫描
+    // 命名约定之外的落点（如手工放置）退化为扫描；`-signed.<ext>` 不匹配 `-unsigned.<ext>`
+    let suffix = format!("-unsigned.{ext}");
     let mut candidates: Vec<PathBuf> = std::fs::read_dir(&staged)
         .into_iter()
         .flatten()
@@ -311,18 +388,22 @@ pub(crate) fn unsigned_apk(project: &poly_core::Project, spec: &TargetSpec) -> O
             path.is_file()
                 && path
                     .file_name()
-                    .is_some_and(|name| name.to_string_lossy().ends_with("-unsigned.apk"))
+                    .is_some_and(|name| name.to_string_lossy().ends_with(&suffix))
         })
         .collect();
     candidates.sort();
     candidates.into_iter().next()
 }
 
-/// `<kebab 名称>-<版本>-unsigned.apk`（打包器的产物命名约定，见 poly-bundle Android 打包器）。
-pub(crate) fn unsigned_name(project: &poly_core::Project) -> String {
+/// `<kebab 名称>-<版本>-unsigned.<ext>`（各打包器的产物命名约定同源）。
+pub(crate) fn unsigned_name_for(project: &poly_core::Project, ext: &str) -> String {
     // 借打包器的派生出口拿 kebab 形态，避免在 CLI 里复制一份命名规则
     let product = crate::package::product_info(&project.config.package);
-    format!("{}-{}-unsigned.apk", product.kebab_name(), product.version)
+    format!(
+        "{}-{}-unsigned.{ext}",
+        product.kebab_name(),
+        product.version
+    )
 }
 
 /// 凭据引用：取 `JobSpec.secrets` 里本目标档案（= `TargetSpec.signing`）的那条；
@@ -447,8 +528,11 @@ mod tests {
             Some(staged.join("other-0.0.1-unsigned.apk")),
             "命名约定之外退化为扫描"
         );
-        assert_eq!(unsigned_name(&project), "fixture-app-0.0.1-unsigned.apk");
-        let named = staged.join(unsigned_name(&project));
+        assert_eq!(
+            unsigned_name_for(&project, "apk"),
+            "fixture-app-0.0.1-unsigned.apk"
+        );
+        let named = staged.join(unsigned_name_for(&project, "apk"));
         std::fs::write(&named, b"y").expect("写约定名");
         assert_eq!(unsigned_apk(&project, &spec), Some(named), "约定名优先");
         let _ = std::fs::remove_dir_all(&root);
@@ -500,8 +584,8 @@ mod tests {
         let _ = std::fs::remove_dir_all(&root);
     }
 
-    /// 内建注册表里每个声明了签名档案的目标，其格式都要么已接入（android / ios）要么有归属：
-    /// 新增目标 / 新格式漏接线即红（否则该签却没签成会静默）。
+    /// 内建注册表里每个声明了签名档案的目标，其格式都要么已接入（android / ios / harmonyos）
+    /// 要么有归属：新增目标 / 新格式漏接线即红（否则该签却没签成会静默）。
     #[test]
     fn every_signed_target_format_is_served_or_owned() {
         let registry = poly_targets::Registry::builtin();
@@ -513,13 +597,36 @@ mod tests {
             declared += 1;
             let format = spec.package.format.as_str();
             assert!(
-                matches!(format, "aab" | "apk" | "ipa") || signing_owner(format).is_some(),
+                matches!(format, "aab" | "apk" | "ipa" | "hap") || signing_owner(format).is_some(),
                 "目标 {} 声明了签名档案但格式 {format} 既未接入也没有归属登记",
                 spec.id
             );
         }
         assert!(declared >= 5, "内建注册表的签名目标数不该缩水：{declared}");
         assert!(signing_owner("no-such-format").is_none());
+    }
+
+    /// 未签名 HAP 的两级查找：命名约定优先；`-signed.hap` 不误入扫描。
+    #[test]
+    fn unsigned_hap_prefers_the_naming_convention() {
+        let (root, project) = fixture("hap");
+        let mut spec = spec("aab");
+        spec.id = "harmonyos".to_string();
+        let staged = root.join(".polypack/packages/harmonyos");
+        std::fs::create_dir_all(&staged).expect("暂存目录可建");
+        assert_eq!(unsigned_hap(&project, &spec), None, "空目录没有可签的输入");
+        std::fs::write(staged.join("fixture-app-0.0.1-unsigned-signed.hap"), b"s").expect("写已签");
+        assert_eq!(unsigned_hap(&project, &spec), None, "已签产物不是可签输入");
+        std::fs::write(staged.join("other-0.0.1-unsigned.hap"), b"x").expect("写扫描候选");
+        assert_eq!(
+            unsigned_hap(&project, &spec),
+            Some(staged.join("other-0.0.1-unsigned.hap")),
+            "命名约定之外退化为扫描"
+        );
+        let named = staged.join("fixture-app-0.0.1-unsigned.hap");
+        std::fs::write(&named, b"y").expect("写约定名");
+        assert_eq!(unsigned_hap(&project, &spec), Some(named), "约定名优先");
+        let _ = std::fs::remove_dir_all(&root);
     }
 
     /// 环境性缺失（缺工具 / 凭据不可用）跳过并告警；引用非法 / 命令失败硬失败。

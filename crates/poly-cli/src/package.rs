@@ -15,7 +15,7 @@ use std::process::Command;
 
 use poly_bundle::error::BundleError;
 use poly_bundle::inputs::{
-    AndroidInputs, BundleInputs, Icon, IconKind, IosInputs, NativeLib, ProductInfo,
+    AndroidInputs, BundleInputs, HarmonyInputs, Icon, IconKind, IosInputs, NativeLib, ProductInfo,
 };
 use poly_bundle::packagers::ios::swift;
 use poly_core::bridge;
@@ -234,6 +234,12 @@ pub(crate) fn assemble_inputs(
             no_ui_warning(events, spec, &dist, &inputs);
             inputs.android = Some(android_inputs(project, out_dir, events)?);
         }
+        // HarmonyOS（T-M3-03）：工程两态（复用 `<root>/harmony/` 模板实例 / 骨架生成）由打包器
+        // 判定；CLI 只递宿主根与桥产物 `.so`。骨架缺 hvigorw 属环境性缺失 → 如实跳过。
+        "hap" => {
+            no_ui_warning(events, spec, &dist, &inputs);
+            inputs.harmony = Some(harmony_inputs(project, events));
+        }
         "ipa" => {
             no_ui_warning(events, spec, &dist, &inputs);
             inputs.ios = Some(ios_inputs(project)?);
@@ -335,6 +341,47 @@ fn android_inputs(
         ),
     });
     Ok(inputs)
+}
+
+/// HarmonyOS 打包输入：桥产物 `.so`（`<根>/bridge/harmonyos/<abi>/*.so`）+ 宿主工程根。
+///
+/// 工程两态由打包器按 `<根>/harmony/build-profile.json5` 判定；CLI 只递路径不代造工程
+/// （骨架的 AppScope 元数据由打包器从 polypack.toml 生成）。没有桥产物时给最小输入：
+/// 打包器仍能出包（纯 ArkTS / 资源产物；缺原生库的注记由产物说明承载）。
+fn harmony_inputs(project: &poly_core::Project, events: &mut dyn EventSink) -> HarmonyInputs {
+    let mut inputs = HarmonyInputs {
+        host_project: Some(project.root.clone()),
+        ..HarmonyInputs::default()
+    };
+    let dir = project.root.join("bridge").join("harmonyos");
+    let mut libs: Vec<NativeLib> = Vec::new();
+    if let Ok(abis) = std::fs::read_dir(&dir) {
+        for abi_entry in abis.flatten().filter(|entry| entry.path().is_dir()) {
+            let abi = abi_entry.file_name().to_string_lossy().into_owned();
+            let Ok(files) = std::fs::read_dir(abi_entry.path()) else {
+                continue;
+            };
+            for file in files.flatten() {
+                let path = file.path();
+                if path.extension().is_some_and(|ext| ext == "so") {
+                    libs.push(NativeLib {
+                        abi: abi.clone(),
+                        path,
+                    });
+                }
+            }
+        }
+    }
+    // 目录序无保证：按（ABI，路径）排序定序（note 与产物注入顺序可复现）。
+    libs.sort_by(|a, b| (&a.abi, &a.path).cmp(&(&b.abi, &b.path)));
+    if !libs.is_empty() {
+        events.emit(&BuildEvent::Warning {
+            stage: "package".to_string(),
+            message: format!("HarmonyOS 输入：bridge/harmonyos/（{} 枚 .so）", libs.len()),
+        });
+    }
+    inputs.native_libs = libs;
+    inputs
 }
 
 /// 桥产出的 AAR（`<根>/bridge/android/*.aar`；多个取排序首个）。
@@ -665,6 +712,42 @@ mod tests {
         assert_eq!(inputs.min_sdk, 24);
         assert!(sink.out.is_empty(), "无 AAR 时不必告警");
         let _ = std::fs::remove_dir_all(&root);
+    }
+
+    /// 桥产物 `.so` → `native_libs`（ABI 用目录名；缺桥产物时给最小输入）。
+    #[test]
+    fn harmony_inputs_take_libs_from_bridge_dir() {
+        let (root, project) = fixture("harmony-libs");
+        let lib = root.join("bridge/harmonyos/arm64-v8a/libpax_core.so");
+        std::fs::create_dir_all(lib.parent().expect("父目录")).expect("建桥产物目录");
+        std::fs::write(&lib, b"\x7fELF").expect("写假 .so");
+        // 非 .so 文件与目录外的文件不入列。
+        std::fs::write(lib.parent().unwrap().join("notes.txt"), b"x").expect("写旁路文件");
+
+        let mut sink = HumanSink { out: Vec::new() };
+        let inputs = harmony_inputs(&project, &mut sink);
+        assert_eq!(
+            inputs.host_project,
+            Some(root.clone()),
+            "工程根须指向宿主根"
+        );
+        assert_eq!(inputs.native_libs.len(), 1, "{:?}", inputs.native_libs);
+        assert_eq!(inputs.native_libs[0].abi, "arm64-v8a");
+        assert_eq!(inputs.native_libs[0].path, lib);
+        let notes = String::from_utf8_lossy(&sink.out);
+        assert!(
+            notes.contains("HarmonyOS 输入"),
+            "应发一条输入告警: {notes}"
+        );
+
+        // 无桥产物：最小输入且不告警。
+        let (root2, project2) = fixture("harmony-empty");
+        let mut sink2 = HumanSink { out: Vec::new() };
+        let inputs2 = harmony_inputs(&project2, &mut sink2);
+        assert!(inputs2.native_libs.is_empty());
+        assert!(sink2.out.is_empty(), "无 .so 时不必告警");
+        let _ = std::fs::remove_dir_all(&root);
+        let _ = std::fs::remove_dir_all(&root2);
     }
 
     /// iOS 输入：`lib<name>.a` 用 crate 名的下划线形态，绑定落点与 poly-bundle 约定同源。

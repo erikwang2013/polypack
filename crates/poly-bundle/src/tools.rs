@@ -1,16 +1,19 @@
-//! Android SDK 与工具解析（T-M2-06 / T-M2-07）。
+//! Android SDK 与工具解析（T-M2-06 / T-M2-07）与 HarmonyOS 构建工具解析（T-M3-03）。
 //!
-//! SDK 根解析顺序：`AndroidInputs.sdk_root`（显式配置即权威）→ `$ANDROID_HOME` →
+//! Android SDK 根解析顺序：`AndroidInputs.sdk_root`（显式配置即权威）→ `$ANDROID_HOME` →
 //! `$ANDROID_SDK_ROOT` → `~/Android/Sdk`（Linux 惯例）→ `~/Library/Android/sdk`（macOS 惯例）。
 //! build-tools 取版本号最大的目录（`aapt2` / `apksigner` / `zipalign` / `d8` 都在其中），
 //! 平台取 `android-<NN>` 里 NN 最大的（预览名如 `android-Baklava` 无数值 API，跳过）。
 //! `aapt2` 与 `android.jar` 任一缺失即 [`BundleError::ToolMissing`]（E_BND_0001）。
+//!
+//! HarmonyOS：`hvigorw` / `ohpm` 解析顺序为 `HarmonyInputs.hvigorw|ohpm`（显式配置即权威）→
+//! `$HARMONYOS_TOOLS`（command-line-tools 根，试 `<root>/bin/<tool>` 与 `<root>/<tool>`）→ PATH。
 
 use std::path::{Path, PathBuf};
 
 use crate::error::BundleError;
 use crate::exec;
-use crate::inputs::AndroidInputs;
+use crate::inputs::{AndroidInputs, HarmonyInputs};
 
 /// 解析出的 Android 工具链（路径一律绝对，不经 PATH）。
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -179,6 +182,61 @@ fn locate_bundletool(inputs: &AndroidInputs) -> Option<PathBuf> {
     cached.is_file().then_some(cached)
 }
 
+/// 解析出的 HarmonyOS 构建工具（路径一律绝对，不经 PATH）。
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct HarmonyTools {
+    /// `hvigorw`（hvigor 构建入口；`hvigorw assembleHap` 出未签名 HAP）。
+    pub hvigorw: PathBuf,
+    /// `ohpm`（复用工程装依赖 `ohpm install` 用；工程无依赖时非必需）。
+    pub ohpm: Option<PathBuf>,
+}
+
+/// 解析 HarmonyOS 构建工具：缺 `hvigorw` 即 [`BundleError::ToolMissing`]。
+pub fn resolve_harmony(inputs: &HarmonyInputs) -> Result<HarmonyTools, BundleError> {
+    probe_harmony(inputs).ok_or_else(|| BundleError::ToolMissing {
+        packager: "harmonyos",
+        tool: "hvigorw".to_string(),
+        hint: hvigor_hint(inputs),
+    })
+}
+
+/// 探测式解析（不报错）：`plan()` 的契约测试用。
+pub fn probe_harmony(inputs: &HarmonyInputs) -> Option<HarmonyTools> {
+    Some(HarmonyTools {
+        hvigorw: locate_harmony_tool(&inputs.hvigorw, "hvigorw")?,
+        ohpm: locate_harmony_tool(&inputs.ohpm, "ohpm"),
+    })
+}
+
+/// `hvigorw` / `ohpm` 解析：显式配置独占（指向不存在的路径不回退），否则
+/// `$HARMONYOS_TOOLS`（根或直接指 `bin/`）→ PATH。
+fn locate_harmony_tool(explicit: &Option<PathBuf>, name: &str) -> Option<PathBuf> {
+    if let Some(path) = explicit {
+        return path.is_file().then(|| path.clone());
+    }
+    if let Some(root) = std::env::var_os("HARMONYOS_TOOLS").filter(|v| !v.is_empty()) {
+        let root = PathBuf::from(root);
+        for candidate in [root.join("bin").join(name), root.join(name)] {
+            if candidate.is_file() {
+                return Some(candidate);
+            }
+        }
+    }
+    exec::tool_path(name)
+}
+
+/// 缺 `hvigorw` 时的安装 / 配置建议。
+fn hvigor_hint(inputs: &HarmonyInputs) -> String {
+    let where_ = inputs.hvigorw.as_ref().map_or_else(
+        || "$HARMONYOS_TOOLS（command-line-tools 根）/ PATH".to_string(),
+        |path| path.display().to_string(),
+    );
+    format!(
+        "未找到 hvigorw（查找：{where_}）：装 HarmonyOS command-line-tools 后设 \
+         $HARMONYOS_TOOLS 指向其根（含 bin/hvigorw），或用 HarmonyInputs.hvigorw 显式指定"
+    )
+}
+
 /// 缺 SDK 时的安装 / 配置建议。
 fn sdk_hint(inputs: &AndroidInputs) -> String {
     let where_ = inputs.sdk_root.as_ref().map_or_else(
@@ -218,6 +276,25 @@ mod tests {
         };
         assert!(
             hint.contains("poly-nonexistent-sdk"),
+            "hint 须含配置路径：{hint}"
+        );
+    }
+
+    #[test]
+    fn missing_hvigorw_is_not_silently_ignored() {
+        // 同上：显式 hvigorw 独占，不回退到 $HARMONYOS_TOOLS / PATH。
+        let inputs = HarmonyInputs {
+            hvigorw: Some(PathBuf::from("/poly-nonexistent-hvigorw")),
+            ..HarmonyInputs::default()
+        };
+        assert!(probe_harmony(&inputs).is_none());
+        let err = resolve_harmony(&inputs).expect_err("缺 hvigorw 必须报错");
+        assert_eq!(err.code(), crate::error::codes::E_BND_0001);
+        let BundleError::ToolMissing { hint, .. } = err else {
+            panic!("期望 ToolMissing");
+        };
+        assert!(
+            hint.contains("poly-nonexistent-hvigorw"),
             "hint 须含配置路径：{hint}"
         );
     }

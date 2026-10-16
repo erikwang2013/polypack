@@ -17,12 +17,12 @@ fn probe(id: &str) -> Box<dyn Probe> {
 }
 
 #[test]
-fn default_probes_has_six_unique_ids() {
+fn default_probes_has_seven_unique_ids() {
     let probes = default_probes();
     assert_eq!(
         probes.len(),
-        6,
-        "六类探测器：rust / android-sdk / android-ndk / xcode / msvc / emsdk"
+        7,
+        "七类探测器：rust / android-sdk / android-ndk / harmonyos-sdk / xcode / msvc / emsdk"
     );
     let ids: BTreeSet<&str> = probes.iter().map(|probe| probe.id()).collect();
     assert_eq!(ids.len(), probes.len(), "探测器 id 不得重复：{ids:?}");
@@ -56,7 +56,7 @@ fn probes_run_without_panic_and_report_their_contract() {
 
 #[test]
 fn required_for_matches_l1_targets() {
-    let expected: [(&str, &[&str]); 6] = [
+    let expected: [(&str, &[&str]); 7] = [
         (
             "rust",
             &[
@@ -71,6 +71,7 @@ fn required_for_matches_l1_targets() {
         ),
         ("android-sdk", &["android"]),
         ("android-ndk", &["android"]),
+        ("harmonyos-sdk", &["harmonyos"]),
         ("xcode", &["ios", "macos"]),
         ("msvc", &["windows"]),
         ("emsdk", &["web"]),
@@ -81,6 +82,25 @@ fn required_for_matches_l1_targets() {
         let mut want: Vec<&str> = want.to_vec();
         want.sort_unstable();
         assert_eq!(got, want, "{id} 的 required_for 映射");
+    }
+}
+
+#[test]
+fn harmonyos_sdk_probe_reports_path_or_fix_hint() {
+    let result = probe("harmonyos-sdk").locate();
+    match &result.found {
+        Some(toolchain) => assert!(
+            toolchain.path.join("native/llvm/bin").is_dir(),
+            "命中的 SDK 必须含 native/llvm/bin：{}",
+            toolchain.path.display()
+        ),
+        None => {
+            let note = result.note.as_deref().unwrap_or_default();
+            assert!(
+                note.contains("HARMONYOS_TOOLS"),
+                "缺失提示须给出可执行的修复（环境变量）：{note}"
+            );
+        }
     }
 }
 

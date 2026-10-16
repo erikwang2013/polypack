@@ -9,7 +9,7 @@ use std::path::PathBuf;
 
 /// 错误码常量表（签名域，新增码在此登记）。
 pub mod codes {
-    /// 缺少外部签名工具（apksigner）。
+    /// 缺少外部签名工具（apksigner / hap-sign-tool 及其 java 运行时）。
     pub const E_SIG_0001: &str = "poly::E_SIG_0001";
     /// 凭据缺失 / 不可用 / 非法（引用错误、后端载荷解析失败）。
     pub const E_SIG_0002: &str = "poly::E_SIG_0002";
@@ -56,7 +56,8 @@ pub enum SignError {
     /// 根因只在工具自己的 stderr，只给「查看 stderr」而不带内容，日志里就什么都没有。
     #[error("外部命令失败（退出码 {status}）：{command}\nstderr 尾部：{stderr}")]
     ToolFailed {
-        /// 命令展示形态（口令经环境变量注入，展示串里只有 `env:VAR` 引用）。
+        /// 命令展示形态（apksigner 口令经 `env:VAR` 引用；hap-sign-tool 口令只能进 argv，
+        /// 展示串已由 `poly-sign::harmony` 脱敏为 `****`）。
         command: String,
         /// 退出状态。
         status: String,
@@ -97,11 +98,13 @@ impl SignError {
             ),
             Self::CredentialInvalid { .. } => Some(
                 "后端载荷须为 base64(JSON)：{\"keystore\":\"<base64>\",\"store_password\":\"…\",\
-                 \"key_alias\"?,\"key_password\"?}",
+                 \"key_alias\"?,\"key_password\"?}；HAP 签名另需 \"app_cert\"（证书链）与 \
+                 \"profile\"（已签名 p7b）两个 base64 字段",
             ),
             Self::ToolFailed { .. } => Some(
                 "命令与 stderr 已随本错直出；apksigner 路径按 POLYPACK_APKSIGNER → PATH → \
-                 ANDROID_HOME / ANDROID_SDK_ROOT 解析",
+                 ANDROID_HOME / ANDROID_SDK_ROOT 解析，hap-sign-tool.jar 按 POLYPACK_HAP_SIGN_TOOL \
+                 → $HARMONYOS_TOOLS 解析",
             ),
             Self::Io { .. } => Some("核对输入 APK / 输出目录 / 临时目录的路径、权限与磁盘空间"),
         }

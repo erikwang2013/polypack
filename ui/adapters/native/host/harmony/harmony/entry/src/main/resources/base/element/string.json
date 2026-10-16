@@ -1,0 +1,16 @@
+{
+  "string": [
+    {
+      "name": "module_desc",
+      "value": "PolyPack RNOH 宿主 entry 模块（T-M3-01）"
+    },
+    {
+      "name": "EntryAbility_desc",
+      "value": "PolyPack HarmonyOS 宿主"
+    },
+    {
+      "name": "EntryAbility_label",
+      "value": "PaxApp"
+    }
+  ]
+}

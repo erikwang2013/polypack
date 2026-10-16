@@ -1,5 +1,5 @@
-//! T-M2-01 / T-M2-02 验收（CLI 侧）：`poly bridge generate|aar` 的参数面、诊断码与
-//! 「缺工具就说清楚、绝不产假产物」。
+//! T-M2-01 / T-M2-02 / T-M3-01 验收（CLI 侧）：`poly bridge generate|aar|ohos` 的参数面、
+//! 诊断码与「缺工具就说清楚、绝不产假产物」。
 //!
 //! 这一份不依赖 uniffi 引擎 / NDK / kotlinc（缺工具的分支本身就是断言对象），三宿主都跑；
 //! 真生成 / 真交叉编译在 `poly-core/tests/bridge_real.rs`（`POLY_CONTRACT_REAL=1` 门控）。
@@ -105,6 +105,10 @@ fn bridge_dry_run_reports_plan_and_writes_nothing() {
     );
     assert_eq!(report["langs"][0], "kotlin");
     assert_eq!(report["langs"][1], "swift");
+    assert_eq!(
+        report["langs"][2], "napi",
+        "all = 全部已接入出口（含 T-M3-01 的 napi）"
+    );
     assert!(!temp.path().join("bridge").exists(), "dry-run 不落任何产物");
 }
 
@@ -131,8 +135,8 @@ fn bridge_rejects_reserved_exit_until_m3() {
     let temp = TempDir::new("reserved");
     fixture(temp.path());
 
-    // M3 的出口已登记：今天调用必须明确报「未接入」，而不是静默产出别的东西
-    let out = poly(&["bridge", "generate", "--lang", "napi"], temp.path());
+    // M3 之后的出口已登记但未接入：调用必须明确报「未接入」，而不是静默产出别的东西
+    let out = poly(&["bridge", "generate", "--lang", "cffi"], temp.path());
     assert_eq!(out.status.code(), Some(1));
     let stderr = String::from_utf8_lossy(&out.stderr);
     assert!(
@@ -140,8 +144,70 @@ fn bridge_rejects_reserved_exit_until_m3() {
         "{stderr}"
     );
     assert!(
-        !temp.path().join("bridge/napi").exists(),
+        !temp.path().join("bridge/cffi").exists(),
         "未接入出口不落目录"
+    );
+}
+
+/// napi 出口（T-M3-01）：不依赖 uniffi 引擎在场，胶水落盘且含两个装载入口。
+#[test]
+fn bridge_generate_napi_needs_no_uniffi_engine() {
+    let temp = TempDir::new("napi");
+    fixture(temp.path());
+
+    let out = poly(
+        &["bridge", "generate", "--lang", "napi", "--json"],
+        temp.path(),
+    );
+    assert_eq!(
+        out.status.code(),
+        Some(0),
+        "napi 出口不需要 uniffi 引擎：{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    let reports = json_lines(&out);
+    let generated = reports
+        .iter()
+        .find(|report| report["event"] == "bridge-generated")
+        .expect("应有 bridge-generated 报告");
+    assert_eq!(generated["outputs"][0]["lang"], "napi");
+    assert_eq!(generated["outputs"][0]["files"][0], "pax.c");
+
+    let glue = temp.path().join("bridge/napi/pax.c");
+    let text = std::fs::read_to_string(&glue).expect("胶水落盘");
+    assert!(text.contains("napi_register_module_v1"), "{text}");
+    assert!(
+        text.contains("uniffi_pax_core_fn_func_greet("),
+        "符号前缀 = 归一化 crate 名（与 UDL namespace 不同域）：{text}"
+    );
+}
+
+/// OHOS SDK 缺失 → `poly::E_BRIDGE_0003` + 环境变量修复提示，且不产半份模块。
+#[test]
+fn bridge_ohos_without_sdk_reports_hint() {
+    let temp = TempDir::new("no-ohos-sdk");
+    fixture(temp.path());
+
+    // 把四个 SDK 定位环境变量显式指到不存在的路径：本机装没装 SDK 都走「缺 SDK」分支
+    let out = Command::new(env!("CARGO_BIN_EXE_poly"))
+        .args(["bridge", "ohos", "--abi", "arm64-v8a"])
+        .current_dir(temp.path())
+        .env("POLYPACK_OHOS_SDK", temp.path().join("no-sdk"))
+        .env("DEVECO_SDK_HOME", temp.path().join("no-sdk"))
+        .env("HARMONYOS_TOOLS", temp.path().join("no-sdk"))
+        .env("OHOS_SDK_HOME", temp.path().join("no-sdk"))
+        .output()
+        .expect("poly 可执行");
+    assert_eq!(out.status.code(), Some(1));
+    let stderr = String::from_utf8_lossy(&out.stderr);
+    assert!(stderr.contains("poly::E_BRIDGE_0003"), "{stderr}");
+    assert!(
+        stderr.contains("HARMONYOS_TOOLS"),
+        "提示应给出可执行的环境变量修法：{stderr}"
+    );
+    assert!(
+        !temp.path().join("bridge").exists(),
+        "缺 SDK 时不产半份模块、不留空目录"
     );
 }
 

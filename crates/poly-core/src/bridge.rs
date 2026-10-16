@@ -4,9 +4,10 @@
 //!
 //! 接口只写一份：核心 crate 的 UDL（`<core>/src/*.udl`，uniffi 的接口定义语言）。四端绑定由
 //! 生成器统一产出，**不手写任何一份**：Kotlin / Swift 走 uniffi 引擎（[`BridgeEngine::Uniffi`]），
-//! wasm-bindgen（小程序沙箱，T-M3-07）是编译产物形态、走 [`wasm`]（[`BridgeEngine::WasmBindgen`]），
-//! napi / cffi 两个出口已登记在 [`BridgeLang`] 上但标为 M3 消费点（[`BridgeEngine::Reserved`]），
-//! 接入时只换引擎、接口定义不动。
+//! napi 走自带的 UDL→C 胶水出口（[`BridgeEngine::PolyNapi`]，T-M3-01：RNOH / ArkTS 宿主可装载的
+//! 自包含 `.so`，见 [`napi`]）；wasm-bindgen（小程序沙箱，T-M3-07）是编译产物形态、走 [`wasm`]
+//! （[`BridgeEngine::WasmBindgen`]）；cffi 已登记在 [`BridgeLang`] 上但标为 M3 消费点
+//! （[`BridgeEngine::Reserved`]），M3 接入时只换引擎、接口定义不动。
 //!
 //! ## 引擎（谁真正生成绑定代码）
 //!
@@ -25,6 +26,7 @@
 //! ```text
 //! <root>/bridge/kotlin/uniffi/<ns>/<ns>.kt      # Kotlin 绑定（uniffi 的包布局）
 //! <root>/bridge/swift/<ns>.swift · <ns>FFI.h · <ns>FFI.modulemap   # Swift 绑定三件套
+//! <root>/bridge/napi/<ns>.c                     # napi C 胶水（T-M3-01；模块 .so 见 [`napi`]）
 //! <root>/bridge/android/<lib>.aar               # T-M2-02 产物（见 [`aar`]）
 //! ```
 //!
@@ -34,6 +36,7 @@
 pub mod aar;
 mod engine;
 pub mod kotlinc;
+pub mod napi;
 pub mod udl;
 pub mod wasm;
 
@@ -65,7 +68,7 @@ pub enum BridgeLang {
     Kotlin,
     /// Swift（iOS / macOS）。
     Swift,
-    /// napi-rs（Node / Taro），M3 接入。
+    /// napi（C ABI：RNOH / ArkTS / Node），T-M3-01 接入。
     Napi,
     /// wasm-bindgen（小程序沙箱，T-M3-07 接入）。
     WasmBindgen,
@@ -109,9 +112,7 @@ impl BridgeLang {
     pub fn engine(self) -> BridgeEngine {
         match self {
             Self::Kotlin | Self::Swift => BridgeEngine::Uniffi,
-            Self::Napi => BridgeEngine::Reserved {
-                since: "M3（T-M3-01）",
-            },
+            Self::Napi => BridgeEngine::PolyNapi,
             Self::WasmBindgen => BridgeEngine::WasmBindgen,
             Self::Cffi => BridgeEngine::Reserved { since: "M3" },
         }
@@ -129,11 +130,14 @@ impl fmt::Display for BridgeLang {
     }
 }
 
-/// 生成引擎：uniffi（绑定形态）与 wasm-bindgen（编译产物形态），其余出口是 M3 的登记位。
+/// 生成引擎：uniffi（绑定形态）、poly 自带的 napi C 胶水（T-M3-01）与 wasm-bindgen
+/// （编译产物形态，T-M3-07），其余出口是 M3 的登记位。
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BridgeEngine {
     /// uniffi（Kotlin / Swift）：由 UDL 经引擎生成绑定源码。
     Uniffi,
+    /// poly 自带的 UDL→C 胶水出口（napi，T-M3-01；见 [`napi`]）。
+    PolyNapi,
     /// wasm-bindgen（小程序沙箱，T-M3-07）：编译产物形态（shim + cargo + 胶水 + 适配层），
     /// 不落 [`generate`] 的绑定目录，走 [`wasm::generate`]（CLI：`poly bridge wasm`）。
     WasmBindgen,
@@ -142,6 +146,18 @@ pub enum BridgeEngine {
         /// 计划接入的里程碑。
         since: &'static str,
     },
+}
+
+impl BridgeEngine {
+    /// 引擎身份串（进桥缓存键的 toolchain 位；换引擎即失效）。
+    pub fn id(self) -> &'static str {
+        match self {
+            Self::Uniffi => "uniffi",
+            Self::PolyNapi => "poly-napi",
+            Self::WasmBindgen => "wasm-bindgen",
+            Self::Reserved { .. } => "reserved",
+        }
+    }
 }
 
 /// 单处接口定义：核心 crate 的 UDL 源文件（按相对路径升序，保证摘要确定）。
@@ -223,13 +239,13 @@ pub fn interface_digest(source: &InterfaceSource) -> Result<Digest, StageError> 
 
 /// 桥产物的库级缓存键（§5.2 五输入公式 + 接口摘要），**逐语言**。
 ///
-/// `toolchain` 位承载「uniffi 引擎版本 ‖ `bridge/v1` 接口摘要」：对桥产物而言它们就是
-/// 决定产物字节的工具链，接口变更即失效。`sources` / `lockfile` 取核心 crate（含 UDL）。
-/// `target_spec` 位承载语言：各语言的绑定是独立产物（Kotlin 未变时 Swift 可单独重生成）。
+/// `toolchain` 位承载「生成引擎（[`BridgeEngine::id`]）‖ `bridge/v1` 接口摘要」：对桥产物
+/// 而言它们就是决定产物字节的工具链，接口或引擎变更即失效。`sources` / `lockfile` 取核心
+/// crate（含 UDL）。`target_spec` 位承载语言：各语言的绑定是独立产物（Kotlin 未变时 Swift
+/// 可单独重生成）。
 pub fn bridge_cache_key(
     project: &Project,
     interface: &Digest,
-    engine: &str,
     profile: &str,
     lang: BridgeLang,
 ) -> Result<Digest, StageError> {
@@ -240,7 +256,7 @@ pub fn bridge_cache_key(
         sources,
         lockfile,
         target_spec: format!("{BRIDGE_SCHEMA}/{}", lang.id()),
-        toolchain: format!("{BRIDGE_SCHEMA}+{engine}+{interface}"),
+        toolchain: format!("{BRIDGE_SCHEMA}+{}+{interface}", lang.engine().id()),
         profile: profile.to_string(),
     }))
 }
@@ -249,18 +265,12 @@ pub fn bridge_cache_key(
 pub fn bridge_cache_keys(
     project: &Project,
     interface: &Digest,
-    engine: &str,
     profile: &str,
     langs: &[BridgeLang],
 ) -> Result<Vec<(BridgeLang, Digest)>, StageError> {
     langs
         .iter()
-        .map(|lang| {
-            Ok((
-                *lang,
-                bridge_cache_key(project, interface, engine, profile, *lang)?,
-            ))
-        })
+        .map(|lang| Ok((*lang, bridge_cache_key(project, interface, profile, *lang)?)))
         .collect()
 }
 
@@ -291,7 +301,10 @@ pub fn generate(
                     codes::E_BRIDGE_0002,
                     format!("出口 {} 的生成器尚未接入（计划于 {since}）", lang.id()),
                 )
-                .with_hint("M2 目前可生成：--lang kotlin / swift；其余出口由 M3 接入同一生成器")
+                .with_hint(
+                    "已接入：--lang kotlin / swift（uniffi 引擎）/ napi（UDL→C 胶水，M3 的 T-M3-01）；\
+                     wasm 走 `poly bridge wasm`；cffi 由 M3 后续接入同一生成器",
+                )
                 .into());
             }
             // wasm 出口是编译产物形态（shim + cargo + 胶水 + 适配层），不落绑定目录：
@@ -306,24 +319,46 @@ pub fn generate(
                 )
                 .into());
             }
-            BridgeEngine::Uniffi => {}
+            BridgeEngine::Uniffi | BridgeEngine::PolyNapi => {}
         }
     }
-    let engine = engine::UniffiEngine::discover(&source.crate_dir).ok_or_else(missing_engine)?;
     let root = project.root.join("bridge");
-    // 库名与绑定名必须一致（不一致只在设备运行时炸），生成前先钉死
-    let config = root.join("uniffi.toml");
-    engine::write_config(&config, &namespace(&source)?, &core_lib_name(&source)?)?;
+    // uniffi 引擎按需定位：只请求 napi 时不该要求 uniffi-bindgen 在场（反之亦然）；
+    // 且「先探引擎再落盘」——缺引擎时连 uniffi.toml 都不写（缺引擎不产假产物的既有断言）
+    let uniffi = if langs
+        .iter()
+        .any(|lang| lang.engine() == BridgeEngine::Uniffi)
+    {
+        let engine =
+            engine::UniffiEngine::discover(&source.crate_dir).ok_or_else(missing_engine)?;
+        // 库名与绑定名必须一致（不一致只在设备运行时炸），生成前先钉死
+        let config = root.join("uniffi.toml");
+        engine::write_config(&config, &namespace(&source)?, &core_lib_name(&source)?)?;
+        Some((engine, config))
+    } else {
+        None
+    };
     let mut outputs = Vec::new();
     for lang in langs {
-        let dir = root.join(lang.dir());
-        let files = engine.generate(&source, *lang, &dir, &config)?;
-        emit_generated(events, *lang, &dir, &files);
-        outputs.push(BridgeOutput {
-            lang: *lang,
-            dir,
-            files,
-        });
+        let output = match lang.engine() {
+            BridgeEngine::Uniffi => {
+                let (engine, config) = uniffi.as_ref().expect("uniffi 出口必先定位引擎");
+                let dir = root.join(lang.dir());
+                let files = engine.generate(&source, *lang, &dir, config)?;
+                BridgeOutput {
+                    lang: *lang,
+                    dir,
+                    files,
+                }
+            }
+            BridgeEngine::PolyNapi => napi::generate(project, &source)?,
+            // 保留出口与 wasm 的产物形态出口都在前置检查里被拒（wasm 走 `poly bridge wasm`）
+            BridgeEngine::WasmBindgen | BridgeEngine::Reserved { .. } => {
+                unreachable!("保留/产物形态出口已在前置检查拒绝")
+            }
+        };
+        emit_generated(events, output.lang, &output.dir, &output.files);
+        outputs.push(output);
     }
     Ok(outputs)
 }

@@ -3,7 +3,10 @@
 //! 后端载荷契约：**base64(JSON)**
 //! `{"keystore":"<base64>","store_password":"…","key_alias"?,"key_password"?}`；
 //! `key_alias` 省略时用密钥库内唯一别名（apksigner 行为），`key_password` 省略时回退
-//! `store_password`。凭据值只存在于内存：绝不进日志 / 事件流 / 命令行 / `Debug` 输出。
+//! `store_password`。HarmonyOS（T-M3-04）在其上扩展两个可选字段：
+//! `"app_cert"`（应用证书链，PEM 字节的 base64）与 `"profile"`（已签名 Profile，p7b 字节的
+//! base64）——两者对 HAP 签名链是必需，由 `poly-sign::harmony` 在使用点校验。
+//! 凭据值只存在于内存：绝不进日志 / 事件流 / 命令行 / `Debug` 输出。
 //!
 //! 后端注入是验收要求（keyring / Vault / CI 内存注入多实现可替换），
 //! [`resolve`] 按 `CredentialRef.source` 从后端链里选实现。
@@ -42,10 +45,16 @@ pub struct SigningMaterial {
     pub key_alias: Option<String>,
     /// 密钥口令；省略时回退 `store_password`。
     pub key_password: Option<String>,
+    /// HarmonyOS 应用证书链（载荷 `app_cert` 字段；Android / iOS 载荷为 `None`）。
+    pub app_cert: Option<Vec<u8>>,
+    /// HarmonyOS 已签名 Profile（载荷 `profile` 字段；Android / iOS 载荷为 `None`）。
+    pub profile: Option<Vec<u8>>,
 }
 
 impl std::fmt::Debug for SigningMaterial {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let size =
+            |blob: &Option<Vec<u8>>| blob.as_ref().map(|bytes| format!("<{} 字节>", bytes.len()));
         f.debug_struct("SigningMaterial")
             .field("keystore", &format_args!("<{} 字节>", self.keystore.len()))
             .field("store_password", &"<脱敏>")
@@ -54,6 +63,8 @@ impl std::fmt::Debug for SigningMaterial {
                 "key_password",
                 &self.key_password.as_ref().map(|_| "<脱敏>"),
             )
+            .field("app_cert", &size(&self.app_cert))
+            .field("profile", &size(&self.profile))
             .finish()
     }
 }
@@ -159,11 +170,26 @@ fn material_from_payload(
     if parsed.store_password.is_empty() {
         return Err(invalid("store_password 字段为空".to_string()));
     }
+    let decode_optional =
+        |field: &str, value: &Option<String>| -> Result<Option<Vec<u8>>, SignError> {
+            let Some(encoded) = value else {
+                return Ok(None);
+            };
+            let bytes = b64()
+                .decode(encoded)
+                .map_err(|err| invalid(format!("{field} 字段不是合法 base64：{err}")))?;
+            if bytes.is_empty() {
+                return Err(invalid(format!("{field} 字段为空")));
+            }
+            Ok(Some(bytes))
+        };
     Ok(SigningMaterial {
         keystore,
         store_password: parsed.store_password,
         key_alias: parsed.key_alias,
         key_password: parsed.key_password,
+        app_cert: decode_optional("app_cert", &parsed.app_cert)?,
+        profile: decode_optional("profile", &parsed.profile)?,
     })
 }
 
@@ -180,6 +206,12 @@ struct Payload {
     /// 密钥口令（可省，回退 `store_password`）。
     #[serde(default)]
     key_password: Option<String>,
+    /// HarmonyOS 应用证书链的 base64（可省；HAP 签名链必需，见 `crate::harmony`）。
+    #[serde(default)]
+    app_cert: Option<String>,
+    /// HarmonyOS 已签名 Profile 的 base64（可省；HAP 签名链必需）。
+    #[serde(default)]
+    profile: Option<String>,
 }
 
 /// 标准字母表 base64。

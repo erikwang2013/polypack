@@ -1,5 +1,5 @@
-//! T-M2-01 / T-M2-02 验收（无工具面）：UDL 解析、接口摘要、缓存键、保留出口、
-//! AAR 布局与二跑一致性、缓存命中不调引擎。
+//! T-M2-01 / T-M2-02 / T-M3-01 验收（无工具面）：UDL 解析、接口摘要、缓存键、保留出口、
+//! napi 胶水生成（不依赖引擎）、AAR 布局与二跑一致性、缓存命中不调引擎。
 //!
 //! 这一份**不需要** uniffi 引擎 / NDK / kotlinc：三宿主 CI 上必须全绿。真跑（真生成绑定、
 //! 真交叉编译、真 kotlinc）在 `bridge_real.rs`，由 `POLY_CONTRACT_REAL=1` 门控。
@@ -206,41 +206,35 @@ fn bridge_cache_key_tracks_interface_and_engine() {
     let source = bridge::interface_source(&project).expect("找到 UDL");
     let interface = bridge::interface_digest(&source).expect("摘要");
     let kotlin = BridgeLang::Kotlin;
-    let key =
-        bridge::bridge_cache_key(&project, &interface, "uniffi", "local", kotlin).expect("键");
+    let key = bridge::bridge_cache_key(&project, &interface, "local", kotlin).expect("键");
 
     // 同输入同键
-    let same =
-        bridge::bridge_cache_key(&project, &interface, "uniffi", "local", kotlin).expect("键");
+    let same = bridge::bridge_cache_key(&project, &interface, "local", kotlin).expect("键");
     assert_eq!(key, same);
 
     // 接口摘要变 → 键变（T-M2-01 验收：接口变更进库级缓存键）
     let other = Digest::of_bytes(b"other-interface");
-    let by_interface =
-        bridge::bridge_cache_key(&project, &other, "uniffi", "local", kotlin).expect("键");
+    let by_interface = bridge::bridge_cache_key(&project, &other, "local", kotlin).expect("键");
     assert_ne!(key, by_interface);
 
-    // 换引擎 → 键变
+    // 换引擎（napi = poly 自带的 C 胶水出口）→ 键变；引擎由语言推出，产物也各自独立
     let by_engine =
-        bridge::bridge_cache_key(&project, &interface, "cffi", "local", kotlin).expect("键");
+        bridge::bridge_cache_key(&project, &interface, "local", BridgeLang::Napi).expect("键");
     assert_ne!(key, by_engine);
 
     // 换 profile → 键变
-    let by_profile =
-        bridge::bridge_cache_key(&project, &interface, "uniffi", "ci", kotlin).expect("键");
+    let by_profile = bridge::bridge_cache_key(&project, &interface, "ci", kotlin).expect("键");
     assert_ne!(key, by_profile);
 
     // 换语言 → 键变（各语言的绑定是独立产物）
     let by_lang =
-        bridge::bridge_cache_key(&project, &interface, "uniffi", "local", BridgeLang::Swift)
-            .expect("键");
+        bridge::bridge_cache_key(&project, &interface, "local", BridgeLang::Swift).expect("键");
     assert_ne!(key, by_lang);
 
     // 逐语言清单与语言顺序一致
     let keys = bridge::bridge_cache_keys(
         &project,
         &interface,
-        "uniffi",
         "local",
         &[BridgeLang::Kotlin, BridgeLang::Swift],
     )
@@ -270,7 +264,7 @@ fn reserved_exits_fail_before_engine_lookup() {
     let temp = TempDir::new("reserved");
     let project = fixture(temp.path(), UDL);
     let mut sink = HumanSink { out: Vec::new() };
-    for lang in [BridgeLang::Napi, BridgeLang::Cffi] {
+    for lang in [BridgeLang::Cffi] {
         let err = bridge::generate(&project, &[lang], &mut sink).expect_err("保留出口必须报错");
         assert_code(err, codes::E_BRIDGE_0002, "M3");
         assert!(
@@ -332,6 +326,72 @@ fn uniffi_on_path() -> Option<PathBuf> {
     std::env::split_paths(&path)
         .flat_map(|dir| ["uniffi-bindgen", "uniffi-bindgen.exe"].map(|name| dir.join(name)))
         .find(|candidate| candidate.is_file())
+}
+
+// ---------------------------------------------------------------- napi 出口（T-M3-01）
+
+/// napi 出口：UDL 直出 C 胶水，**不需要 uniffi 引擎在场**；符号与装载入口对着
+/// uniffi 0.32 的 FFI ABI 与 OHOS/node 的 NAPI 装载约定钉死。
+#[test]
+fn napi_exit_generates_glue_without_uniffi_engine() {
+    let temp = TempDir::new("napi");
+    let project = fixture(temp.path(), UDL);
+    let mut sink = HumanSink { out: Vec::new() };
+    let outputs = bridge::generate(&project, &[BridgeLang::Napi], &mut sink).expect("napi 生成");
+    assert_eq!(outputs.len(), 1);
+    assert_eq!(outputs[0].lang, BridgeLang::Napi);
+    assert_eq!(outputs[0].files, vec![PathBuf::from("pax.c")]);
+    let glue = outputs[0].dir.join("pax.c");
+    assert!(glue.is_file(), "胶水落点 {}", glue.display());
+
+    let text = std::fs::read_to_string(&glue).expect("读胶水");
+    for needle in [
+        // OHOS 侧头（__OHOS__ 分支）与 node / RNOH 侧头
+        "napi/native_api.h",
+        "node_api.h",
+        // uniffi 0.32 的 FFI 符号：前缀是归一化 crate 名（pax-core → pax_core），不是 namespace
+        "uniffi_pax_core_fn_func_greet(",
+        "uniffi_pax_core_fn_func_add(",
+        "ffi_pax_core_rustbuffer_from_bytes(",
+        // 两个装载入口：node/RNOH 查找入口 + ArkTS 的模块注册构造函数
+        "napi_register_module_v1",
+        "napi_module_register(&poly_module)",
+        // ArkTS 装载名 = UDL namespace
+        ".nm_modname = \"pax\"",
+    ] {
+        assert!(text.contains(needle), "胶水缺 {needle}：\n{text}");
+    }
+
+    // 二跑字节一致（纯函数：输出只由接口定义决定，缓存键成立的前提）
+    let first = std::fs::read(&glue).expect("读胶水");
+    bridge::generate(&project, &[BridgeLang::Napi], &mut sink).expect("二跑");
+    assert_eq!(
+        first,
+        std::fs::read(&glue).expect("再读"),
+        "二跑必须字节一致"
+    );
+
+    // 出口登记：napi 已接入（不再是 Reserved），引擎是 poly 自带的 C 胶水
+    assert_eq!(BridgeLang::Napi.engine(), bridge::BridgeEngine::PolyNapi);
+    assert_eq!(BridgeLang::Napi.engine().id(), "poly-napi");
+}
+
+/// napi 的 v0 类型面之外（复合类型）→ `poly::E_BRIDGE_0002`，且不落半份胶水。
+#[test]
+fn napi_exit_refuses_unsupported_types_without_partial_output() {
+    let temp = TempDir::new("napi-unsupported");
+    let project = fixture(
+        temp.path(),
+        "namespace pax {\n  sequence<u32> values();\n};\n",
+    );
+    let mut sink = HumanSink { out: Vec::new() };
+    let err =
+        bridge::generate(&project, &[BridgeLang::Napi], &mut sink).expect_err("复合类型必须拒绝");
+    assert_code(err, codes::E_BRIDGE_0002, "sequence");
+    assert!(
+        !project.root.join("bridge/napi").exists(),
+        "类型拒绝不产半份胶水（更不产假绑定）"
+    );
 }
 
 // ---------------------------------------------------------------- AAR 组装（T-M2-02）
@@ -465,7 +525,6 @@ fn cache_hit_restores_bindings_without_engine() {
     let keys = bridge::bridge_cache_keys(
         &project,
         &interface,
-        "uniffi",
         "local",
         &[BridgeLang::Kotlin, BridgeLang::Swift],
     )
@@ -511,14 +570,8 @@ fn partial_cache_is_not_a_hit() {
     let project = fixture(root, UDL);
     let source = bridge::interface_source(&project).expect("找到 UDL");
     let interface = bridge::interface_digest(&source).expect("摘要");
-    let keys = bridge::bridge_cache_keys(
-        &project,
-        &interface,
-        "uniffi",
-        "local",
-        &[BridgeLang::Kotlin],
-    )
-    .expect("键清单");
+    let keys = bridge::bridge_cache_keys(&project, &interface, "local", &[BridgeLang::Kotlin])
+        .expect("键清单");
 
     let generated = root.join("bridge/kotlin");
     std::fs::create_dir_all(&generated).expect("建产物目录");
@@ -531,7 +584,6 @@ fn partial_cache_is_not_a_hit() {
     let full = bridge::bridge_cache_keys(
         &project,
         &interface,
-        "uniffi",
         "local",
         &[BridgeLang::Kotlin, BridgeLang::Swift],
     )

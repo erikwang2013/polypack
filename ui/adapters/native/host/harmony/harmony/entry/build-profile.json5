@@ -1,0 +1,20 @@
+{
+  "apiType": 'stageMode',
+  "buildOption": {
+    // RNOH native 从 har 源码在 app 构建期经 CMake 真编译（har 无预编译 .so，
+    // 见 src/main/cpp/CMakeLists.txt 的 add_subdirectory(RNOH_CPP_DIR)）
+    "externalNativeOptions": {
+      "path": "./src/main/cpp/CMakeLists.txt",
+      "arguments": "",
+    },
+  },
+  "targets": [
+    {
+      "name": "default",
+      "runtimeOS": "HarmonyOS"
+    },
+    {
+      "name": "ohosTest",
+    }
+  ]
+}

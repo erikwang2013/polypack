@@ -1,0 +1,26 @@
+{
+  "name": "@polypack/host-harmony",
+  "version": "0.1.0",
+  "private": true,
+  "description": "HarmonyOS/RNOH RN 宿主工程骨架（T-M3-01）：装配 @polypack/adapter-native + 桥产物挂载点",
+  "scripts": {
+    "start": "react-native start",
+    "harmony": "react-native run-harmony"
+  },
+  "dependencies": {
+    "@polypack/adapter-native": "file:../..",
+    "@react-native-oh/react-native-harmony": "0.84.3",
+    "react": "19.2.3",
+    "react-native": "0.84.1"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.25.2",
+    "@react-native-community/cli": "20.1.0",
+    "@react-native-oh/react-native-harmony-cli": "0.84.3",
+    "@react-native/babel-preset": "0.84.1",
+    "@react-native/metro-config": "0.84.1"
+  },
+  "engines": {
+    "node": ">= 22.11.0"
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "license": "ISC",
+  "devDependencies": {},
+  "name": "entry",
+  "description": "PolyPack RNOH 宿主 entry 模块（T-M3-01）",
+  "version": "1.0.0",
+  "dependencies": {
+  }
+}
