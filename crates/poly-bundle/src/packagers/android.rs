@@ -4,6 +4,10 @@
 //! --proto-format`（AAB 模块源）→ 补 `lib/<abi>` / `assets` / `classes.dex` → `zipalign`
 //! → 模块 zip → bundletool `build-bundle` / `validate` / `build-apks`。全程不依赖 Gradle。
 //!
+//! TV 变体（T-M4-04，`android-tv` / `fire-tv`，format `apk`）复用同一条链：差异只有生成清单
+//! 的 Leanback 三行（`android.software.leanback` / `android.hardware.touchscreen` / banner，
+//! 见 `generated_manifest`）与产物落点（未签名 APK）——不另起第二套 Android 打包。
+//!
 //! 签名不在本任务范围内（T-M2-09 接入），产物一律是**未签名**件；bundletool 缺席时如实降级
 //! （模块 zip + 未签名 APK，notes 写明未做 bundletool 步骤），绝不伪造 bundletool 结果。
 
@@ -22,8 +26,42 @@ use crate::zipwrite;
 /// AAB 打包器（`TargetSpec.package.format = "aab"`，builder `android-aapt2`）。
 pub struct AndroidAab;
 
+/// TV 变体打包器（`android-tv` / `fire-tv`；format `apk`，builder `android-aapt2`）。
+///
+/// 复用 [`AndroidAab`] 的整条内部链（T-M4-04）：差异只有生成清单的 Leanback 三行与最终
+/// 产物落点（未签名 APK；AAB / APK 集作为链中间产物照常落盘并进 notes）。字段即目标 id。
+pub struct AndroidTv(pub &'static str);
+
+/// 打包口径：AAB 目标与 TV 变体共用全部内部步骤，差异集中在此。
+#[derive(Clone, Copy)]
+struct Flavor {
+    /// 事件 / 产物 / 错误归属（`Packager::id()`）。
+    id: &'static str,
+    /// 打包格式（`aab` / `apk`）。
+    format: &'static str,
+    /// TV 清单（Leanback 三行 + TV banner 引用）。
+    tv: bool,
+}
+
+/// AAB 口径。
+const AAB_FLAVOR: Flavor = Flavor {
+    id: ANDROID,
+    format: AAB,
+    tv: false,
+};
+
+/// TV 口径（两目标的差异只有 id）。
+const fn tv_flavor(id: &'static str) -> Flavor {
+    Flavor {
+        id,
+        format: APK,
+        tv: true,
+    }
+}
+
 const ANDROID: &str = "android";
 const AAB: &str = "aab";
+const APK: &str = "apk";
 /// AAB 模块 zip 里清单的落点（bundletool 契约：根级 `manifest/AndroidManifest.xml`）。
 const MODULE_MANIFEST: &str = "manifest/AndroidManifest.xml";
 /// ABI 的固定呈现顺序（未显式指定 `abi_filters` 时的裁剪基准）。
@@ -50,9 +88,42 @@ impl Packager for AndroidAab {
     }
 
     fn plan(&self, inputs: &BundleInputs, spec: &TargetSpec) -> Result<BundlePlan, BundleError> {
-        check_format(spec, AAB)?;
+        AndroidAab::chain_plan(inputs, spec, AAB_FLAVOR)
+    }
+
+    fn package(&self, inputs: &BundleInputs, spec: &TargetSpec) -> Result<Artifact, BundleError> {
+        AndroidAab::chain_package(inputs, spec, AAB_FLAVOR)
+    }
+}
+
+impl Packager for AndroidTv {
+    fn id(&self) -> &'static str {
+        self.0
+    }
+
+    fn format(&self) -> &'static str {
+        APK
+    }
+
+    fn plan(&self, inputs: &BundleInputs, spec: &TargetSpec) -> Result<BundlePlan, BundleError> {
+        AndroidAab::chain_plan(inputs, spec, tv_flavor(self.0))
+    }
+
+    fn package(&self, inputs: &BundleInputs, spec: &TargetSpec) -> Result<Artifact, BundleError> {
+        AndroidAab::chain_package(inputs, spec, tv_flavor(self.0))
+    }
+}
+
+impl AndroidAab {
+    /// 口径参数化的计划体：`Packager::plan` 与 TV 变体（[`AndroidTv`]）共用同一实现。
+    fn chain_plan(
+        inputs: &BundleInputs,
+        spec: &TargetSpec,
+        flavor: Flavor,
+    ) -> Result<BundlePlan, BundleError> {
+        check_format(spec, flavor.format)?;
         // 生成的清单与 res 直接内插产品元数据：先过白名单校验（无 XML / 路径元字符）。
-        inputs.product.validate(AAB)?;
+        inputs.product.validate(flavor.id)?;
         let android = android_inputs(inputs);
         let tools = tools::resolve(&android)?;
         let stage = stage(inputs, &android, &tools);
@@ -65,7 +136,7 @@ impl Packager for AndroidAab {
             let has_icon = icon_mipmap(inputs, &android).is_some();
             let package = android_package(&inputs.product.identifier)?;
             let manifest =
-                generated_manifest(&inputs.product, &package, &android, &stage, has_icon);
+                generated_manifest(&inputs.product, &package, &android, &stage, has_icon, flavor);
             plan = plan.with_script(stage.manifest.clone(), manifest);
         }
         for script in generated_res(&inputs.product, &android, &stage) {
@@ -86,8 +157,13 @@ impl Packager for AndroidAab {
         Ok(plan)
     }
 
-    fn package(&self, inputs: &BundleInputs, spec: &TargetSpec) -> Result<Artifact, BundleError> {
-        let plan = self.plan(inputs, spec)?;
+    /// 口径参数化的打包体：落盘脚本 → 执行命令 → 汇总产物（与 `chain_plan` 同口径）。
+    fn chain_package(
+        inputs: &BundleInputs,
+        spec: &TargetSpec,
+        flavor: Flavor,
+    ) -> Result<Artifact, BundleError> {
+        let plan = AndroidAab::chain_plan(inputs, spec, flavor)?;
         let android = android_inputs(inputs);
         let tools = tools::resolve(&android)?;
         let stage = stage(inputs, &android, &tools);
@@ -107,6 +183,22 @@ impl Packager for AndroidAab {
         //    却可能悄悄丢资源（如 `warn: removing resource …:string/x without required default
         //    value`）——如实记进产物说明，不靠「不看就没错」。
         let mut notes = Vec::new();
+        if flavor.tv {
+            match (android.manifest.is_some(), has_tv_banner(&android)) {
+                (true, _) => notes.push(
+                    "TV 清单：使用输入清单，未注入 Leanback uses-feature / banner".to_string(),
+                ),
+                (false, true) => notes.push(
+                    "TV 清单：Leanback uses-feature + android:banner=\"@drawable/tv_banner\""
+                        .to_string(),
+                ),
+                (false, false) => notes.push(
+                    "TV 清单：Leanback uses-feature；未提供 drawable*/tv_banner.*，\
+                     android:banner 不写（不伪造资源）"
+                        .to_string(),
+                ),
+            }
+        }
         for command in aapt2_commands(&stage, &android, &tools) {
             let output = exec::run(&command)?;
             for line in String::from_utf8_lossy(&output.stderr).lines() {
@@ -180,7 +272,12 @@ impl Packager for AndroidAab {
                 stage.module.display()
             )),
         }
-        fsutil::file_artifact(ANDROID, AAB, &artifact_path, notes)
+        if flavor.tv {
+            // TV 产物 = 未签名 APK（签名阶段按 `<kebab>-<version>-unsigned.apk` 定位）；
+            // AAB / APK 集留在盘上作链证据，notes 已逐条列出。
+            artifact_path = stage.apk.clone();
+        }
+        fsutil::file_artifact(flavor.id, flavor.format, &artifact_path, notes)
     }
 }
 
@@ -364,16 +461,25 @@ fn with_source_date(mut command: Command) -> Command {
 ///
 /// `@string/app_name` 由生成的 `res/values/strings.xml`（无 `res` 输入时）或调用方的 res 提供；
 /// `hasCode` 按有无 dex 输入取真；图标仅在同时生成 mipmap 时才引用。
+/// TV 变体（`flavor.tv`）另加 Leanback 三行（T-M4-04 / ROADMAP §3.4）：
+/// `android.software.leanback` required=true、`android.hardware.touchscreen` required=false、
+/// `android:banner`（仅在输入 res 确有 `drawable*/tv_banner.*` 时引用——缺则省去，不伪造资源）。
 fn generated_manifest(
     product: &ProductInfo,
     package: &str,
     android: &AndroidInputs,
     stage: &Stage,
     has_icon: bool,
+    flavor: Flavor,
 ) -> String {
     let has_code = !android.dex_inputs.is_empty();
     let icon = if has_icon {
         " android:icon=\"@mipmap/ic_launcher\""
+    } else {
+        ""
+    };
+    let banner = if flavor.tv && has_tv_banner(android) {
+        " android:banner=\"@drawable/tv_banner\""
     } else {
         ""
     };
@@ -388,11 +494,37 @@ fn generated_manifest(
         "  <uses-sdk android:minSdkVersion=\"{}\" android:targetSdkVersion=\"{}\" />\n",
         android.min_sdk, stage.target_sdk
     ));
+    if flavor.tv {
+        out.push_str(
+            "  <uses-feature android:name=\"android.software.leanback\" android:required=\"true\" />\n",
+        );
+        out.push_str(
+            "  <uses-feature android:name=\"android.hardware.touchscreen\" android:required=\"false\" />\n",
+        );
+    }
     out.push_str(&format!(
-        "  <application android:label=\"@string/app_name\" android:hasCode=\"{has_code}\"{icon} />\n"
+        "  <application android:label=\"@string/app_name\" android:hasCode=\"{has_code}\"{icon}{banner} />\n"
     ));
     out.push_str("</manifest>\n");
     out
+}
+
+/// 输入 res 里是否存在 TV banner（`drawable*/tv_banner.*`——banner 是 Leanback 的显式资源，
+/// 通道与密度桶由 aapt2 编译期决定，这里只看顶层 `drawable*` 目录里是否有 `tv_banner.*`）。
+fn has_tv_banner(android: &AndroidInputs) -> bool {
+    android.res.iter().any(|root| {
+        let Ok(entries) = std::fs::read_dir(root) else {
+            return false;
+        };
+        entries.flatten().any(|dir| {
+            dir.file_name().to_string_lossy().starts_with("drawable")
+                && std::fs::read_dir(dir.path()).is_ok_and(|files| {
+                    files
+                        .flatten()
+                        .any(|file| file.file_name().to_string_lossy().starts_with("tv_banner."))
+                })
+        })
+    })
 }
 
 /// 生成的 `res/`（无 `res` 输入时）：`values/strings.xml` 的 `app_name`。
@@ -861,5 +993,106 @@ mod tests {
             ..android
         };
         assert_eq!(selected_abis(&filtered), ["x86_64"]);
+    }
+
+    /// TV 清单断言用的 Stage（纯路径推导，不触碰文件系统）。
+    fn tv_stage() -> Stage {
+        let root = PathBuf::from("stage");
+        Stage {
+            manifest: root.join("AndroidManifest.xml"),
+            compiled: Vec::new(),
+            generated_res: root.join("generated-res"),
+            linked: root.join("linked.apk"),
+            proto: root.join("proto.apk"),
+            dex_dir: root.join("dex"),
+            assembled: root.join("assembled.apk"),
+            module: root.join("base.zip"),
+            config: root.join("BundleConfig.json"),
+            apk: root.join("out-unsigned.apk"),
+            aab: root.join("out.aab"),
+            apks: root.join("out.apks"),
+            version_code: 10203,
+            version_name: "1.2.3".to_string(),
+            target_sdk: 36,
+            root,
+        }
+    }
+
+    fn tv_product() -> ProductInfo {
+        ProductInfo {
+            name: "Pax Notes".to_string(),
+            version: "1.2.3".to_string(),
+            identifier: "com.polypack.paxnotes".to_string(),
+            manufacturer: "PolyPack".to_string(),
+            description: "Pax 示例笔记应用".to_string(),
+            homepage: None,
+        }
+    }
+
+    #[test]
+    fn tv_manifest_carries_leanback_lines_and_optional_banner() {
+        let stage = tv_stage();
+        let product = tv_product();
+        let package = android_package(&product.identifier).expect("可映射");
+
+        // 无 res 输入（生成 res）：Leanback 两行在、banner 不写（不伪造资源）；AAB 口径不受影响。
+        let android = AndroidInputs::default();
+        let tv = generated_manifest(
+            &product,
+            &package,
+            &android,
+            &stage,
+            false,
+            tv_flavor("android-tv"),
+        );
+        assert!(
+            tv.contains(
+                "<uses-feature android:name=\"android.software.leanback\" android:required=\"true\" />"
+            ),
+            "{tv}"
+        );
+        assert!(
+            tv.contains(
+                "<uses-feature android:name=\"android.hardware.touchscreen\" android:required=\"false\" />"
+            ),
+            "{tv}"
+        );
+        assert!(!tv.contains("android:banner"), "{tv}");
+        let aab = generated_manifest(&product, &package, &android, &stage, false, AAB_FLAVOR);
+        assert!(!aab.contains("leanback") && !aab.contains("touchscreen"), "{aab}");
+
+        // 输入 res 里画了 drawable*/tv_banner.*：banner 引用出现；无 tv_banner 的 res 仍不写。
+        let base = std::env::temp_dir().join(format!("poly-tv-banner-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&base);
+        let drawable = base.join("res/drawable-xhdpi");
+        std::fs::create_dir_all(&drawable).expect("建 drawable");
+        std::fs::write(drawable.join("tv_banner.png"), b"png").expect("写 banner");
+        let with_banner = AndroidInputs {
+            res: vec![base.join("res")],
+            ..AndroidInputs::default()
+        };
+        assert!(has_tv_banner(&with_banner));
+        let manifest = generated_manifest(
+            &product,
+            &package,
+            &with_banner,
+            &stage,
+            false,
+            tv_flavor("fire-tv"),
+        );
+        assert!(
+            manifest.contains("android:banner=\"@drawable/tv_banner\""),
+            "{manifest}"
+        );
+
+        let elsewhere = base.join("res2/drawable");
+        std::fs::create_dir_all(&elsewhere).expect("建 drawable");
+        std::fs::write(elsewhere.join("ic_launcher.png"), b"png").expect("写图标");
+        let no_banner = AndroidInputs {
+            res: vec![base.join("res2")],
+            ..AndroidInputs::default()
+        };
+        assert!(!has_tv_banner(&no_banner));
+        let _ = std::fs::remove_dir_all(&base);
     }
 }

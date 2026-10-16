@@ -5,7 +5,8 @@ use std::collections::BTreeSet;
 use poly_targets::spec::id_is_valid;
 use poly_targets::{Host, Registry, SpecError, TargetRegistry, TargetRequest, TargetSpec};
 
-/// 内建目标（L1 七 + L2 小程序族四 + L3 web 系 TV 四）+ 一个 L7 占位目标（用于覆盖厂商授权排除分支）。
+/// 内建目标（L1 七 + L2 小程序族四 + L3 电视族七）+ 一个 L7 占位目标
+/// （用于覆盖厂商授权排除分支）。
 fn registry_with_l7() -> Registry {
     let mut specs = poly_targets::builtin::builtin();
     specs.push(TargetSpec::new_stub("vendor-console", 7, &[Host::Linux]));
@@ -32,6 +33,7 @@ fn all_on_linux_excludes_windows_only_and_l7_with_reasons() {
     assert_eq!(
         selected,
         // L1 宿主可达者 + L2 小程序族四（Taro 编译不绑定本地宿主，任何宿主下都入选）
+        // + L3 电视两（均不绑定本地宿主，任何宿主下都入选）
         // + L3 web 系 TV 四（T-M4-08/09/10，web 运行时三宿主全可达）
         BTreeSet::from([
             "android",
@@ -42,6 +44,8 @@ fn all_on_linux_excludes_windows_only_and_l7_with_reasons() {
             "alipay",
             "douyin",
             "quickapp",
+            "android-tv",
+            "fire-tv",
             "tizen-tv",
             "webos-tv",
             "vidaa-tv",
@@ -140,14 +144,14 @@ fn allow_unreachable_keeps_all_targets() {
     let selected = selected_ids(&registry_with_l7(), &[Host::Linux], true);
     assert_eq!(
         selected.len(),
-        17, // L1 七 + L2 四 + L3 电视族五 + L7 一
+        19, // L1 七 + L2 四 + L3 电视族七 + L7 一
         "allow_unreachable 下 All 应全选: {selected:?}"
     );
 
     // 未开 allow_unreachable 时排除清单非空，两态互为对照
     assert_eq!(
         selected_ids(&registry_with_l7(), &[Host::Linux], false).len(),
-        12 // L1 四（Linux 可达）+ L2 四 + L3 web 系 TV 四
+        14 // L1 四（Linux 可达）+ L2 四 + L3 两 + L3 web 系 TV 四
     );
 }
 
