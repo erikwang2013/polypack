@@ -13,8 +13,8 @@ poly-core.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
-# 载荷契约 base64(JSON)；与 keyring 的传递依赖同主版本，共用同一份编译产物。
-base64 = "0.22"
+# 载荷契约 base64(JSON)；版本统一在根清单 workspace.dependencies（poly-cli / poly-publish 共用同一份编译产物）。
+base64.workspace = true
 
 # 真实 Vault HTTP 客户端（T-M2-11 真环境闭环，`vault server -dev`）。**关默认特性**：
 # 默认的 `rustls` 特性会拉 webpki-roots / webpki-root-certs（许可证 CDLA-Permissive-2.0，

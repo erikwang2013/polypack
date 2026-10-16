@@ -16,13 +16,11 @@ path = "src/main.rs"
 poly-bundle.workspace = true
 poly-cache.workspace = true
 poly-core.workspace = true
-# T-M3-12：提审薄层走 poly-publish 的零分叉驱动；此 crate 尚未进 workspace.dependencies
-# 表（首个消费者），先用路径依赖——lead 若要统一表格式我再翻。
-poly-publish = { path = "../poly-publish" }
-poly-sign = { workspace = true }
+poly-publish.workspace = true
+poly-sign.workspace = true
 poly-targets.workspace = true
 poly-toolchain.workspace = true
-base64 = "0.22"
+base64.workspace = true
 clap.workspace = true
 serde_json.workspace = true
 

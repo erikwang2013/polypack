@@ -14,8 +14,8 @@ serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
 blake3.workspace = true
-# 载荷契约 base64(JSON)；与 poly-sign 同主版本，共用同一份编译产物。
-base64 = "0.22"
+# 载荷契约 base64(JSON)；版本统一在根清单 workspace.dependencies（poly-cli / poly-sign 共用同一份编译产物）。
+base64.workspace = true
 # 代码包 zip（小程序上传体）；与 poly-bundle 同版本同 feature，不引入新的第三方树。
 zip = { workspace = true }
 # 上传体 gzip（微信 servicewechat 上传口径：pack 后的容器 gzip 再 POST）。
