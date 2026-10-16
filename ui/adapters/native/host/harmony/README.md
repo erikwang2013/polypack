@@ -31,7 +31,7 @@ RNOH 工程结构约定：**DevEco 工程在 JS 工程根下一层**（CMake 的
 
 ```text
 EntryAbility(RNAbility, PaxApp) → pages/Index(RNApp appKey=PaxApp) → AppRegistry → host/harmony/index.js
-  ├─ createAdapter({ target: "harmony", runtime: RN, host: { pointer } })  # pointer ← app.json polypack.pointer
+  ├─ createAdapter({ target: "harmonyos", runtime: RN, host: { pointer } })  # pointer ← app.json polypack.pointer
   ├─ createExampleApp(RN, adapter) → App / onKey（方向键遍历 + Back 焦点记忆）
   ├─ adapter.mount({ appKey: "PaxApp" }, App)
   ├─ polyKeyEvent / hardwareBackPress → onKey → hilog(ReactNativeJS) `POLYPACK_KEY {…}`（走查通道）
