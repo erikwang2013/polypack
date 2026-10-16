@@ -3,7 +3,7 @@
 > 派生自 [ROADMAP.md](ROADMAP.md) §9 的里程碑分解；由 4 人规划小组并行产出、交叉对账后合并：**116 个任务**，跨里程碑引用经「存在性 + 描述匹配」两轮校验零悬空，中英任务 ID 逐一对齐。
 > 英文版：[TASKS.en.md](TASKS.en.md)。本文件受「文档同步约定」管辖（见 ROADMAP §11）：任务增删须双文件同一次提交更新，并由 T-M0-10 的结构级校验器在 CI 拦截漂移。
 > 扩展方向（E1–E8）已立项孵化，不占本任务表：见 [ROADMAP.md](ROADMAP.md) §13。
-> 进度（2026-10-15）：**M0 11/11** · **M1 已交付 15/15**（11 项 ✅；T-M1-02/05/06/07 的对应 CI 腿已全绿，余下工具级注记见任务条目）· **M2 已交付 15/15**（8 项 ✅：T-M2-02/06/07/08/09/11/14/15；T-M2-01/03/04/05/10/12/13 带宿主/阶段/设置注记，逐项见任务条目）· **CI 三宿主全绿**（rust-ci#38654820649）+ M2 新增四工作流（secret-scan 三宿主 / mobile-contract mock+夜跑真列 / bridge 夜跑真跑）。
+> 进度（2026-10-16）：**M0 11/11** · **M1 已交付 15/15**（11 项 ✅；T-M1-02/05/06/07 的对应 CI 腿已全绿，余下工具级注记见任务条目）· **M2 已交付 15/15**（8 项 ✅：T-M2-02/06/07/08/09/11/14/15；T-M2-01/03/04/05/10/12/13 带宿主/阶段/设置注记，逐项见任务条目）· **CI 三宿主全绿**（rust-ci#38654820649）+ M2 新增四工作流（secret-scan 三宿主 / mobile-contract mock+夜跑真列 / bridge 夜跑真跑）· **M3 进行中（3/12）**：T-M3-05/06/07 已交付，逐项见任务条目。
 
 ## 团队编制与角色
 
@@ -420,7 +420,7 @@
 - 交付物: `poly-sign` 鸿蒙链路：hap-sign-tool 签名（证书/Profile 经凭据引用）+ 签名校验 + HAP 结构检查接入 verify 阶段。
 - 验收: 示例 HAP 在 DevEco 模拟器/真机签名安装并启动；签名校验命令绿灯；凭据全程引用化（无明文入库）。
 
-### T-M3-05 · @polypack/adapter-taro v0
+### T-M3-05 · ✅ @polypack/adapter-taro v0（mount 路由绑定制 + 能力矩阵降级 + API 白名单构建期拒绝；poly-targets 增 L2 小程序族四目标声明；宿主工程落 ui/adapters/taro/host + 结构测试；node --test 36 项 + poly-targets 11 项全绿；devtools 预览腿无工具链=SKIP-with-print 注记）
 
 - 角色: ui-adapters
 - 依赖: T-M2-04（capabilities 契约与降级模式）
@@ -428,7 +428,7 @@
 - 交付物: `@polypack/adapter-taro` v0：React 语法页面在 Taro 渲染器的 `mount` 契约、小程序族 capabilities 降级（无 DOM 直连、生命周期与路由映射）与 tokens 蒙皮。
 - 验收: 同一页面组件树在 Taro（微信目标）开发者工具预览中渲染；降级路径有断言测试；越出宿主 API 白名单的调用在构建期被拒。
 
-### T-M3-06 · Taro 构建管线接入（微信/支付宝/抖音/快应用目标）
+### T-M3-06 · ✅ Taro 构建管线接入（微信/支付宝/抖音/快应用目标）（poly-bundle 小程序族四打包器 + poly-cli package 臂；真跑 weapp 301,644B / alipay 250,110B / tt 244,864B；快应用工程过 hap-toolkit 2.1.1 真 build 出 .rpk；描述符归一 miniprogramRoot=./dist/ 且 tt 源 project.tt.json→产物 project.config.json；wasm 出口四文件随包（wechat 22 / alipay 19 / douyin 19 / quickapp 10 条目）；二跑缓存 hit 2/2；contract_m3 mock 5 + real 四端 146.33s；node 41/41 含 host 结构测试；devtools 预览腿无工具链=SKIP-with-print 注记）
 
 - 角色: packagers
 - 依赖: T-M3-05、T-M1-05
@@ -436,7 +436,7 @@
 - 交付物: `poly-bundle` 小程序打包器：Taro 编译四目标配置 + 代码包组装，体积/API 白名单预检钩子留给 T-M3-08 接入。
 - 验收: Taro 四目标编译产物齐备（快应用仅到编译工程，`.rpk` 由平台工具链环节处理）；微信/支付宝/抖音代码包可被对应开发者工具打开预览；二跑缓存命中。
 
-### T-M3-07 · wasm 核心进小程序沙箱（wasm-bindgen + API 面白名单）
+### T-M3-07 · ✅ wasm 核心进小程序沙箱（wasm-bindgen + API 面白名单）（`poly bridge wasm`：UDL → 白名单两道闸（生成期 E_BRIDGE_0004 / 加载期 loader 核函数面与导入模块）→ shim → cargo wasm32；真跑 56,445B wasm 在 Node 沙箱内 greet→"hello, world"、导入表仅胶水自身模块、负例 ×3、二跑缓存字节一致；wasm-bindgen 0.2.129 落 ~/.cache/polypack/tools；产物 <root>/bridge/wasm-bindgen/ 四文件随代码包分发）
 
 - 角色: core
 - 依赖: T-M2-01

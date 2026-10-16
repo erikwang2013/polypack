@@ -3,7 +3,7 @@
 > Derived from the milestone breakdown in [ROADMAP.en.md](ROADMAP.en.md) §9; produced in parallel by a four-person planning group and merged after cross-reconciliation: **116 tasks**, all cross-milestone references verified in two passes (existence + description match, zero dangling), Chinese/English task IDs aligned one-to-one.
 > Chinese original: [TASKS.md](TASKS.md). This file falls under the documentation sync convention (ROADMAP §11): task additions/removals must land in both files in the same commit, and drift is caught in CI by the structural checker delivered in T-M0-10.
 > Extension directions (E1–E8) are incubated and intentionally absent from this task table — see [ROADMAP.en.md](ROADMAP.en.md) §13.
-> Progress (2026-10-15): **M0 11/11** · **M1 delivered 15/15** (11 ✅; the matching CI legs for T-M1-02/05/06/07 are green — remaining tool-level notes live in the task entries) · **M2 delivered 15/15** (8 ✅: T-M2-02/06/07/08/09/11/14/15; T-M2-01/03/04/05/10/12/13 carry host/stage/settings notes — see each entry) · **CI green on all three hosts** (rust-ci#38654820649) plus four new M2 workflows (secret-scan ×3 hosts / mobile-contract mock-per-push + nightly real / bridge nightly real).
+> Progress (2026-10-16): **M0 11/11** · **M1 delivered 15/15** (11 ✅; the matching CI legs for T-M1-02/05/06/07 are green — remaining tool-level notes live in the task entries) · **M2 delivered 15/15** (8 ✅: T-M2-02/06/07/08/09/11/14/15; T-M2-01/03/04/05/10/12/13 carry host/stage/settings notes — see each entry) · **CI green on all three hosts** (rust-ci#38654820649) plus four new M2 workflows (secret-scan ×3 hosts / mobile-contract mock-per-push + nightly real / bridge nightly real) · **M3 in progress (3/12)**: T-M3-05/06/07 delivered — see each entry.
 
 ## Team roster
 
@@ -420,7 +420,7 @@
 - Deliverable: `poly-sign` HarmonyOS chain: hap-sign-tool signing (certificate/profile via credential references) + signature verification + HAP structure check wired into the verify stage.
 - Acceptance: the sample HAP signs, installs and launches on a DevEco emulator/device; the verification command is green; credentials stay references end to end (no plaintext in-repo).
 
-### T-M3-05 · @polypack/adapter-taro v0
+### T-M3-05 · ✅ @polypack/adapter-taro v0 (mount route binding + capability-matrix degradation + build-time API-whitelist rejection; poly-targets gains the four L2 mini-program targets; host project at ui/adapters/taro/host with structure tests; node --test 36 + poly-targets 11 green; devtools preview leg SKIP-with-print — no toolchain)
 
 - Role: ui-adapters
 - Deps: T-M2-04 (capabilities contract and degradation pattern)
@@ -428,7 +428,7 @@
 - Deliverable: `@polypack/adapter-taro` v0: the `mount` contract for React-syntax pages on the Taro renderer, mini-program-family capability degradation (no direct DOM access, lifecycle and routing mapping) and token skinning.
 - Acceptance: the same page component tree renders in the Taro (WeChat target) devtools preview; degradation paths carry assertion tests; calls outside the host API allowlist are rejected at build time.
 
-### T-M3-06 · Taro build pipeline integration (WeChat/Alipay/Douyin/Quick App targets)
+### T-M3-06 · ✅ Taro build pipeline integration (WeChat/Alipay/Douyin/Quick App targets) (poly-bundle mini-program family: four packagers + poly-cli package arm; real runs weapp 301,644 B / alipay 250,110 B / tt 244,864 B; Quick App project really built by hap-toolkit 2.1.1 into .rpk; descriptor normalized miniprogramRoot=./dist/ and tt source project.tt.json→product project.config.json; the four wasm-outlet files ship inside the bundle (wechat 22 / alipay 19 / douyin 19 / quickapp 10 entries); second-run cache hit 2/2; contract_m3 mock 5 + real four ends 146.33 s; node 41/41 incl. host structure tests; devtools preview leg SKIP-with-print — no toolchain)
 
 - Role: packagers
 - Deps: T-M3-05, T-M1-05
@@ -436,7 +436,7 @@
 - Deliverable: `poly-bundle` mini-program packager: Taro compile configs for the four targets + bundle assembly, leaving the size/API-allowlist pre-check hook for T-M3-08.
 - Acceptance: compile output exists for all four Taro targets (Quick App stops at the compile project; the `.rpk` is handled by the platform toolchain step); WeChat/Alipay/Douyin bundles open in their devtools; the second run hits the cache.
 
-### T-M3-07 · wasm core into the mini-program sandbox (wasm-bindgen + API allowlist)
+### T-M3-07 · ✅ wasm core into the mini-program sandbox (wasm-bindgen + API allowlist) (`poly bridge wasm`: UDL → two-gate whitelist (generation-time E_BRIDGE_0004 / load-time loader checks function surface and import modules) → shim → cargo wasm32; real run 56,445 B wasm inside a Node sandbox, greet→"hello, world", imports only the glue's own module, negatives ×3, byte-identical second-run cache; wasm-bindgen 0.2.129 under ~/.cache/polypack/tools; the four-file product at <root>/bridge/wasm-bindgen/ ships with the code package)
 
 - Role: core
 - Deps: T-M2-01
