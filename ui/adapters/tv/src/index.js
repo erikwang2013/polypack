@@ -16,16 +16,20 @@ export {
 } from "./capabilities.js";
 export { SAFE_AREA, TV_SCALE, platformStyle, safeAreaInsets, tokens } from "./tokens.js";
 export {
+  BACK_KEYS,
   DIRECTIONS,
   KEY_MAP,
   createFocusEngine,
   createTvFocus,
   handleKey,
+  handleTvKey,
   hasNoDeadEnds,
   reachableFrom,
   traversalSnapshot,
 } from "./focus.js";
 export { checkConnectivity, deriveFocusNodes } from "./geometry.js";
+export { createLayerStack } from "./layers.js";
+export { createShortcutMap, normalizeShortcutKey } from "./shortcuts.js";
 
 /**
  * 创建目标适配器（RendererAdapter 契约对象）。
