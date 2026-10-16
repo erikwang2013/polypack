@@ -1,7 +1,9 @@
 // T-M4-14 鸿蒙 TV 冒烟（本地真跑层）：
 //   ① 宿主 TV 结构快照（≡ M3 宿主，差异仅 TV 行：deviceTypes tv / TV 能力提示 / 安全区外框）；
-//   ② 键序内核推导对拍（键序列与期望值由 adapter-tv 共享内核现场推导，≡ device-walks 对拍数据）；
-//   ③ 行为对拍（react 在场时）：同一键序在 RNOH TV 形态与 adapter-tv 下同描述符 / 同焦点 / 同计数；
+//   ② 键序内核推导对拍（键序列与期望值由 adapter-tv 共享内核现场推导，≡ device-walks 对拍数据）
+//      + T-M4-02 连通性检查器作用于宿主图与 TV 参考网格（0 孤立 / 0 陷阱 / 全可达）；
+//   ③ 行为对拍（react 在场时）：走查键序在 RNOH TV 形态页逐键履约；同键名序列在 RNOH 与
+//      adapter-tv 参考页各自图上 ≡ 内核推导落点（规则同源、示例图各自），焦点环恰一处随焦点；
 //   ④ 目标分辨率（1080p/4K）下 TV 安全区无遮挡核对（adapter-tv safeAreaInsets 单一源换算）。
 // 设备腿（HAP 安装启动 + 遥控器键走查）本机阻塞：无 HarmonyOS 设备/模拟器（hdc 无目标）——
 // SKIP-with-print 附执行清单（末项，键码现场取自宿主键表），走查手册见 ../device-walks/README.md「鸿蒙 TV」段。
@@ -27,6 +29,8 @@ import {
   safeAreaInsets,
 } from "../../tv/src/index.js";
 import * as tvKernel from "../../tv/src/focus.js";
+// tv 参考页宿主域 2×2 网格（原样别名，避免与 adapter-native 的 EXAMPLE_FOCUS_NODES 同名混淆）
+import { EXAMPLE_FOCUS_NODES as TV_GRID_NODES } from "../../tv/src/example-nodes.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const HOST = path.resolve(HERE, "../host/harmony");
@@ -181,6 +185,26 @@ test("键序内核推导对拍：adapter-tv 内核 ≡ RNOH 宿主内核（同�
   const engine = fresh();
   assert.ok(tvKernel.hasNoDeadEnds(engine.graph), "遍历图无死路");
   assert.deepEqual(tvKernel.reachableFrom(engine.graph, "counter"), [...engine.order], "初始焦点可达全图");
+
+  // T-M4-02 连通性检查器（adapter-tv 焦点系统 API）作用于两图：宿主图（RNOH TV 形态实际走的图）
+  // 与 TV 参考网格（createTvFocus 几何推导）——均须 0 孤立 / 0 陷阱 / 全可达
+  assert.deepEqual(tvKernel.checkConnectivity(engine.graph, { from: "counter" }), {
+    from: "counter",
+    total: 2,
+    reachable: ["counter", "reset"],
+    isolated: [],
+    traps: [],
+    connected: true,
+  });
+  const tvRef = tvKernel.createTvFocus({ nodes: TV_GRID_NODES, initial: "counter" });
+  assert.deepEqual(tvKernel.checkConnectivity(tvRef.graph), {
+    from: "counter",
+    total: 4,
+    reachable: ["counter", "reset", "detail", "exit"],
+    isolated: [],
+    traps: [],
+    connected: true,
+  });
 });
 
 test("TV 分辨率与安全区核对：1080p/4K 换算 ≡ 四边 5%（自 SAFE_AREA 派生复核）且内容盒容下页卡", () => {
@@ -212,7 +236,7 @@ test("TV 分辨率与安全区核对：1080p/4K 换算 ≡ 四边 5%（自 SAFE_
   assert.throws(() => safeAreaInsets({ width: 0, height: 1080 }), /需视口 width/, "非法视口快速失败");
 });
 
-test("行为对拍（react 在场）：同一键序在 RNOH TV 形态与 adapter-tv 下同描述符/同焦点/同计数；焦点环恰一处随焦点", { skip }, async () => {
+test("行为对拍（react 在场）：走查键序在 RNOH TV 形态页逐键履约；同键名序列在 RNOH / adapter-tv 参考页各自图上 ≡ 内核推导落点，焦点环恰一处随焦点", { skip }, async () => {
   const rnAdapter = createNativeAdapter({
     target: "harmonyos",
     runtime: stubRuntime,
@@ -228,31 +252,50 @@ test("行为对拍（react 在场）：同一键序在 RNOH TV 形态与 adapter
   const makeRn = () => mods.nativeExample.createExampleApp(mods.nativeDom.createDomPrimitives(mods.react), rnAdapter);
   const makeTv = () => mods.tvExample.createExamplePage(mods.tvDom.createDomPrimitives(tvReactMods.react), tvAdapter);
 
-  // 同键序三段对拍：描述符 / 焦点 / 计数（counts 期望来自 walks.mjs，独立于实现）
+  // ① RNOH TV 形态：走查键序逐键履约 device-walks 对拍数据（焦点 / 计数）——页状态层独立验证
   for (const walk of WALKS) {
-    const rn = makeRn();
-    const tv = makeTv();
+    const golden = EXPECTATIONS.walks.find((w) => w.id === walk.id);
+    const page = makeRn();
     walk.keys.forEach((key, index) => {
-      assert.deepEqual(rn.onKey(key), tv.onKey(key), `${walk.id}[${index}]: ${key} 描述符分歧`);
-      assert.deepEqual(rn.getState(), tv.getState(), `${walk.id}[${index}]: ${key} 后状态分歧`);
-      assert.equal(rn.getState().clicks, walk.clicks[index], `${walk.id}[${index}]: clicks 履约`);
+      page.onKey(key);
+      assert.equal(page.getState().focus, golden.expect.focus[index], `${walk.id}[${index}]: ${key} 后焦点漂移`);
+      assert.equal(page.getState().clicks, walk.clicks[index], `${walk.id}[${index}]: clicks 履约`);
     });
   }
 
-  // 焦点环行为：恰一处、随焦点移动。RN 代理原语不透传 data-focus（M3 口径）→ RN 侧以环色判定；
-  // adapter-tv 代理原语透传 data-focus → 帧内恰一（T-M4-13 观测锚点通道）。
+  // ② 双宿主对拍（T-M3-02 做法）：同键名序列在各自图上由内核现场推导落点（RNOH 2 节点环 /
+  //    adapter-tv 参考页 2×2 网格），页状态须 ≡ 推导（行为同规则，图各自）；回绝「两页同态」式
+  //    对拍——两宿主示例图已分道（T-M4-02 起 TV 侧为 4 节点网格），同一的是键名 / 规则 / 内核。
   const rn = makeRn();
   const tv = makeTv();
-  // 各侧渲染用各侧成对的 react + react-dom（跨包混用会在双副本布局下触发 hooks 派发器为 null）
+  const rnEngine = nativeKernel.createFocusEngine({ nodes: EXAMPLE_FOCUS_NODES, initial: "counter" });
+  const tvEngine = tvKernel.createTvFocus({ nodes: TV_GRID_NODES, initial: "counter" });
+  const SEQ = ["DPAD_CENTER", "DPAD_DOWN", "DPAD_RIGHT", "DPAD_UP", "DPAD_LEFT", "DPAD_DOWN", "DPAD_DOWN"];
+  for (const key of SEQ) {
+    nativeKernel.handleKey(rnEngine, key, { activate: () => {} });
+    tvKernel.handleKey(tvEngine, key, { activate: () => {} });
+    rn.onKey(key);
+    tv.onKey(key);
+    assert.equal(rn.getState().focus, rnEngine.current, `${key}: RNOH 页焦点 ≠ 内核推导落点`);
+    assert.equal(tv.getState().focus, tvEngine.current, `${key}: adapter-tv 页焦点 ≠ 内核推导落点`);
+  }
+  assert.equal(rn.getState().clicks, 1, "中心键在 counter 上激活一次（RNOH）");
+  assert.equal(tv.getState().clicks, 1, "中心键在 counter 上激活一次（adapter-tv）");
+
+  // 焦点环行为：恰一处、随焦点移动（当前焦点各为 RNOH reset / TV detail，取自推导落点）。
+  // RN 代理原语不透传 data-focus（M3 口径）→ RN 侧以环色判定；adapter-tv 代理原语透传 data-focus
+  // → 帧内恰一（T-M4-13 观测锚点通道）。各侧渲染用各侧成对的 react + react-dom（跨包混用会在
+  // 双副本布局下触发 hooks 派发器为 null）。
   const renderRn = () => mods.server.renderToStaticMarkup(mods.react.createElement(rn.App));
   const renderTv = () => tvReactMods.server.renderToStaticMarkup(tvReactMods.react.createElement(tv.Page));
   const countRing = (html) => (html.match(new RegExp(ACCENT, "gi")) ?? []).length;
-  assert.equal(countRing(renderRn()), 1, "RNOH：初始环恰一处");
-  assert.equal(countRing(renderTv()), 1, "adapter-tv：初始环恰一处");
-  assert.ok(ringOn(renderRn(), "counter") && ringOn(renderTv(), "counter"), "初始环在 counter");
-  rn.onKey("DPAD_DOWN");
-  tv.onKey("DPAD_DOWN");
-  assert.ok(ringOn(renderRn(), "reset") && ringOn(renderTv(), "reset"), "DOWN 后环随焦点到 reset");
+  const rnFocused = rn.getState().focus;
+  const tvFocused = tv.getState().focus;
+  assert.notEqual(rnFocused, "counter", "序列后焦点已离开初始节点（否则环断言退化）");
+  assert.equal(countRing(renderRn()), 1, "RNOH：环恰一处");
+  assert.equal(countRing(renderTv()), 1, "adapter-tv：环恰一处");
+  assert.ok(ringOn(renderRn(), rnFocused), `RNOH：环随焦点在 ${rnFocused}`);
+  assert.ok(ringOn(renderTv(), tvFocused), `adapter-tv：环随焦点在 ${tvFocused}`);
   assert.ok(!ringOn(renderRn(), "counter") && !ringOn(renderTv(), "counter"), "原焦点无环");
   assert.equal((renderTv().match(/data-focus="true"/g) ?? []).length, 1, "adapter-tv：data-focus 每帧恰一");
 

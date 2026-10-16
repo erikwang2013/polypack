@@ -110,6 +110,39 @@ adb -s emulator-5554 shell input keyevent KEYCODE_DPAD_DOWN
 3. **`testID`**：示例页键节点 `testID="counter"` / `"reset"`（= 焦点节点 id）→ 真机
    uiautomator `resource-id`、代理渲染 `data-testid`（同名同源，`test/render.test.js` 断言其存在）。
 
+## 鸿蒙 TV（T-M4-14，hdc 等价）
+
+同一份对拍数据在 HarmonyOS 宿主的等价执行：键名与期望值全同，`hdc` 替代 `adb`，观测走 hilog。
+TV HAP 前置 `app.json` 的 `polypack.tv=true`（宿主 TV 形态：pointer none + gestures false；
+`module.json5` 的 `deviceTypes` 已含 `tv`），打包/签名复用 M3 链（`poly build --target harmonyos`）。
+
+```sh
+hdc shell aa force-stop com.polypack.host
+hdc shell aa start -b com.polypack.host -a EntryAbility
+hdc shell uitest uiInput keyEvent 2013          # DPAD_DOWN，见下表
+hdc shell hilog -x | grep -o 'POLYPACK_KEY .*'
+```
+
+| 内核键 | hdc keyEvent | OHOS KeyCode |
+|---|---|---|
+| `DPAD_UP` | `2012` | KEYCODE_DPAD_UP |
+| `DPAD_DOWN` | `2013` | KEYCODE_DPAD_DOWN |
+| `DPAD_LEFT` | `2014` | KEYCODE_DPAD_LEFT |
+| `DPAD_RIGHT` | `2015` | KEYCODE_DPAD_RIGHT |
+| `DPAD_CENTER` | `2016` / `2054` / `2050` | CENTER / ENTER / SPACE |
+| `Back` | `uitest uiInput keyEvent Back` | KEYCODE_BACK=2（不经键表；EntryAbility.onBackPressed → `hardwareBackPress`，避免双计） |
+
+- 一次 `keyEvent` = Down+Up 两帧，宿主只消费 Down（同 android 口径）；焦点环差分采样同 android
+  配方（真机取帧 + `uitest dumpLayout` 取 bounds，环宽同为 2dp；具体取帧命令随设备腿补全）。
+- 观测通道：hilog tag `ReactNativeJS`，每键一行 `POLYPACK_KEY <json>`（单参数 = `onKey` 描述符
+  JSON；与 android logcat / adapter-tv「宿主记录口径」同形，见 `ui/adapters/tv/README.md`）。
+- 比对：逐键 `expect.focus` / `expect.clicks` ≡ `expectations.json`；TV 形态页面另包
+  `tv-frame` 百分比安全区容器（adapter-tv `platformStyle().safeArea` 单一源；1080p = 四边
+  54/96px），窗口尺寸可用 `hdc shell hidumper -s WindowManagerService` 核对。
+- **本机阻塞**：无 HarmonyOS 设备/模拟器（`hdc list targets` = `[Empty]`），本节命令未真跑；
+  本地替代证据见 `../test/harmony-tv-smoke.test.js`（结构快照 + 键序内核推导对拍 + 安全区换算，
+  设备腿 SKIP-with-print 打印本清单）。
+
 ## 边界与已知限制（如实）
 
 - **已在模拟器真跑**（2026-10-16，AVD polypack-test / emulator-5554，320x640@mdpi）：六走查
