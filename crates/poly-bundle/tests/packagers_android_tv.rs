@@ -5,6 +5,10 @@
 //! 断言 Leanback / touchscreen 行、bundletool validate、apksigner verify）→ 有 TV 设备
 //! （声明 `android.software.leanback`）时安装 + 冷启动冒烟。
 //!
+//! T-M4-05 真跑腿（同文件）：TV 设备上以 RN 宿主走完内核派生焦点导航走查（启动 → 遍历 →
+//! 激活 → Back 返回），执行器 `ui/adapters/native/device-walks/run-walk.mjs`（期望现场从
+//! 内核推导），日志归档 `target/tv-smoke-logs/`。
+//!
 //! 工具与设备无关性：Android SDK / adb / 设备都可能缺席（CI 三宿主）→ 打印 SKIP 后通过，
 //! 绝不红，也绝不伪造真跑；非 TV 设备装不上 leanback required=true 的 APK → 按「阻塞（设备）」
 //! 如实 SKIP，不误判产物。
@@ -710,4 +714,101 @@ fn tv_install_smoke_on_device() {
 
     let _ = adb(&["shell", "am", "force-stop", PKG]);
     let _ = adb(&["uninstall", PKG]);
+}
+
+/// 所连设备序列号（`adb devices` 首台 `device` 状态；`unauthorized` / `offline` 不算）。
+fn device_serial() -> Option<String> {
+    let out = Command::new("adb").arg("devices").output().ok()?;
+    String::from_utf8_lossy(&out.stdout)
+        .lines()
+        .skip(1)
+        .find_map(|line| line.trim_end().strip_suffix("\tdevice").map(str::to_string))
+}
+
+/// RN 宿主 TV 冒烟包（release = 内嵌 JS bundle，无 Metro 依赖）：`POLYPACK_TV_HOST_APK`
+/// 优先，否则取宿主工程默认出包路径。TV 形态 = 编译前 `host/app.json` 的
+/// `polypack.pointer="none"`（无指针；焦点环由 capabilities 声明驱动渲染）。
+fn host_apk() -> Option<PathBuf> {
+    if let Some(path) = std::env::var_os("POLYPACK_TV_HOST_APK") {
+        let path = PathBuf::from(path);
+        return path.is_file().then_some(path);
+    }
+    let path = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../ui/adapters/native/host/android/app/build/outputs/apk/release/app-release.apk");
+    path.is_file().then_some(path)
+}
+
+/// 走查日志归档目录（CI 收集用）：`POLY_TV_SMOKE_LOGS` > `CARGO_TARGET_DIR/tv-smoke-logs`
+/// > `<仓库根>/target/tv-smoke-logs`。
+fn smoke_logs_dir() -> PathBuf {
+    if let Some(dir) = std::env::var_os("POLY_TV_SMOKE_LOGS") {
+        return PathBuf::from(dir);
+    }
+    let base = std::env::var_os("CARGO_TARGET_DIR").map_or_else(
+        || Path::new(env!("CARGO_MANIFEST_DIR")).join("../../target"),
+        PathBuf::from,
+    );
+    base.join("tv-smoke-logs")
+}
+
+/// T-M4-05 焦点导航冒烟（真跑腿）：TV 设备上装载 RN 宿主（`@polypack/adapter-native` 示例页），
+/// 走完内核派生走查——启动 → 方向键遍历 → 激活 → Back 返回。期望值由执行器现场从焦点内核
+/// 推导（`device-walks/run-walk.mjs` → `walks.mjs`），不读手写值；全程仅 D-pad / OK / Back
+/// 键事件（无指针），逐键对拍 `POLYPACK_KEY` 通道与界面「点击计数」文本，日志归档。
+///
+/// 前置（缺席即 SKIP，绝不红）：adb + node、TV 设备就绪、宿主 release 包（见 `host_apk`）。
+#[test]
+fn tv_focus_nav_smoke_on_device() {
+    if common::skip_without("adb") || common::skip_without("node") {
+        return;
+    }
+    let Some(serial) = device_serial() else {
+        eprintln!(
+            "SKIP：无连接设备 / 模拟器（阻塞（设备））——起好 TV AVD 后本测试走 D-pad 走查真跑"
+        );
+        return;
+    };
+    if !device_has_leanback() {
+        eprintln!("SKIP：所连设备未声明 android.software.leanback（非 TV 设备）（阻塞（设备））");
+        return;
+    }
+    if !device_ready() {
+        eprintln!("SKIP：设备尚未就绪（未启动完或 system_server 已崩）（阻塞（设备））");
+        return;
+    }
+    let Some(apk) = host_apk() else {
+        eprintln!(
+            "SKIP：无 RN 宿主 release 包（阻塞（宿主构建））——先同步 ui/adapters/native/host/node_modules，\
+             设 host/app.json polypack.pointer=\"none\"（TV 无指针形态），再 \
+             `cd ui/adapters/native/host/android && ./gradlew assembleRelease -PreactNativeArchitectures=<设备 ABI>`；\
+             或用 POLYPACK_TV_HOST_APK 指定产物"
+        );
+        return;
+    };
+    let runner = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../ui/adapters/native/device-walks/run-walk.mjs");
+    assert!(runner.is_file(), "缺走查执行器：{}", runner.display());
+    let logs = smoke_logs_dir();
+    let run = Command::new("node")
+        .arg(&runner)
+        .arg("--serial")
+        .arg(&serial)
+        .arg("--apk")
+        .arg(&apk)
+        .arg("--logs")
+        .arg(&logs)
+        .output()
+        .expect("跑走查执行器");
+    let stdout = String::from_utf8_lossy(&run.stdout).into_owned();
+    let stderr = String::from_utf8_lossy(&run.stderr).into_owned();
+    eprintln!("{stdout}{stderr}");
+    assert!(
+        run.status.success(),
+        "走查失败（定位与现场见上方输出与 {}）",
+        logs.display()
+    );
+    assert!(
+        stdout.contains("无指针完成核心任务：PASS"),
+        "走查输出缺「无指针完成核心任务」判定"
+    );
 }
