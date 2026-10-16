@@ -223,10 +223,28 @@ fn linux_host_resolves_four_l1_targets_from_all() {
 #[allow(clippy::type_complexity)] // 同上：测试数据表与表格对照优先
 const L2_COLUMNS: &[(&str, &str, &str, &str, &str)] = &[
     // id / ui / package.format / builder / verify[0]
-    ("wechat", "taro", "weapp", "taro-weapp", "wechat-devtools-cli"),
-    ("alipay", "taro", "alipay", "taro-alipay", "alipay-devtools-cli"),
+    (
+        "wechat",
+        "taro",
+        "weapp",
+        "taro-weapp",
+        "wechat-devtools-cli",
+    ),
+    (
+        "alipay",
+        "taro",
+        "alipay",
+        "taro-alipay",
+        "alipay-devtools-cli",
+    ),
     ("douyin", "taro", "tt", "taro-tt", "douyin-devtools-cli"),
-    ("quickapp", "taro", "quickapp", "taro-quickapp", "hap-toolkit-lint"),
+    (
+        "quickapp",
+        "taro",
+        "quickapp",
+        "taro-quickapp",
+        "hap-toolkit-lint",
+    ),
 ];
 
 #[test]
@@ -244,8 +262,15 @@ fn builtin_matches_roadmap_3_3_mini_programs() {
         );
         assert_eq!(spec.package.format, *format, "{id}: package.format");
         assert_eq!(spec.package.builder, *builder, "{id}: package.builder");
-        assert_eq!(spec.verify.first().map(String::as_str), Some(*verify), "{id}: verify");
-        assert!(spec.signing.is_none(), "{id}: 签名在平台侧（上传签名），本地无签名引用");
+        assert_eq!(
+            spec.verify.first().map(String::as_str),
+            Some(*verify),
+            "{id}: verify"
+        );
+        assert!(
+            spec.signing.is_none(),
+            "{id}: 签名在平台侧（上传签名），本地无签名引用"
+        );
         assert_eq!(spec.hosts.len(), 3, "{id}: Taro 编译不绑定本地宿主");
         assert!(spec.notes.is_some(), "{id}: 需边界 / 降级说明");
     }

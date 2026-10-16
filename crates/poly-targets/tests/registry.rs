@@ -33,7 +33,14 @@ fn all_on_linux_excludes_windows_only_and_l7_with_reasons() {
         selected,
         // L1 宿主可达者 + L2 小程序族四（Taro 编译不绑定本地宿主，任何宿主下都入选）
         BTreeSet::from([
-            "android", "harmonyos", "linux", "web", "wechat", "alipay", "douyin", "quickapp",
+            "android",
+            "harmonyos",
+            "linux",
+            "web",
+            "wechat",
+            "alipay",
+            "douyin",
+            "quickapp",
         ])
     );
 

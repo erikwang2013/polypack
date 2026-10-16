@@ -195,7 +195,9 @@ pub fn builtin() -> Vec<TargetSpec> {
             verify: vec!["douyin-devtools-cli".to_string()],
             publish: vec!["douyin-open-platform".to_string()],
             experimental: false,
-            notes: Some("小程序代码包（Taro 编译，平台 `tt`）；wasm 进宿主沙箱（T-M3-07）".to_string()),
+            notes: Some(
+                "小程序代码包（Taro 编译，平台 `tt`）；wasm 进宿主沙箱（T-M3-07）".to_string(),
+            ),
         },
         TargetSpec {
             id: "quickapp".to_string(),
