@@ -441,7 +441,7 @@ CI host × target-tier matrix:
 | # | Risk | Impact | Mitigation |
 |---|---|---|---|
 | R1 | Console vendor licensing and NDA SDKs | L7 cannot ship publicly | Plugin shape + local discovery by licensed developers; the public repo keeps interfaces and mocks only |
-| R2 | Roku / watchOS / Garmin lack a native React runtime | narrowed feature surface | Explicitly labeled "experimental / constrained" (the `experimental` field lands in doc tables); capability boundaries ship with the artifact notes |
+| R2 | Roku / watchOS / Garmin lack a native React runtime | narrowed feature surface | Explicitly labeled "experimental / constrained" (the `experimental` field lands in doc tables); capability boundaries ship with the artifact notes; **M4 decision (T-M4-12): Roku continues in constrained mode** — `experimental` stays, and on-device sideload evidence is the trigger prerequisite for conditional task T-M4-15 |
 | R3 | Apple targets require a macOS host | Windows/Linux users cannot build an IPA locally | Remote build farm (protocol v0 in M2 → v1 in M8); docs separate "where you initiate" from "where it builds"; deployment, credentials, and signature checks in [FARM.en.md](FARM.en.md) |
 | R4 | Store / mini-program review cannot be fully automated | human step at publish time | Automation stops at "submit"; review polling + receipt archival; no promise of automatic approval |
 | R5 | Signing keys and credential leakage | supply-chain incident | Reference model + secret-scan + artifact redaction; CI secrets only in memory |

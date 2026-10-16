@@ -378,5 +378,27 @@ pub fn builtin() -> Vec<TargetSpec> {
                     .to_string(),
             ),
         },
+        TargetSpec {
+            id: "roku".to_string(),
+            tier: 3,
+            hosts: vec![Host::Win, Host::Linux, Host::Macos],
+            runtime: Runtime::None,
+            bridge: Bridge::None,
+            ui: vec!["scene-graph-subset".to_string()],
+            package: PackageSpec {
+                format: "zip".to_string(),
+                builder: "roku-channel".to_string(),
+            },
+            signing: None,
+            verify: vec!["sideload-structure-check".to_string()],
+            publish: vec!["roku-channel-store".to_string()],
+            experimental: true,
+            notes: Some(
+                "实验：SceneGraph 子集受限渲染——仅 UI 子集 + 原生逻辑（BrightScript 重写，\
+                 无 JS 运行时）；侧载结构自检可用，真机实证待补（T-M4-15 触发前置；T-M4-12 决策：\
+                 继续受限档）"
+                    .to_string(),
+            ),
+        },
     ]
 }

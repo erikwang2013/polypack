@@ -98,10 +98,10 @@ fn builtin_has_seven_valid_targets() {
     );
     assert_eq!(
         registry.all().count(),
-        18,
+        19,
         "M4 起内建 = L1 七 + L2 小程序族四（wechat / alipay / douyin / quickapp）+ \
-         L3 电视族七（tvos + android-tv / fire-tv + tizen-tv / webos-tv / vidaa-tv / smartcast-tv，\
-         T-M4-04/07/08/09/10）"
+         L3 电视族八（tvos + android-tv / fire-tv + tizen-tv / webos-tv / vidaa-tv / smartcast-tv \
+         + roku※实验，T-M4-04/07/08/09/10/12）"
     );
     for spec in registry.all() {
         spec.validate()
@@ -155,13 +155,14 @@ fn builtin_ids_are_the_l1_set() {
         "webos-tv",
         "vidaa-tv",
         "smartcast-tv",
+        "roku",
     ]
     .map(String::from)
     .into_iter()
     .collect();
     assert_eq!(
         l3, expected_l3,
-        "L3 恰为电视族七（tvos + android-tv / fire-tv + web 系四）"
+        "L3 恰为电视族八（tvos + android-tv / fire-tv + web 系四 + roku※实验）"
     );
 }
 
@@ -247,9 +248,10 @@ fn linux_host_resolves_four_l1_targets_from_all() {
             "tizen-tv",
             "webos-tv",
             "vidaa-tv",
-            "smartcast-tv"
+            "smartcast-tv",
+            "roku"
         ]),
-        "电视两目标与 web 系 TV 四目标应全部入选"
+        "电视两目标 + web 系 TV 四目标 + roku（三宿主声明）应全部入选"
     );
     assert_eq!(selected.len(), l1.len() + l2.len() + l3.len());
 

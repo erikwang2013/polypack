@@ -212,6 +212,10 @@ fn verifier_owner(id: &str) -> Option<&'static str> {
         "wechat-devtools-cli" | "alipay-devtools-cli" | "douyin-devtools-cli" => {
             Some("小程序开发者工具 CLI 校验（T-M3-11；本机无 devtools 时 SKIP-with-print）")
         }
+        "sideload-structure-check" => Some(
+            "Roku 侧载结构自检（T-M4-11 spike 已交付独立 node 自检脚本；入 DAG / 打包器归 \
+             条件任务 T-M4-15——真机侧载实证为触发前置，T-M4-12 决策：继续受限档）",
+        ),
         _ => None,
     }
 }

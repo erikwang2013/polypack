@@ -5,7 +5,7 @@ use std::collections::BTreeSet;
 use poly_targets::spec::id_is_valid;
 use poly_targets::{Host, Registry, SpecError, TargetRegistry, TargetRequest, TargetSpec};
 
-/// 内建目标（L1 七 + L2 小程序族四 + L3 电视族七）+ 一个 L7 占位目标
+/// 内建目标（L1 七 + L2 小程序族四 + L3 电视族八）+ 一个 L7 占位目标
 /// （用于覆盖厂商授权排除分支）。
 fn registry_with_l7() -> Registry {
     let mut specs = poly_targets::builtin::builtin();
@@ -144,7 +144,7 @@ fn allow_unreachable_keeps_all_targets() {
     let selected = selected_ids(&registry_with_l7(), &[Host::Linux], true);
     assert_eq!(
         selected.len(),
-        19, // L1 七 + L2 四 + L3 电视族七 + L7 一
+        20, // L1 七 + L2 四 + L3 电视族八 + L7 一
         "allow_unreachable 下 All 应全选: {selected:?}"
     );
 
