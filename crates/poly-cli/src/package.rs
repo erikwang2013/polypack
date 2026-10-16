@@ -263,9 +263,11 @@ pub(crate) fn assemble_inputs(
             }
         }
         // 小程序族（T-M3-06）：宿主工程根交打包器走候选链解析（<root>/ui → <root> → 包内 host/），
-        // Taro 编译与代码包组装都在打包器内（编译腿缺席由 environment_slot 按环境性缺失跳过）
+        // Taro 编译与代码包组装都在打包器内（编译腿缺席由 environment_slot 按环境性缺失跳过）；
+        // wasm 沙箱出口（T-M3-07）走 `poly bridge wasm` 缺省落点，在场即随代码包分发
         "weapp" | "alipay" | "tt" | "quickapp" => {
             inputs.miniapp_host = Some(project.root.clone());
+            inputs.miniapp_bridge = Some(project.root.join("bridge").join("wasm-bindgen"));
         }
         _ => {}
     }

@@ -242,6 +242,9 @@ pub struct BundleInputs {
     pub ios: Option<IosInputs>,
     /// 小程序族宿主工程根（T-M3-06；Taro 工程候选链见 `packagers::miniapp`，缺省即缺输入）。
     pub miniapp_host: Option<PathBuf>,
+    /// wasm 沙箱出口目录（T-M3-07 `poly bridge wasm` 的落点 `<工程根>/bridge/wasm-bindgen`；
+    /// 在场即整目录随代码包分发，缺席不报错——无 wasm 出口的工程照常打包）。
+    pub miniapp_bridge: Option<PathBuf>,
     /// 输出目录。
     pub out_dir: PathBuf,
 }
@@ -259,6 +262,7 @@ impl BundleInputs {
             android: None,
             ios: None,
             miniapp_host: None,
+            miniapp_bridge: None,
             out_dir: out_dir.into(),
         }
     }

@@ -468,7 +468,8 @@ fn find_miniapp(root: &Path) -> Option<PathBuf> {
 ///
 /// Taro 三端需要工程 `ui/adapters/taro` 指向本仓宿主（候选链 `ui/adapters/taro/host`）；
 /// 工具链缺席（宿主 node_modules 未装）或主产物未产出 → NOTE 返回，绝不红。
-/// 快应用腿无外部工具，任意宿主真跑。
+/// 快应用腿无外部工具，任意宿主真跑。构建前种入合成 wasm 出口（T-M3-07 四文件），
+/// 追加断言「CLI 缺省落点 → 随包根」的组装接线。
 fn real_artifact_check(target: &str) {
     let spec = registry_spec(target);
     let host = poly_targets::current_host();
@@ -514,6 +515,19 @@ fn real_artifact_check(target: &str) {
         }
     }
 
+    // wasm 沙箱出口（T-M3-07）：合成四文件放 `poly bridge wasm` 的缺省落点
+    // （`<root>/bridge/wasm-bindgen/`）——验证 CLI 组装接线「在场即随包」。
+    let bridge = workdir.join("bridge/wasm-bindgen");
+    std::fs::create_dir_all(&bridge).expect("wasm 出口目录可建");
+    for (name, bytes) in [
+        ("manifest.json", &b"{\"schema\":\"wasm-sandbox/v1\"}\n"[..]),
+        ("polypack-loader.js", &b"// loader\n"[..]),
+        ("pax_core_wasm.js", &b"// glue\n"[..]),
+        ("pax_core_wasm_bg.wasm", &[0x00, 0x61, 0x73, 0x6d][..]),
+    ] {
+        std::fs::write(bridge.join(name), bytes).expect("写出口文件");
+    }
+
     let build = poly(&["build", "--target", target, "--json"], &workdir);
     assert!(
         build.status.success(),
@@ -537,8 +551,26 @@ fn real_artifact_check(target: &str) {
         dir.display(),
         entries_report(&expected, &actual)
     );
+    // wasm 沙箱出口随包：四文件落在随包根（Taro 目标 `dist/`、快应用 `src/`）
+    let pack_root = if target == "quickapp" { "src" } else { "dist" };
+    for rel in [
+        "manifest.json",
+        "polypack-loader.js",
+        "pax_core_wasm.js",
+        "pax_core_wasm_bg.wasm",
+    ] {
+        let in_pack = format!("{pack_root}/bridge/wasm-bindgen/{rel}");
+        assert!(
+            dir.join(&in_pack).is_file(),
+            "{target} 产物缺随包 wasm 出口 {in_pack}"
+        );
+        assert!(
+            actual.iter().any(|entry| entry.ends_with(&in_pack)),
+            "{target} 条目面缺随包 wasm 出口 {in_pack}"
+        );
+    }
     eprintln!(
-        "OK {target}：{} 的 {} 条命中金样 {} 条模式",
+        "OK {target}：{} 的 {} 条命中金样 {} 条模式（含 wasm 出口随包 4 文件）",
         dir.display(),
         actual.len(),
         expected.len()

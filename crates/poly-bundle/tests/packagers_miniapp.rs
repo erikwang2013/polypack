@@ -75,6 +75,19 @@ fn inputs(t: &Temp) -> BundleInputs {
     inputs
 }
 
+/// 合成 wasm 出口四文件（T-M3-07 随包面；打包器只做整目录拷贝分发，打包期不解析内容）。
+fn seed_bridge(dir: &Path) {
+    std::fs::create_dir_all(dir).expect("建 wasm 出口目录");
+    for (name, bytes) in [
+        ("manifest.json", &b"{\"schema\":\"wasm-sandbox/v1\"}\n"[..]),
+        ("polypack-loader.js", &b"// loader\n"[..]),
+        ("pax_core_wasm.js", &b"// glue\n"[..]),
+        ("pax_core_wasm_bg.wasm", &[0x00, 0x61, 0x73, 0x6d][..]),
+    ] {
+        std::fs::write(dir.join(name), bytes).expect("写出口文件");
+    }
+}
+
 /// 内建注册表里的目标（L2 小程序族；规格漂移在这里即红）。
 fn spec(id: &str) -> poly_targets::TargetSpec {
     let spec = Registry::builtin()
@@ -104,7 +117,11 @@ fn real_compile_one(
     devtools: &str,
 ) {
     let t = Temp::new(id);
-    let bundle = inputs(&t);
+    let mut bundle = inputs(&t);
+    // wasm 沙箱出口（T-M3-07 四文件）在场即随包：合成源目录即可（拷贝语义是打包器职责）
+    let bridge = t.join("bridge-src");
+    seed_bridge(&bridge);
+    bundle.miniapp_bridge = Some(bridge);
     let spec = spec(id);
     assert_eq!(spec.package.format, format, "{id} 声明格式");
     let packager = poly_bundle::find(id, format)
@@ -215,6 +232,27 @@ fn real_compile_one(
     assert_eq!(
         value["miniprogramRoot"], "./dist/",
         "{id} 描述符 miniprogramRoot 须归一：{value}"
+    );
+
+    // wasm 沙箱出口随包：四文件落在随包根（dist/bridge/wasm-bindgen/），notes 记字节数
+    for rel in [
+        "manifest.json",
+        "polypack-loader.js",
+        "pax_core_wasm.js",
+        "pax_core_wasm_bg.wasm",
+    ] {
+        assert!(
+            dist.join("bridge/wasm-bindgen").join(rel).is_file(),
+            "{id} 代码包缺随包 wasm 出口 {rel}"
+        );
+    }
+    assert!(
+        artifact
+            .notes
+            .iter()
+            .any(|note| note.contains("wasm 沙箱出口随包")),
+        "{id} notes 须记 wasm 出口随包：{:?}",
+        artifact.notes
     );
 
     // notes：预览指引 + devtools 缺席如实标注（SKIP-with-print）

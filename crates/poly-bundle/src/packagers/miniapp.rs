@@ -6,6 +6,10 @@
 //! 编译前先跑宿主 API 白名单预检（T-M3-05 的 `bin/check-api.mjs`，越界调用构建期拒绝）；
 //! 体积 / 预算门禁（T-M3-08）挂在同一条命令链上。
 //!
+//! wasm 沙箱出口（T-M3-07 的 `<工程根>/bridge/wasm-bindgen/` 四文件）在场即整目录拷进
+//! 随包根（Taro 目标 `dist/`、快应用 `src/`），加载契约见出口内的 `polypack-loader.js`；
+//! 缺席不报错（无 wasm 出口的工程照常打包）。
+//!
 //! 宿主（Taro 工程）解析：`<host_project>/ui`（poly 工程的 ui/ 即 Taro 工程）→ `<host_project>`
 //! 自身 → `<host_project>/ui/adapters/taro/host`（本仓适配器布局：宿主骨架落包内 `host/`）。
 //! Taro 工程判据 = `config/index.js` + `src/app.config.js` 齐备；缺宿主 / 缺工具链一律
@@ -27,6 +31,9 @@ const MINIAPP_DIR: &str = "miniapp";
 
 /// 代码包目录名（Taro `outputRoot` 落点）。
 const DIST_DIR: &str = "dist";
+
+/// wasm 沙箱出口（T-M3-07）在随包根下的相对路径（与工程根侧同名，引用口径统一）。
+const BRIDGE_REL: &str = "bridge/wasm-bindgen";
 
 /// 页面路径（app.config 的 pages 清单与结构断言的锚点）。
 const PAGE: &str = "pages/index/index";
@@ -273,6 +280,7 @@ fn package_taro(
 
     exec::run_all(&plan.commands)?;
     assert_code_package(&dist, mini)?;
+    let bridge_note = stage_wasm_bridge(inputs, &dist, mini)?;
 
     let mut notes = vec![
         format!(
@@ -288,6 +296,9 @@ fn package_taro(
         ),
         "编译前已过宿主 API 白名单预检（@polypack/adapter-taro/bin/check-api.mjs）".to_string(),
     ];
+    if let Some(note) = bridge_note {
+        notes.push(note);
+    }
     if mini.descriptor_target.is_some() {
         notes.push(write_descriptor(&dir, &host, mini)?);
     }
@@ -532,6 +543,8 @@ fn package_quickapp(inputs: &BundleInputs, spec: &TargetSpec) -> Result<Artifact
     );
     fsutil::write_text(&dir.join("package.json"), &package_json)?;
 
+    let bridge_note = stage_wasm_bridge(inputs, &src, &QUICKAPP)?;
+
     let mut notes = vec![
         format!(
             "编译工程：{}（hap-toolkit 就绪：src/manifest.json + src/app.ux + src/pages/index/index.ux）",
@@ -549,6 +562,9 @@ fn package_quickapp(inputs: &BundleInputs, spec: &TargetSpec) -> Result<Artifact
             product.identifier
         ),
     ];
+    if let Some(note) = bridge_note {
+        notes.push(note);
+    }
     for skipped in &plan.skipped {
         notes.push(format!("跳过：{}（{}）", skipped.tool, skipped.reason));
     }
@@ -652,6 +668,43 @@ fn miniapp_dir(inputs: &BundleInputs) -> PathBuf {
 /// 代码包目录（Taro `outputRoot` 的注入值）。
 fn dist_dir(inputs: &BundleInputs) -> PathBuf {
     miniapp_dir(inputs).join(DIST_DIR)
+}
+
+/// wasm 沙箱出口（T-M3-07 的四个随包文件）随代码包分发：`miniapp_bridge` 目录整拷到
+/// `dest_root`（Taro 目标 = `dist/`、快应用 = `src/`，都在各自平台的随包根内）。
+///
+/// 目录缺席 = 工程没跑过 `poly bridge wasm`（或本无 wasm 接口）——不属错误，notes 也不占行；
+/// 在场则两个不变式文件必须齐备，缺一即拒（半成品出口目录不许静默进包）。打包期不解析
+/// wasm / 胶水内容：白名单与导入面核对是 loader 的加载期闸（T-M3-07），不在这里重复。
+fn stage_wasm_bridge(
+    inputs: &BundleInputs,
+    dest_root: &Path,
+    mini: &MiniSpec,
+) -> Result<Option<String>, BundleError> {
+    let Some(src) = inputs.miniapp_bridge.as_deref() else {
+        return Ok(None);
+    };
+    if !src.is_dir() {
+        return Ok(None);
+    }
+    for invariant in ["manifest.json", "polypack-loader.js"] {
+        if !src.join(invariant).is_file() {
+            return Err(BundleError::InvalidInput {
+                packager: mini.id,
+                field: "miniapp_bridge",
+                value: src.join(invariant).display().to_string(),
+                reason: format!(
+                    "wasm 出口目录在场但缺 {invariant}——半成品不许随包，重跑 poly bridge wasm"
+                ),
+            });
+        }
+    }
+    let dest = dest_root.join(BRIDGE_REL);
+    fsutil::copy_tree(src, &dest)?;
+    let bytes = fsutil::tree_bytes(&dest)?;
+    Ok(Some(format!(
+        "wasm 沙箱出口随包：{BRIDGE_REL}/（{bytes} 字节；加载契约 polypack-loader.js 的 load(bytes)）"
+    )))
 }
 
 /// 读文本（错误带路径）。
@@ -806,6 +859,78 @@ mod tests {
                 .any(|note| note.contains("hap-toolkit")),
             "notes 须点明 hap-toolkit：{:?}",
             artifact.notes
+        );
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// 合成 wasm 出口四文件（打包器只做整目录拷贝分发，打包期不解析内容）。
+    fn seed_bridge(dir: &Path) {
+        std::fs::create_dir_all(dir).expect("建 wasm 出口目录");
+        for (name, bytes) in [
+            ("manifest.json", &b"{\"schema\":\"wasm-sandbox/v1\"}\n"[..]),
+            ("polypack-loader.js", &b"// loader\n"[..]),
+            ("pax_core_wasm.js", &b"// glue\n"[..]),
+            ("pax_core_wasm_bg.wasm", &[0x00, 0x61, 0x73, 0x6d][..]),
+        ] {
+            std::fs::write(dir.join(name), bytes).expect("写出口文件");
+        }
+    }
+
+    #[test]
+    fn wasm_bridge_is_carried_into_the_code_package() {
+        let dir = std::env::temp_dir().join(format!("poly-quickapp-bridge-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        let bridge = dir.join(BRIDGE_REL);
+        seed_bridge(&bridge);
+        let mut bundle = inputs(&dir);
+        bundle.miniapp_bridge = Some(bridge);
+        let artifact = QuickApp
+            .package(&bundle, &spec("quickapp", "quickapp"))
+            .expect("wasm 出口在场必须随包");
+        for rel in [
+            "manifest.json",
+            "polypack-loader.js",
+            "pax_core_wasm.js",
+            "pax_core_wasm_bg.wasm",
+        ] {
+            assert!(
+                artifact
+                    .path
+                    .join("src")
+                    .join(BRIDGE_REL)
+                    .join(rel)
+                    .is_file(),
+                "随包缺 src/{BRIDGE_REL}/{rel}"
+            );
+        }
+        assert!(
+            artifact
+                .notes
+                .iter()
+                .any(|note| note.contains("wasm 沙箱出口随包")),
+            "notes 须记随包出口：{:?}",
+            artifact.notes
+        );
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn half_written_bridge_dir_is_rejected() {
+        let dir =
+            std::env::temp_dir().join(format!("poly-quickapp-bridge-half-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        let bridge = dir.join(BRIDGE_REL);
+        std::fs::create_dir_all(&bridge).expect("建 wasm 出口目录");
+        fsutil::write_text(&bridge.join("manifest.json"), "{}\n").expect("写 manifest");
+        let mut bundle = inputs(&dir);
+        bundle.miniapp_bridge = Some(bridge);
+        let err = QuickApp
+            .package(&bundle, &spec("quickapp", "quickapp"))
+            .expect_err("缺 loader 的半成品出口目录必须拒绝");
+        assert_eq!(err.code(), crate::error::codes::E_BND_0003);
+        assert!(
+            err.to_string().contains("polypack-loader.js"),
+            "报文须点名缺的文件：{err}"
         );
         let _ = std::fs::remove_dir_all(&dir);
     }
