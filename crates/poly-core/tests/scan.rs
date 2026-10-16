@@ -36,6 +36,11 @@ fn entropy_value() -> String {
     "Aq3bZx9Qw7Er2Tyu4Iop6Df8Gh1Jk5Lm0N".to_string()
 }
 
+/// 平台 AppSecret 形态：32 位十六进制（运行时分段拼出，源码行内不出现完整形态）。
+fn appsecret_hex32() -> String {
+    "0123456789abcdef".repeat(2)
+}
+
 /// PEM 私钥头（运行时拼出：源码行内不构成完整头部）。
 fn pem_header() -> String {
     format!("-----BEGIN {} PRIVATE KEY-----", "RSA")
@@ -131,6 +136,10 @@ fn every_rule_hits_real_shape_and_respects_marker() {
         ("google-api-key", format!("GOOGLE_API_KEY={}", google_key())),
         ("slack-token", format!("SLACK_BOT_TOKEN={}", slack_token())),
         (
+            "appsecret-hex32",
+            format!("APPSECRET={}", appsecret_hex32()),
+        ),
+        (
             "high-entropy-secret",
             format!("secret = \"{}\"", entropy_value()),
         ),
@@ -191,6 +200,7 @@ fn stripping_markers_from_fixtures_hits_every_rule() {
     assert_eq!(
         rules,
         vec![
+            "appsecret-hex32",
             "aws-access-key",
             "github-token",
             "google-api-key",
@@ -198,7 +208,7 @@ fn stripping_markers_from_fixtures_hits_every_rule() {
             "pem-private-key",
             "slack-token",
         ],
-        "去标记后 6 条规则逐条命中（且不触发别的规则）: {:?}",
+        "去标记后 7 条规则逐条命中（且不触发别的规则）: {:?}",
         report.findings
     );
 
@@ -291,6 +301,44 @@ fn entropy_heuristic_ignores_checksums_short_values_and_urls() {
         format!("secret = \"{}\"", entropy_value()).as_bytes(),
     );
     assert_eq!(report.findings.len(), 1, "对照正例必须命中: {report:?}");
+}
+
+/// AppSecret 规则（32 位十六进制）：关键字门控命中（含 snake_case / 环境变量前缀与 JSON 形态），
+/// 裸校验和、位数不对、词内出现都不报。
+#[test]
+fn appsecret_hex32_is_keyword_gated_and_exact_length() {
+    let value = appsecret_hex32();
+    for sample in [
+        format!("APPSECRET={value}"),
+        format!("WECHAT_APPSECRET={value}"),
+        format!("TARO_APP_SECRET=\"{value}\""),
+        format!("\"appsecret\": \"{value}\""),
+    ] {
+        let report = scan_bytes("x.env", sample.as_bytes());
+        assert_eq!(report.findings.len(), 1, "应命中: {sample} → {report:?}");
+        assert_eq!(report.findings[0].rule, "appsecret-hex32");
+    }
+
+    // 裸校验和（无 secret 关键字上下文）不报；位数不对（31 / 33）不报。
+    let short = &value[..31];
+    let long = format!("{value}0");
+    for sample in [
+        format!("md5={value}"),
+        format!("secret={short}"),
+        format!("appsecret={long}"),
+    ] {
+        let report = scan_bytes("x.env", sample.as_bytes());
+        assert!(
+            report.findings.is_empty(),
+            "不该命中: {sample} → {report:?}"
+        );
+    }
+
+    // 词内出现：`secrets` / `mysecretstore` 形态不报（左右词边界）。
+    let report = scan_bytes("x.env", format!("secrets={value}").as_bytes());
+    assert!(report.findings.is_empty(), "secrets 复数不报: {report:?}");
+    let report = scan_bytes("x.env", format!("let mysecretstore = {value}").as_bytes());
+    assert!(report.findings.is_empty(), "词内 secret 不报: {report:?}");
 }
 
 // ---------------------------------------------------------------- 目录扫描
