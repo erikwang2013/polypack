@@ -1,0 +1,27 @@
+{
+  "target": "android-tv",
+  "builder": "android-aapt2",
+  "signing": "android-keystore",
+  "verifiers": ["apksigner-verify", "bundletool-validate"],
+  "publish": ["google-play-tv"],
+  "artifacts": [
+    {
+      "format": "apk",
+      "extension": "apk",
+      "name": "polypack-app-0.1.0-unsigned.apk",
+      "entries": [
+        "AndroidManifest.xml",
+        "resources.arsc"
+      ]
+    },
+    {
+      "format": "module-zip",
+      "extension": "zip",
+      "name": "base.zip",
+      "entries": [
+        "manifest/AndroidManifest.xml",
+        "resources.pb"
+      ]
+    }
+  ]
+}
