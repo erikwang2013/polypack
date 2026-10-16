@@ -19,6 +19,8 @@ pub struct Function {
     pub name: String,
     /// 参数名（有序）。
     pub args: Vec<String>,
+    /// 参数类型文本（与 [`Self::args`] 逐位对应；如 `string` / `sequence<u32>`）。
+    pub arg_types: Vec<String>,
     /// 返回类型文本（原样保留，如 `string` / `sequence<u32>`）。
     pub ret: String,
 }
@@ -193,15 +195,18 @@ fn parse_function(statement: &str) -> Option<Function> {
             if arg.is_empty() {
                 return None;
             }
+            // 默认值（`u32 a = 3`）不属于签名
+            let arg = arg.split('=').next().unwrap_or(arg).trim_end();
             // `string name` / `string? name` / `sequence<u32> values`：末段即参数名
-            let name = arg.rsplit_once(char::is_whitespace)?.1.trim();
-            let name = name.trim_end_matches(['?', '=']).trim();
-            (!name.is_empty()).then(|| name.to_string())
+            let (ty, name) = arg.rsplit_once(char::is_whitespace)?;
+            let name = name.trim().trim_end_matches('?').trim();
+            (!name.is_empty()).then(|| (ty.trim().to_string(), name.to_string()))
         })
-        .collect();
+        .collect::<Vec<_>>();
     Some(Function {
         name: name.to_string(),
-        args,
+        args: args.iter().map(|(_, name)| name.clone()).collect(),
+        arg_types: args.into_iter().map(|(ty, _)| ty).collect(),
         ret: ret.trim().to_string(),
     })
 }

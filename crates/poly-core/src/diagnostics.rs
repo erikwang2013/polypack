@@ -67,6 +67,8 @@ pub mod codes {
     pub const E_BRIDGE_0002: Code = Code::new("poly::E_BRIDGE_0002");
     /// AAR 组装失败（ABI 缺失 / 清单写入失败 / 归档失败）。
     pub const E_BRIDGE_0003: Code = Code::new("poly::E_BRIDGE_0003");
+    /// wasm 沙箱白名单拒绝（接口或类型越出沙箱可用子集）。
+    pub const E_BRIDGE_0004: Code = Code::new("poly::E_BRIDGE_0004");
     /// secret-scan 命中密钥材料。
     pub const E_SCAN_0001: Code = Code::new("poly::E_SCAN_0001");
     /// secret-scan 执行失败（IO / 仓库不可读）。

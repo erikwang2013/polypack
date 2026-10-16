@@ -270,7 +270,7 @@ fn reserved_exits_fail_before_engine_lookup() {
     let temp = TempDir::new("reserved");
     let project = fixture(temp.path(), UDL);
     let mut sink = HumanSink { out: Vec::new() };
-    for lang in [BridgeLang::Napi, BridgeLang::WasmBindgen, BridgeLang::Cffi] {
+    for lang in [BridgeLang::Napi, BridgeLang::Cffi] {
         let err = bridge::generate(&project, &[lang], &mut sink).expect_err("保留出口必须报错");
         assert_code(err, codes::E_BRIDGE_0002, "M3");
         assert!(
@@ -279,7 +279,20 @@ fn reserved_exits_fail_before_engine_lookup() {
             lang.dir()
         );
     }
-    // 三端出口都登记在枚举上（M3 接引擎时不改接口定义）
+    // wasm 出口（T-M3-07）已接引擎但是**编译产物形态**：绑定流水线拒绝并指向 `poly bridge wasm`
+    //（避免在 `bridge/wasm-bindgen` 落半份绑定形态的产物）
+    let err = bridge::generate(&project, &[BridgeLang::WasmBindgen], &mut sink)
+        .expect_err("wasm 出口不走绑定流水线");
+    assert_code(err, codes::E_BRIDGE_0002, "poly bridge wasm");
+    assert!(
+        !project
+            .root
+            .join("bridge")
+            .join(BridgeLang::WasmBindgen.dir())
+            .exists(),
+        "wasm 产物只由 `poly bridge wasm` 落盘"
+    );
+    // 五端出口都登记在枚举上（M3 接引擎时不改接口定义）
     assert_eq!(BridgeLang::ALL.len(), 5);
     assert_eq!(
         BridgeLang::parse("wasm-bindgen"),

@@ -208,3 +208,55 @@ fn bridge_aar_without_ndk_reports_hint() {
         "提示应给出 sdkmanager 的装法：{stderr}"
     );
 }
+
+#[test]
+fn bridge_wasm_rejects_whitelist_violation_without_tools() {
+    let temp = TempDir::new("wasm-whitelist");
+    fixture(temp.path());
+    // 白名单外接口（u64 → BigInt，沙箱不保证）：白名单闸在工具链之前，必须零构建零产物
+    std::fs::write(
+        temp.path().join("core/src/pax.udl"),
+        "namespace pax {\n  u64 tick();\n};\n",
+    )
+    .expect("改写 UDL");
+
+    let out = poly(&["bridge", "wasm"], temp.path());
+    assert_eq!(out.status.code(), Some(1), "白名单外接口必须非零退出");
+    let stderr = String::from_utf8_lossy(&out.stderr);
+    assert!(stderr.contains("poly::E_BRIDGE_0004"), "{stderr}");
+    assert!(
+        stderr.contains("tick") && stderr.contains("u64"),
+        "报文应点名函数与类型：{stderr}"
+    );
+    assert!(
+        !temp.path().join("bridge/wasm-bindgen").exists(),
+        "拒绝时不落产物目录"
+    );
+}
+
+#[test]
+fn bridge_wasm_without_tool_reports_hint() {
+    let temp = TempDir::new("no-wasm-bindgen");
+    fixture(temp.path());
+
+    // 显式把工具三处来源全指空（env / PATH / $HOME 缓存目录）：本机装没装都走「缺 CLI」分支
+    let out = Command::new(env!("CARGO_BIN_EXE_poly"))
+        .args(["bridge", "wasm"])
+        .current_dir(temp.path())
+        .env("POLYPACK_WASM_BINDGEN", temp.path().join("no-wasm-bindgen"))
+        .env("HOME", temp.path())
+        .env("PATH", temp.path())
+        .output()
+        .expect("poly 可执行");
+    assert_eq!(out.status.code(), Some(1));
+    let stderr = String::from_utf8_lossy(&out.stderr);
+    assert!(stderr.contains("poly::E_BRIDGE_0001"), "{stderr}");
+    assert!(
+        stderr.contains("wasm-bindgen") && stderr.contains("POLYPACK_WASM_BINDGEN"),
+        "提示应给出 CLI 的取法与落点：{stderr}"
+    );
+    assert!(
+        !temp.path().join("bridge/wasm-bindgen").exists(),
+        "缺工具时不产假产物"
+    );
+}
