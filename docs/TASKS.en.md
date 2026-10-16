@@ -3,7 +3,7 @@
 > Derived from the milestone breakdown in [ROADMAP.en.md](ROADMAP.en.md) §9; produced in parallel by a four-person planning group and merged after cross-reconciliation: **116 tasks**, all cross-milestone references verified in two passes (existence + description match, zero dangling), Chinese/English task IDs aligned one-to-one.
 > Chinese original: [TASKS.md](TASKS.md). This file falls under the documentation sync convention (ROADMAP §11): task additions/removals must land in both files in the same commit, and drift is caught in CI by the structural checker delivered in T-M0-10.
 > Extension directions (E1–E8) are incubated and intentionally absent from this task table — see [ROADMAP.en.md](ROADMAP.en.md) §13.
-> Progress (2026-10-16): **M0 11/11** · **M1 delivered 15/15** (11 ✅; the matching CI legs for T-M1-02/05/06/07 are green — remaining tool-level notes live in the task entries) · **M2 delivered 15/15** (8 ✅: T-M2-02/06/07/08/09/11/14/15; T-M2-01/03/04/05/10/12/13 carry host/stage/settings notes — see each entry) · **CI green on all three hosts** (rust-ci#38654820649) plus four new M2 workflows (secret-scan ×3 hosts / mobile-contract mock-per-push + nightly real / bridge nightly real) · **M3 in progress (11/12)**: T-M3-01–11 delivered (only T-M3-12 in flight) — see each entry.
+> Progress (2026-10-17): **M0 11/11** · **M1 delivered 15/15** (11 ✅; the matching CI legs for T-M1-02/05/06/07 are green — remaining tool-level notes live in the task entries) · **M2 delivered 15/15** (8 ✅: T-M2-02/06/07/08/09/11/14/15; T-M2-01/03/04/05/10/12/13 carry host/stage/settings notes — see each entry) · **CI green on all three hosts** (rust-ci#38654820649) plus four new M2 workflows (secret-scan ×3 hosts / mobile-contract mock-per-push + nightly real / bridge nightly real) · **M3 delivered 12/12** (7 ✅: T-M3-05/06/07/08/09/10/11; T-M3-01/02/03/04/12 carry host/environment/interop notes — see each entry) plus one new M3 workflow (miniprogram-contract mock-per-push + nightly real).
 
 ## Team roster
 
@@ -476,7 +476,7 @@
 - Deliverable: one contract test per target: WeChat/Alipay/Douyin devtools CLI checks + bundle structure assertions + golden comparison, reusing the M2 contract-test and golden infrastructure; devtools login state is injected via credential references (same model as T-M2-11).
 - Acceptance: all three contract tests are green; golden drift fails; CI runs the two §8 tiers (mock every commit, real CLI nightly); login state never reaches the logs (redaction assertion).
 
-### T-M3-12 · Quick App packaging and store verification
+### T-M3-12 · ✅ Quick App packaging and store verification (hap-toolkit 2.1.1 really builds the .rpk (9 entries, manifest cross-checked against source) + lint wired into verify (hap-toolkit-lint→QuickAppLint); format/builder flipped to rpk/hap-toolkit (§3.3 alignment across five consumers); poly publish submission thin layer: dry-run real run on a real 11,740 B rpk (carrier digest/receipt key character-identical to the four-step driver, byte-identical reruns, zero credential leakage); missing endpoint/client → precise E_PUBLISH_0001/0002 diagnostics; the union store has no public CI endpoint (verified against 2026-10 docs) and no real account → the submission leg is SKIP-noted; four-target contract real run 649.91 s all green (quickapp 11 entries))
 
 - Role: packagers
 - Deps: T-M3-06, T-M3-09

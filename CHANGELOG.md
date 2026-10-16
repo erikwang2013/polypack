@@ -6,6 +6,18 @@ Notable changes are recorded here; since v1.0.0, tags and releases follow `vX.Y.
 
 ## [Unreleased]
 
+## [1.5.0] — 2026-10-17
+
+### Added
+- **M3 鸿蒙与小程序交付**（2026-10-17）：RNOH 宿主模板 + NAPI 桥出口（`poly bridge ohos`——OHOS aarch64 真交叉编译自包含 `libpax.so` 6.2MB + node 真装载对拍同字面量）与 RNOH 承载分支（双宿主结构快照逐字节一致）；HAP 打包（hvigorw 真跑，增量三跑字节一致）与 hap-sign-tool 签名/校验（凭据全引用、口令经 argv 全链脱敏）；adapter-taro v0 + Taro 四端管线（weapp / alipay / tt 代码包 + 快应用真 build 出 `.rpk`；真编译 + 结构断言 + 金样 + 二跑缓存命中）；wasm 沙箱出口（`poly bridge wasm`：生成期/加载期两道白名单闸 + loader 适配层随包）与 wasm-opt 裁剪（−51%）+ `[budget]` 体积门禁（warn/fail 双态入 DAG）；三平台 publish 客户端（微信 B 协议 + 支付宝网关 v1 + 抖音，四步零分叉驱动 / 断点续走 / 回执永久归档）与单文件载具 + quickapp 渠道备位 + `poly publish` 提审薄层（真 rpk dry-run 幂等）；小程序契约测试（devtools CLI 校验腿）与 `miniprogram-contract` workflow（mock 每提交 / real 每夜 18:47 错峰）。**终版全量验证（fmt / clippy `-D warnings` / workspace 测试）全绿；六工作流三宿主全绿。**
+
+*M3 HarmonyOS & mini-program delivery — RNOH host + NAPI outlet, HAP packager + hap-sign-tool chain, adapter-taro + four-target Taro pipeline (incl. real .rpk), wasm sandbox outlet with a two-gate allowlist + wasm-opt trimming (−51%) + the `[budget]` gate, three publish clients on a zero-fork driver with a single-file carrier, devtools contract tests + the sixth workflow. Full-battery verification and all six workflows green on three hosts.*
+
+### Fixed
+- **CI 逐环修复与如实更正**（2026-10-16/17）：devtools 契约登录态路径断言兼容 Windows Debug 转义（windows-2022 实证）；`cargo-deny` 与 `cargo-audit` 双配置豁免 RUSTSEC-2023-0071（rsa Marvin 计时侧信道——上游无修复版、仅本地签名无解密面；audit 腿此前被 deny 挡在前面掩盖）；`probes` 计时用例边距加固（重载假红实证）；`bridge-real` NDK 安装 retry 与留产物空转修复（RAII 先删 → `POLY_KEEP_TEMP` 通道；非空回执后翻 `error`）；清单统一（poly-publish / base64 进根 `workspace.dependencies`）。更正：v1.4.0 记「`schedule` 触发历史为 0」实为观察窗口过短——首夜即已触发（best-effort 延迟约 3 小时），mobile-contract 真实模式经 schedule 全绿。
+
+*CI hardening ring by ring (Windows path assertion, dual-config RUSTSEC-2023-0071 exemption, probes timing margins, NDK retry + artifact keep-temp); manifest unification; and an honest correction — the `schedule` trigger does fire (fired ~3 h late on its first night).*
+
 ## [1.4.0] — 2026-10-16
 
 ### Added
