@@ -78,6 +78,9 @@ handleTvKey(session, key, { activate });            // 宿主事件源唯一入�
   未映射数字落回内核路由（`ignored`）。示例页：1 计数 / 2 重置 / 3 详情。
 - **描述符**：`handleTvKey` 返回 `{ type: "move"|"activate"|"back"|"shortcut"|"ignored", ... }`，
   宿主按描述符记录 / 冒烟断言（T-M4-13）。
+- **宿主记录口径（跨端同形）**：宿主侧每键一行 `POLYPACK_KEY <json>`——单参数 =
+  `onKey` 返回描述符的 JSON（RN logcat `ReactNativeJS` / web console 同形；多参数会被
+  RN console 加引号拼接，破坏通道契约。与 adapter-native host 的 T-M2-05 走查通道一致）。
 - **BACK_KEYS 哨兵**：TV 表与共享内核键口径双向对拍（`back.test.js`；探测面有限，同
   builtin.rs 哨兵款——内核新增候选 Back 键即收口）。
 
