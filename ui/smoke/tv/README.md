@@ -51,7 +51,7 @@
 
 ```sh
 # mock 腿（每提交 / PR 可跑，零 npm install）：漂移哨兵 + 死路覆盖 + 履约哨兵（react 在场才跑）
-node --test ui/smoke/tv/
+node --test "ui/smoke/tv/test/*.test.js"    # 或 cd ui/smoke/tv && npm test
 
 # web 系腿（替代腿；缺 Chrome / Node<22 自动 SKIP-with-print）
 npm --prefix ui/smoke/tv install && npm --prefix ui/smoke/tv run build      # vite build → host/dist

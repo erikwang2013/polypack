@@ -11,8 +11,8 @@ import { fileURLToPath } from "node:url";
 import { descriptorFailure } from "../compare.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
-const RUN_WALK = resolve(HERE, "../../adapters/native/device-walks/run-walk.mjs");
-const HOST_APK = resolve(HERE, "../../adapters/native/host/android/app/build/outputs/apk/release/app-release.apk");
+const RUN_WALK = resolve(HERE, "../../../adapters/native/device-walks/run-walk.mjs");
+const HOST_APK = resolve(HERE, "../../../adapters/native/host/android/app/build/outputs/apk/release/app-release.apk");
 
 const skip = (skipNote) => ({ target: "android-tv", leg: "device-walk", status: "skip", skipNote, scenes: [] });
 
@@ -49,7 +49,7 @@ export function runAndroidLeg({ logs, serial = null, apk = null }) {
   mkdirSync(logs, { recursive: true });
   const jsonOut = join(logs, "android-walk.json");
   const run = spawnSync(process.execPath, [RUN_WALK, "--serial", picked.serial, "--logs", logs, "--apk", apkPath, "--json", jsonOut], { encoding: "utf8" });
-  const note = picked.note === null ? "" : `（${picked.note}）`;
+  const note = picked.note == null ? "" : `（${picked.note}）`;
   const head = `Android TV 腿（${picked.serial}${note}）：run-walk 退出码 ${run.status}`;
   process.stdout.write(`${head}\n${run.stdout ?? ""}${run.stderr ?? ""}`);
 

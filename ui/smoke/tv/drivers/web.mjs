@@ -158,8 +158,9 @@ const OBSERVE = `(() => {
   };
 })()`;
 
-/** 等待 chrome stderr 的 DevTools 端口行（超时报错携 stderr 尾巴）。 */
-function waitDevTools(child, stderrRef, timeoutMs = 20000) {
+/** 等待 chrome stderr 的 DevTools 端口行（超时报错携 stderr 尾巴）。
+ *  90s：本机实测高负载下 chrome 冷启动可 >30s（无 stderr、被外层 timeout 杀）——CI 正常 <5s。 */
+function waitDevTools(child, stderrRef, timeoutMs = 90000) {
   return new Promise((done, fail) => {
     const timer = setTimeout(() => fail(new Error(`web 腿：chrome 未在 ${timeoutMs}ms 内就绪；stderr 尾：${stderrRef.join("").slice(-500)}`)), timeoutMs);
     const probe = setInterval(() => {
@@ -220,6 +221,9 @@ export async function runWebTargets({ targets, dist, logs, scenes, chromePath = 
   const stderrRef = [];
   const child = spawn(chrome, [
     "--headless=new",
+    // 桌面机上 DISPLAY 在场时 ozone 会先探 X11 后端——X 不可达则 DevTools 口永不就绪
+    // （本机实测：无此旗标 >90s 卡死/偶发 31s，有此旗标 2s；CI runner 无 DISPLAY 亦确定化）
+    "--ozone-platform=headless",
     "--disable-gpu",
     "--no-sandbox",
     "--no-first-run",
@@ -238,8 +242,21 @@ export async function runWebTargets({ targets, dist, logs, scenes, chromePath = 
   const records = [];
   let cdp = null;
   try {
-    const browserWs = await waitDevTools(child, stderrRef);
-    cdp = await Cdp.connect(await pageSocketUrl(browserWs));
+    let browserWs;
+    try {
+      browserWs = await waitDevTools(child, stderrRef);
+      cdp = await Cdp.connect(await pageSocketUrl(browserWs));
+    } catch (err) {
+      // chrome 在场但起不来（极端负载 / 环境）：如实红 + channel 定位——不吞、也不连带中断
+      // 其余腿（result.json 仍落盘，Android 腿结果不丢）。
+      return targets.map((target) => ({
+        target,
+        leg: "web-surrogate",
+        status: "fail",
+        scenes: [],
+        failure: { class: "channel", detail: `web 腿 chrome 启动失败：${err.message}` },
+      }));
+    }
     const lines = []; // 单参数 POLYPACK_KEY 行（描述符通道）
     const errors = []; // 页面异常（通道证据）
     cdp.on("Runtime.consoleAPICalled", (params) => {
@@ -272,10 +289,6 @@ export async function runWebTargets({ targets, dist, logs, scenes, chromePath = 
         }
         return ok;
       };
-      if (!(await reload())) {
-        records.push({ target, leg: "web-surrogate", status: "fail", scenes: [], failure: { class: "channel", detail: `页面未就绪（tv-frame 锚点缺席或目标不符）：${url}；异常：${errors.slice(-3).join(" | ") || "无"}` } });
-        continue;
-      }
 
       for (const scene of scenes) {
         if (!(await reload())) {

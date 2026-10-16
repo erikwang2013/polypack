@@ -40,7 +40,7 @@ jobs:
           node-version: "22"
 
       - name: TV 冒烟（mock：漂移哨兵 + 死路覆盖 + 定位格式 + 键表同源）
-        run: node --test ui/smoke/tv/
+        run: node --test "ui/smoke/tv/test/*.test.js"
 
   real:
     name: real / ubuntu-latest
@@ -70,7 +70,7 @@ jobs:
         run: npm --prefix ui/adapters/tv install --no-audit --no-fund
 
       - name: mock 腿（含履约哨兵真跑）
-        run: node --test ui/smoke/tv/
+        run: node --test "ui/smoke/tv/test/*.test.js"
 
       - name: 设备腿门（KVM + 预构建宿主 APK；任一缺席 → SKIP-with-print 注记）
         id: gate
