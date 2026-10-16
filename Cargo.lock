@@ -1131,6 +1131,7 @@ dependencies = [
 name = "poly-bundle"
 version = "0.0.0"
 dependencies = [
+ "flate2",
  "poly-targets",
  "serde",
  "serde_json",

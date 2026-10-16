@@ -285,6 +285,11 @@ pub(crate) fn assemble_inputs(
             inputs.miniapp_host = Some(project.root.clone());
             inputs.miniapp_bridge = Some(project.root.join("bridge").join("wasm-bindgen"));
         }
+        // web 系 TV 四目标（T-M4-08/09/10）：载荷源 = 工程根 `dist/`（上方统一接线），
+        // wasm 沙箱出口（T-M3-07）走 `poly bridge wasm` 缺省落点，在场即随包分发
+        "wgt" | "ipk" | "web-app" => {
+            inputs.miniapp_bridge = Some(project.root.join("bridge").join("wasm-bindgen"));
+        }
         _ => {}
     }
     Ok(Some(inputs))
