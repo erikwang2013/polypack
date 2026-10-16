@@ -111,6 +111,29 @@ test("原生模块注册位：默认空，登记描述符后校验生效（T-M2-
   });
 });
 
+test("T-M3-02 鸿蒙 NAPI 注册位：口径按 target 分族（moduleName = UDL namespace），跨宿主混用即拒", () => {
+  const adapter = createAdapter({ target: "harmonyos", runtime: stubRuntime() });
+  assert.equal(adapter.native.has(), false);
+
+  // 口径样例（T-M3-01）：.so 路径 + NAPI 模块名（<工程根>/bridge/harmonyos/<abi>/lib<ns>.so）
+  const descriptor = adapter.native.register({
+    artifact: "bridge/harmonyos/arm64-v8a/libpax.so",
+    moduleName: "pax",
+  });
+  assert.deepEqual(descriptor, { artifact: "bridge/harmonyos/arm64-v8a/libpax.so", moduleName: "pax" });
+  assert.equal(adapter.native.has(), true);
+  assert.ok(Object.isFrozen(descriptor), "描述符应冻结");
+
+  assert.throws(
+    () => adapter.native.register({ artifact: "bridge/harmonyos/arm64-v8a/libpax.so" }),
+    /moduleName/,
+  );
+  assert.throws(() => adapter.native.register({ artifact: "a.so", moduleName: "pax", entryClass: "uniffi.pax.PaxKt" }), /不含 entryClass/);
+  assert.throws(() => adapter.native.register({ artifact: "a.so", moduleName: "pax", libraryName: "pax_core" }), /不含 entryClass/);
+  assert.throws(() => adapter.native.register({ artifact: "", moduleName: "pax" }), /artifact/);
+  assert.throws(() => adapter.native.register({ artifact: "a.so", moduleName: "" }), /moduleName/);
+});
+
 test("T-M2-02 口径哨兵：host 示例描述符与真跑夹具一致（库名 / UDL namespace）", (t) => {
   const fixture = path.resolve(HERE, "../../../../crates/poly-core/tests/fixtures/bridge_core");
   const cargo = path.join(fixture, "Cargo.toml");

@@ -8,6 +8,7 @@ import { createNativeRegistry } from "./native-registry.js";
 import { platformStyle } from "./tokens.js";
 
 export { tokens, platformStyle } from "./tokens.js";
+export { HOST_PROP_OMISSIONS, bindPrimitives, mapProps } from "./component-map.js";
 export {
   CAPABILITY_MATRIX,
   CAPABILITY_KEYS,
@@ -44,7 +45,7 @@ export function createAdapter({ target, runtime, host = {} } = {}) {
       "adapter-native: runtime 须提供 AppRegistry.registerComponent（宿主注入 RN runtime）",
     );
   }
-  const native = createNativeRegistry();
+  const native = createNativeRegistry(target);
   let mounted = null;
 
   return Object.freeze({
@@ -78,7 +79,7 @@ export function createAdapter({ target, runtime, host = {} } = {}) {
     degradations(hostHints = {}, options = {}) {
       return resolveDegradations(resolveCapabilities(target, { ...host, ...hostHints }), options);
     },
-    /** 原生模块注册位（T-M2-02 桥产物挂载点）。 */
+    /** 原生模块注册位（桥产物挂载点：Android AAR T-M2-02 / 鸿蒙 NAPI .so T-M3-01，按 target 定口径）。 */
     native,
   });
 }

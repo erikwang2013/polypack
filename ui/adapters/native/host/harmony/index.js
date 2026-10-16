@@ -1,9 +1,11 @@
-// RN 宿主入口（T-M3-01）：装配层职责 = 注册组件 + 接事件源 + 原生模块注册位。
+// RN 宿主入口（T-M3-01 宿主模板 + T-M3-02 承载分支接线：target 口径修正 + 组件映射）：
+// 装配层职责 = 注册组件 + 接事件源 + 原生模块注册位。
 // app.json 的 name 即 AppRegistry 键，与 harmony/entry 的 RNApp.appKey（PaxApp）一致。
 
+import { createElement } from "react";
 import * as RN from "react-native";
 
-import { createAdapter } from "@polypack/adapter-native";
+import { bindPrimitives, createAdapter } from "@polypack/adapter-native";
 import { createExampleApp } from "@polypack/adapter-native/example";
 
 import appConfig from "./app.json";
@@ -12,17 +14,25 @@ import appConfig from "./app.json";
 // 设 "none" → 无指针形态生效（焦点环降级分支）。用 app.json 而非 process.env：RN 运行时
 // process.env 只保证 NODE_ENV（Libraries/Core/setUpGlobals.js），自定义 env 不会被打包内联。
 const pointer = appConfig.polypack?.pointer ?? "touch";
-const adapter = createAdapter({ target: "harmony", runtime: RN, host: { pointer } });
+// target = TargetSpec id（crates/poly-targets/src/builtin.rs / capabilities 矩阵口径 "harmonyos"；
+// 与本仓 <工程根>/harmony/ 目录名无关——目录名是 DevEco 工程路径，不是目标 id，T-M3-02 修正）
+const adapter = createAdapter({ target: "harmonyos", runtime: RN, host: { pointer } });
 
 // 原语显式取用（不展开 RN 命名空间：避免握手期 getter 全量求值）
 // iconSource 待 Pax 派生管线资产（T-M1-14）就位后填入，当前省略图标节点
-const primitives = {
-  View: RN.View,
-  Text: RN.Text,
-  Pressable: RN.Pressable,
-  Image: RN.Image,
-  iconSource: null,
-};
+// 组件映射（T-M3-02）：同一页面组件树经 bindPrimitives 落到 RNOH —— 页面照写 Android 焦点锚点
+// （hasTVPreferredFocus），RNOH 无对应 prop，由装配边界按 HOST_PROP_OMISSIONS 剔除（页面零改动）
+const primitives = bindPrimitives(
+  {
+    View: RN.View,
+    Text: RN.Text,
+    Pressable: RN.Pressable,
+    Image: RN.Image,
+    iconSource: null,
+  },
+  "harmonyos",
+  createElement,
+);
 const { App, onKey } = createExampleApp(primitives, adapter);
 
 adapter.mount({ appKey: "PaxApp" }, App);

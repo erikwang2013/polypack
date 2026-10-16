@@ -83,6 +83,25 @@ test("capabilities()：目标基线 + 宿主提示覆盖（无指针 → focusNa
   assert.equal(resolveCapabilities("android", { pointer: "touch" }).focusNav, false);
 });
 
+test("T-M3-02 鸿蒙承载：宿主提示覆盖与降级驱动与 Android 同构（同一页面树两宿主同语义）", () => {
+  // 外接键盘/无指针调试形态（RNOH 走查形态）：pointer none → focusNav，其余键保持基线
+  assert.deepEqual(resolveCapabilities("harmonyos", { pointer: "none" }), {
+    focusNav: true,
+    safeArea: true,
+    gestures: true,
+  });
+  assert.deepEqual(
+    resolveCapabilities("harmonyos", { pointer: "none" }),
+    resolveCapabilities("android", { pointer: "none" }),
+    "两 RN 承载目标对同一宿主提示应给出同构能力（页面降级分支不分叉）",
+  );
+  const branches = resolveDegradations(resolveCapabilities("harmonyos", { pointer: "none" }));
+  assert.deepEqual(branches.filter((b) => b.active).map((b) => b.id), ["focus-ring"]);
+  // 触屏基线不翻转；显式提示仍优先于 pointer 推导
+  assert.equal(resolveCapabilities("harmonyos", { pointer: "touch" }).focusNav, false);
+  assert.equal(resolveCapabilities("harmonyos", { pointer: "none", focusNav: false }).focusNav, false);
+});
+
 test("能力提示边界校验：非法类型 / 非法 pointer 快速失败", () => {
   assert.throws(() => resolveCapabilities("android", { focusNav: "yes" }), /布尔值/);
   assert.throws(() => resolveCapabilities("android", { pointer: "stylus" }), /pointer/);
