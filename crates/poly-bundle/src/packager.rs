@@ -183,7 +183,7 @@ pub trait Packager: Send + Sync {
 }
 
 /// 内建打包器集合（M1：msi / nsis / dmg / deb / appimage / static-site；M2：aab / ipa；
-/// M3：小程序族 weapp / alipay / tt / quickapp + hap）。
+/// M3：小程序族 weapp / alipay / tt / rpk + hap）。
 pub fn builtin() -> Vec<Box<dyn Packager>> {
     vec![
         Box::new(crate::packagers::windows::WixMsi),

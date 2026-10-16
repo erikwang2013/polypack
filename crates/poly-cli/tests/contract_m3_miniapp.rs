@@ -6,13 +6,15 @@
 //!   校验器 / 签名引用 / 扩展名）与金样逐字段一致，漂移即失败并打印 `- 声明 / + 金样` diff；
 //!   ②金样自检（`artifacts[*]` 的 format / extension / entries 形态，空条目即失败——防金样空转）；
 //!   ③直连 `poly_bundle` 公开 API：打包器 id / format 与金样一致；④**快应用封装真跑比对**——
-//!   快应用腿无外部工具（Taro 编译腿在计划里如实 skipped），产物目录条目 ↔ 金样 `entries`
-//!   逐条比对；⑤比对器非空转证明（造一条缺失条目必被检出）。
+//!   快应用封装不依赖 Taro（Taro 编译腿在计划里如实 skipped），产物目录条目 ↔ 金样 `entries`
+//!   逐条比对（hap-toolkit 在场时打包腿真跑 `hap build`，产物多出 `dist/*.rpk` 条目——金样
+//!   模式比对只锚必需条目，多出仅提示）；⑤比对器非空转证明（造一条缺失条目必被检出）。
 //! - **real（`POLY_CONTRACT_REAL=1`，每夜）**：`poly init` → 工程 `ui/adapters/taro` 挂本仓
 //!   Taro 宿主（候选链 `ui/adapters/taro/host`）→ `poly build --target <t>` → 产物目录
 //!   （`.polypack/packages/<t>/miniapp/`）条目 ↔ 金样 `entries` 比对。Taro 工具链缺席
-//!   （宿主 node_modules 未装）或主产物未产出 → 打印 NOTE 后返回，绝不红；快应用腿无外部
-//!   工具，任意宿主真跑。
+//!   （宿主 node_modules 未装）或主产物未产出 → 打印 NOTE 后返回，绝不红；快应用腿无 Taro
+//!   依赖，任意宿主真跑，hap-toolkit 在场时追加 `.rpk` 收口断言（zip 容器 + 必需条目 + 清单
+//!   交叉 + `poly verify` 的 lint 判决；缺席 NOTE 跳过，T-M3-12）。
 //!
 //! 金样入库：`crates/poly-cli/tests/fixtures/m3/<target>.artifact.json`（M1 / M2 金样的同形
 //! schema）。四端产物均为**目录形态**（`extension`: null）：`miniapp/`（devtools 打开点，
@@ -60,7 +62,8 @@ fn registry_spec(id: &str) -> TargetSpec {
     spec
 }
 
-/// 打包格式 → 产物扩展名。小程序族四端均为目录形态（`miniapp/`），一律 None。
+/// 打包格式 → 产物扩展名。小程序族四端产物顶形态均为目录（`miniapp/`；快应用的 `.rpk`
+/// 在 `dist/` 内、`src/` 为编译工程），一律 None。
 fn extension_of(format: &str) -> Option<&'static str> {
     let _ = format;
     None
@@ -332,8 +335,9 @@ fn taro_targets_plan_needs_host_and_toolchain() {
     let _ = std::fs::remove_dir_all(&dir);
 }
 
-/// mock：快应用封装真跑比对——无外部工具腿（Taro 编译腿在计划里如实 skipped），
-/// 产物目录条目 ↔ 金样 `entries` 逐条比对。金样的 real 侧在任意宿主都可跑同一断言。
+/// mock：快应用封装真跑比对——不依赖 Taro（Taro 编译腿在计划里如实 skipped；hap-toolkit
+/// 在场时打包腿真跑 `hap build`，产物多出 `dist/` 条目仅提示），产物目录条目 ↔ 金样 `entries`
+/// 逐条比对。金样的 real 侧在任意宿主都可跑同一断言。
 #[test]
 fn quickapp_artifact_matches_golden_without_tools() {
     let dir =
@@ -355,7 +359,7 @@ fn quickapp_artifact_matches_golden_without_tools() {
     // 快应用封装不解析宿主工程，但输入面上给出工程根（与 CLI 组装同形）
     bundle.miniapp_host = Some(dir.clone());
     let spec = registry_spec("quickapp");
-    let packager = poly_bundle::find("quickapp", "quickapp").expect("quickapp 打包器");
+    let packager = poly_bundle::find("quickapp", "rpk").expect("quickapp 打包器");
     let plan = packager.plan(&bundle, &spec).expect("计划必须生成");
     assert_eq!(plan.commands.len(), 0, "快应用无外部编译命令");
     assert_eq!(plan.skipped.len(), 1, "Taro 编译腿须如实记入 skipped");
@@ -575,6 +579,96 @@ fn real_artifact_check(target: &str) {
         actual.len(),
         expected.len()
     );
+
+    // 快应用 `.rpk` 收口（T-M3-12）：hap-toolkit 在场 → 断言直出 `.rpk`（zip 容器 + 必需条目 +
+    // 清单交叉）并跑 `poly verify --target quickapp` 取 lint 判决；缺席 NOTE 跳过，绝不红。
+    if target == "quickapp" {
+        match poly_bundle::quickapp_hap_root() {
+            Ok(root) => {
+                let dist = dir.join("dist");
+                let mut rpks: Vec<PathBuf> = std::fs::read_dir(&dist)
+                    .expect("dist 目录可读")
+                    .flatten()
+                    .map(|entry| entry.path())
+                    .filter(|path| {
+                        path.is_file() && path.extension().is_some_and(|ext| ext == "rpk")
+                    })
+                    .collect();
+                rpks.sort();
+                assert_eq!(
+                    rpks.len(),
+                    1,
+                    "hap-toolkit 在场时 dist/ 应恰有 1 个 .rpk，实得 {rpks:?}"
+                );
+                let rpk = &rpks[0];
+                let bytes = std::fs::read(rpk).expect(".rpk 可读");
+                assert!(
+                    bytes.starts_with(b"PK\x03\x04"),
+                    ".rpk 应是 zip 容器（PK 魔数），实得 {:02x?}",
+                    &bytes[..4.min(bytes.len())]
+                );
+                let names = poly_bundle::zipwrite::entry_names(rpk).expect(".rpk 条目面可读");
+                for required in ["manifest.json", "app.js", "META-INF/CERT"] {
+                    assert!(
+                        names.iter().any(|name| name == required),
+                        ".rpk 缺必需条目 {required}：{names:?}"
+                    );
+                }
+                // 清单交叉：rpk 内 manifest.json 的关键字段与随包源清单同源
+                let src: serde_json::Value = serde_json::from_str(
+                    &std::fs::read_to_string(dir.join("src/manifest.json")).expect("源清单可读"),
+                )
+                .expect("源清单是 JSON");
+                let packaged: serde_json::Value = serde_json::from_str(
+                    &poly_bundle::zipwrite::entry_text(rpk, "manifest.json")
+                        .expect("rpk 清单可读")
+                        .expect("rpk 含 manifest.json"),
+                )
+                .expect("rpk 清单是 JSON");
+                for field in ["package", "versionName", "versionCode"] {
+                    assert!(
+                        !src[field].is_null(),
+                        "源清单缺 {field}（收口断言会空转）：{src}"
+                    );
+                    assert_eq!(
+                        packaged[field], src[field],
+                        ".rpk manifest.json 的 {field} 与源清单不一致"
+                    );
+                }
+                // lint 判决走 CLI 面：`poly verify --target quickapp` 真跑 hap-toolkit validateJson
+                let verify = poly(&["verify", "--target", "quickapp"], &workdir);
+                let text = format!(
+                    "{}{}",
+                    String::from_utf8_lossy(&verify.stdout),
+                    String::from_utf8_lossy(&verify.stderr)
+                );
+                assert!(
+                    verify.status.success(),
+                    "poly verify --target quickapp 失败（{}）：{text}",
+                    verify.status
+                );
+                assert!(
+                    text.contains("校验：hap-toolkit-lint → true"),
+                    "verify 未给出 lint 通过判决：{text}"
+                );
+                eprintln!(
+                    "OK quickapp：.rpk 收口通过（{}，{} 条目，hap-toolkit 在 {}；清单 package={} versionName={}）",
+                    rpk.display(),
+                    names.len(),
+                    root.display(),
+                    packaged["package"],
+                    packaged["versionName"]
+                );
+            }
+            Err(reason) => {
+                eprintln!(
+                    "NOTE quickapp：hap-toolkit 不在场（{reason}）——`.rpk` 收口断言跳过\
+                     （装齐工具链后走真断言，T-M3-12）"
+                );
+            }
+        }
+    }
+
     // 真跑产物留档：不删临时工程（本地留一份供人工核验）
     eprintln!("OK {target}：工程 {}", workdir.display());
 }

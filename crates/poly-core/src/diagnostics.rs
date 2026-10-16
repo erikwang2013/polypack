@@ -83,6 +83,12 @@ pub mod codes {
     pub const E_VERIFY_0001: Code = Code::new("poly::E_VERIFY_0001");
     /// 没有可比对的产物 / 未接入该目标的校验器。
     pub const E_VERIFY_0002: Code = Code::new("poly::E_VERIFY_0002");
+    /// 校验器判定产物有缺陷（如快应用 `.rpk` 的 hap-toolkit lint / 结构检查命中）。
+    pub const E_VERIFY_0003: Code = Code::new("poly::E_VERIFY_0003");
+    /// 提审输入未就绪（如未找到 `.rpk` 产物 / 缺必需参数）。
+    pub const E_PUBLISH_0001: Code = Code::new("poly::E_PUBLISH_0001");
+    /// 渠道客户端未落位（`poly-publish` 侧无该渠道的备位 / 内置实现）。
+    pub const E_PUBLISH_0002: Code = Code::new("poly::E_PUBLISH_0002");
     /// 未找到可重签的未签名产物（`poly retry --from sign`）。
     pub const E_RETRY_0001: Code = Code::new("poly::E_RETRY_0001");
     /// IO 错误。

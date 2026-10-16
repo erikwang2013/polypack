@@ -31,3 +31,4 @@ pub use packager::{
     for_spec,
 };
 pub use packagers::harmony::{HapStructure, check_hap_structure};
+pub use packagers::miniapp::quickapp_hap_root;
