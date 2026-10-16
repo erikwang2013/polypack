@@ -4,7 +4,7 @@
 // 纯函数、无副作用、零依赖（除子集描述与内核口径）；确定性输出（同一子集两次发射逐字节相等）。
 // 生成件不得手改：改子集描述（src/subset.js）后重跑 scripts/build-and-check.mjs。
 
-import { createFocusEngine, traversalSnapshot } from "../../tv/src/focus.js";
+import { createTvFocus, traversalSnapshot } from "../../tv/src/focus.js";
 
 import { CANVAS, validateSubset } from "./subset.js";
 
@@ -63,12 +63,13 @@ function elementLines(el, indent) {
 
 /**
  * 发射频道生成件：{ "components/PolypackScene.xml": …, "source/focusgraph.brs": … }。
- * focusgraph 表 = 共享焦点内核 traversalSnapshot（显式邻接 → 每方向落点解析，边界落点 = 自身），
+ * 焦点图 = adapter-tv T-M4-02 口径 createTvFocus（布局盒 rect 几何推导邻居）；
+ * focusgraph 表 = 共享焦点内核 traversalSnapshot（每方向落点解析，边界落点 = 自身），
  * 即 BRS 侧无需再做边界特判——语义在数据里（与内核逐键等价，test/emit.test.js 钉住）。
  */
 export function emitChannelFiles(subsetInput) {
   const subset = validateSubset(subsetInput);
-  const engine = createFocusEngine({ nodes: subset.focus.nodes, initial: subset.focus.initial });
+  const engine = createTvFocus({ nodes: subset.focus.nodes, initial: subset.focus.initial });
   const snapshot = traversalSnapshot(engine.graph);
 
   const xml = [
@@ -86,7 +87,7 @@ export function emitChannelFiles(subsetInput) {
   const table = { order: engine.order, edges: snapshot, initial: subset.focus.initial };
   const brs = [
     "' 由发射器生成（勿手改）——焦点遍历表：每方向落点均在图内（边界落点 = 自身，无死路）。",
-    "' 口径源：@polypack/adapter-tv 焦点内核 traversalSnapshot（显式邻接，与 JS 侧逐键等价）。",
+    "' 口径源：@polypack/adapter-tv 焦点内核 traversalSnapshot（布局盒几何推导，与 JS 侧逐键等价）。",
     "function ppFocusGraph() as Object",
     `    return ${JSON.stringify(table)}`,
     "end function",

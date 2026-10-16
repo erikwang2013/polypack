@@ -1,13 +1,14 @@
 // SceneGraph 子集渲染器的受限词汇（spike，T-M4-11）：元素类型 = 白名单、每类属性 = 封闭集，
 // 未知即抛错——「可承载组件子集清单」的机器可读形态（与 CAPABILITY-BOUNDARY-DRAFT.md §支持项同表）。
 //
-// 示例子集与 @polypack/adapter-tv 的示例页面（ui/adapters/tv/src/example.js）同源：同一页面语义
-// （标题 / 版本行 / 计数按钮 / 重置按钮 / 提示行 + counter↔reset 焦点图 + OK 激活 + Back 焦点记忆）。
+// 示例子集与 @polypack/adapter-tv 的示例页面同源：取示例页 2 按钮核心（counter / reset +
+// OK 激活 + Back 焦点记忆；标题 / 版本行 / 提示行同语义）。tv 示例页在 T-M4-02/03 已演进为
+// 4 节点网格 + 分层 Back，spike 按 2 按钮核心收敛；焦点图口径与 tv 同源——布局盒（rect）
+// 交 adapter-tv T-M4-02 几何推导（deriveFocusNodes），零手写邻接。
 // 差异只在表达宿主：布局为手算坐标（SceneGraph 无 flex——能力边界文档记录的缺口之一），
 // 数值口径 = Roku 设计画布 1920×1080（fhd）自有 + 安全区/配色/间距自 adapter-tv tokens 派生。
 
 import { tokens, safeAreaInsets } from "../../tv/src/tokens.js";
-import { EXAMPLE_FOCUS_NODES } from "../../tv/src/example-nodes.js";
 
 /** 受支持元素类型 → 封闭属性集。button 为复合糖：Group(focusable) + 环 Rectangle + 底 Rectangle + Label。 */
 export const SUBSET_ELEMENTS = Object.freeze({
@@ -63,7 +64,8 @@ const validateNode = (node, path) => {
 
 /**
  * 子集描述校验（发射前 fail fast）：元素词汇封闭 + 焦点图邻接目标在图内 + initial 落点存在。
- * 焦点图为显式邻接（shared 焦点内核口径）；无邻接方向 = 边界自环（落点解析在发射器）。
+ * 焦点图 = 布局盒几何推导（adapter-tv T-M4-02 口径，deriveFocusNodes 在发射器侧调用；
+ * 节点 rect 缺失/非法由其抛错）；显式 neighbors 可逐向覆盖，此处校验其目标在图内。
  */
 export function validateSubset(subset) {
   if (!subset || typeof subset !== "object") throw new TypeError("subset: 须为对象");
@@ -127,6 +129,17 @@ export function createExampleSubset() {
     ringWidth: button.ringWidth,
   });
 
+  // 焦点图节点 = 各按钮画布绝对盒（frame+card+content 平移累加）——几何推导的输入。
+  const focusNode = (id, y) => ({
+    id,
+    rect: {
+      x: insets.left + cardX + border + buttonX,
+      y: insets.top + cardY + border + y,
+      width: button.width,
+      height: button.height,
+    },
+  });
+
   const subset = {
     elements: [
       { type: "rect", id: "bg", translation: [0, 0], width: CANVAS.width, height: CANVAS.height, color: tokens.color.text },
@@ -159,7 +172,10 @@ export function createExampleSubset() {
         ],
       },
     ],
-    focus: { initial: "counter", nodes: EXAMPLE_FOCUS_NODES },
+    focus: {
+      initial: "counter",
+      nodes: [focusNode("counter", stackY.counter), focusNode("reset", stackY.reset)],
+    },
   };
   return subset;
 }

@@ -3,8 +3,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { EXAMPLE_FOCUS_NODES } from "../../tv/src/example-nodes.js";
-import { createFocusEngine, traversalSnapshot } from "../../tv/src/focus.js";
+import { createTvFocus, traversalSnapshot } from "../../tv/src/focus.js";
 import { emitChannelFiles, toSceneGraphColor, xmlWellFormed } from "../src/emit.js";
 import { createExampleSubset, validateSubset } from "../src/subset.js";
 
@@ -17,7 +16,7 @@ const minimalSubset = (overrides = {}) => ({
   elements: [
     { type: "label", id: "x", translation: [0, 0], width: 10, height: 10, text: "hi", font: "font:Small", color: "#000000" },
   ],
-  focus: { initial: "n1", nodes: [{ id: "n1", neighbors: {} }] },
+  focus: { initial: "n1", nodes: [{ id: "n1", rect: { x: 0, y: 0, width: 10, height: 10 } }] },
   ...overrides,
 });
 
@@ -30,13 +29,18 @@ test("发射件集合与确定性（两次发射逐字节相等）", () => {
   assert.ok(xmlWellFormed(a["components/PolypackScene.xml"]).ok, "发射 XML 应良构");
 });
 
-test("焦点表逐键等价于共享内核快照（边界自环落点已解析）", () => {
-  const { "source/focusgraph.brs": brs } = emitChannelFiles(createExampleSubset());
+test("焦点表逐键等价于共享内核快照（几何推导 + 边界自环落点已解析）", () => {
+  const subset = createExampleSubset();
+  const { "source/focusgraph.brs": brs } = emitChannelFiles(subset);
   const table = parseFocusTable(brs);
-  const engine = createFocusEngine({ nodes: EXAMPLE_FOCUS_NODES, initial: "counter" });
+  const engine = createTvFocus({ nodes: subset.focus.nodes, initial: "counter" });
   assert.deepEqual(table.order, [...engine.order]);
   assert.deepEqual(table.edges, traversalSnapshot(engine.graph));
   assert.equal(table.initial, "counter");
+  // 从 2 按钮竖排布局盒推导的落点（防「两侧同错」；语义 = 文档 §表 B 方向键行）
+  assert.equal(table.edges.counter.down, "reset");
+  assert.equal(table.edges.reset.up, "counter");
+  assert.equal(table.edges.counter.up, "counter"); // 上边界自环
 });
 
 test("文本/属性转义与自检扫描器（含反例）", () => {

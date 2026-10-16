@@ -1,14 +1,16 @@
 // Roku 键映射与共享焦点内核的接口核对：字面表 + 行为断言（handleKey 结果类型）。
-// 行为断言 = 真正的口径核验（内核经 adapter-tv 再导出，已在 main）；字面表防手滑改名。
+// 行为断言 = 真正的口径核验：焦点图经 adapter-tv T-M4-02 几何推导（createTvFocus）构建，
+// 与发射器同源（subset.js 的布局盒）；字面表防手滑改名。
 
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { EXAMPLE_FOCUS_NODES } from "../../tv/src/example-nodes.js";
-import { createFocusEngine, handleKey } from "../../tv/src/focus.js";
+import { createTvFocus, handleKey } from "../../tv/src/focus.js";
 import { ROKU_KEY_MAP, mapRokuKey } from "../src/roku-keys.js";
+import { createExampleSubset } from "../src/subset.js";
 
-const engine = () => createFocusEngine({ nodes: EXAMPLE_FOCUS_NODES, initial: "counter" });
+const engine = () =>
+  createTvFocus({ nodes: createExampleSubset().focus.nodes, initial: "counter" });
 
 test("字面映射：方向 / OK(select) / Back；未列键放行", () => {
   assert.equal(mapRokuKey("up"), "DPAD_UP");
