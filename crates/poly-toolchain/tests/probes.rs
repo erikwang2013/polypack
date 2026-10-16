@@ -139,8 +139,10 @@ fn run_capture_reports_missing_command_as_none() {
 #[test]
 #[cfg(unix)]
 fn run_capture_returns_trimmed_stdout() {
+    // 成功路径的超时是防挂保险、不是计时断言：并行 / 重载下进程 spawn 抖动可达秒级，
+    // 2s 曾在全量并发跑中假红（2026-10-16 M3 集成实证；单跑 30 连绿），放宽到 30s。
     assert_eq!(
-        run_capture("echo", &["  hello  "], Duration::from_secs(2)).as_deref(),
+        run_capture("echo", &["  hello  "], Duration::from_secs(30)).as_deref(),
         Some("hello")
     );
 }
@@ -151,9 +153,10 @@ fn run_capture_times_out_without_panicking() {
     let start = Instant::now();
     let out = run_capture("sleep", &["30"], Duration::from_millis(200));
     assert!(out.is_none(), "超时必须返回 None");
+    // 上界只用于区分「约 200ms 超时返回」与「挂满 30s sleep」——重载下放宽到 10s。
     let elapsed = start.elapsed();
     assert!(
-        elapsed < Duration::from_secs(3),
-        "须在 3s 内返回：{elapsed:?}"
+        elapsed < Duration::from_secs(10),
+        "须在 10s 内返回：{elapsed:?}"
     );
 }
