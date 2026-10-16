@@ -279,7 +279,10 @@ fn builtin_matches_roadmap_3_3_mini_programs() {
 /// T-M4-07 验收（声明侧）：L3 电视族首行 Apple tvOS 按 ROADMAP §3.4 逐列对齐。
 #[test]
 fn builtin_matches_roadmap_3_4_apple_tvos() {
-    let tvos = Registry::builtin().get("tvos").expect("内建 tvos 目标").clone();
+    let tvos = Registry::builtin()
+        .get("tvos")
+        .expect("内建 tvos 目标")
+        .clone();
     assert_eq!(tvos.tier, 3, "L3 电视与大屏");
     assert_eq!(tvos.hosts, vec![Host::Macos], "需 macOS 宿主");
     assert_eq!(tvos.runtime, Runtime::Native, "native staticlib");
@@ -291,7 +294,10 @@ fn builtin_matches_roadmap_3_4_apple_tvos() {
     );
     // 产物格式同 ios（ipa）：打包链按目标切 tvOS SDK / 切片，格式不分裂（T-M4-07）
     assert_eq!(tvos.package.format, "ipa", "TV 包");
-    assert_eq!(tvos.package.builder, "tvos-xcodebuild", "xcodebuild（复用 iOS 链）");
+    assert_eq!(
+        tvos.package.builder, "tvos-xcodebuild",
+        "xcodebuild（复用 iOS 链）"
+    );
     assert_eq!(tvos.signing.as_deref(), Some("apple-codesign"), "codesign");
     assert_eq!(
         tvos.verify.iter().map(String::as_str).collect::<Vec<_>>(),
@@ -302,5 +308,8 @@ fn builtin_matches_roadmap_3_4_apple_tvos() {
         vec!["app-store-connect"]
     );
     assert!(!tvos.experimental, "T-M4-07 为正式链（非实验档）");
-    assert!(tvos.notes.as_deref().unwrap_or("").contains("macOS"), "需宿主边界说明");
+    assert!(
+        tvos.notes.as_deref().unwrap_or("").contains("macOS"),
+        "需宿主边界说明"
+    );
 }

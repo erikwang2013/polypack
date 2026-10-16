@@ -13,7 +13,9 @@ mod common;
 use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
 
-use poly_bundle::packagers::ios::{Ios, swift};
+use poly_bundle::packagers::ios::{
+    ApplePlatform, IOS_PLATFORM, Ios, TVOS_PLATFORM, apple_platform, swift,
+};
 use poly_bundle::{BundleError, BundleInputs, IosInputs, Packager, ProductInfo, codes};
 use poly_targets::{Host, TargetSpec};
 
@@ -48,20 +50,25 @@ const LIB: &str = "pax_core";
 
 /// 目标声明（`ios` 目标：`hosts = [Macos]`，与 `poly-targets` 内建 spec 同形）。
 fn spec(format: &str) -> TargetSpec {
-    let mut spec = TargetSpec::new_stub("ios", 1, &[Host::Macos]);
+    spec_for("ios", format)
+}
+
+/// 目标声明（T-M4-07：`ios` / `tvos` 共链，builder 各自对齐内建 spec）。
+fn spec_for(id: &str, format: &str) -> TargetSpec {
+    let mut spec = TargetSpec::new_stub(id, 1, &[Host::Macos]);
     spec.package.format = format.to_string();
-    spec.package.builder = "ios-xcodebuild".to_string();
+    spec.package.builder = format!("{id}-xcodebuild");
     spec
 }
 
 /// 假核心 crate（`target/<triple>/release/lib<lib>.a`）+ T-M2-01 Swift 绑定三件套。
-fn core_crate(dir: &Path) -> PathBuf {
+///
+/// triple 集从平台描述符取（T-M4-07：tvos 设备 + 单架构模拟器两条）。
+fn core_crate(dir: &Path, platform: &ApplePlatform) -> PathBuf {
     let crate_dir = dir.join("core");
-    for triple in [
-        swift::DEVICE_TRIPLE,
-        swift::SIM_ARM64_TRIPLE,
-        swift::SIM_X86_64_TRIPLE,
-    ] {
+    let triples =
+        std::iter::once(platform.device_triple).chain(platform.sim_triples.iter().copied());
+    for triple in triples {
         write(
             &crate_dir
                 .join("target")
@@ -87,9 +94,10 @@ fn core_crate(dir: &Path) -> PathBuf {
     crate_dir
 }
 
-/// 合规 XCFramework 结构（device + simulator 两切片，各一枚 `*.a` + `Headers/`）。
-fn xcframework(dir: &Path) -> PathBuf {
+/// 合规 XCFramework 结构（平台的两切片，各一枚 `*.a` + `Headers/`）。
+fn xcframework(dir: &Path, platform: &ApplePlatform) -> PathBuf {
     let root = dir.join("Pax Notes.xcframework");
+    let slices = platform.slices();
     write(
         &root.join("Info.plist"),
         format!(
@@ -113,12 +121,11 @@ fn xcframework(dir: &Path) -> PathBuf {
 </dict>
 </plist>
 "#,
-            swift::DEVICE_SLICE,
-            swift::SIM_SLICE
+            slices[0], slices[1]
         )
         .as_bytes(),
     );
-    for slice in [swift::DEVICE_SLICE, swift::SIM_SLICE] {
+    for slice in slices {
         write(
             &root.join(slice).join(format!("lib{LIB}.a")),
             b"!<arch>\x00",
@@ -137,11 +144,16 @@ fn xcframework(dir: &Path) -> PathBuf {
 
 /// 完整打包输入（核心 crate + 合规 XCFramework，无宿主工程 → 走骨架生成）。
 fn inputs(tag: &str) -> BundleInputs {
+    inputs_for(tag, &IOS_PLATFORM)
+}
+
+/// 同上，按平台（T-M4-07：tvos 走 `TVOS_PLATFORM` 的切片 / triple）。
+fn inputs_for(tag: &str, platform: &ApplePlatform) -> BundleInputs {
     let dir = temp_dir(tag);
-    xcframework(&dir);
+    xcframework(&dir, platform);
     let mut inputs = BundleInputs::new(product(), &dir);
     inputs.ios = Some(IosInputs {
-        core_crate: Some(core_crate(&dir)),
+        core_crate: Some(core_crate(&dir, platform)),
         lib_name: Some(LIB.to_string()),
         host_project: None,
         bindings_dir: None,
@@ -377,7 +389,7 @@ fn stage_slices_lands_modulemap_and_headers_for_both_slices() {
     let mut broken = inputs.clone();
     let dir = temp_dir("stage-no-bindings");
     let mut ios = broken.ios.clone().unwrap();
-    ios.core_crate = Some(core_crate(&dir));
+    ios.core_crate = Some(core_crate(&dir, &IOS_PLATFORM));
     std::fs::remove_file(swift::bridge_dir(&dir).join(format!("{LIB}FFI.h"))).unwrap();
     broken.ios = Some(ios);
     broken.out_dir = dir;
@@ -397,8 +409,8 @@ fn staging_dirs_cover_every_command_output_parent() {
     let sim_parent = swift::slices_dir(&inputs.out_dir).join(swift::SIM_SLICE);
     assert!(!sim_parent.is_dir(), "夹具不应预铺切片目录：{sim_parent:?}");
 
-    let slices = swift::ensure_staging_dirs(&inputs).expect("铺目录骨架");
-    swift::ensure_staging_dirs(&inputs).expect("幂等：复用路径 / 重跑再调不得失败");
+    let slices = swift::ensure_staging_dirs(&inputs, &IOS_PLATFORM).expect("铺目录骨架");
+    swift::ensure_staging_dirs(&inputs, &IOS_PLATFORM).expect("幂等：复用路径 / 重跑再调不得失败");
     assert_eq!(slices, swift::slices_dir(&inputs.out_dir));
 
     for command in &plan.commands {
@@ -420,8 +432,8 @@ fn staging_dirs_cover_every_command_output_parent() {
 #[test]
 fn xcframework_layout_validates_and_rejects_tampering() {
     let dir = temp_dir("layout");
-    let root = xcframework(&dir);
-    let layout = swift::validate_xcframework_layout(&dir).expect("合规结构应通过");
+    let root = xcframework(&dir, &IOS_PLATFORM);
+    let layout = swift::validate_xcframework_layout(&dir, &IOS_PLATFORM).expect("合规结构应通过");
     assert_eq!(layout.root, root);
     assert_eq!(
         layout.slices,
@@ -443,7 +455,8 @@ fn xcframework_layout_validates_and_rejects_tampering() {
         original.replace(swift::SIM_SLICE, "ios-x86_64-simulator"),
     )
     .unwrap();
-    let err = swift::validate_xcframework_layout(&dir).expect_err("标识漂移必须失败");
+    let err =
+        swift::validate_xcframework_layout(&dir, &IOS_PLATFORM).expect_err("标识漂移必须失败");
     assert_eq!(err.code(), codes::E_BND_0003);
     std::fs::write(&plist, &original).unwrap();
 
@@ -451,7 +464,7 @@ fn xcframework_layout_validates_and_rejects_tampering() {
     let sim_a = root.join(swift::DEVICE_SLICE).join(format!("lib{LIB}.a"));
     let renamed = sim_a.with_extension("a.bak");
     std::fs::rename(&sim_a, &renamed).unwrap();
-    let err = swift::validate_xcframework_layout(&dir).expect_err("缺库必须失败");
+    let err = swift::validate_xcframework_layout(&dir, &IOS_PLATFORM).expect_err("缺库必须失败");
     assert_eq!(err.code(), codes::E_BND_0002);
     std::fs::rename(&renamed, &sim_a).unwrap();
 
@@ -460,7 +473,7 @@ fn xcframework_layout_validates_and_rejects_tampering() {
         &root.join(swift::DEVICE_SLICE).join("libextra.a"),
         b"!<arch>",
     );
-    let err = swift::validate_xcframework_layout(&dir).expect_err("多库必须失败");
+    let err = swift::validate_xcframework_layout(&dir, &IOS_PLATFORM).expect_err("多库必须失败");
     assert_eq!(err.code(), codes::E_BND_0003);
     std::fs::remove_file(root.join(swift::DEVICE_SLICE).join("libextra.a")).unwrap();
 
@@ -468,12 +481,13 @@ fn xcframework_layout_validates_and_rejects_tampering() {
     let modulemap = root.join(swift::SIM_SLICE).join("Headers/module.modulemap");
     let stashed = modulemap.with_extension("stash");
     std::fs::rename(&modulemap, &stashed).unwrap();
-    let err = swift::validate_xcframework_layout(&dir).expect_err("缺模块图必须失败");
+    let err =
+        swift::validate_xcframework_layout(&dir, &IOS_PLATFORM).expect_err("缺模块图必须失败");
     assert_eq!(err.code(), codes::E_BND_0002);
     std::fs::rename(&stashed, &modulemap).unwrap();
 
     // 复原后仍通过（证明上面的失败来自篡改而非环境）。
-    swift::validate_xcframework_layout(&dir).expect("复原后应再次通过");
+    swift::validate_xcframework_layout(&dir, &IOS_PLATFORM).expect("复原后应再次通过");
 }
 
 /// 切片架构枚举（`lipo -archs`）：本宿主无 lipo → ToolMissing（真机执行阻塞）。
@@ -815,6 +829,313 @@ fn package_is_gated_to_macos_hosts() {
 
     // T-M2-03 绑定链同样门控（Apple triple 无 Apple SDK 不可构建）。
     let err = swift::package(&inputs, &spec("ipa")).expect_err("非 macOS 宿主必须如实失败");
+    assert_eq!(err.code(), codes::E_BND_0001);
+}
+
+// ------------------------------------------- T-M4-07：Apple tvOS（与 ios 共链）
+
+/// 打包器矩阵：`tvos` + `ipa` 由同一条 Apple 链服务（`serves` 判定），服务范围闭合。
+#[test]
+fn tvos_registry_serves_the_shared_apple_chain() {
+    // 描述符查表：只认 ios / tvos；id 与键一致
+    for id in ["ios", "tvos"] {
+        assert_eq!(
+            apple_platform(id).map(|p| p.id),
+            Some(id),
+            "{id} 应有描述符"
+        );
+    }
+    assert!(apple_platform("watchos").is_none() && apple_platform("visionos").is_none());
+
+    // 内建矩阵：`find("tvos", "ipa")` 命中 Ios（打包器 id 仍是 ios；格式逐字一致才服务）
+    let packager =
+        poly_bundle::for_spec(&spec_for("tvos", "ipa")).expect("tvos 目标须有内建打包器");
+    assert_eq!(packager.id(), "ios", "Apple 链同一条实现");
+    assert!(packager.serves("tvos") && packager.serves("ios"));
+    assert!(!packager.serves("macos"), "macOS 有独立 dmg 链");
+    assert!(
+        poly_bundle::find("tvos", "dmg").is_none(),
+        "格式不同不得串到 Apple 打包器"
+    );
+    assert!(
+        poly_bundle::find("tvos", "xa").is_none() && poly_bundle::find("watchos", "ipa").is_none(),
+        "未声明目标 / 未声明格式不得命中"
+    );
+
+    // 平台描述符的差异点必须互不相同（防止两平台共用一份写死值）
+    assert_eq!(TVOS_PLATFORM.sim_triples.len(), 1, "tvOS 模拟器单架构");
+    assert_eq!(IOS_PLATFORM.sim_triples.len(), 2);
+    assert_ne!(IOS_PLATFORM.deployment_key, TVOS_PLATFORM.deployment_key);
+    assert_ne!(IOS_PLATFORM.destination, TVOS_PLATFORM.destination);
+}
+
+/// tvOS 切片链命令序：cargo ×2（device + 单架构模拟器）→ **无 lipo 合并** →
+/// xcodebuild -create-xcframework → lipo -info ×2。
+#[test]
+fn tvos_swift_plan_uses_tvos_triples_without_lipo_merge() {
+    let inputs = inputs_for("tvos-swift-plan", &TVOS_PLATFORM);
+    let plan = swift::plan(&inputs, &spec_for("tvos", "ipa")).expect("plan");
+    let lines: Vec<String> = plan.commands.iter().map(|c| c.line()).collect();
+
+    // pre = 2 cargo；post = create-xcframework + 2 lipo -info → 5
+    assert_eq!(plan.commands.len(), 5, "{lines:#?}");
+    assert!(
+        !plan.commands.iter().any(|c| c.program == "uniffi-bindgen"),
+        "三件套在位即复用：{lines:#?}"
+    );
+    assert!(
+        !lines.iter().any(|line| line.contains("lipo -create")),
+        "单架构模拟器切片无 lipo 合并步：{lines:#?}"
+    );
+
+    let core = inputs.ios.as_ref().unwrap().core_crate.as_deref().unwrap();
+    let arg = |path: &Path| path.display().to_string();
+    for (index, triple) in std::iter::once(TVOS_PLATFORM.device_triple)
+        .chain(TVOS_PLATFORM.sim_triples.iter().copied())
+        .enumerate()
+    {
+        let command = &plan.commands[index];
+        assert_eq!(command.program, "cargo");
+        assert_eq!(command.args, vec!["build", "--target", triple, "--release"]);
+        assert_eq!(
+            command.cwd.as_deref(),
+            Some(core),
+            "{triple} 须在核心 crate 内编译"
+        );
+    }
+
+    let command = &plan.commands[2];
+    assert_eq!(command.program, "xcodebuild");
+    assert_eq!(
+        command.args,
+        vec![
+            "-create-xcframework".to_string(),
+            "-library".to_string(),
+            arg(&swift::slice_lib_path(
+                &inputs.out_dir,
+                TVOS_PLATFORM.device_slice,
+                LIB
+            )),
+            "-headers".to_string(),
+            arg(&swift::slices_dir(&inputs.out_dir)
+                .join(TVOS_PLATFORM.device_slice)
+                .join("Headers")),
+            "-library".to_string(),
+            arg(&swift::slice_lib_path(
+                &inputs.out_dir,
+                TVOS_PLATFORM.sim_slice,
+                LIB
+            )),
+            "-headers".to_string(),
+            arg(&swift::slices_dir(&inputs.out_dir)
+                .join(TVOS_PLATFORM.sim_slice)
+                .join("Headers")),
+            "-output".to_string(),
+            arg(&swift::xcframework_path(&inputs)),
+        ],
+        "{lines:#?}"
+    );
+    for (offset, slice) in TVOS_PLATFORM.slices().into_iter().enumerate() {
+        let command = &plan.commands[3 + offset];
+        assert_eq!(command.program, "lipo");
+        assert_eq!(
+            command.args,
+            vec![
+                "-info".to_string(),
+                arg(&swift::slice_lib_path(&inputs.out_dir, slice, LIB)),
+            ],
+            "{lines:#?}"
+        );
+    }
+}
+
+/// tvOS 切片暂存：device/模拟器静态库均由 `stage_slices` 直接落位（无 lipo 产物可拷）；
+/// 两切片各备 `Headers/`。
+#[test]
+fn tvos_stage_slices_lands_single_sim_lib_without_lipo() {
+    let inputs = inputs_for("tvos-stage", &TVOS_PLATFORM);
+    let spec = spec_for("tvos", "ipa");
+    let slices = swift::stage_slices(&inputs, &spec).expect("stage_slices");
+    assert_eq!(slices, swift::slices_dir(&inputs.out_dir));
+
+    let core = inputs.ios.as_ref().unwrap().core_crate.as_ref().unwrap();
+    let device_a = slices
+        .join(TVOS_PLATFORM.device_slice)
+        .join(format!("lib{LIB}.a"));
+    assert_eq!(
+        std::fs::read(&device_a).unwrap(),
+        std::fs::read(swift::built_lib(core, TVOS_PLATFORM.device_triple, LIB)).unwrap(),
+        "device 切片须为核心 crate 产物本体"
+    );
+    let sim_a = slices
+        .join(TVOS_PLATFORM.sim_slice)
+        .join(format!("lib{LIB}.a"));
+    assert_eq!(
+        std::fs::read(&sim_a).unwrap(),
+        std::fs::read(swift::built_lib(core, TVOS_PLATFORM.sim_triples[0], LIB)).unwrap(),
+        "单架构模拟器切片 = 该 triple 产物本体（不经 lipo）"
+    );
+    for slice in TVOS_PLATFORM.slices() {
+        let headers = slices.join(slice).join("Headers");
+        assert!(headers.join("module.modulemap").is_file(), "{headers:?}");
+        assert!(headers.join(format!("{LIB}FFI.h")).is_file(), "{slice}");
+    }
+}
+
+/// tvOS 工程骨架：tvos-skeleton 目录、`SDKROOT = appletvos` / `TVOS_DEPLOYMENT_TARGET = 15.1` /
+/// 设备族 3、无 iOS 专属 plist 键；archive 目的地 = `generic/platform=tvOS`。
+#[test]
+fn tvos_ipa_plan_generates_tvos_skeleton_and_destination() {
+    let inputs = inputs_for("tvos-ipa-plan", &TVOS_PLATFORM);
+    let spec = spec_for("tvos", "ipa");
+    let plan = Ios.plan(&inputs, &spec).expect("plan");
+
+    let script = |suffix: &str| -> &str {
+        &plan
+            .scripts
+            .iter()
+            .find(|s| {
+                s.path
+                    .to_string_lossy()
+                    .replace('\\', "/")
+                    .ends_with(suffix)
+            })
+            .unwrap_or_else(|| panic!("缺脚本 {suffix}：{:#?}", plan.scripts))
+            .contents
+    };
+
+    let pbxproj = script("tvos-skeleton/Pax Notes.xcodeproj/project.pbxproj");
+    assert!(pbxproj.contains("SDKROOT = appletvos;"), "{pbxproj}");
+    assert!(
+        pbxproj.contains("TVOS_DEPLOYMENT_TARGET = 15.1;"),
+        "{pbxproj}"
+    );
+    assert!(
+        pbxproj.contains("TARGETED_DEVICE_FAMILY = \"3\";"),
+        "{pbxproj}"
+    );
+    assert!(
+        !pbxproj.contains("IPHONEOS_DEPLOYMENT_TARGET") && !pbxproj.contains("SDKROOT = iphoneos;"),
+        "tvOS 骨架不得残留 iOS 口径：{pbxproj}"
+    );
+    assert!(
+        pbxproj.contains("wrapper.xcframework"),
+        "须链接 XCFramework"
+    );
+    assert!(pbxproj.contains("CODE_SIGNING_ALLOWED = NO"), "未签名归档");
+
+    let info = script("tvos-skeleton/Pax Notes/Info.plist");
+    assert!(info.contains("<key>CFBundleIdentifier</key><string>com.polypack.paxnotes</string>"));
+    for key in [
+        "LSRequiresIPhoneOS",
+        "UILaunchScreen",
+        "UIInterfaceOrientation",
+    ] {
+        assert!(!info.contains(key), "tvOS Info.plist 不得带 {key}：{info}");
+    }
+    // 共享 scheme / 导出配置与平台无关，仍须落盘
+    assert!(
+        !script("xcshareddata/xcschemes/Pax Notes.xcscheme").is_empty(),
+        "scheme 缺"
+    );
+    assert!(
+        script("ExportOptions.plist").contains("<key>method</key>"),
+        "导出配置缺"
+    );
+
+    // archive 目的地切 tvOS SDK；工程路径落 tvos-skeleton
+    let lines: Vec<String> = plan.commands.iter().map(|c| c.line()).collect();
+    let command = &plan.commands[0];
+    assert_eq!(command.program, "xcodebuild", "{lines:#?}");
+    assert!(
+        command
+            .args
+            .windows(2)
+            .any(|pair| pair == ["-destination", "generic/platform=tvOS"]),
+        "{lines:#?}"
+    );
+    assert_eq!(
+        Ios.project_path(&inputs, &spec).unwrap(),
+        inputs
+            .out_dir
+            .join("tvos-skeleton")
+            .join("Pax Notes.xcodeproj")
+    );
+}
+
+/// XCFramework 结构校验按平台期望：tvOS 切片集在 TVOS 期望下通过、在 iOS 期望下拒绝；
+/// 切片标识漂移照旧响亮失败。
+#[test]
+fn tvos_xcframework_layout_is_platform_scoped() {
+    let dir = temp_dir("tvos-layout");
+    let root = xcframework(&dir, &TVOS_PLATFORM);
+
+    let layout = swift::validate_xcframework_layout(&dir, &TVOS_PLATFORM).expect("合规结构应通过");
+    assert_eq!(layout.root, root);
+    assert_eq!(
+        layout.slices,
+        TVOS_PLATFORM.slices().map(str::to_string).to_vec()
+    );
+    assert_eq!(layout.libraries, layout.slices);
+
+    // 串平台：同一棵树在 iOS 期望下必须拒绝（期望集按描述符派生，非写死）
+    let err = swift::validate_xcframework_layout(&dir, &IOS_PLATFORM).expect_err("串平台必须失败");
+    assert_eq!(err.code(), codes::E_BND_0003);
+
+    // 篡改：模拟器切片标识漂移 → 即使是本平台也必须失败
+    let plist = root.join("Info.plist");
+    let original = std::fs::read_to_string(&plist).unwrap();
+    std::fs::write(
+        &plist,
+        original.replace(TVOS_PLATFORM.sim_slice, "tvos-x86_64-simulator"),
+    )
+    .unwrap();
+    let err = swift::validate_xcframework_layout(&dir, &TVOS_PLATFORM).expect_err("漂移必须失败");
+    assert_eq!(err.code(), codes::E_BND_0003);
+    std::fs::write(&plist, &original).unwrap();
+    swift::validate_xcframework_layout(&dir, &TVOS_PLATFORM).expect("复原后应再次通过");
+}
+
+/// 服务范围闭合在打包器层：非 ios / tvos 目标即便格式同为 ipa 也响亮拒绝（E_BND_0003）。
+#[test]
+fn non_apple_target_is_rejected_by_the_apple_packager() {
+    let inputs = inputs("apple-closure");
+    let err = Ios
+        .plan(&inputs, &spec_for("watchos", "ipa"))
+        .expect_err("非 Apple TV 域目标必须拒绝");
+    assert_eq!(err.code(), codes::E_BND_0003);
+    assert!(
+        err.to_string().contains("tvos") && err.to_string().contains("ios"),
+        "原因须点名服务范围：{err}"
+    );
+}
+
+/// 宿主门控（tvOS 腿）：非 macOS 宿主 `package()` 动手前返回 ToolMissing，且不留
+/// `tvos-skeleton` 落盘痕迹。
+#[test]
+fn tvos_package_is_gated_to_macos_hosts() {
+    if common::skip_if_present("xcodebuild") {
+        return;
+    }
+    let inputs = inputs_for("tvos-package-gate", &TVOS_PLATFORM);
+    let spec = spec_for("tvos", "ipa");
+    let err = Ios
+        .package(&inputs, &spec)
+        .expect_err("非 macOS 宿主必须如实失败");
+    assert_eq!(err.code(), codes::E_BND_0001);
+    match err {
+        BundleError::ToolMissing { packager, tool, .. } => {
+            assert_eq!(packager, "ios");
+            assert_eq!(tool, "xcodebuild");
+        }
+        other => panic!("期望 ToolMissing，实得 {other:?}"),
+    }
+    assert!(
+        !inputs.out_dir.join("tvos-skeleton").exists(),
+        "宿主门控须先于落盘：{}",
+        inputs.out_dir.display()
+    );
+    let err = swift::package(&inputs, &spec).expect_err("切片链同样门控");
     assert_eq!(err.code(), codes::E_BND_0001);
 }
 

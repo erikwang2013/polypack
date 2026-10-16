@@ -1,11 +1,16 @@
 //! T-M2-14 真跑（`POLY_CONTRACT_REAL=1` + macOS 宿主 + Xcode + rustup Apple triple）：
-//! 夹具核心静态库 → cargo 交叉编译三 triple → lipo 合并切片 → `xcodebuild -create-xcframework`
+//! 夹具核心静态库 → cargo 交叉编译 → [lipo 合并切片] → `xcodebuild -create-xcframework`
 //! → 工程骨架 → `xcodebuild archive` → 归档 `Payload/` 直压 → 未签名 IPA（含结构断言）
 //! → iOS simulator 里真调 sim 切片（`simctl spawn` 运行时对拍）。
 //!
+//! T-M4-07：同文件承载 tvOS 腿（复用同一链，triple / 切片 / SDK 经 `ApplePlatform` 描述符
+//! 切换；tvOS 模拟器单架构、无 lipo 合并）。tvOS 前置另需 `appletvos` SDK 与 rustup
+//! tvOS 两条 target——CI `mobile-contract.yml` 未装（工作流不在本任务线的改动范围），
+//! 缺则 SKIP-with-print 点名要装的 target，绝不假装已跑。
+//!
 //! 默认 mock 模式 / 非 macOS 宿主 / 缺 Xcode 或 Apple triple 一律 SKIP 后返回（绝不红）——
 //! 与 M1 契约测试同一 SKIP 纪律（`crates/poly-cli/tests/contract_m1.rs`）。这一份是
-//! 「iOS 链路在真机上确实跑通」的证据；mock 侧的命令组装断言见 `packagers_ios.rs`。
+//! 「Apple 链路在真机上确实跑通」的证据；mock 侧的命令组装断言见 `packagers_ios.rs`。
 //!
 //! 未签名 IPA 走 `ditto -c -k` 直压（不经 `exportArchive`）：无 Team 的未签名归档在
 //! `-exportArchive` 下必失败（macos-14 真跑实证「No Team Found in Archive」）。
@@ -16,7 +21,7 @@ mod common;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use poly_bundle::packagers::ios::{Ios, swift};
+use poly_bundle::packagers::ios::{Ios, apple_platform, swift};
 use poly_bundle::{BundleInputs, IosInputs, Packager, ProductInfo};
 use poly_targets::{Host, TargetSpec};
 
@@ -45,30 +50,57 @@ fn rustup_target_installed(triple: &str) -> bool {
         })
 }
 
-/// 真跑前置：模式 + 宿主 + 工具链，任一不满足即打印 SKIP 原因并返回 false。
-fn prerequisites() -> bool {
+/// 真跑前置：模式 + 宿主 + 工具链 + 平台交叉目标，任一不满足即打印 SKIP 原因并返回 false。
+///
+/// triple 清单从平台描述符派生（T-M4-07：ios 三条 / tvos 两条），与 `swift` 链同源。
+fn prerequisites(target_id: &str) -> bool {
+    let Some(platform) = apple_platform(target_id) else {
+        eprintln!("SKIP：{target_id} 无 Apple 平台描述符（本腿只服务 ios / tvos）");
+        return false;
+    };
     if !real_mode() {
         eprintln!("SKIP：mock 模式（默认）；真跑设 POLY_CONTRACT_REAL=1");
         return false;
     }
     if !cfg!(target_os = "macos") {
-        eprintln!("SKIP：iOS 链路需 macOS 宿主（Xcode / lipo / xcodebuild）");
+        eprintln!("SKIP：{target_id} 链路需 macOS 宿主（Xcode / lipo / xcodebuild）");
         return false;
     }
     if common::skip_without_any(&["xcodebuild", "xcrun", "lipo"]) {
         return false;
     }
-    for triple in [
-        swift::DEVICE_TRIPLE,
-        swift::SIM_ARM64_TRIPLE,
-        swift::SIM_X86_64_TRIPLE,
-    ] {
+    // tvOS 另需 platform SDK 在位（Xcode 需装 tvOS platform 组件）
+    if target_id == "tvos" {
+        let sdk = Command::new("xcodebuild")
+            .args(["-showsdks"])
+            .output()
+            .is_ok_and(|out| String::from_utf8_lossy(&out.stdout).contains("appletvos"));
+        if !sdk {
+            eprintln!("SKIP：Xcode 未装 tvOS platform（xcodebuild -showsdks 无 appletvos）");
+            return false;
+        }
+    }
+    let triples =
+        std::iter::once(platform.device_triple).chain(platform.sim_triples.iter().copied());
+    for triple in triples {
         if !rustup_target_installed(triple) {
-            eprintln!("SKIP：rustup 未装 {triple}（rustup target add {triple}）");
+            eprintln!(
+                "SKIP：rustup 未装 {triple}（rustup target add {triple}）——CI mobile-contract.yml \
+                 未装 tvOS target，此腿在补齐前恒 SKIP（工作流改动报 lead）"
+            );
             return false;
         }
     }
     true
+}
+
+/// triple → lipo 架构名（期望值从平台描述符派生，不写死）。
+fn lipo_arch(triple: &str) -> String {
+    match triple.split('-').next() {
+        Some("aarch64") => "arm64".to_string(),
+        Some(other) => other.to_string(),
+        None => triple.to_string(),
+    }
 }
 
 /// 工作目录（每测试独占，结束即删）。
@@ -146,55 +178,68 @@ fn inputs(dir: &Path, core_crate: PathBuf) -> BundleInputs {
     inputs
 }
 
-/// 目标声明（`ios`：`hosts = [Macos]`，与内建 spec 同形）。
-fn spec() -> TargetSpec {
-    let mut spec = TargetSpec::new_stub("ios", 1, &[Host::Macos]);
+/// 目标声明（`hosts = [Macos]`，与内建 spec 同形；T-M4-07：按目标 id 取 builder 口径）。
+fn spec_for(target_id: &str) -> TargetSpec {
+    let mut spec = TargetSpec::new_stub(target_id, 1, &[Host::Macos]);
     spec.package.format = "ipa".to_string();
-    spec.package.builder = "ios-xcodebuild".to_string();
+    spec.package.builder = format!("{target_id}-xcodebuild");
     spec
 }
 
-/// 真跑全链路：T-M2-03 切片链 + T-M2-08 archive / Payload 直压 → 未签名 IPA。
-#[test]
-fn ios_end_to_end_builds_unsigned_ipa() {
-    if !prerequisites() {
-        return;
-    }
-    let dir = work_dir("e2e");
+/// 真跑全链路：切片链 + archive / Payload 直压 → 未签名 IPA。
+///
+/// 两个 `#[test]` 各自先过平台前置（缺工具链 / triples 即 SKIP），再走同一实现——
+/// 期望值（切片集、架构、产物 target）全部从平台描述符派生，不在断言里写死 ios。
+fn end_to_end_builds_unsigned_ipa(target_id: &str, tag: &str) {
+    let platform = apple_platform(target_id).expect("Apple 平台描述符");
+    let dir = work_dir(tag);
     let inputs = inputs(&dir, fixture_crate(&dir));
-    let spec = spec();
+    let spec = spec_for(target_id);
 
-    // T-M2-03：真 cargo 交叉编译 ×3 → lipo →（绑定已在位，跳过 bindgen）→ create-xcframework → lipo -info。
+    // 切片链：真 cargo 交叉编译（device + 各 sim triple）→ [lipo 合并] →（绑定已在位，
+    // 跳过 bindgen）→ create-xcframework → lipo -info。
     let xcframework = swift::package(&inputs, &spec).expect("XCFramework 真跑");
     assert_eq!(xcframework.format, "xcframework");
-    let layout = swift::validate_xcframework_layout(&inputs.out_dir).expect("结构校验");
+    assert_eq!(
+        xcframework.target, target_id,
+        "XCFramework 产物须标注真实目标（T-M4-07）"
+    );
+    let layout = swift::validate_xcframework_layout(&inputs.out_dir, platform).expect("结构校验");
     assert_eq!(layout.slices.len(), 2, "{layout:?}");
+    assert_eq!(
+        layout.slices,
+        platform.slices().map(str::to_string).to_vec()
+    );
 
-    // 切片架构真枚举：device = arm64；simulator = arm64 + x86_64（lipo 合并结果）。
+    // 切片架构真枚举：device = 设备 triple 的架构；simulator = sim triples 的架构集
+    // （ios 双架构经 lipo 合一 / tvos 单架构直用——期望从描述符派生）。
     let device = swift::lipo_archs(&swift::slice_lib_path(
         &inputs.out_dir,
-        swift::DEVICE_SLICE,
+        platform.device_slice,
         LIB,
     ))
     .expect("lipo -archs device");
-    assert_eq!(device, vec!["arm64".to_string()], "device 切片架构");
+    assert_eq!(
+        device,
+        vec![lipo_arch(platform.device_triple)],
+        "device 切片架构"
+    );
     let sim = swift::lipo_archs(&swift::slice_lib_path(
         &inputs.out_dir,
-        swift::SIM_SLICE,
+        platform.sim_slice,
         LIB,
     ))
     .expect("lipo -archs simulator");
     let mut sim_sorted = sim.clone();
     sim_sorted.sort();
-    assert_eq!(
-        sim_sorted,
-        vec!["arm64".to_string(), "x86_64".to_string()],
-        "simulator 切片须双架构合一：{sim:?}"
-    );
+    let mut expected_sim: Vec<String> = platform.sim_triples.iter().map(|t| lipo_arch(t)).collect();
+    expected_sim.sort();
+    assert_eq!(sim_sorted, expected_sim, "simulator 切片架构集：{sim:?}");
 
-    // T-M2-08：骨架工程 + 真 xcodebuild archive + 归档 Payload 直压。
+    // 骨架工程 + 真 xcodebuild archive + 归档 Payload 直压。
     let ipa = Ios.package(&inputs, &spec).expect("IPA 真跑");
     assert_eq!(ipa.format, "ipa");
+    assert_eq!(ipa.target, target_id, "IPA 产物须标注真实目标（T-M4-07）");
     assert!(
         ipa.path.extension().is_some_and(|ext| ext == "ipa"),
         "{ipa:?}"
@@ -211,13 +256,41 @@ fn ios_end_to_end_builds_unsigned_ipa() {
     }
     // 真跑产物留档：不删工作目录（CI 由 `留产物` 步上传；本地留一份供人工核验）。
     eprintln!(
-        "OK iOS 真跑：{}（{} 字节，{} 条目）",
+        "OK {target_id} 真跑：{}（{} 字节，{} 条目）",
         ipa.path.display(),
         ipa.bytes,
         names.len()
     );
 
-    simulator_call_parity(&inputs);
+    if target_id == "ios" {
+        simulator_call_parity(&inputs);
+    } else {
+        // tvOS 运行时对拍（appletvsimulator + Apple TV 模拟器设备）不在本腿范围：
+        // 本腿证明「tvOS 切片 + archive + IPA 打包链在 macOS 宿主真跑通」，键序列 /
+        // 渲染对拍归 T-M4-06 的设备腿（host/tvos/README「阻塞与证据边界」）。
+        eprintln!(
+            "NOTE：{target_id} 运行时对拍（simctl spawn appletvsimulator）不在本腿——\
+             打包链真跑已覆盖，键序列走查见 T-M4-06 设备腿"
+        );
+    }
+}
+
+/// 真跑全链路（iOS）。
+#[test]
+fn ios_end_to_end_builds_unsigned_ipa() {
+    if !prerequisites("ios") {
+        return;
+    }
+    end_to_end_builds_unsigned_ipa("ios", "e2e");
+}
+
+/// 真跑全链路（tvOS，T-M4-07）：同链、tvOS SDK / 切片；前置缺 tvOS target 即 SKIP-with-print。
+#[test]
+fn tvos_end_to_end_builds_unsigned_ipa() {
+    if !prerequisites("tvos") {
+        return;
+    }
+    end_to_end_builds_unsigned_ipa("tvos", "tvos-e2e");
 }
 
 /// simulator 运行时调用对拍：sim 切片 + 绑定三件套 → 可执行文件 → 在 iOS simulator 里真跑。

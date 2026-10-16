@@ -14,6 +14,10 @@
 //!
 //! shortcut: 生成的工程骨架为静态文本（`objectVersion = 56`）：打包器直调路径已在 macos-14
 //! 全链真跑（T-M2-14 nightly：archive → Payload 直压 → IPA）；RN 宿主模板落地后走「复用」路径。
+//!
+//! T-M4-07：本链按 [`ApplePlatform`] 描述符参数化——`ios` / `tvos` 两目标共用一条 Xcode 链
+//! （SDKROOT / 部署目标 / 设备族 / 切片 / cargo triple 全取自描述符，见 [`apple_platform`]），
+//! 产物格式同为 `ipa`，故打包器矩阵按 `serves()` 判定服务范围而非 id 全等。
 
 pub mod swift;
 
@@ -32,8 +36,102 @@ pub struct Ios;
 
 /// 目标 / 打包器标识。
 pub(crate) const IOS: &str = "ios";
+/// tvOS 目标标识（T-M4-07：与本打包器共链，见 [`TVOS_PLATFORM`]）。
+pub(crate) const TVOS: &str = "tvos";
 /// 产物格式。
 const IPA: &str = "ipa";
+
+// ------------------------------------------------- T-M4-07：Apple 平台描述符
+
+/// iOS 设备切片目录名（单源 = [`IOS_PLATFORM`]；[`swift`] 子模块随本描述符取用）。
+pub const DEVICE_SLICE: &str = "ios-arm64";
+/// iOS 模拟器切片目录名（arm64 + x86_64 合一，经 `lipo -create`）。
+pub const SIM_SLICE: &str = "ios-arm64_x86_64-simulator";
+/// iOS 设备静态库 triple。
+pub const DEVICE_TRIPLE: &str = "aarch64-apple-ios";
+/// iOS 模拟器（Apple Silicon）triple。
+pub const SIM_ARM64_TRIPLE: &str = "aarch64-apple-ios-sim";
+/// iOS 模拟器（Intel）triple。
+pub const SIM_X86_64_TRIPLE: &str = "x86_64-apple-ios";
+
+/// Apple 平台描述符（T-M4-07）：iOS / tvOS 共链的全部平台差异点。
+///
+/// 链上每一步（pbxproj 的 SDKROOT / 部署目标 / 设备族、Info.plist 键集、archive 的
+/// `-destination`、XCFramework 切片与 cargo triple）都从这里取值——加平台只加一枚描述符，
+/// 不散落 `if target == …`；切片集由 [`ApplePlatform::slices`] 派生，重复即结构不一致。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ApplePlatform {
+    /// 目标 id（= `TargetSpec.id`，同时决定骨架目录名 `<id>-skeleton`）。
+    pub id: &'static str,
+    /// pbxproj `SDKROOT`（`iphoneos` / `appletvos`）。
+    pub sdkroot: &'static str,
+    /// `xcodebuild archive -destination`（`generic/platform=iOS` / `generic/platform=tvOS`）。
+    pub destination: &'static str,
+    /// pbxproj 部署目标键（`IPHONEOS_DEPLOYMENT_TARGET` / `TVOS_DEPLOYMENT_TARGET`）。
+    pub deployment_key: &'static str,
+    /// 部署目标值（RN-tvOS 0.87 线要求 tvOS ≥ 15.1；iOS 16.0 为既有口径）。
+    pub deployment_target: &'static str,
+    /// `TARGETED_DEVICE_FAMILY`（iOS `1,2`；tvOS `3`）。
+    pub device_family: &'static str,
+    /// XCFramework 设备切片目录名。
+    pub device_slice: &'static str,
+    /// XCFramework 模拟器切片目录名。
+    pub sim_slice: &'static str,
+    /// 设备切片 cargo triple。
+    pub device_triple: &'static str,
+    /// 模拟器 cargo triple 集；>1 时经 `lipo -create` 合并为单一 sim 切片，=1 时该
+    /// triple 的产物本身就是切片（**无 lipo 合并步**——tvos 单架构模拟器）。
+    pub sim_triples: &'static [&'static str],
+    /// 骨架 Info.plist 是否带 iOS 专属键（`LSRequiresIPhoneOS` / `UI*`）。
+    pub ios_plist_keys: bool,
+}
+
+impl ApplePlatform {
+    /// 两枚 XCFramework 切片（device + simulator），顺序即命令序。
+    pub fn slices(&self) -> [&'static str; 2] {
+        [self.device_slice, self.sim_slice]
+    }
+}
+
+/// iOS 平台描述符（T-M2-03 / T-M2-08 既有口径）。
+pub static IOS_PLATFORM: ApplePlatform = ApplePlatform {
+    id: IOS,
+    sdkroot: "iphoneos",
+    destination: "generic/platform=iOS",
+    deployment_key: "IPHONEOS_DEPLOYMENT_TARGET",
+    deployment_target: "16.0",
+    device_family: "1,2",
+    device_slice: DEVICE_SLICE,
+    sim_slice: SIM_SLICE,
+    device_triple: DEVICE_TRIPLE,
+    sim_triples: &[SIM_ARM64_TRIPLE, SIM_X86_64_TRIPLE],
+    ios_plist_keys: true,
+};
+
+/// tvOS 平台描述符（T-M4-07，ROADMAP §3.4 Apple tvOS 行）：SDK / 部署目标 / 设备族与
+/// iOS 不同，切片为 tvos-arm64 + tvos-arm64-simulator（模拟器单架构，无 lipo 合并）。
+pub static TVOS_PLATFORM: ApplePlatform = ApplePlatform {
+    id: TVOS,
+    sdkroot: "appletvos",
+    destination: "generic/platform=tvOS",
+    deployment_key: "TVOS_DEPLOYMENT_TARGET",
+    deployment_target: "15.1",
+    device_family: "3",
+    device_slice: "tvos-arm64",
+    sim_slice: "tvos-arm64-simulator",
+    device_triple: "aarch64-apple-tvos",
+    sim_triples: &["aarch64-apple-tvos-sim"],
+    ios_plist_keys: false,
+};
+
+/// 目标 id → Apple 平台描述符；不服务的目标返回 `None`（服务范围闭合处）。
+pub fn apple_platform(target_id: &str) -> Option<&'static ApplePlatform> {
+    match target_id {
+        IOS => Some(&IOS_PLATFORM),
+        TVOS => Some(&TVOS_PLATFORM),
+        _ => None,
+    }
+}
 
 /// 导出方式环境变量（对应 ExportOptions.plist 的 `method` 键）。
 pub const EXPORT_METHOD_ENV: &str = "POLY_IOS_EXPORT_METHOD";
@@ -63,8 +161,14 @@ impl Packager for Ios {
         IPA
     }
 
+    /// T-M4-07：一条 Apple 链服务 `ios` / `tvos` 两目标（`find` 据此匹配）。
+    fn serves(&self, target_id: &str) -> bool {
+        apple_platform(target_id).is_some()
+    }
+
     fn plan(&self, inputs: &BundleInputs, spec: &TargetSpec) -> Result<BundlePlan, BundleError> {
         check_format(spec, IPA)?;
+        let platform = platform_of(spec)?;
         let ios = ios_inputs(inputs, spec)?;
         // XCFramework（T-M2-03）是必需输入：iOS 包缺桥产物 = 装起来必崩，响亮拒绝
         // （同 macOS .app 缺 icns 的先例，不静默省略）。
@@ -80,7 +184,7 @@ impl Packager for Ios {
         let mut plan = BundlePlan::new()
             .with_script(export_options_path(inputs), export_options_plist(&method));
 
-        let project = match resolve_project(inputs, ios) {
+        let project = match resolve_project(inputs, ios, platform) {
             ProjectSource::Reuse(project) => {
                 // 复用不落盘脚本：以命令流留痕（T-M2-04 RN 宿主模板；骨架生成跳过）。
                 plan = plan.with_command(Command::new(
@@ -90,13 +194,13 @@ impl Packager for Ios {
                 project
             }
             ProjectSource::Skeleton(project) => {
-                for script in skeleton_scripts(inputs, ios, &project)? {
+                for script in skeleton_scripts(inputs, ios, &project, platform)? {
                     plan = plan.with_script(script.path, script.contents);
                 }
                 project
             }
         };
-        for command in build_commands(&project, inputs) {
+        for command in build_commands(&project, inputs, platform) {
             plan = plan.with_command(command);
         }
         Ok(plan)
@@ -105,10 +209,11 @@ impl Packager for Ios {
     fn package(&self, inputs: &BundleInputs, spec: &TargetSpec) -> Result<Artifact, BundleError> {
         // 宿主门控最前置：非 macOS 宿主无从谈起（先于一切输入校验，也先于落盘）。
         require_macos("xcodebuild")?;
+        let platform = platform_of(spec)?;
         let plan = self.plan(inputs, spec)?;
         let method = export_method()?;
         // 输入契约校验（快速失败，不浪费 xcodebuild）：XCFramework 结构不合法即拒。
-        swift::validate_xcframework_layout(&inputs.out_dir)?;
+        swift::validate_xcframework_layout(&inputs.out_dir, platform)?;
 
         fsutil::write_scripts(&plan)?;
         // 导出目录 + Payload 先铺：`ditto` 只保证建最终目录，中间层幂等先建（重跑安全）。
@@ -122,7 +227,7 @@ impl Packager for Ios {
             field: "export/*.ipa",
         })?;
         fsutil::file_artifact(
-            IOS,
+            platform.id,
             IPA,
             &ipa,
             vec![
@@ -153,8 +258,9 @@ impl Ios {
         spec: &TargetSpec,
     ) -> Result<PathBuf, BundleError> {
         check_format(spec, IPA)?;
+        let platform = platform_of(spec)?;
         let ios = ios_inputs(inputs, spec)?;
-        Ok(match resolve_project(inputs, ios) {
+        Ok(match resolve_project(inputs, ios, platform) {
             ProjectSource::Reuse(project) | ProjectSource::Skeleton(project) => project,
         })
     }
@@ -166,12 +272,16 @@ impl Ios {
 enum ProjectSource {
     /// 宿主工程的 `<产品名>.xcodeproj`（RN 宿主模板，T-M2-04）。
     Reuse(PathBuf),
-    /// 生成的工程骨架 `<out>/ios-skeleton/<产品名>.xcodeproj`。
+    /// 生成的工程骨架 `<out>/<目标 id>-skeleton/<产品名>.xcodeproj`。
     Skeleton(PathBuf),
 }
 
 /// 复用判定：`host_project`（或其 `ios/` 子目录）下已有 `<产品名>.xcodeproj` 即复用。
-fn resolve_project(inputs: &BundleInputs, ios: &IosInputs) -> ProjectSource {
+fn resolve_project(
+    inputs: &BundleInputs,
+    ios: &IosInputs,
+    platform: &ApplePlatform,
+) -> ProjectSource {
     let name = &inputs.product.name;
     if let Some(host) = &ios.host_project {
         let direct = host.join(format!("{name}.xcodeproj"));
@@ -182,17 +292,17 @@ fn resolve_project(inputs: &BundleInputs, ios: &IosInputs) -> ProjectSource {
             }
         }
     }
-    ProjectSource::Skeleton(skeleton_project_dir(inputs))
+    ProjectSource::Skeleton(skeleton_project_dir(inputs, platform))
 }
 
-/// 骨架工程目录（`<out>/ios-skeleton/<产品名>.xcodeproj`）。
-fn skeleton_project_dir(inputs: &BundleInputs) -> PathBuf {
-    skeleton_root(inputs).join(format!("{}.xcodeproj", inputs.product.name))
+/// 骨架工程目录（`<out>/<目标 id>-skeleton/<产品名>.xcodeproj`）。
+fn skeleton_project_dir(inputs: &BundleInputs, platform: &ApplePlatform) -> PathBuf {
+    skeleton_root(inputs, platform).join(format!("{}.xcodeproj", inputs.product.name))
 }
 
-/// 骨架根目录。
-fn skeleton_root(inputs: &BundleInputs) -> PathBuf {
-    inputs.out_dir.join("ios-skeleton")
+/// 骨架根目录（按平台分目录：ios / tvos 互不覆盖）。
+fn skeleton_root(inputs: &BundleInputs, platform: &ApplePlatform) -> PathBuf {
+    inputs.out_dir.join(format!("{}-skeleton", platform.id))
 }
 
 // ---------------------------------------------------------------- 骨架生成
@@ -202,6 +312,7 @@ fn skeleton_scripts(
     inputs: &BundleInputs,
     ios: &IosInputs,
     project: &Path,
+    platform: &ApplePlatform,
 ) -> Result<Vec<ScriptFile>, BundleError> {
     let lib = ios
         .lib_name
@@ -211,7 +322,7 @@ fn skeleton_scripts(
             packager: IOS,
             field: "ios.lib_name",
         })?;
-    let source_dir = skeleton_root(inputs).join(&inputs.product.name);
+    let source_dir = skeleton_root(inputs, platform).join(&inputs.product.name);
     Ok(vec![
         ScriptFile {
             path: project.join("project.pbxproj"),
@@ -220,6 +331,7 @@ fn skeleton_scripts(
                 lib,
                 &swift::xcframework_path(inputs),
                 &swift::bindings_dir(inputs).join(format!("{lib}.swift")),
+                platform,
             ),
         },
         ScriptFile {
@@ -230,7 +342,7 @@ fn skeleton_scripts(
         },
         ScriptFile {
             path: source_dir.join("Info.plist"),
-            contents: skeleton_info_plist(&inputs.product),
+            contents: skeleton_info_plist(&inputs.product, platform),
         },
         ScriptFile {
             path: source_dir.join("App.swift"),
@@ -242,7 +354,7 @@ fn skeleton_scripts(
 /// 最小 `project.pbxproj`（单 app target；链接 XCFramework + Swift 绑定进 Sources）。
 ///
 /// XCFramework 由构造保证在 `<out>/`，故 `../<产品名>.xcframework`（相对 SRCROOT =
-/// `<out>/ios-skeleton`）恒成立；Swift 绑定则随 `IosInputs.bindings_dir` 走，**未必在
+/// `<out>/<目标 id>-skeleton`）恒成立；Swift 绑定则随 `IosInputs.bindings_dir` 走，**未必在
 /// `<out>` 下**（CLI 流落在 `<工程根>/bridge/swift`），故按绝对路径引用——写死相对路径会
 /// 让 `xcodebuild archive` 报「Build input file cannot be found」退出 65（dispatch
 /// 38693729015 实证：打包器直调绿、CLI 腿红，差异仅此）。
@@ -251,6 +363,7 @@ pub fn skeleton_pbxproj(
     lib_name: &str,
     xcframework: &Path,
     swift_binding: &Path,
+    platform: &ApplePlatform,
 ) -> String {
     let name = &product.name;
     let xcframework_ref = format!(
@@ -303,7 +416,7 @@ pub fn skeleton_pbxproj(
 				C0DE0000000000000000F005 /* {name}.xcframework */,
 				C0DE0000000000000000A005 /* Products */,
 			);
-			// `../…` 相对 SRCROOT（.xcodeproj 所在目录 = <out>/ios-skeleton）解析：
+			// `../…` 相对 SRCROOT（.xcodeproj 所在目录 = <out>/{platform_id}-skeleton）解析：
 			// XCFramework 恒在 <out>/；Swift 绑定随 bindings_dir 走（未必在 <out> 下，
 			// 故 F004 用 `<absolute>`）——二者挂在主组。
 			sourceTree = "<group>";
@@ -407,9 +520,9 @@ pub fn skeleton_pbxproj(
 				CLANG_ENABLE_MODULES = YES;
 				CLANG_ENABLE_OBJC_ARC = YES;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				{deployment_key} = {deployment_target};
 				ONLY_ACTIVE_ARCH = YES;
-				SDKROOT = iphoneos;
+				SDKROOT = {sdkroot};
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
@@ -423,8 +536,8 @@ pub fn skeleton_pbxproj(
 				CLANG_ENABLE_MODULES = YES;
 				CLANG_ENABLE_OBJC_ARC = YES;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
-				SDKROOT = iphoneos;
+				{deployment_key} = {deployment_target};
+				SDKROOT = {sdkroot};
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
 				SWIFT_VERSION = 5.0;
@@ -449,7 +562,7 @@ pub fn skeleton_pbxproj(
 				PRODUCT_NAME = "{name}";
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = "{device_family}";
 			}};
 			name = Debug;
 		}};
@@ -471,7 +584,7 @@ pub fn skeleton_pbxproj(
 				PRODUCT_NAME = "{name}";
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = "{device_family}";
 			}};
 			name = Release;
 		}};
@@ -508,6 +621,12 @@ pub fn skeleton_pbxproj(
         xcframework_ref = xcframework_ref,
         swift_binding = swift_binding.display(),
         target_id = TARGET_ID,
+        // 平台差异点（T-M4-07）：SDK / 部署目标 / 设备族全取自描述符
+        platform_id = platform.id,
+        sdkroot = platform.sdkroot,
+        deployment_key = platform.deployment_key,
+        deployment_target = platform.deployment_target,
+        device_family = platform.device_family,
     )
 }
 
@@ -559,8 +678,16 @@ pub fn skeleton_scheme(product: &ProductInfo) -> String {
     )
 }
 
-/// 骨架 `Info.plist`（iOS 键位最小集）。
-pub fn skeleton_info_plist(product: &ProductInfo) -> String {
+/// 骨架 `Info.plist`（Common + 平台键位最小集）：iOS 带 `LSRequiresIPhoneOS` 与 `UI*`；
+/// tvOS 不带（`ApplePlatform::ios_plist_keys`，tvOS 无该族键）。
+pub fn skeleton_info_plist(product: &ProductInfo, platform: &ApplePlatform) -> String {
+    let ios_keys = if platform.ios_plist_keys {
+        "    <key>LSRequiresIPhoneOS</key><true/>\n    <key>UILaunchScreen</key><dict/>\n    \
+         <key>UISupportedInterfaceOrientations</key>\n    <array>\n        \
+         <string>UIInterfaceOrientationPortrait</string>\n    </array>\n"
+    } else {
+        ""
+    };
     format!(
         r#"<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -575,13 +702,7 @@ pub fn skeleton_info_plist(product: &ProductInfo) -> String {
     <key>CFBundlePackageType</key><string>APPL</string>
     <key>CFBundleShortVersionString</key><string>{version}</string>
     <key>CFBundleVersion</key><string>1</string>
-    <key>LSRequiresIPhoneOS</key><true/>
-    <key>UILaunchScreen</key><dict/>
-    <key>UISupportedInterfaceOrientations</key>
-    <array>
-        <string>UIInterfaceOrientationPortrait</string>
-    </array>
-</dict>
+{ios_keys}</dict>
 </plist>
 "#,
         name = product.name,
@@ -656,7 +777,7 @@ fn swift_ident(product: &ProductInfo) -> String {
 // ---------------------------------------------------------------- 命令组装
 
 /// archive → exportArchive → 校验（plutil / xcrun lipo）的完整命令序。
-fn build_commands(project: &Path, inputs: &BundleInputs) -> Vec<Command> {
+fn build_commands(project: &Path, inputs: &BundleInputs, platform: &ApplePlatform) -> Vec<Command> {
     let name = &inputs.product.name;
     let archive = inputs.out_dir.join(format!("{name}.xcarchive"));
     let export = export_dir(inputs);
@@ -679,7 +800,7 @@ fn build_commands(project: &Path, inputs: &BundleInputs) -> Vec<Command> {
                 "-configuration".into(),
                 "Release".into(),
                 "-destination".into(),
-                "generic/platform=iOS".into(),
+                platform.destination.into(),
                 "-archivePath".into(),
                 path_arg(&archive),
                 // 未签名归档：签名位由 T-M2-10 接入
@@ -737,19 +858,22 @@ fn parse_export_method(raw: Option<&str>) -> Result<String, BundleError> {
 
 // ---------------------------------------------------------------- 定位与路径
 
+/// 目标 → Apple 平台描述符（服务范围闭合：非 `ios` / `tvos` 响亮拒绝）。
+pub(crate) fn platform_of(spec: &TargetSpec) -> Result<&'static ApplePlatform, BundleError> {
+    apple_platform(&spec.id).ok_or_else(|| BundleError::InvalidInput {
+        packager: IOS,
+        field: "spec.id",
+        value: spec.id.clone(),
+        reason: "Apple 打包器只服务 `ios` / `tvos` 目标".to_string(),
+    })
+}
+
 /// 取出 iOS 输入（目标 id / 产品元数据 / `ios` 段校验；缺失即报错）。
 pub(crate) fn ios_inputs<'a>(
     inputs: &'a BundleInputs,
     spec: &TargetSpec,
 ) -> Result<&'a IosInputs, BundleError> {
-    if spec.id != IOS {
-        return Err(BundleError::InvalidInput {
-            packager: IOS,
-            field: "spec.id",
-            value: spec.id.clone(),
-            reason: "iOS 打包器只服务 `ios` 目标".to_string(),
-        });
-    }
+    platform_of(spec)?;
     inputs.product.validate(IOS)?;
     inputs.ios.as_ref().ok_or(BundleError::MissingInput {
         packager: IOS,
@@ -757,7 +881,7 @@ pub(crate) fn ios_inputs<'a>(
     })
 }
 
-/// 宿主门控：iOS 打包链仅 macOS 宿主可跑（xcodebuild / plutil / xcrun / lipo）。
+/// 宿主门控：Apple 打包链仅 macOS 宿主可跑（xcodebuild / plutil / xcrun / lipo）。
 pub(crate) fn require_macos(tool: &str) -> Result<(), BundleError> {
     if poly_targets::current_host() == Some(poly_targets::Host::Macos) {
         return Ok(());
@@ -766,7 +890,7 @@ pub(crate) fn require_macos(tool: &str) -> Result<(), BundleError> {
         packager: IOS,
         tool: tool.to_string(),
         hint: "Apple 工具链仅随 Xcode 提供（xcodebuild / plutil / xcrun / lipo）：\
-               iOS 链路需 macOS 宿主（Linux 发起走远程农场 macOS worker，T-M2-13）"
+               iOS / tvOS 链路需 macOS 宿主（Linux 发起走远程农场 macOS worker，T-M2-13）"
             .to_string(),
     })
 }
@@ -841,6 +965,7 @@ mod tests {
             "pax_core",
             Path::new("/out/Pax Notes.xcframework"),
             Path::new("/root/bridge/swift/pax_core.swift"),
+            &IOS_PLATFORM,
         );
         assert!(
             pbxproj.contains(&format!("{TARGET_ID} /* Pax Notes */ = {{")),
@@ -863,6 +988,86 @@ mod tests {
         let mut numeric = product();
         numeric.name = "2048 Game".to_string();
         assert_eq!(swift_ident(&numeric), "App2048Game");
+    }
+
+    /// T-M4-07：平台描述符服务范围闭合（只认 ios / tvos），两平台差异点不串台。
+    #[test]
+    fn apple_platform_descriptors_are_closed_and_distinct() {
+        for (id, platform) in [("ios", &IOS_PLATFORM), ("tvos", &TVOS_PLATFORM)] {
+            assert_eq!(apple_platform(id).map(|p| p.id), Some(id));
+            assert_eq!(platform.id, id, "描述符 id 与查表键一致");
+            assert_eq!(
+                platform.slices(),
+                [platform.device_slice, platform.sim_slice]
+            );
+        }
+        assert!(
+            apple_platform("watchos").is_none(),
+            "非 Apple TV 域目标不服务"
+        );
+        assert!(apple_platform("macos").is_none(), "macOS 有独立 dmg 链");
+
+        let (ios, tvos) = (&IOS_PLATFORM, &TVOS_PLATFORM);
+        for (field, left, right) in [
+            ("sdkroot", ios.sdkroot, tvos.sdkroot),
+            ("destination", ios.destination, tvos.destination),
+            ("deployment_key", ios.deployment_key, tvos.deployment_key),
+            (
+                "deployment_target",
+                ios.deployment_target,
+                tvos.deployment_target,
+            ),
+            ("device_family", ios.device_family, tvos.device_family),
+            ("device_slice", ios.device_slice, tvos.device_slice),
+            ("sim_slice", ios.sim_slice, tvos.sim_slice),
+            ("device_triple", ios.device_triple, tvos.device_triple),
+        ] {
+            assert_ne!(left, right, "{field} 两平台不得同值");
+        }
+        assert_eq!(
+            tvos.sim_triples.len(),
+            1,
+            "tvOS 模拟器单架构：无 lipo 合并步"
+        );
+        assert_eq!(ios.sim_triples.len(), 2, "iOS 模拟器双架构合一");
+    }
+
+    /// T-M4-07：tvOS 骨架落 tvOS SDK / 部署目标 / 设备族，且 Info.plist 不带 iOS 专属键。
+    #[test]
+    fn tvos_skeleton_drops_ios_only_keys_and_switches_sdk() {
+        let product = product();
+        let pbxproj = skeleton_pbxproj(
+            &product,
+            "pax_core",
+            Path::new("/out/Pax Notes.xcframework"),
+            Path::new("/root/bridge/swift/pax_core.swift"),
+            &TVOS_PLATFORM,
+        );
+        assert!(pbxproj.contains("SDKROOT = appletvos;"), "{pbxproj}");
+        assert!(
+            pbxproj.contains("TVOS_DEPLOYMENT_TARGET = 15.1;"),
+            "{pbxproj}"
+        );
+        assert!(
+            pbxproj.contains("TARGETED_DEVICE_FAMILY = \"3\";"),
+            "{pbxproj}"
+        );
+        assert!(
+            !pbxproj.contains("IPHONEOS_DEPLOYMENT_TARGET"),
+            "tvOS 骨架不得残留 iOS 部署目标键"
+        );
+
+        let tvos_plist = skeleton_info_plist(&product, &TVOS_PLATFORM);
+        for key in [
+            "LSRequiresIPhoneOS",
+            "UILaunchScreen",
+            "UIInterfaceOrientation",
+        ] {
+            assert!(!tvos_plist.contains(key), "tvOS Info.plist 不得带 {key}");
+        }
+        assert!(tvos_plist.contains("<key>CFBundlePackageType</key><string>APPL</string>"));
+        let ios_plist = skeleton_info_plist(&product, &IOS_PLATFORM);
+        assert!(ios_plist.contains("<key>LSRequiresIPhoneOS</key><true/>"));
     }
 
     /// 导出方式白名单：缺省值 + 非法值响亮拒绝。

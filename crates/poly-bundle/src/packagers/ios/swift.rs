@@ -30,6 +30,10 @@
 //! 非 macOS 宿主 `package()` 在动手前返回 [`BundleError::ToolMissing`]（绝不静默降级）；
 //! `plan()` / `validate_xcframework_layout()` / [`lipo_archs`] 为纯组装与只读校验，
 //! 任意宿主可跑（mock 契约测试的基础）。macos-14 CI 上真跑由 T-M2-14 nightly 覆盖。
+//!
+//! **平台参数化**（T-M4-07）：triple / 切片集全取自 [`ApplePlatform`] 描述符（由 `spec.id` 选）——
+//! iOS 双模拟器架构经 lipo 合一，tvOS 模拟器单架构（`aarch64-apple-tvos-sim`）产物本身即切片、
+//! **无 lipo 合并步**；其余链路（cargo → create-xcframework → lipo -info）两平台逐字相同。
 
 use std::path::{Path, PathBuf};
 
@@ -41,18 +45,10 @@ use crate::fsutil;
 use crate::inputs::{BundleInputs, IosInputs};
 use crate::packager::{Artifact, BundlePlan, Command};
 
-use super::{IOS, ios_inputs, require_macos};
+use super::{ApplePlatform, IOS, ios_inputs, platform_of, require_macos};
 
-/// XCFramework 设备切片目录名（`<platform>-<arch>` 惯例）。
-pub const DEVICE_SLICE: &str = "ios-arm64";
-/// XCFramework 模拟器切片目录名（arm64 + x86_64 合一，经 `lipo -create`）。
-pub const SIM_SLICE: &str = "ios-arm64_x86_64-simulator";
-/// 设备静态库 triple。
-pub const DEVICE_TRIPLE: &str = "aarch64-apple-ios";
-/// 模拟器（Apple Silicon）triple。
-pub const SIM_ARM64_TRIPLE: &str = "aarch64-apple-ios-sim";
-/// 模拟器（Intel）triple。
-pub const SIM_X86_64_TRIPLE: &str = "x86_64-apple-ios";
+/// iOS 切片常量（兼容既有调用；单源 = [`super::IOS_PLATFORM`] 描述符，T-M4-07）。
+pub use super::{DEVICE_SLICE, DEVICE_TRIPLE, SIM_ARM64_TRIPLE, SIM_SLICE, SIM_X86_64_TRIPLE};
 
 /// Swift 绑定落点（`uniffi-bindgen --out-dir`）。
 ///
@@ -99,7 +95,7 @@ pub struct SwiftBindings {
 pub struct XcFrameworkLayout {
     /// `.xcframework` 根目录。
     pub root: PathBuf,
-    /// 实际切片目录名（应与 [`DEVICE_SLICE`] / [`SIM_SLICE`] 集合一致）。
+    /// 实际切片目录名（应与平台描述符的 [`ApplePlatform::slices`] 集合一致）。
     pub slices: Vec<String>,
     /// Info.plist `AvailableLibraries` 中的 `LibraryIdentifier` 集合。
     pub libraries: Vec<String>,
@@ -121,32 +117,40 @@ pub fn plan(inputs: &BundleInputs, spec: &TargetSpec) -> Result<BundlePlan, Bund
 pub fn package(inputs: &BundleInputs, spec: &TargetSpec) -> Result<Artifact, BundleError> {
     // 宿主门控最前置：Apple triple 无法在非 macOS 宿主构建（无 Apple SDK），先于一切校验。
     require_macos("xcodebuild")?;
+    let platform = platform_of(spec)?;
     let (pre, post) = command_split(inputs, spec)?;
 
     // 目录骨架必须先于 pre：`lipo -create` 不建输出父目录（macos-14 真跑实证：
     // `… .a.lipo (No such file or directory)`）。`stage_slices` 只纯拷贝文件且必须排在
     // cargo 之后（拷的是 cargo 产物），故不能靠它铺目录。
-    ensure_staging_dirs(inputs)?;
+    ensure_staging_dirs(inputs, platform)?;
     exec::run_all(&pre)?;
     stage_slices(inputs, spec)?;
     exec::run_all(&post)?;
 
-    let layout = validate_xcframework_layout(&inputs.out_dir)?;
+    let layout = validate_xcframework_layout(&inputs.out_dir, platform)?;
+    // 模拟器切片形态由描述符派生（ios 双架构 lipo 合一 / tvos 单架构直用）
+    let sim_note = if platform.sim_triples.len() > 1 {
+        format!("{} 经 lipo 合一", platform.sim_triples.join("/"))
+    } else {
+        format!("{} 单架构直用", platform.sim_triples[0])
+    };
     fsutil::dir_artifact(
-        IOS,
+        platform.id,
         "xcframework",
         &layout.root,
         vec![
             format!(
-                "切片：{}（device）+ {}（simulator，arm64/x86_64 合一）；Swift 绑定见 {}",
-                DEVICE_SLICE,
-                SIM_SLICE,
+                "切片：{}（device）+ {}（simulator，{sim_note}）；Swift 绑定见 {}",
+                platform.device_slice,
+                platform.sim_slice,
                 bindings_dir(inputs).display()
             ),
             "真机执行阻塞（宿主）：切片编译需 macOS（cargo Apple triple + lipo/xcodebuild）；\
              macos-14 CI nightly 真跑（T-M2-14）"
                 .to_string(),
-            "最小宿主工程 xcodebuild 链接冒烟：ios packager 骨架（T-M2-08）在 macOS 宿主消费本产物"
+            "最小宿主工程 xcodebuild 链接冒烟：Apple packager 骨架（T-M2-08 / T-M4-07）\
+             在 macOS 宿主消费本产物"
                 .to_string(),
         ],
     )
@@ -156,31 +160,44 @@ pub fn package(inputs: &BundleInputs, spec: &TargetSpec) -> Result<Artifact, Bun
 ///
 /// `lipo -create` 与 `xcodebuild -create-xcframework` 都不创建输出父目录，故写盘命令
 /// 之前必须先铺骨架；缺目录时命令报错落点晦涩（`.a.lipo (No such file or directory)`）。
-pub fn ensure_staging_dirs(inputs: &BundleInputs) -> Result<PathBuf, BundleError> {
-    for slice in [DEVICE_SLICE, SIM_SLICE] {
+pub fn ensure_staging_dirs(
+    inputs: &BundleInputs,
+    platform: &ApplePlatform,
+) -> Result<PathBuf, BundleError> {
+    for slice in platform.slices() {
         let headers = slice_headers(&inputs.out_dir, slice);
         std::fs::create_dir_all(&headers).map_err(io_err(&headers))?;
     }
     Ok(slices_dir(&inputs.out_dir))
 }
 
-/// 切片暂存：device 静态库拷入切片目录；两切片各备 `Headers/`。
+/// 切片暂存：device 静态库拷入切片目录；单架构模拟器（tvOS）的切片库同样在此直接落位
+/// （无 lipo 合并步，cargo 产物即切片）；两切片各备 `Headers/`。
 ///
 /// `module.modulemap` 是 Xcode 唯一认的模块图名：uniffi 生成的 `<lib>FFI.modulemap`
 /// 在此更名落位，`-headers` 指向的目录才能被 `import <lib>FFI` 解析。
 pub fn stage_slices(inputs: &BundleInputs, spec: &TargetSpec) -> Result<PathBuf, BundleError> {
+    let platform = platform_of(spec)?;
     let ios = ios_inputs(inputs, spec)?;
     let core_crate = core_crate(ios)?;
     let lib = lib_name(ios)?;
     let out_dir = &inputs.out_dir;
 
     fsutil::copy_file(
-        &built_lib(core_crate, DEVICE_TRIPLE, lib),
-        &slice_lib_path(out_dir, DEVICE_SLICE, lib),
+        &built_lib(core_crate, platform.device_triple, lib),
+        &slice_lib_path(out_dir, platform.device_slice, lib),
         false,
     )?;
+    if platform.sim_triples.len() == 1 {
+        // 单架构模拟器切片：该 triple 的 cargo 产物就是切片库本体（tvos：aarch64-apple-tvos-sim）
+        fsutil::copy_file(
+            &built_lib(core_crate, platform.sim_triples[0], lib),
+            &slice_lib_path(out_dir, platform.sim_slice, lib),
+            false,
+        )?;
+    }
     let bindings = swift_binding_files(&bindings_dir(inputs), lib)?;
-    for slice in [DEVICE_SLICE, SIM_SLICE] {
+    for slice in platform.slices() {
         let headers = slice_headers(out_dir, slice);
         fsutil::copy_file(
             &bindings.header,
@@ -196,39 +213,42 @@ pub fn stage_slices(inputs: &BundleInputs, spec: &TargetSpec) -> Result<PathBuf,
     Ok(slices_dir(out_dir))
 }
 
-/// 命令组装：`pre`（cargo ×3 → lipo 合并 → uniffi-bindgen）× `stage_slices()` × `post`（组装 + 校验）。
+/// 命令组装：`pre`（cargo ×N → [lipo 合并] → uniffi-bindgen）× `stage_slices()` × `post`（组装 + 校验）。
+///
+/// N 与是否插 lipo 合并步全由平台描述符决定：ios 三 cargo + 合并；tvos 两 cargo（模拟器
+/// 单架构，无合并）。
 fn command_split(
     inputs: &BundleInputs,
     spec: &TargetSpec,
 ) -> Result<(Vec<Command>, Vec<Command>), BundleError> {
+    let platform = platform_of(spec)?;
     let ios = ios_inputs(inputs, spec)?;
     let core_crate = core_crate(ios)?;
     let lib = lib_name(ios)?;
     let out_dir = &inputs.out_dir;
 
     let mut pre = vec![
-        Command::new("cargo", ["build", "--target", DEVICE_TRIPLE, "--release"]).in_dir(core_crate),
         Command::new(
             "cargo",
-            ["build", "--target", SIM_ARM64_TRIPLE, "--release"],
+            ["build", "--target", platform.device_triple, "--release"],
         )
         .in_dir(core_crate),
-        Command::new(
-            "cargo",
-            ["build", "--target", SIM_X86_64_TRIPLE, "--release"],
-        )
-        .in_dir(core_crate),
-        Command::new(
-            "lipo",
-            [
-                "-create".into(),
-                path_arg(&built_lib(core_crate, SIM_ARM64_TRIPLE, lib)),
-                path_arg(&built_lib(core_crate, SIM_X86_64_TRIPLE, lib)),
-                "-output".into(),
-                path_arg(&slice_lib_path(out_dir, SIM_SLICE, lib)),
-            ],
-        ),
     ];
+    for triple in platform.sim_triples {
+        pre.push(
+            Command::new("cargo", ["build", "--target", *triple, "--release"]).in_dir(core_crate),
+        );
+    }
+    if platform.sim_triples.len() > 1 {
+        // 双架构模拟器切片经 lipo 合一；单架构（tvos）产物本身即切片，无此步
+        let mut args: Vec<String> = vec!["-create".to_string()];
+        for triple in platform.sim_triples {
+            args.push(path_arg(&built_lib(core_crate, triple, lib)));
+        }
+        args.push("-output".to_string());
+        args.push(path_arg(&slice_lib_path(out_dir, platform.sim_slice, lib)));
+        pre.push(Command::new("lipo", args));
+    }
     // 三件套已在位即复用（T-M2-01 生成器 / 宿主工程随附）：不因缺 CLI 而拒绝已有产物。
     let bindings = bindings_dir(inputs);
     if swift_binding_files(&bindings, lib).is_err() {
@@ -238,7 +258,7 @@ fn command_split(
         let mut args = vec![
             "generate".to_string(),
             "--library".to_string(),
-            path_arg(&built_lib(core_crate, DEVICE_TRIPLE, lib)),
+            path_arg(&built_lib(core_crate, platform.device_triple, lib)),
             "--language".to_string(),
             "swift".to_string(),
             "--out-dir".to_string(),
@@ -257,58 +277,49 @@ fn command_split(
         pre.push(Command::new("uniffi-bindgen", args));
     }
 
-    let post = vec![
-        Command::new(
-            "xcodebuild",
-            [
-                "-create-xcframework".into(),
-                "-library".into(),
-                path_arg(&slice_lib_path(out_dir, DEVICE_SLICE, lib)),
-                "-headers".into(),
-                path_arg(&slice_headers(out_dir, DEVICE_SLICE)),
-                "-library".into(),
-                path_arg(&slice_lib_path(out_dir, SIM_SLICE, lib)),
-                "-headers".into(),
-                path_arg(&slice_headers(out_dir, SIM_SLICE)),
-                "-output".into(),
-                path_arg(&xcframework_path(inputs)),
-            ],
-        ),
-        // 切片架构可枚举校验（T-M2-03 验收：lipo -info）
-        Command::new(
+    // 组装切片（device + simulator，切片的出现顺序即描述符顺序）
+    let mut create_args: Vec<String> = vec!["-create-xcframework".to_string()];
+    for slice in platform.slices() {
+        create_args.push("-library".to_string());
+        create_args.push(path_arg(&slice_lib_path(out_dir, slice, lib)));
+        create_args.push("-headers".to_string());
+        create_args.push(path_arg(&slice_headers(out_dir, slice)));
+    }
+    create_args.push("-output".to_string());
+    create_args.push(path_arg(&xcframework_path(inputs)));
+    let mut post = vec![Command::new("xcodebuild", create_args)];
+    // 切片架构可枚举校验（T-M2-03 验收：lipo -info）
+    for slice in platform.slices() {
+        post.push(Command::new(
             "lipo",
             [
-                "-info".into(),
-                path_arg(&slice_lib_path(out_dir, DEVICE_SLICE, lib)),
+                "-info".to_string(),
+                path_arg(&slice_lib_path(out_dir, slice, lib)),
             ],
-        ),
-        Command::new(
-            "lipo",
-            [
-                "-info".into(),
-                path_arg(&slice_lib_path(out_dir, SIM_SLICE, lib)),
-            ],
-        ),
-    ];
+        ));
+    }
     Ok((pre, post))
 }
 
 // ---------------------------------------------------------------- 只读校验
 
 /// 校验 XCFramework 结构（纯只读，任意宿主可跑）：
-/// `Info.plist` 的 `LibraryIdentifier` 集合须等于两切片；每切片恰一个 `*.a`，
-/// 且 `Headers/module.modulemap` 与至少一个 `*.h` 在位。
-pub fn validate_xcframework_layout(root: &Path) -> Result<XcFrameworkLayout, BundleError> {
+/// `Info.plist` 的 `LibraryIdentifier` 集合须等于**平台描述符的**两切片；每切片恰一个
+/// `*.a`，且 `Headers/module.modulemap` 与至少一个 `*.h` 在位。
+pub fn validate_xcframework_layout(
+    root: &Path,
+    platform: &ApplePlatform,
+) -> Result<XcFrameworkLayout, BundleError> {
     let bundle = find_xcframework(root)?;
     let info = bundle.join("Info.plist");
     let text = std::fs::read_to_string(&info).map_err(|_| BundleError::MissingInput {
         packager: IOS,
         field: "*.xcframework/Info.plist",
     })?;
-    assert_identifiers(&library_identifiers(&text))?;
+    assert_identifiers(&library_identifiers(&text), platform)?;
 
     let mut slices = Vec::new();
-    for slice in [DEVICE_SLICE, SIM_SLICE] {
+    for slice in platform.slices() {
         let dir = bundle.join(slice);
         match archive_count(&dir)? {
             1 => {}
@@ -501,9 +512,9 @@ fn library_identifiers(plist: &str) -> Vec<String> {
     out
 }
 
-/// 断言 `LibraryIdentifier` 集合恰为两切片（缺 / 多 / 名称漂移都响亮拒绝）。
-fn assert_identifiers(actual: &[String]) -> Result<(), BundleError> {
-    let expected = [DEVICE_SLICE, SIM_SLICE];
+/// 断言 `LibraryIdentifier` 集合恰为平台的两切片（缺 / 多 / 名称漂移 / 串平台都响亮拒绝）。
+fn assert_identifiers(actual: &[String], platform: &ApplePlatform) -> Result<(), BundleError> {
+    let expected = platform.slices();
     let mut sorted = actual.to_vec();
     sorted.sort();
     if sorted == expected {
@@ -523,6 +534,7 @@ fn assert_identifiers(actual: &[String]) -> Result<(), BundleError> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::packagers::ios::{IOS_PLATFORM, TVOS_PLATFORM};
 
     /// 解析器非空转：xcodebuild 生成形态（紧凑 `key`+`string`）与多切片。
     #[test]
@@ -545,18 +557,32 @@ mod tests {
         assert!(library_identifiers("").is_empty());
     }
 
-    /// 切片标识漂移必失败（篡改证明断言非空转）。
+    /// 切片标识漂移必失败（篡改证明断言非空转）；平台串台同样拒绝（T-M4-07）。
     #[test]
     fn identifier_mismatch_is_rejected() {
-        assert!(assert_identifiers(&[DEVICE_SLICE.to_string(), SIM_SLICE.to_string()]).is_ok());
+        let ios = &IOS_PLATFORM;
+        let tvos = &TVOS_PLATFORM;
         assert!(
-            assert_identifiers(&[DEVICE_SLICE.to_string()]).is_err(),
+            assert_identifiers(&[DEVICE_SLICE.to_string(), SIM_SLICE.to_string()], ios).is_ok()
+        );
+        assert!(
+            assert_identifiers(&[DEVICE_SLICE.to_string()], ios).is_err(),
             "缺 simulator 切片应失败"
         );
         assert!(
-            assert_identifiers(&[DEVICE_SLICE.to_string(), "ios-x86_64-simulator".to_string()])
-                .is_err(),
+            assert_identifiers(
+                &[DEVICE_SLICE.to_string(), "ios-x86_64-simulator".to_string()],
+                ios
+            )
+            .is_err(),
             "切片名漂移应失败"
+        );
+        // 同一份切片集在另一平台的期望下必须失败（期望集按描述符派生，非写死 ios）
+        let tvos_slices = tvos.slices().map(str::to_string).to_vec();
+        assert!(assert_identifiers(&tvos_slices, tvos).is_ok());
+        assert!(
+            assert_identifiers(&tvos_slices, ios).is_err(),
+            "tvOS 切片不得在 iOS 期望下通过"
         );
     }
 }
