@@ -147,8 +147,18 @@ fn builtin_ids_are_the_l1_set() {
         .filter(|spec| spec.tier == 3)
         .map(|spec| spec.id.clone())
         .collect();
-    let expected_l3: BTreeSet<String> = ["android-tv", "fire-tv"].map(String::from).into_iter().collect();
-    assert_eq!(l3, expected_l3, "L3 恰为电视两目标（android-tv / fire-tv）");
+    let expected_l3: BTreeSet<String> = [
+        "android-tv",
+        "fire-tv",
+        "tizen-tv",
+        "webos-tv",
+        "vidaa-tv",
+        "smartcast-tv",
+    ]
+    .map(String::from)
+    .into_iter()
+    .collect();
+    assert_eq!(l3, expected_l3, "L3 恰为电视两目标 + web 系 TV 四目标");
 }
 
 #[test]
