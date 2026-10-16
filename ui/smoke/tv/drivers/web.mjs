@@ -101,6 +101,20 @@ class Cdp {
     this.#handlers.get(method).push(fn);
   }
 
+  /** 一次性事件等待（超时报错）——场景间重导航用它锚定「新文档已 load」。 */
+  once(method, timeoutMs = 15000) {
+    return new Promise((done, fail) => {
+      const timer = setTimeout(() => fail(new Error(`web 腿：等待 ${method} 超时（${timeoutMs}ms）`)), timeoutMs);
+      const fn = (params) => {
+        clearTimeout(timer);
+        const list = this.#handlers.get(method) ?? [];
+        this.#handlers.set(method, list.filter((f) => f !== fn));
+        done(params);
+      };
+      this.on(method, fn);
+    });
+  }
+
   send(method, params = {}) {
     const id = ++this.#seq;
     return new Promise((resolve_, reject) => {
@@ -239,22 +253,37 @@ export async function runWebTargets({ targets, dist, logs, scenes, chromePath = 
     for (const target of targets) {
       const url = `http://127.0.0.1:${httpPort}/?target=${encodeURIComponent(target)}`;
       const base = lines.length;
-      await cdp.send("Page.navigate", { url });
-      let ready = false;
-      for (let i = 0; i < 60 && !ready; i++) {
-        ready = await cdp.evaluate(`Boolean(document.querySelector('[data-testid="tv-frame"]'))`).catch(() => false);
-        if (!ready) await sleep(250);
-      }
-      if (!ready) {
-        records.push({ target, leg: "web-surrogate", status: "fail", scenes: [], failure: { class: "channel", detail: `页面未就绪（tv-frame 锚点缺席）：${url}；异常：${errors.slice(-3).join(" | ") || "无"}` } });
+      const sceneRecords = [];
+      // 场景间重导航 = web 腿的前置重置（对齐 run-walk.mjs 的 per-walk 重启：每场景回
+      // 初始焦点 / 计数与空层栈，前场景状态不渗漏）。
+      const reload = async () => {
+        const loaded = cdp.once("Page.loadEventFired");
+        await cdp.send("Page.navigate", { url });
+        await loaded.catch(() => {}); // 已 load 完成的竞态（事件先于监听）由下面锚点轮询兜底
+        let ok = false;
+        for (let i = 0; i < 60 && !ok; i++) {
+          // 双条件：新文档锚点在场 + 目标名对得上（防读旧文档假就绪）
+          ok = await cdp
+            .evaluate(
+              `Boolean(document.querySelector('[data-testid="tv-frame"]')) && window.__polypack?.target === ${JSON.stringify(target)}`,
+            )
+            .catch(() => false);
+          if (!ok) await sleep(250);
+        }
+        return ok;
+      };
+      if (!(await reload())) {
+        records.push({ target, leg: "web-surrogate", status: "fail", scenes: [], failure: { class: "channel", detail: `页面未就绪（tv-frame 锚点缺席或目标不符）：${url}；异常：${errors.slice(-3).join(" | ") || "无"}` } });
         continue;
       }
 
-      const sceneRecords = [];
-      let prevFocus = null;
-      const initial = await cdp.evaluate(OBSERVE);
-      prevFocus = initial.focus;
       for (const scene of scenes) {
+        if (!(await reload())) {
+          sceneRecords.push({ id: scene.id, purpose: scene.purpose, status: "fail", initial: null, steps: [], failures: [{ class: "channel", detail: `场景重导航未就绪：${url}` }] });
+          continue;
+        }
+        const initial = await cdp.evaluate(OBSERVE);
+        let prevFocus = initial.focus;
         const steps = [];
         for (const [index, step] of scene.steps.entries()) {
           const before = lines.length;
@@ -277,20 +306,23 @@ export async function runWebTargets({ targets, dist, logs, scenes, chromePath = 
           steps.push({ index: index + 1, key: step.key, expect: step.expect, observed, ok: verdict.ok, failures: verdict.failures, evidence });
         }
         const ok = steps.every((s) => s.ok);
-        sceneRecords.push({ id: scene.id, purpose: scene.purpose, status: ok ? "pass" : "fail", steps });
+        sceneRecords.push({ id: scene.id, purpose: scene.purpose, status: ok ? "pass" : "fail", initial, steps });
       }
       const logFile = join(logs, `web-${target}.json`);
-      writeFileSync(logFile, JSON.stringify({ target, url, initial, scenes: sceneRecords, consoleLines: lines.length - base, pageErrors: errors }, null, 2));
+      writeFileSync(logFile, JSON.stringify({ target, url, scenes: sceneRecords, consoleLines: lines.length - base, pageErrors: errors }, null, 2));
       const failed = sceneRecords.find((s) => s.status === "fail");
       const step = failed?.steps.find((s) => !s.ok);
+      const failure = !failed
+        ? null
+        : step
+          ? { class: primaryClass(step), detail: `[${failed.id}] 第 ${step.index} 键（${step.key}）：${step.failures.map((f) => f.detail).join("；")}` }
+          : { class: failed.failures[0].class, detail: `[${failed.id}] ${failed.failures[0].detail}` };
       records.push({
         target,
         leg: "web-surrogate",
         status: failed ? "fail" : "pass",
         scenes: sceneRecords,
-        ...(step
-          ? { failure: { class: primaryClass(step), detail: `[${failed.id}] 第 ${step.index} 键（${step.key}）：${step.failures.map((f) => f.detail).join("；")}` } }
-          : {}),
+        ...(failure === null ? {} : { failure }),
         evidence: { log: logFile, pageErrors: errors.length },
       });
     }
