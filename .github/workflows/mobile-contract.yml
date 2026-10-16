@@ -112,7 +112,7 @@ jobs:
 
       - name: Apple 交叉编译 target（真跑）
         if: env.POLY_CONTRACT_REAL == '1'
-        run: rustup target add aarch64-apple-ios aarch64-apple-ios-sim x86_64-apple-ios
+        run: rustup target add aarch64-apple-ios aarch64-apple-ios-sim x86_64-apple-ios aarch64-apple-tvos aarch64-apple-tvos-sim
 
       - name: Xcode 留痕（真跑）
         if: env.POLY_CONTRACT_REAL == '1'
