@@ -48,7 +48,6 @@ jobs:
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     env:
-      POLY_TV_SMOKE_LOGS: ${{ runner.temp }}/poly-tv-smoke-logs
       # 预构建宿主 APK（blessed / 自托管 runner 用仓库变量指路）。RN gradlew 不入库
       # （模板生成物，host/README「构建环境前置」），keystore 须现生成——GH 托管 runner
       # 装不动整条 RN gradle 链，故 APK 由外部预置；未设 = 空 = 设备腿 SKIP-with-print。
@@ -118,6 +117,11 @@ jobs:
           adb shell getprop ro.product.cpu.abilist
 
       - name: 全腿（Android TV 真跑 + web 系替代腿 + tizen/webOS 模拟器探测注记）
+        # runner 上下文不允许出现在 job 级 env（只许 github/inputs/matrix/needs/secrets/
+        # strategy/vars）——日志根因此定义在步骤级（CI 首跑实证：job-env 引用 runner.temp
+        # → 工作流加载被拒、零 job；actionlint 命中）。
+        env:
+          POLY_TV_SMOKE_LOGS: ${{ runner.temp }}/poly-tv-smoke-logs
         run: node ui/smoke/tv/run.mjs --leg all --serial emulator-5554 --logs "$POLY_TV_SMOKE_LOGS"
 
       - name: 留证据（result.json + 目标日志 + 截图 + 走查 log；失败也留）
