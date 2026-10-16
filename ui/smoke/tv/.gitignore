@@ -1,0 +1,6 @@
+# 依赖不入库（devDeps：react/react-dom 供履约哨兵与宿主构建，vite 供 web 宿主出包）
+node_modules/
+# web 宿主构建产物不入库（真跑腿现场 vite build 生成）
+host/dist/
+# lockfile 不入库：与 adapter-native / adapter-taro / adapter-tv 同一口径
+package-lock.json

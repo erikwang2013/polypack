@@ -19,7 +19,7 @@ import {
 } from "../../adapters/tv/src/example-nodes.js";
 
 /** tv-example 档：示例页 press 语义镜像（对照 src/example.js 的 press；履约哨兵守漂移）。 */
-function createTvExampleSession() {
+export function createTvExampleSession() {
   const engine = createTvFocus({ nodes: EXAMPLE_FOCUS_NODES, initial: "counter" });
   const layers = createLayerStack();
   const shortcuts = createShortcutMap({ 1: "counter", 2: "reset", 3: "detail" });
@@ -61,6 +61,8 @@ export const TV_EXAMPLE_SCENES = Object.freeze([
       "DPAD_RIGHT", // 浏览：counter → reset
       "DPAD_LEFT", // reset → counter
       "DPAD_DOWN", // counter → detail
+      "DPAD_RIGHT", // detail → exit（浏览覆盖退出节点）
+      "DPAD_LEFT", // exit → detail
       "DPAD_CENTER", // OK：详情弹层打开（焦点 modal-play）
       "DPAD_CENTER", // OK：播放器子层打开（焦点 player-stop，播放占位）
       "Back", // 关播放器子层 → modal-play
@@ -71,15 +73,17 @@ export const TV_EXAMPLE_SCENES = Object.freeze([
   {
     id: "digit-shortcuts",
     purpose: "数字键直达（宿主域）与层内拦截（blocked，不穿透）",
-    keys: ["Digit3", "Numpad2", "DPAD_CENTER", "Digit1", "Back", "1"],
-    // Digit3 → detail；Numpad2 → reset；OK 开详情层；Digit1 层内 blocked（焦点不动）；
-    // Back 关层回 detail；"1" 直达 counter。
+    keys: ["Digit3", "DPAD_CENTER", "Digit1", "Back", "Numpad2", "1", "DPAD_CENTER"],
+    // Digit3 → detail（宿主域直达）；OK 开详情层；Digit1 层内 blocked（不穿透，焦点不动）；
+    // Back 关层回 detail；Numpad2 → reset（小键盘族）；"1" → counter（主键区族）；
+    // OK 激活计数（clicks=1——宿主视图同步的正信号）。
   },
   {
     id: "edge-holds",
     purpose: "边界自环与单节点域自环（无死路：期望移动而原地即移动）",
-    keys: ["DPAD_UP", "DPAD_LEFT", "DPAD_DOWN", "DPAD_CENTER", "DPAD_UP", "DPAD_LEFT"],
-    // counter 上/左自环；DOWN 到 detail；OK 开层；modal-play 上/左自环。
+    keys: ["DPAD_UP", "DPAD_LEFT", "DPAD_DOWN", "DPAD_CENTER", "DPAD_UP", "DPAD_LEFT", "DPAD_RIGHT", "DPAD_LEFT"],
+    // counter 上/左自环；DOWN 到 detail；OK 开层；modal-play 上/左自环；
+    // RIGHT/LEFT：层内两节点往返（modal-play ↔ modal-close，覆盖层内横向导航）。
   },
   {
     id: "exit-route",
@@ -92,6 +96,7 @@ export const TV_EXAMPLE_SCENES = Object.freeze([
 /** 现场推导：重放场景键序列，得逐键描述符 / 焦点 / 状态（期望值唯一来源）。 */
 export function deriveScene(scene, factory = createTvExampleSession) {
   const session = factory();
+  const initial = session.getState(); // 注键前基线（对拍「期望移动而实际未动」需要）
   const results = [];
   const focus = [];
   const state = [];
@@ -101,7 +106,7 @@ export function deriveScene(scene, factory = createTvExampleSession) {
     focus.push(snap.focus);
     state.push(snap);
   }
-  return { ...scene, results, focus, state };
+  return { ...scene, initial, results, focus, state };
 }
 
 /** tv-example 档全量推导（emit-expectations / 驱动对拍共用）。 */

@@ -47,10 +47,23 @@
 | `shortcut` | 数字键直达不符或层内拦截违例 |
 | `channel` | 观测通道失效（POLYPACK_KEY 行数不符 / DOM 锚点缺失） |
 
-## 用法（占位，随实现收敛）
+## 用法
 
 ```sh
-node ui/smoke/tv/run.mjs --target android-tv --serial emulator-5556 --logs <dir>   # 真腿
-node ui/smoke/tv/run.mjs --target tizen-tv --dist <ui dist> --logs <dir>           # 替代腿
-node --test ui/smoke/tv/test/                                                       # mock 腿（漂移哨兵）
+# mock 腿（每提交 / PR 可跑，零 npm install）：漂移哨兵 + 死路覆盖 + 履约哨兵（react 在场才跑）
+node --test ui/smoke/tv/
+
+# web 系腿（替代腿；缺 Chrome / Node<22 自动 SKIP-with-print）
+npm --prefix ui/smoke/tv install && npm --prefix ui/smoke/tv run build      # vite build → host/dist
+node ui/smoke/tv/run.mjs --leg web [--targets tizen-tv,webos-tv] [--dist <dir>] [--logs <dir>]
+
+# Android TV 腿（宿主 APK 在场 + adb 设备在场才真跑，任一缺席 SKIP-with-print）
+node ui/smoke/tv/run.mjs --leg android [--serial emulator-5556] [--apk <宿主 apk>] [--logs <dir>]
+
+# 全腿（android + web + tizen/webOS 模拟器探测）
+node ui/smoke/tv/run.mjs --leg all --logs <dir>
 ```
+
+缺省 `--dist host/dist`、`--logs $POLY_TV_SMOKE_LOGS`（否则 `target/tv-smoke-logs`，与
+`packagers_android_tv.rs` 的设备腿归档同址）。退出码：任一目标 fail → 1；SKIP 不红。
+期望漂移后用 `node ui/smoke/tv/emit-expectations.mjs --write` 刷新金样。
