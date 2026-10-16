@@ -1,5 +1,5 @@
-//! secret-scan 规则集：文本命中器（PEM / AWS / GitHub / Google / Slack / 高熵启发式）与
-//! 二进制魔数规则；白名单标记与脱敏由引擎（`super`）统一施加。
+//! secret-scan 规则集：文本命中器（PEM / AWS / GitHub / Google / Slack / 平台 AppSecret
+//! 32 位十六进制 / 高熵启发式）与二进制魔数规则；白名单标记与脱敏由引擎（`super`）统一施加。
 
 use super::ALLOW_MARKERS;
 
@@ -52,6 +52,11 @@ pub(super) const TEXT_RULES: &[TextRule] = &[
     TextRule {
         id: "slack-token",
         detect: detect_slack_token,
+        hint: HINT_KEY,
+    },
+    TextRule {
+        id: "appsecret-hex32",
+        detect: detect_appsecret_hex32,
         hint: HINT_KEY,
     },
     TextRule {
@@ -141,15 +146,53 @@ fn detect_high_entropy_secret(line: &[u8]) -> Option<(usize, usize)> {
         "access_key",
         "private_key",
         "credential",
+        // 平台 AppSecret 也收（非 32 位十六进制的形态由本条启发式兜底，如混写值）。
+        "appsecret",
+        "app_secret",
     ];
+    detect_keyword_value(line, KEYWORDS, |value| {
+        let run = value.iter().take_while(|&&b| is_b64_token(b)).count();
+        (run >= MIN_SECRET_LEN && is_high_entropy(&value[..run])).then_some(run)
+    })
+}
+
+/// 平台 AppSecret 形态（微信 / 抖音口径）：关键字门控 + 恰好 32 位十六进制。
+///
+/// 高熵启发式**排除**纯小写十六进制（md5 / 校验和形态），32 位 AppSecret 在它那里不会
+/// 命中——故单列此规则；关键字门控避免把裸校验和（无 `secret=` 上下文的 md5 / blake3 前缀）
+/// 误报，多一位少一位都不报。
+fn detect_appsecret_hex32(line: &[u8]) -> Option<(usize, usize)> {
+    const KEYWORDS: &[&str] = &[
+        "appsecret",
+        "app_secret",
+        "appkey",
+        "app_key",
+        "secret",
+        "secret_key",
+    ];
+    detect_keyword_value(line, KEYWORDS, |value| {
+        let run = value.iter().take_while(|&&b| b.is_ascii_hexdigit()).count();
+        (run == 32).then_some(run)
+    })
+}
+
+/// 关键字门控的值命中器：找「关键字（词边界，大小写不敏感）+（空白 / 引号后的）`=` 或 `:`
+/// （含 `=>` / `:=`）+ 空白 / 引号」之后的值起点，交 `check` 判定长度；返回首个命中。
+fn detect_keyword_value(
+    line: &[u8],
+    keywords: &[&str],
+    check: fn(&[u8]) -> Option<usize>,
+) -> Option<(usize, usize)> {
     let lowered = line.to_ascii_lowercase();
-    for keyword in KEYWORDS {
+    for keyword in keywords {
         let mut from = 0;
         while let Some(rel) = find_sub(&lowered[from..], keyword.as_bytes()) {
             let pos = from + rel;
             from = pos + 1;
-            // 关键字词边界：左右都不得是词内字节（避免 matching / secrets 之误）
-            let left_word = pos > 0 && is_word_byte(lowered[pos - 1]);
+            // 关键字词边界：左不得接字母数字（避免 matching / secrets 之误），但可接 `_`——
+            // `WECHAT_APPSECRET=` / `MY_SECRET=` 这种 snake_case / 环境变量前缀是最常见的
+            // 泄漏形态，右须非词内字节。
+            let left_word = pos > 0 && is_word_byte(lowered[pos - 1]) && lowered[pos - 1] != b'_';
             let right_word = lowered
                 .get(pos + keyword.len())
                 .is_some_and(|&b| is_word_byte(b));
@@ -174,12 +217,8 @@ fn detect_high_entropy_secret(line: &[u8]) -> Option<(usize, usize)> {
                 index += 1;
             }
             let value_start = pos + keyword.len() + index;
-            let run = line[value_start..]
-                .iter()
-                .take_while(|&&b| is_b64_token(b))
-                .count();
-            if run >= MIN_SECRET_LEN && is_high_entropy(&line[value_start..value_start + run]) {
-                return Some((value_start, run));
+            if let Some(len) = check(&line[value_start..]) {
+                return Some((value_start, len));
             }
         }
     }
