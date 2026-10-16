@@ -1,0 +1,24 @@
+{
+  "name": "@polypack/adapter-roku",
+  "version": "0.0.0-spike",
+  "description": "Roku SceneGraph 子集渲染器 spike（T-M4-11）：受限词汇 → SceneGraph XML 发射 + 频道 zip 构建与结构自检；核心不参与，仅 UI 子集 + 原生逻辑",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "./src/index.js",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "files": [
+    "src",
+    "scripts",
+    "channel",
+    "CAPABILITY-BOUNDARY-DRAFT.md"
+  ],
+  "scripts": {
+    "test": "node --test",
+    "build": "node scripts/build-and-check.mjs"
+  },
+  "engines": {
+    "node": ">=20.11"
+  }
+}

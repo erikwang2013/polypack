@@ -1,0 +1,3 @@
+# 构建产物（staging + 频道 zip）——由 scripts/build-and-check.mjs 生成，不入库
+build/
+dist/
