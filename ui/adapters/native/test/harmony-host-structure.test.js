@@ -66,7 +66,7 @@ test("装配链闭合：AppRegistry 键三处一致（app.json / Index.ets RNApp
 });
 
 test("target id 哨兵：createAdapter 的 target 是 capabilities 矩阵内的目标（'harmonyos'）", () => {
-  const target = INDEX.match(/createAdapter\(\{ target: "([^"]+)"/)?.[1];
+  const target = INDEX.match(/createAdapter\(\{\s*target: "([^"]+)"/)?.[1];
   assert.equal(target, "harmonyos", "target = TargetSpec id（与 <工程根>/harmony/ 目录名无关）");
   assert.ok(Object.hasOwn(CAPABILITY_MATRIX, target));
   const adapter = createAdapter({ target, runtime: stubRuntime }); // 未知目标会在此抛错（宿主装配真路径）
@@ -207,11 +207,12 @@ test("宿主依赖与阻塞说明：adapter 本地接线、RNOH 依赖配对、w
   assert.equal(pkg.dependencies["react-native"], "0.84.1");
   assert.equal(pkg.dependencies["react"], "19.2.3");
   assert.equal(pkg.dependencies["@react-native-oh/react-native-harmony"], "0.84.3");
-  // file:../.. 链接包的真实路径在工程根之外：缺 watchFolders 解析必失败（android 设备链同因）
+  // 链接包（adapter-native file:../..、adapter-tv file:../../../tv——T-M4-14 TV 安全区单一源）
+  // 的真实路径在工程根之外：缺 watchFolders 解析必失败（android 设备链同因）
   assert.match(
     read("metro.config.js"),
-    /watchFolders: \[path\.resolve\(__dirname, '\.\.\/\.\.'\)\]/,
-    "metro.config.js 须把 adapter 包纳入 watch 树",
+    /watchFolders: \[path\.resolve\(__dirname, '\.\.\/\.\.'\), path\.resolve\(__dirname, '\.\.\/\.\.\/\.\.\/tv'\)\]/,
+    "metro.config.js 须把 adapter-native 与 adapter-tv 两个链接包纳入 watch 树",
   );
   const readme = read("README.md");
   for (const marker of ["阻塞", "hdc", "polyKeyEvent"]) {

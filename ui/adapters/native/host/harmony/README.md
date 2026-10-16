@@ -113,6 +113,32 @@ EntryAbility(RNAbility, PaxApp) → pages/Index(RNApp appKey=PaxApp) → AppRegi
 - **签名**：`build-profile.json5` 的 `signingConfigs: []`（与官方模板一致，debug 不签；
   真机安装需 DevEco 自动签名或手工签名配置——上机走查时补，T-M3-09 口径）。
 
+## 鸿蒙 TV 形态（T-M4-14）
+
+同一宿主两态：`app.json` 的 `polypack.tv` 开关（默认 `false` = M3 手机形态，上节装配链不变）。
+TV HAP 构建前置 `polypack.tv=true`；`harmony/entry/src/main/module.json5` 的 `deviceTypes`
+已含 `"tv"`（现为 `["default","tv"]`，逐项落在 SDK 19 modulecheck 枚举内——TV 分发/安装要求）。
+
+- **能力提示**：TV 形态 `host: { pointer: "none", gestures: false }` → `capabilities()` =
+  `{ focusNav: true, safeArea: true, gestures: false }`，≡ adapter-tv 的 TV 基线三键
+  （`ui/adapters/tv/src/capabilities.js` 的 `android-tv` 行）。焦点内核与 adapter-tv 同源：
+  同一份 `ui/adapters/native/src/focus.js`（adapter-tv `focus.js` 原样再导出，非复制实现）。
+- **安全区外框**：装配层把示例页包进 `testID="tv-frame"` 的百分比内边距容器，四处取值来自
+  `@polypack/adapter-tv` 的 `platformStyle().safeArea`（四边 5% 单一源，宿主不写死百分比）。
+  1080p 换算 top/bottom=54、left/right=96（4K 翻倍），页卡完整落在安全区内——换算核对断言见
+  `test/harmony-tv-smoke.test.js`。（末节「safeArea 留待 M4」指手机形态的 insets 注入；
+  TV 形态的消费即本节。）
+- **键通道零改动**：TV 形态沿用上节 `polyKeyEvent` / `hardwareBackPress` 通道与
+  `KEYCODE_TO_KERNEL`（2012–2016 / 2054 / 2050，只消费 Down），走查口径同 `device-walks/`
+  （见其 README「鸿蒙 TV」节）。
+- **打包链复用**：TV HAP 与手机 HAP 共用 M3 的打包/签名链（`hvigorw assembleHap` +
+  hap-sign-tool；`crates/poly-bundle/src/packagers/harmony.rs` / `crates/poly-sign/src/harmony.rs`），
+  TV 侧无第二实现；本机 SDK 5.1.1(19) 的构建止步点（RNOH har 需 API ≥ 21）见下节，与 TV 无关。
+- **新增依赖**：`@polypack/adapter-tv`（`file:../../../tv`）——`metro.config.js` 的
+  `watchFolders` 已把它纳入 watch 树（链接包真实路径在工程根之外，与 adapter-native 同因）。
+- **冒烟（本地真跑）**：`node --test test/harmony-tv-smoke.test.js`——宿主 TV 结构快照 +
+  键序内核推导对拍 + 1080p/4K 安全区换算；react 缺席时行为层跳过不假绿。
+
 ## 阻塞与挂载点
 
 - **模板构建实测（T-M3-01 真跑）**：`npm install` → `ohpm install` → `hvigorw assembleHap

@@ -4,8 +4,11 @@
     "type": "entry",
     "description": "$string:module_desc",
     "mainElement": "EntryAbility",
+    // T-M4-14：鸿蒙 TV 分发/安装要求 deviceTypes 含 "tv"（SDK 19 modulecheck 枚举实证：
+    // default/tablet/tv/wearable/car/2in1）；"default" 覆盖手机族，同一 HAP 两态共用。
     "deviceTypes": [
-      "default"
+      "default",
+      "tv"
     ],
     "deliveryWithInstall": true,
     "installationFree": false,
