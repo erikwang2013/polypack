@@ -1,0 +1,118 @@
+{
+  "tokens": {
+    "color": {
+      "brand": "#ea580c",
+      "brandStrong": "#9a3412",
+      "accent": "#0e7490",
+      "surface": "#fff7ed",
+      "text": "#0f172a",
+      "muted": "#64748b"
+    },
+    "space": {
+      "1": 8,
+      "2": 16,
+      "3": 32,
+      "4": 48
+    },
+    "font": {
+      "body": 32,
+      "small": 28
+    },
+    "radius": 24,
+    "safeArea": {
+      "top": 5,
+      "right": 5,
+      "bottom": 5,
+      "left": 5
+    }
+  },
+  "TV_SCALE": {
+    "font": 2,
+    "space": 2,
+    "radius": 2
+  },
+  "SAFE_AREA": {
+    "top": 5,
+    "right": 5,
+    "bottom": 5,
+    "left": 5
+  },
+  "platformStyle": {
+    "color": {
+      "brand": "#ea580c",
+      "brandStrong": "#9a3412",
+      "accent": "#0e7490",
+      "surface": "#fff7ed",
+      "text": "#0f172a",
+      "muted": "#64748b"
+    },
+    "space": {
+      "1": 8,
+      "2": 16,
+      "3": 32,
+      "4": 48
+    },
+    "font": {
+      "body": 32,
+      "small": 28
+    },
+    "radius": 24,
+    "safeArea": {
+      "top": "5%",
+      "right": "5%",
+      "bottom": "5%",
+      "left": "5%"
+    },
+    "card": {
+      "padding": 48,
+      "backgroundColor": "#ffffff",
+      "borderColor": "#9a3412",
+      "borderWidth": 1,
+      "borderRadius": 24,
+      "maxWidth": 1280,
+      "textAlign": "center"
+    },
+    "title": {
+      "fontSize": 48,
+      "fontWeight": "600",
+      "color": "#0f172a",
+      "textAlign": "center"
+    },
+    "text": {
+      "fontSize": 32,
+      "color": "#0f172a",
+      "textAlign": "center"
+    },
+    "muted": {
+      "fontSize": 28,
+      "color": "#64748b",
+      "textAlign": "center"
+    },
+    "button": {
+      "marginTop": 32,
+      "paddingTop": 16,
+      "paddingBottom": 16,
+      "paddingLeft": 32,
+      "paddingRight": 32,
+      "backgroundColor": "#ea580c",
+      "borderRadius": 24,
+      "borderWidth": 4,
+      "borderColor": "transparent"
+    },
+    "buttonLabel": {
+      "fontSize": 32,
+      "color": "#ffffff",
+      "textAlign": "center"
+    },
+    "focusRing": {
+      "borderColor": "#0e7490",
+      "borderWidth": 4,
+      "borderRadius": 24
+    },
+    "overlay": {
+      "backgroundColor": "rgba(15, 23, 42, 0.72)",
+      "paddingTop": 48,
+      "paddingBottom": 48
+    }
+  }
+}

@@ -1,0 +1,4 @@
+# 依赖不入库（本包零运行时依赖，devDeps 仅 react/react-dom 供代理渲染测试）
+node_modules/
+# lockfile 不入库：与 adapter-native / adapter-taro 同一口径
+package-lock.json
