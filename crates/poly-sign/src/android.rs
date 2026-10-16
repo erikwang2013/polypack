@@ -261,7 +261,7 @@ fn resolve_apksigner_from(
 }
 
 /// 候选可执行文件名（Windows 上 Android SDK / PATH 提供的是 `apksigner.bat` 等）。
-fn exe_names(stem: &str) -> Vec<String> {
+pub(crate) fn exe_names(stem: &str) -> Vec<String> {
     if cfg!(windows) {
         vec![
             format!("{stem}.bat"),
@@ -275,7 +275,7 @@ fn exe_names(stem: &str) -> Vec<String> {
 }
 
 /// 在 PATH 各目录里找第一个存在的候选文件。
-fn find_in_path(path_var: &std::ffi::OsStr, names: &[String]) -> Option<PathBuf> {
+pub(crate) fn find_in_path(path_var: &std::ffi::OsStr, names: &[String]) -> Option<PathBuf> {
     for dir in std::env::split_paths(path_var) {
         for name in names {
             let candidate = dir.join(name);
@@ -372,7 +372,7 @@ fn verify_evidence(stdout: &str) -> String {
 }
 
 /// 取字符串尾部（诊断信息限长，避免报告被截断日志淹没）。
-fn tail(text: &str, limit: usize) -> String {
+pub(crate) fn tail(text: &str, limit: usize) -> String {
     let trimmed = text.trim();
     if trimmed.chars().count() <= limit {
         return trimmed.to_string();

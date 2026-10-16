@@ -3,7 +3,10 @@
 //! - **声明校验器**（缺省）：按 [`TargetSpec::verify`] 注册表逐目标跑已接入的校验器
 //!   （`poly build` 的 `verify` 阶段同源，[`VerifyStage`]）。M2 接入 ios 的
 //!   `codesign-verify` + `spctl`（同一份 [`poly_sign::ios::plan_verify`]：`codesign --verify
-//!   --deep --strict` + `spctl --assess`）；未接入的 id 如实点名归属，绝不静默假绿。
+//!   --deep --strict` + `spctl --assess`）；T-M3-04 接入 harmonyos 的 `hap-sign-verify`
+//!   （[`poly_sign::harmony::verify`] 的 hap-sign-tool `verify-app`）与 `hap-structure-check`
+//!   （[`poly_bundle::check_hap_structure`]，与打包器同一实现）；未接入的 id 如实点名归属，
+//!   绝不静默假绿。
 //! - **`--reproducible`**：同输入二跑的可复现比对（T-M2-06 验收口径），一个「校验器」的
 //!   实现，不进 DAG（比一次要两跑，太贵，只在显式要求时跑）。
 //!
@@ -87,8 +90,9 @@ pub fn run(args: &Args, json: bool) -> Result<i32, Diagnostic> {
                 ),
             )
             .with_hint(
-                "校验器按 TargetSpec.verify 声明注册：ios 的 codesign-verify / spctl 已接入；\
-                 其余 id 的归属见告警，可先用 poly verify --reproducible 做可复现比对",
+                "校验器按 TargetSpec.verify 声明注册：ios 的 codesign-verify / spctl、harmonyos 的 \
+                 hap-sign-verify / hap-structure-check 已接入；其余 id 的归属见告警，\
+                 可先用 poly verify --reproducible 做可复现比对",
             ));
         }
         return Ok(0);
@@ -151,12 +155,18 @@ enum Verifier {
     /// `codesign --verify --deep --strict` + `spctl --assess`（[`poly_sign::ios::plan_verify`]，
     /// 一次执行同时给出 `TargetSpec.verify` 里 `codesign-verify` 与 `spctl` 两个 id 的判决）。
     IosCodesign,
+    /// hap-sign-tool `verify-app`（[`poly_sign::harmony::verify`]，T-M3-04）。
+    HapSign,
+    /// HAP 结构检查（[`poly_bundle::check_hap_structure`]，与 HAP 打包器同一实现）。
+    HapStructure,
 }
 
 /// 校验器 id → 已接入实现（`None` = 未接入，归属查 [`verifier_owner`]）。
 fn verifier_for(id: &str) -> Option<Verifier> {
     match id {
         "codesign-verify" | "spctl" => Some(Verifier::IosCodesign),
+        "hap-sign-verify" => Some(Verifier::HapSign),
+        "hap-structure-check" => Some(Verifier::HapStructure),
         _ => None,
     }
 }
@@ -174,7 +184,6 @@ fn verifier_owner(id: &str) -> Option<&'static str> {
         "stapler-validate" => {
             Some("poly-sign 有 `plan_staple` 的 validate 半步（T-M2-10）；独立校验器未接线")
         }
-        "hap-sign-verify" | "hap-structure-check" => Some("鸿蒙链（T-M2 之后）"),
         "signtool-verify" => Some("Windows 链（M2 之后）"),
         "lintian" | "rpmlint" => Some("Linux 仓库检查（M3 之后）"),
         "html-validate" | "sri-check" => Some("Web 链（M2 之后；SRI 清单已由打包器产出）"),
@@ -258,9 +267,13 @@ fn verify_target(
 ) -> Result<bool, StageError> {
     let mut unserved: Vec<String> = Vec::new();
     let mut ios_ids: Vec<String> = Vec::new();
+    let mut hap_sign_ids: Vec<String> = Vec::new();
+    let mut hap_structure_ids: Vec<String> = Vec::new();
     for id in &spec.verify {
         match verifier_for(id) {
             Some(Verifier::IosCodesign) => ios_ids.push(id.clone()),
+            Some(Verifier::HapSign) => hap_sign_ids.push(id.clone()),
+            Some(Verifier::HapStructure) => hap_structure_ids.push(id.clone()),
             None => unserved.push(match verifier_owner(id) {
                 Some(owner) => format!("{id}（{owner}）"),
                 // 注册表有 id 但没人认领：如实点名到具体 id，测试保证这里在 M2 的注册表上是死路
@@ -278,10 +291,27 @@ fn verify_target(
             ),
         );
     }
-    if ios_ids.is_empty() {
-        return Ok(false);
-    }
 
+    let mut checked = false;
+    if !ios_ids.is_empty() {
+        checked |= verify_ios(project, spec, &ios_ids, events)?;
+    }
+    if !hap_sign_ids.is_empty() {
+        checked |= verify_hap_sign(project, spec, &hap_sign_ids, events)?;
+    }
+    if !hap_structure_ids.is_empty() {
+        checked |= verify_hap_structure(project, spec, &hap_structure_ids, events)?;
+    }
+    Ok(checked)
+}
+
+/// iOS 腿（`codesign-verify` / `spctl`）：`.app` 就位且已签名 → 跑 poly-sign 的同源校验计划。
+fn verify_ios(
+    project: &Project,
+    spec: &TargetSpec,
+    ids: &[String],
+    events: &mut dyn EventSink,
+) -> Result<bool, StageError> {
     let app = crate::sign::ios_app(project, spec);
     if !app.is_dir() {
         warning(
@@ -325,7 +355,7 @@ fn verify_target(
     match poly_sign::ios::verify(&app) {
         Ok(_) => {
             // 一次执行给声明的每个 id 一份判决（计划同源：两个 id 是同一份 plan 的两条命令）
-            for id in &ios_ids {
+            for id in ids {
                 events.emit(&BuildEvent::Verified {
                     checker: id.clone(),
                     ok: true,
@@ -339,6 +369,137 @@ fn verify_target(
         }
         Err(other) => Err(crate::sign::sign_error(other).into()),
     }
+}
+
+/// HarmonyOS 签名腿（`hap-sign-verify`）：hap-sign-tool `verify-app` 就地校验已签名 HAP。
+fn verify_hap_sign(
+    project: &Project,
+    spec: &TargetSpec,
+    ids: &[String],
+    events: &mut dyn EventSink,
+) -> Result<bool, StageError> {
+    let Some((hap, signed)) = hap_for_verify(project, spec) else {
+        warning(
+            events,
+            &format!(
+                "目标 {} 未校验：{} 下没有 HAP（先跑 poly build 把产物流到打包暂存目录）",
+                spec.id,
+                project::packages_root(&project.root)
+                    .join(&spec.id)
+                    .display()
+            ),
+        );
+        return Ok(false);
+    };
+    if !signed {
+        warning(
+            events,
+            &format!(
+                "目标 {} 未校验：产物未签名（{}）——签名校验对未签名件无从谈起，先跑签名（sign 阶段 / poly retry）",
+                spec.id,
+                hap.display()
+            ),
+        );
+        return Ok(false);
+    }
+    // 执行：缺 java / hap-sign-tool 按 E_SIG_0001 归入跳过；签名非法以 E_SIG_0003 硬失败
+    match poly_sign::harmony::verify(&hap) {
+        Ok(evidence) => {
+            warning(
+                events,
+                &format!("目标 {} 的 HAP 签名校验：{}", spec.id, evidence),
+            );
+            for id in ids {
+                events.emit(&BuildEvent::Verified {
+                    checker: id.clone(),
+                    ok: true,
+                });
+            }
+            Ok(true)
+        }
+        Err(err @ poly_sign::SignError::ToolMissing { .. }) => {
+            warning(events, &format!("目标 {} 未校验：{err}", spec.id));
+            Ok(false)
+        }
+        Err(other) => Err(crate::sign::sign_error(other).into()),
+    }
+}
+
+/// HarmonyOS 结构腿（`hap-structure-check`）：与 HAP 打包器同一份结构检查（必需条目 + 清单字段）。
+fn verify_hap_structure(
+    project: &Project,
+    spec: &TargetSpec,
+    ids: &[String],
+    events: &mut dyn EventSink,
+) -> Result<bool, StageError> {
+    let Some((hap, _signed)) = hap_for_verify(project, spec) else {
+        warning(
+            events,
+            &format!(
+                "目标 {} 未校验：{} 下没有 HAP（先跑 poly build 把产物流到打包暂存目录）",
+                spec.id,
+                project::packages_root(&project.root)
+                    .join(&spec.id)
+                    .display()
+            ),
+        );
+        return Ok(false);
+    };
+    match poly_bundle::check_hap_structure(&hap) {
+        Ok(structure) => {
+            warning(
+                events,
+                &format!(
+                    "目标 {} 的 HAP 结构检查：{} 条条目，bundleName {}，versionCode {}（模块 {}）",
+                    spec.id,
+                    structure.entries.len(),
+                    structure.bundle_name,
+                    structure.version_code,
+                    structure.module_name
+                ),
+            );
+            for id in ids {
+                events.emit(&BuildEvent::Verified {
+                    checker: id.clone(),
+                    ok: true,
+                });
+            }
+            Ok(true)
+        }
+        // 结构非法是产物缺陷（不是环境缺失）：如实硬失败，绝不降级成跳过
+        Err(err) => Err(bundle_diagnostic(spec, &err).into()),
+    }
+}
+
+/// 校验对象 HAP：优先已签名件（`<未签名名>-signed.hap` 约定，否则 `*-signed.hap` 扫描——
+/// 签名器产物命名 `poly_sign::harmony::signed_output`）；缺已签名件时退化到未签名 HAP，
+/// 供结构检查（对未签件同样成立）；返回 `(路径, 是否已签名)`。
+fn hap_for_verify(project: &Project, spec: &TargetSpec) -> Option<(PathBuf, bool)> {
+    let staged = project::packages_root(&project.root).join(&spec.id);
+    let preferred = staged.join(format!(
+        "{}-signed.hap",
+        crate::sign::unsigned_name_for(project, "hap")
+    ));
+    if preferred.is_file() {
+        return Some((preferred, true));
+    }
+    let mut candidates: Vec<PathBuf> = std::fs::read_dir(&staged)
+        .into_iter()
+        .flatten()
+        .flatten()
+        .map(|entry| entry.path())
+        .filter(|path| {
+            path.is_file()
+                && path
+                    .file_name()
+                    .is_some_and(|name| name.to_string_lossy().ends_with("-signed.hap"))
+        })
+        .collect();
+    candidates.sort();
+    if let Some(found) = candidates.into_iter().next() {
+        return Some((found, true));
+    }
+    crate::sign::unsigned_hap(project, spec).map(|path| (path, false))
 }
 
 /// 对单个目标做二跑比对；返回是否真的比对了（`false` = 告警跳过并已说明原因）。
@@ -726,6 +887,117 @@ mod tests {
         assert!(text.contains("apksigner-verify"), "{text}");
         assert!(text.contains("bundletool-validate"), "{text}");
         assert!(text.contains("T-M2-09"), "归属要具体到任务：{text}");
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    /// harmonyos 声明的两个 id 都落在已接入实现上（签名校验 + 结构检查）。
+    #[test]
+    fn harmonyos_verifiers_are_served() {
+        let harmonyos = Registry::builtin()
+            .get("harmonyos")
+            .expect("内建 harmonyos 目标")
+            .clone();
+        assert_eq!(
+            harmonyos.verify,
+            vec!["hap-sign-verify", "hap-structure-check"]
+        );
+        assert_eq!(verifier_for("hap-sign-verify"), Some(Verifier::HapSign));
+        assert_eq!(
+            verifier_for("hap-structure-check"),
+            Some(Verifier::HapStructure)
+        );
+    }
+
+    /// 校验对象 HAP：约定名已签件优先，只有未签件时退化（结构检查对未签件成立）。
+    #[test]
+    fn hap_for_verify_prefers_the_signed_convention() {
+        let (root, project) = fixture("hap-pick");
+        let spec = Registry::builtin()
+            .get("harmonyos")
+            .expect("内建 harmonyos 目标")
+            .clone();
+        let staged = root.join(".polypack/packages/harmonyos");
+        std::fs::create_dir_all(&staged).expect("暂存目录可建");
+        assert_eq!(hap_for_verify(&project, &spec), None, "空目录没有可校验的输入");
+
+        let unsigned = staged.join("fixture-app-0.0.1-unsigned.hap");
+        std::fs::write(&unsigned, b"u").expect("写未签件");
+        assert_eq!(
+            hap_for_verify(&project, &spec),
+            Some((unsigned.clone(), false)),
+            "只有未签件时退化"
+        );
+
+        let signed = staged.join("fixture-app-0.0.1-unsigned-signed.hap");
+        std::fs::write(&signed, b"s").expect("写已签件");
+        assert_eq!(
+            hap_for_verify(&project, &spec),
+            Some((signed, true)),
+            "约定名已签件优先"
+        );
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    /// 结构腿：合成 HAP 过检并给 `Verified` 判决；缺必需条目如实硬失败（不是跳过）。
+    #[test]
+    fn hap_structure_leg_verifies_synthetic_hap_and_fails_hard_on_defects() {
+        let (root, project) = fixture("hap-struct");
+        let spec = Registry::builtin()
+            .get("harmonyos")
+            .expect("内建 harmonyos 目标")
+            .clone();
+        let staged = root.join(".polypack/packages/harmonyos");
+        let src = staged.join("src");
+        std::fs::create_dir_all(&src).expect("暂存目录可建");
+        let module_json = src.join("module.json");
+        std::fs::write(
+            &module_json,
+            "{\"app\":{\"bundleName\":\"com.polypack.fixture\",\"versionCode\":100,\
+             \"versionName\":\"0.0.1\"},\"module\":{\"name\":\"entry\",\"type\":\"entry\"}}",
+        )
+        .expect("写清单");
+        let pack_info = src.join("pack.info");
+        std::fs::write(&pack_info, "pack-info").expect("写 pack.info");
+        let index = src.join("resources.index");
+        std::fs::write(&index, "index").expect("写索引");
+        let good = staged.join("fixture-app-0.0.1-unsigned.hap");
+        poly_bundle::zipwrite::write_zip(
+            &[
+                ("module.json".to_string(), module_json.clone()),
+                ("pack.info".to_string(), pack_info.clone()),
+                ("resources.index".to_string(), index),
+            ],
+            &good,
+        )
+        .expect("合成 HAP");
+
+        let ids = vec!["hap-structure-check".to_string()];
+        let mut sink = poly_core::events::HumanSink {
+            out: Vec::<u8>::new(),
+        };
+        assert!(
+            verify_hap_structure(&project, &spec, &ids, &mut sink).expect("结构检查应通过"),
+            "合成 HAP 应过检"
+        );
+        let text = String::from_utf8_lossy(&sink.out).into_owned();
+        assert!(text.contains("com.polypack.fixture"), "{text}");
+        assert!(text.contains("hap-structure-check"), "{text}");
+        assert!(text.contains("→ true"), "{text}");
+
+        // 缺 resources.index → E_BND_0006 硬失败（产物缺陷不得降级成跳过）
+        std::fs::remove_file(&good).expect("清掉合格件");
+        let bad = staged.join("other-unsigned.hap");
+        poly_bundle::zipwrite::write_zip(
+            &[
+                ("module.json".to_string(), module_json),
+                ("pack.info".to_string(), pack_info),
+            ],
+            &bad,
+        )
+        .expect("合成缺条目 HAP");
+        let err = verify_hap_structure(&project, &spec, &ids, &mut sink)
+            .expect_err("缺必需条目必须硬失败");
+        assert_eq!(err.diagnostic.code.to_string(), "poly::E_BND_0006");
         let _ = std::fs::remove_dir_all(&root);
     }
 
