@@ -94,6 +94,7 @@ jobs:
         with:
           name: bridge-real-artifacts
           path: /tmp/polypack-bridge-real-*/**
-          # 待首次非空上传回执后翻 error（对齐 mobile-contract：空上传=真异常）
-          if-no-files-found: warn
+          # error 条件已满足：重派 38849964354 真落盘并上传 457,083,678B（aar + classes.jar +
+          # 双 ABI .so 等；含夹具 target 中间产物，约 436MiB）——此后空上传=真异常，对齐 mobile-contract。
+          if-no-files-found: error
           retention-days: 14

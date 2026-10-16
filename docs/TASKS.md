@@ -352,7 +352,7 @@
 - 交付物: 凭据解析层：`CredentialRef` → 后端链（本地 keyring + Vault 后端 trait + CI 内存注入），签名阶段按需拉取、用后即弃；仓库内明文凭据即构建失败。
 - 验收: 同一 JobSpec 分别在 keyring 与 Vault 后端解析成功；事件流/日志中凭据值不可见（脱敏断言）；`poly retry --from sign` 独立重跑并重新拉取凭据。
 
-### T-M2-12 · secret-scan（提交与构建双重检查）（构造样本全命中 + 全历史 823 文件真扫零命中 + CI 三宿主工作流；「必过检查项」branch protection 标记待仓库设置）
+### T-M2-12 · secret-scan（提交与构建双重检查）（构造样本全命中 + 全历史 823 文件真扫零命中 + CI 三宿主工作流；「必过检查项」branch protection 已设置——3 宿主 secret-scan 为 required checks（2026-10-16 核实；enforce_admins=false，admin 直推走绕过））
 
 - 角色: release-sec
 - 依赖: T-M0-02

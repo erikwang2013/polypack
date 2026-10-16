@@ -352,7 +352,7 @@
 - Deliverable: credential resolution layer: `CredentialRef` → backend chain (local keyring + Vault backend trait + CI memory injection); the sign stage pulls on demand and discards immediately; plaintext credentials in the repo fail the build.
 - Acceptance: the same JobSpec resolves against both the keyring and Vault backends; credential values never appear in the event stream/logs (redaction assertion); `poly retry --from sign` reruns independently and re-pulls credentials.
 
-### T-M2-12 · secret-scan (commit and build double-check) (constructed samples all hit + full-history real scan of 823 files clean + three-host CI workflow; required-check branch protection pending repo settings)
+### T-M2-12 · secret-scan (commit and build double-check) (constructed samples all hit + full-history real scan of 823 files clean + three-host CI workflow; required-check branch protection is set — the three-host secret-scan jobs are the required checks (verified 2026-10-16; enforce_admins=false, admin direct pushes bypass))
 
 - Role: release-sec
 - Deps: T-M0-02
