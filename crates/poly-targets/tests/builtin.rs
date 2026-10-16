@@ -98,8 +98,8 @@ fn builtin_has_seven_valid_targets() {
     );
     assert_eq!(
         registry.all().count(),
-        11,
-        "M3 起内建 = L1 七 + L2 小程序族四（wechat / alipay / douyin / quickapp）"
+        12,
+        "M4 起内建 = L1 七 + L2 小程序族四 + L3 Apple tvOS"
     );
     for spec in registry.all() {
         spec.validate()
@@ -210,12 +210,16 @@ fn linux_host_resolves_four_l1_targets_from_all() {
     assert_eq!(selected.len(), l1.len() + l2.len());
 
     let excluded: BTreeSet<&str> = resolved.excluded.iter().map(|e| e.id.as_str()).collect();
-    assert_eq!(excluded, BTreeSet::from(["ios", "macos", "windows"]));
+    assert_eq!(
+        excluded,
+        BTreeSet::from(["ios", "macos", "tvos", "windows"]),
+        "含 M4 的 tvos（声明宿主 = macOS）"
+    );
     for target in &resolved.excluded {
         assert!(!target.reason.trim().is_empty(), "{} 缺排除原因", target.id);
     }
 
-    // 内建目标均为 L1 / L2，不涉及厂商授权分支。
+    // 内建目标为 L1 / L2 / L3，不涉及厂商授权分支。
     assert!(resolved.excluded.iter().all(|e| !e.reason.contains("L7")));
 }
 
@@ -270,4 +274,33 @@ fn builtin_matches_roadmap_3_3_mini_programs() {
         assert_eq!(spec.hosts.len(), 3, "{id}: Taro 编译不绑定本地宿主");
         assert!(spec.notes.is_some(), "{id}: 需边界 / 降级说明");
     }
+}
+
+/// T-M4-07 验收（声明侧）：L3 电视族首行 Apple tvOS 按 ROADMAP §3.4 逐列对齐。
+#[test]
+fn builtin_matches_roadmap_3_4_apple_tvos() {
+    let tvos = Registry::builtin().get("tvos").expect("内建 tvos 目标").clone();
+    assert_eq!(tvos.tier, 3, "L3 电视与大屏");
+    assert_eq!(tvos.hosts, vec![Host::Macos], "需 macOS 宿主");
+    assert_eq!(tvos.runtime, Runtime::Native, "native staticlib");
+    assert_eq!(tvos.bridge, Bridge::Uniffi);
+    assert_eq!(
+        tvos.ui.iter().map(String::as_str).collect::<Vec<_>>(),
+        vec!["react-native-tvos"],
+        "RN-tvOS 承载 UI"
+    );
+    // 产物格式同 ios（ipa）：打包链按目标切 tvOS SDK / 切片，格式不分裂（T-M4-07）
+    assert_eq!(tvos.package.format, "ipa", "TV 包");
+    assert_eq!(tvos.package.builder, "tvos-xcodebuild", "xcodebuild（复用 iOS 链）");
+    assert_eq!(tvos.signing.as_deref(), Some("apple-codesign"), "codesign");
+    assert_eq!(
+        tvos.verify.iter().map(String::as_str).collect::<Vec<_>>(),
+        vec!["codesign-verify", "spctl"]
+    );
+    assert_eq!(
+        tvos.publish.iter().map(String::as_str).collect::<Vec<_>>(),
+        vec!["app-store-connect"]
+    );
+    assert!(!tvos.experimental, "T-M4-07 为正式链（非实验档）");
+    assert!(tvos.notes.as_deref().unwrap_or("").contains("macOS"), "需宿主边界说明");
 }

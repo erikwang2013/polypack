@@ -5,9 +5,16 @@
 
 import { resolveCapabilities, resolveDegradations } from "./capabilities.js";
 import { createNativeRegistry } from "./native-registry.js";
-import { platformStyle } from "./tokens.js";
+import { platformStyle, platformStyleTvos } from "./tokens.js";
 
-export { tokens, platformStyle } from "./tokens.js";
+export {
+  TV_SAFE_AREA,
+  TV_SCALE,
+  platformStyle,
+  platformStyleTvos,
+  tokens,
+  tvosTokens,
+} from "./tokens.js";
 export { HOST_PROP_OMISSIONS, bindPrimitives, mapProps } from "./component-map.js";
 export {
   CAPABILITY_MATRIX,
@@ -67,9 +74,10 @@ export function createAdapter({ target, runtime, host = {} } = {}) {
     get mounted() {
       return mounted;
     },
-    /** platformStyle(tokens, options)：蒙皮为 RN 样式（compact = 小屏降级）。 */
+    /** platformStyle(tokens, options)：蒙皮为 RN 样式（compact = 小屏降级）。
+     *  T-M4-06：target=tvos → 10-foot 蒙皮（页面零参直取即 TV 默认皮肤；TV 无 compact 分支）。 */
     platformStyle(t, options) {
-      return platformStyle(t, options);
+      return target === "tvos" ? platformStyleTvos(t) : platformStyle(t, options);
     },
     /** capabilities(hostHints)：契约三键，宿主运行时提示覆盖目标基线。 */
     capabilities(hostHints = {}) {

@@ -1,0 +1,10 @@
+node_modules/
+
+# Xcode 构建产物（T-M4-07 打包链：archive / dSYM / Pods 不入库）
+ios/build/
+ios/Pods/
+ios/*.xcworkspace/
+ios/xcuserdata/
+
+# 桥产物（T-M4-07：uniffi Swift 绑定 + XCFramework 由打包链产出，不入库）
+bridge/

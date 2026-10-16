@@ -9,6 +9,9 @@ export const HOST_PROP_OMISSIONS = Object.freeze({
   // RNOH/ArkUI 无 Android TV 原生焦点锚点对应：焦点经 ArkTS 根容器 onKeyEvent → polyKeyEvent
   // 通道驱动（见 host/harmony/index.js），页面照写 hasTVPreferredFocus 由本表剔除。
   harmonyos: Object.freeze(["hasTVPreferredFocus"]),
+  // T-M4-06：RN-tvOS 原生支持 hasTVPreferredFocus（TV 焦点锚点原样保留）→ 无剔除项，
+  // 示例页组件树对 tvos 零改动（bindPrimitives 对空表宿主返回原语同一性）。
+  tvos: Object.freeze([]),
 });
 
 /** mapProps(target, props)：按宿主剔除不支持的原生 prop（未知目标快速失败，同 capabilities）。 */
