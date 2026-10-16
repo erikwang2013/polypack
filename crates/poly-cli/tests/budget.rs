@@ -154,7 +154,9 @@ fn budget_gate_reports_and_gates_end_to_end() {
     assert!(packaged_bytes > 1, "合成超预算需产物大于 1 字节");
     let verdict = budgeted(&events);
     assert_eq!(verdict["target"], "quickapp");
-    assert_eq!(verdict["format"], "quickapp");
+    // T-M3-12 收口：快应用产物格式按 ROADMAP §3.3 翻到 `rpk`（registry + 打包器同口径，
+    // 判定面随 artifact.format——本断言在 T-M3-08 落地时格式仍为 quickapp）
+    assert_eq!(verdict["format"], "rpk");
     assert_eq!(verdict["limit"], 1);
     assert_eq!(verdict["policy"], "warn");
     assert_eq!(

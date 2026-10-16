@@ -12,13 +12,20 @@
 //! - **端点显式注入**：快应用联盟商店无公开 CI 端点（2026-10 核：quickapp.cn / 各厂商文档
 //!   只有 web 控制台与 IDE 上传，无 CI API 面），`--api-base` 必填、无缺省域名；协议面为
 //!   **最小模型，待真账号联调**（R4 记录在案）；
-//! - **渠道客户端缺席**（publish-client 的 T-M3-10 落位前）→ `E_PUBLISH_0002` 如实点名归属，
-//!   绝不假装提审过；`--dry-run` 面不受影响，可先行验证输入 / 凭据 / 定位。
+//! - **载具 pre-flight**：代码包经 `Package::load`（poly-publish 公开入口，自动判别目录 /
+//!   单文件）读到**驱动同源的摘要**——dry-run 报 `package_carrier` / `package_digest` /
+//!   `receipt_key`（回执键 = appid-版本-摘要前 16，幂等重跑的落点锚），rpk 腿与四步驱动
+//!   零分叉同口径；
+//! - **渠道客户端缺席**（publish-client 的 T-M3-10 尚缺 builtin() 内快应用客户端）→
+//!   `E_PUBLISH_0002` 如实点名归属，绝不假装提审过；`--dry-run` 面不受影响，可先行验证
+//!   输入 / 凭据 / 定位 / 载具。
 //!
-//! 接口缺口（T-M3-12 报 'main'）：①快应用渠道的 `Channel` 备位与 `builtin()`
-//! 内客户端归 publish-client；②端点注入面（`--api-base` → 客户端）随其对接口落位接线；
-//! ③`Package::load` 的单文件载体（`.rpk`）同归 T-M3-10。本层已做到调用面
-//! （[`poly_publish::publish`] 四步驱动 + 公开入口），上述接口落位后零改动激活。
+//! 接口缺口（T-M3-12 报 'main'；main@cd1fcdb 后状态）：①`Channel::QuickApp` 备位已入主干
+//! （`from_id("quickapp-union-store")` 可反解）；②`builtin()` 仍为微信 / 支付宝 / 抖音三平台，
+//! 快应用客户端与③端点注入面（`--api-base` → 客户端，现无端点形参）归 publish-client；
+//! ④单文件载具 `Package::load_file` 已入主干，本层 pre-flight 即经 `Package::load` 接上。
+//! 本层已做到调用面（[`poly_publish::publish`] 四步驱动 + 公开入口），客户端进 `builtin()`
+//! 后零改动激活（`find_publisher` 自动返回；端点一行接线点在真腿处标注）。
 
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -27,7 +34,9 @@ use base64::Engine;
 use poly_core::diagnostics::{Code, Diagnostic};
 use poly_core::{CredentialRef, codes};
 use poly_publish::secret::{CredentialProvider, EnvProvider, resolve_payload};
-use poly_publish::{Archive, PublishError, PublishRequest, Publisher, Transport, UreqTransport};
+use poly_publish::{
+    Archive, Package, PublishError, PublishRequest, Publisher, Transport, UreqTransport,
+};
 use poly_targets::{Registry, TargetSpec};
 
 use crate::project;
@@ -87,6 +96,12 @@ struct Prepared {
     package: PathBuf,
     /// 代码包字节数（文件载体才给）。
     package_bytes: Option<u64>,
+    /// 载具形态（`single-file` = `.rpk` 等单文件；`dir` = T-M3-06 产物目录）。
+    carrier: &'static str,
+    /// 载具摘要（blake3 hex；与四步驱动 `Package::load` 同源同口径）。
+    digest: String,
+    /// 回执键（appid-版本-摘要前 16；幂等重跑 = 同键续走 / 终态 no-op）。
+    receipt_key: String,
     /// 凭据引用（引用模型；值经后端链现取）。
     reference: CredentialRef,
     /// 命中的凭据后端 id（`env` 等）。
@@ -125,6 +140,9 @@ pub fn run(args: &Args, json: bool) -> Result<i32, Diagnostic> {
                 "version": args.version,
                 "package": prepared.package.display().to_string(),
                 "package_bytes": prepared.package_bytes,
+                "package_carrier": prepared.carrier,
+                "package_digest": prepared.digest,
+                "receipt_key": prepared.receipt_key,
                 "credential_reference": prepared.reference.name,
                 "credential_provider": prepared.provider,
                 "credential_fields": prepared.payload_fields,
@@ -136,12 +154,13 @@ pub fn run(args: &Args, json: bool) -> Result<i32, Diagnostic> {
         return Ok(0);
     }
 
-    // 真腿：渠道客户端（publish-client T-M3-10 落位前 → E_PUBLISH_0002 缺口诊断）+ 四步驱动。
+    // 真腿：渠道客户端（builtin() 尚无快应用客户端 → E_PUBLISH_0002 缺口诊断）+ 四步驱动。
     let transport = UreqTransport::new().map_err(publish_error)?;
     let publisher = find_publisher(&prepared.channel, Arc::new(transport))?;
-    // 端点注入面（T-M3-12 缺口，归 publish-client）：现 `builtin(transport)` 无端点形参；
+    // 端点注入面（T-M3-12 缺口②，归 publish-client）：现 `builtin(transport)` 无端点形参；
     // `prepared.api_base`（快应用联盟必填）已解析校验，客户端接口落位后在此一行接线——
-    // 本层不预改 poly-publish 核心。
+    // 本层不预改 poly-publish 核心。四步驱动的载具入口 `Package::load` 已自动判别单文件
+    // （pre-flight 摘要 / 回执键与其同源），rpk leg 至此除客户端外全通。
     let archive = Archive::new(&project.root);
     let mut request = PublishRequest::new(
         args.appid.clone(),
@@ -216,6 +235,26 @@ fn prepare(
         None => locate_rpk(project, spec)?,
     };
 
+    // 载具 pre-flight（rpk 腿接线）：经 poly-publish 公开入口 `Package::load` 自动判别载具，
+    // 拿到与四步驱动**同源**的摘要，据此算回执键——dry-run 即完整预演幂等重跑的落点锚。
+    let carrier = Package::load(&package).map_err(|err| {
+        Diagnostic::error(
+            codes::E_PUBLISH_0001,
+            format!("代码包 {} 不可用作载具：{err}", package.display()),
+        )
+        .with_hint(
+            "载具 = 单文件（快应用 .rpk）或 T-M3-06 产物目录（<…>/miniapp/dist，根须有 app.json）；\
+             先 poly build --target quickapp 重新出包",
+        )
+    })?;
+    let digest = carrier.digest().to_string();
+    let carrier_kind = if carrier.single_file().is_some() {
+        "single-file"
+    } else {
+        "dir"
+    };
+    let receipt_key = poly_publish::receipt_key(&args.appid, &args.version, &digest);
+
     // 凭据引用（引用模型）：`env:VAR` → CredentialRef + EnvProvider 现取；只留形态不留值。
     let (source, alias) = crate::retry::parse_credential(&args.credential)?;
     let reference = CredentialRef {
@@ -248,6 +287,9 @@ fn prepare(
         channel,
         package,
         package_bytes,
+        carrier: carrier_kind,
+        digest,
+        receipt_key,
         reference,
         provider,
         payload_fields,
@@ -352,7 +394,8 @@ fn payload_fields(payload: &[u8]) -> Result<Vec<String>, Diagnostic> {
 /// 渠道客户端查找（真腿）：注册表 `publish` 名 → poly-publish `Channel` 备位 → `builtin()` 内客户端。
 ///
 /// 任一层缺席 → `E_PUBLISH_0002` 缺口诊断（点名渠道与归属），绝不假装提审过。
-/// 自动激活：publish-client 的 T-M3-10 落位后（备位 + 客户端进 `builtin()`），本函数原样返回客户端。
+/// 自动激活：备位已入主干（main@cd1fcdb 起 `from_id` 可反解 QuickApp）——客户端进
+/// `builtin()` 后本函数原样返回，测试 Ok 臂同日转绿。
 fn find_publisher(
     channel: &str,
     transport: Arc<dyn Transport>,
@@ -363,8 +406,9 @@ fn find_publisher(
             format!("渠道 {channel} 的提审客户端未落位：{reason}"),
         )
         .with_hint(
-            "快应用联盟商店客户端归 publish-client 的 T-M3-10（Channel 备位 + builtin() 客户端 \
-             + 端点注入面）；本层已做到调用面，落位后零改动激活（--dry-run 可先行验证输入）",
+            "快应用联盟商店：Channel 备位已入主干（main@cd1fcdb）；尚缺 builtin() 内客户端 \
+             与端点注入面，归 publish-client（T-M3-10 后续）——本层已做到调用面，\
+             落位后零改动激活（--dry-run 可先行验证输入 / 载具）",
         )
     };
     let Some(wanted) = poly_publish::Channel::from_id(channel) else {
@@ -528,7 +572,8 @@ mod tests {
         }
         match find_publisher(UNION_STORE_CHANNEL, Arc::new(PanicTransport)) {
             Err(diagnostic) => {
-                // 现态（publish-client T-M3-10 落位前）：备位或客户端缺席——如实点名归属，绝不假绿
+                // 现态（main@cd1fcdb 后）：备位已反解，缺口在 builtin() 内客户端——
+                // 如实点名归属与阶段，绝不假绿
                 assert_eq!(diagnostic.code.to_string(), "poly::E_PUBLISH_0002");
                 assert!(
                     diagnostic.message.contains("quickapp-union-store"),
@@ -536,15 +581,74 @@ mod tests {
                     diagnostic.message
                 );
                 assert!(
-                    diagnostic.hint.unwrap_or_default().contains("T-M3-10"),
-                    "缺口须点名归属"
+                    diagnostic.message.contains("builtin()"),
+                    "备位已入主干（from_id 已反解），缺口应精确到客户端：{}",
+                    diagnostic.message
                 );
+                let hint = diagnostic.hint.unwrap_or_default();
+                assert!(hint.contains("publish-client"), "缺口须点名归属：{hint}");
+                assert!(hint.contains("T-M3-10"), "归属到任务：{hint}");
             }
             Ok(publisher) => {
-                // 落位后（自动激活）：客户端在 builtin() 里——下一阶段是端点注入面接线
+                // 客户端进 builtin() 当日（自动激活）：下一阶段是端点注入面接线
                 assert_eq!(publisher.channel().id(), UNION_STORE_CHANNEL);
             }
         }
+    }
+
+    /// rpk 腿接线（main@cd1fcdb 单文件载具）：pre-flight 摘要 / 回执键与四步驱动同源。
+    ///
+    /// pre-flight 走 `Package::load`（驱动同一入口）——断言逐字符相等 = 驱动日后重算的
+    /// 回执键必与本层预演的相同（幂等重跑锚点），零分叉。
+    #[test]
+    fn rpk_leg_preflight_digest_and_receipt_key_match_the_driver_entry() {
+        let (root, project) = fixture("rpk-leg");
+        let seeded = seed_rpk(&root, "quickapp", "com.polypack.fixture.debug.0.1.0.rpk");
+        let mut a = args("quickapp");
+        a.api_base = Some("https://example.invalid/union".to_string());
+        let prepared = prepare(&a, &project, &spec("quickapp"), &memory()).expect("解析须成功");
+        assert_eq!(prepared.carrier, "single-file", "rpk 判为单文件载具");
+        let driven = Package::load(&seeded).expect("驱动入口可读同一 rpk");
+        assert_eq!(
+            prepared.digest,
+            driven.digest(),
+            "pre-flight 摘要 = 驱动同源摘要（Package::load 同入口同口径）"
+        );
+        assert_eq!(
+            prepared.receipt_key,
+            poly_publish::receipt_key(&a.appid, &a.version, driven.digest()),
+            "回执键 = appid-版本-摘要前 16（驱动落回执同键）"
+        );
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    /// 载具 pre-flight 的拒绝面：空 .rpk（构建未完成）与目录载具一样要如实判别。
+    #[test]
+    fn carrier_preflight_rejects_empty_rpk_and_accepts_dir() {
+        let (root, project) = fixture("carrier");
+        let empty = seed_rpk(&root, "quickapp", "empty.debug.0.1.0.rpk");
+        std::fs::write(&empty, b"").expect("空文件");
+        let mut a = args("quickapp");
+        a.api_base = Some("https://example.invalid/union".to_string());
+        let err = prepare(&a, &project, &spec("quickapp"), &memory())
+            .expect_err("空 .rpk 必须报输入未就绪");
+        assert_eq!(err.code.to_string(), "poly::E_PUBLISH_0001");
+        assert!(
+            err.hint.unwrap_or_default().contains("poly build"),
+            "提示须给重建动作"
+        );
+
+        // 目录载具（T-M3-06 产物形态）同样过 pre-flight：显式 --package 指向产物目录
+        let dist = root.join("dist");
+        std::fs::create_dir_all(&dist).expect("建目录");
+        std::fs::write(dist.join("app.json"), r#"{"pages":["pages/index/index"]}"#).expect("写");
+        std::fs::write(dist.join("app.js"), "App({})").expect("写");
+        let mut a = args("quickapp");
+        a.api_base = Some("https://example.invalid/union".to_string());
+        a.package = Some(dist);
+        let prepared = prepare(&a, &project, &spec("quickapp"), &memory()).expect("目录载具须过");
+        assert_eq!(prepared.carrier, "dir");
+        let _ = std::fs::remove_dir_all(&root);
     }
 
     #[test]
