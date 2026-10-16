@@ -183,7 +183,7 @@ pub trait Packager: Send + Sync {
 }
 
 /// 内建打包器集合（M1：msi / nsis / dmg / deb / appimage / static-site；M2：aab / ipa；
-/// M3：小程序族 weapp / alipay / tt / rpk + hap）。
+/// M3：小程序族 weapp / alipay / tt / rpk + hap；M4：TV 家族 wgt / ipk / web-app）。
 pub fn builtin() -> Vec<Box<dyn Packager>> {
     vec![
         Box::new(crate::packagers::windows::WixMsi),
@@ -199,6 +199,10 @@ pub fn builtin() -> Vec<Box<dyn Packager>> {
         Box::new(crate::packagers::miniapp::DouyinMini),
         Box::new(crate::packagers::miniapp::QuickApp),
         Box::new(crate::packagers::harmony::HarmonyHap),
+        Box::new(crate::packagers::tizen::TizenWgt),
+        Box::new(crate::packagers::webos::WebOsIpk),
+        Box::new(crate::packagers::webtv::VidaaApp),
+        Box::new(crate::packagers::webtv::SmartcastApp),
     ]
 }
 

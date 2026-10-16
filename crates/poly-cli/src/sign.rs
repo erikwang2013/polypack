@@ -128,6 +128,12 @@ fn signing_owner(format: &str) -> Option<&'static str> {
         "dmg" | "msi" => Some("桌面签名链（codesign / signtool）归 M2 之后"),
         "deb" | "appimage" => Some("Linux 仓库 GPG 签名归 M3"),
         "static-site" => Some("静态站点无内建签名（SRI 清单已由打包器产出）"),
+        // Tizen 作者证书签名（凭据引用 `tizen-author`）归三星签名工具链；webOS 明文声明
+        // 无签名档案（发布签名在平台侧，见 TargetSpec.notes），不落到这里
+        "wgt" => Some(
+            "Tizen 作者证书签名（三星签名工具）归平台侧（本机无 tizen CLI；凭据引用 tizen-author \
+             已在 TargetSpec.signing 声明）",
+        ),
         _ => None,
     }
 }

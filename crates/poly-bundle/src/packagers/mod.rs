@@ -8,6 +8,9 @@
 //! - [`ios`]：IPA（T-M2-03 / T-M2-08，XCFramework 绑定 + xcodebuild archive / 归档 Payload 直压）
 //! - [`harmony`]：HAP（T-M3-03，工程配置生成 + hvigor 调用 + 结构检查）
 //! - [`miniapp`]：小程序族（T-M3-06，Taro 编译 + 代码包组装；快应用编译工程）
+//! - [`tizen`]：Tizen TV `.wgt`（T-M4-08，config.xml + UI 载荷 + 结构检查）
+//! - [`webos`]：webOS TV `.ipk`（T-M4-09，Debian 形态 ar 归档 + 结构检查）
+//! - [`webtv`]：VIDAA / Vizio SmartCast 应用包（T-M4-10，两目标 + 沙箱自检）
 
 pub mod android;
 pub mod dmg;
@@ -15,5 +18,8 @@ pub mod harmony;
 pub mod ios;
 pub mod linux;
 pub mod miniapp;
+pub mod tizen;
 pub mod web;
+pub mod webos;
+pub mod webtv;
 pub mod windows;

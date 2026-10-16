@@ -96,7 +96,8 @@ pub fn run(args: &Args, json: bool) -> Result<i32, Diagnostic> {
             )
             .with_hint(
                 "校验器按 TargetSpec.verify 声明注册：ios 的 codesign-verify / spctl、harmonyos 的 \
-                 hap-sign-verify / hap-structure-check、quickapp 的 hap-toolkit-lint 已接入；\
+                 hap-sign-verify / hap-structure-check、quickapp 的 hap-toolkit-lint、web 系 TV 的 \
+                 wgt-lint / ares-package / sandbox-selfcheck 已接入；\
                  其余 id 的归属见告警，可先用 poly verify --reproducible 做可复现比对",
             ));
         }
@@ -167,6 +168,15 @@ enum Verifier {
     /// 快应用 `.rpk` 的 hap-toolkit lint（validate.js 的 `validateJson` + rpk 结构 /
     /// 源清单交叉检查，T-M3-12；注意与上面的 HarmonyOS `Hap*` 两个变体不同链）。
     QuickAppLint,
+    /// Tizen `.wgt` 校验（[`poly_bundle::check_wgt_structure`] 的内建结构断言 + 在场时的
+    /// 官方 `wgt-lint`，T-M4-08）。
+    WgtLint,
+    /// webOS `.ipk` 校验（[`poly_bundle::check_ipk_structure`] 的内建结构断言 + 在场时的
+    /// 官方 `ares-package` 对暂存载荷真跑一遍，T-M4-09）。
+    AresPackage,
+    /// VIDAA / Vizio 应用包的沙箱自检（[`poly_bundle::check_web_app_structure`] 三条规则：
+    /// 入口文件 / 清单字段 / 体积，T-M4-10；体积上限走 `[budget].size` 同一门禁）。
+    SandboxSelfcheck,
 }
 
 /// 校验器 id → 已接入实现（`None` = 未接入，归属查 [`verifier_owner`]）。
@@ -176,6 +186,9 @@ fn verifier_for(id: &str) -> Option<Verifier> {
         "hap-sign-verify" => Some(Verifier::HapSign),
         "hap-structure-check" => Some(Verifier::HapStructure),
         "hap-toolkit-lint" => Some(Verifier::QuickAppLint),
+        "wgt-lint" => Some(Verifier::WgtLint),
+        "ares-package" => Some(Verifier::AresPackage),
+        "sandbox-selfcheck" => Some(Verifier::SandboxSelfcheck),
         _ => None,
     }
 }
@@ -282,12 +295,18 @@ fn verify_target(
     let mut hap_sign_ids: Vec<String> = Vec::new();
     let mut hap_structure_ids: Vec<String> = Vec::new();
     let mut quickapp_lint_ids: Vec<String> = Vec::new();
+    let mut wgt_lint_ids: Vec<String> = Vec::new();
+    let mut ares_ids: Vec<String> = Vec::new();
+    let mut sandbox_ids: Vec<String> = Vec::new();
     for id in &spec.verify {
         match verifier_for(id) {
             Some(Verifier::IosCodesign) => ios_ids.push(id.clone()),
             Some(Verifier::HapSign) => hap_sign_ids.push(id.clone()),
             Some(Verifier::HapStructure) => hap_structure_ids.push(id.clone()),
             Some(Verifier::QuickAppLint) => quickapp_lint_ids.push(id.clone()),
+            Some(Verifier::WgtLint) => wgt_lint_ids.push(id.clone()),
+            Some(Verifier::AresPackage) => ares_ids.push(id.clone()),
+            Some(Verifier::SandboxSelfcheck) => sandbox_ids.push(id.clone()),
             None => unserved.push(match verifier_owner(id) {
                 Some(owner) => format!("{id}（{owner}）"),
                 // 注册表有 id 但没人认领：如实点名到具体 id，测试保证这里在 M2 的注册表上是死路
@@ -318,6 +337,15 @@ fn verify_target(
     }
     if !quickapp_lint_ids.is_empty() {
         checked |= verify_quickapp_lint(project, spec, &quickapp_lint_ids, events)?;
+    }
+    if !wgt_lint_ids.is_empty() {
+        checked |= verify_wgt_lint(project, spec, &wgt_lint_ids, events)?;
+    }
+    if !ares_ids.is_empty() {
+        checked |= verify_ares_package(project, spec, &ares_ids, events)?;
+    }
+    if !sandbox_ids.is_empty() {
+        checked |= verify_sandbox_selfcheck(project, spec, &sandbox_ids, events)?;
     }
     Ok(checked)
 }
@@ -784,6 +812,321 @@ fn hap_for_verify(project: &Project, spec: &TargetSpec) -> Option<(PathBuf, bool
     crate::sign::unsigned_hap(project, spec).map(|path| (path, false))
 }
 
+/// 打包暂存目录顶层的单件产物定位（`<staged>/*.<ext>`，排序取最新一份）；返回 `(路径, 份数)`。
+///
+/// 只扫暂存根：打包器的工作子目录（`wgt/`、`ipk/`、`webapp/`）不是产物落点。
+fn staged_file(staged: &Path, ext: &str) -> Option<(PathBuf, usize)> {
+    let mut candidates: Vec<PathBuf> = std::fs::read_dir(staged)
+        .ok()?
+        .flatten()
+        .map(|entry| entry.path())
+        .filter(|path| path.is_file() && path.extension().is_some_and(|e| e == ext))
+        .collect();
+    candidates.sort();
+    let count = candidates.len();
+    candidates.pop().map(|path| (path, count))
+}
+
+/// web 系 TV 腿的产物缺陷诊断（产物缺陷硬失败，绝不降级成跳过；`hint` 给可执行的下一步）。
+fn webtv_defect(spec: &TargetSpec, message: impl Into<String>, hint: &str) -> Diagnostic {
+    Diagnostic::error(
+        codes::E_VERIFY_0003,
+        format!("目标 {} 的产物校验失败：{}", spec.id, message.into()),
+    )
+    .with_hint(hint.to_string())
+}
+
+/// Tizen `.wgt` 校验腿（`wgt-lint`，T-M4-08）：先跑与打包器**同一份**结构检查
+/// （[`poly_bundle::check_wgt_structure`]：清单必填项 + 引用存在性，缺陷硬失败），官方
+/// `wgt-lint` 在场时对产物再真跑一遍（非零退出 = 产物缺陷硬失败）；SDK 校验器缺席按环境槽
+/// 告警跳过并注记（口径同 M3 devtools 腿：不假装校验过，内建结构断言是本机的真跑面）。
+fn verify_wgt_lint(
+    project: &Project,
+    spec: &TargetSpec,
+    ids: &[String],
+    events: &mut dyn EventSink,
+) -> Result<bool, StageError> {
+    let staged = project::packages_root(&project.root).join(&spec.id);
+    let Some((wgt, count)) = staged_file(&staged, "wgt") else {
+        warning(
+            events,
+            &format!(
+                "目标 {} 未校验：{} 下没有 *.wgt（先跑 poly build 把产物流到打包暂存目录）",
+                spec.id,
+                staged.display()
+            ),
+        );
+        return Ok(false);
+    };
+    if count > 1 {
+        warning(
+            events,
+            &format!(
+                "目标 {} 的产物有 {count} 份 .wgt（取最新一份 {}）",
+                spec.id,
+                wgt.display()
+            ),
+        );
+    }
+    let structure = match poly_bundle::check_wgt_structure(&wgt) {
+        Ok(structure) => structure,
+        Err(err) => return Err(bundle_diagnostic(spec, &err).into()),
+    };
+    warning(
+        events,
+        &format!(
+            "目标 {} 的 .wgt 结构检查：{} 条目，tizen:application@id={}（profile {}，入口 {}）",
+            spec.id,
+            structure.entries.len(),
+            structure.app_id,
+            structure.profile,
+            structure.content_src
+        ),
+    );
+    match poly_bundle::wgt_lint_tool() {
+        Ok(tool) => {
+            let command =
+                poly_bundle::Command::new(tool.display().to_string(), [wgt.display().to_string()]);
+            match poly_bundle::exec::run(&command) {
+                Ok(_) => warning(
+                    events,
+                    &format!("目标 {} 的 wgt-lint 真跑通过：{}", spec.id, command.line()),
+                ),
+                Err(err @ BundleError::ToolMissing { .. }) => {
+                    warning(events, &format!("目标 {} 的 wgt-lint 未跑：{err}", spec.id));
+                }
+                Err(err) => {
+                    return Err(webtv_defect(
+                        spec,
+                        format!("wgt-lint 判决不通过：{err}"),
+                        "修 manifest / 载荷后重跑 poly build --target tizen-tv",
+                    )
+                    .into());
+                }
+            }
+        }
+        Err(reason) => warning(
+            events,
+            &format!(
+                "目标 {} 的 wgt-lint 未跑：{reason}（内建结构断言已过；SDK 校验器缺席如实注记）",
+                spec.id
+            ),
+        ),
+    }
+    for id in ids {
+        events.emit(&BuildEvent::Verified {
+            checker: id.clone(),
+            ok: true,
+        });
+    }
+    Ok(true)
+}
+
+/// webOS `.ipk` 校验腿（`ares-package`，T-M4-09）：先跑与打包器**同一份**结构检查
+/// （[`poly_bundle::check_ipk_structure`]：ar 成员序 + control 字段 + appinfo 交叉 + 载荷条目，
+/// 缺陷硬失败），官方 `ares-package` 在场时对暂存载荷目录再真跑一遍（输出进独立 scratch，
+/// 不动本打包器的确定性 `.ipk`；非零退出 = 载荷缺陷硬失败）；缺席按环境槽告警跳过并注记。
+fn verify_ares_package(
+    project: &Project,
+    spec: &TargetSpec,
+    ids: &[String],
+    events: &mut dyn EventSink,
+) -> Result<bool, StageError> {
+    let staged = project::packages_root(&project.root).join(&spec.id);
+    let Some((ipk, count)) = staged_file(&staged, "ipk") else {
+        warning(
+            events,
+            &format!(
+                "目标 {} 未校验：{} 下没有 *.ipk（先跑 poly build 把产物流到打包暂存目录）",
+                spec.id,
+                staged.display()
+            ),
+        );
+        return Ok(false);
+    };
+    if count > 1 {
+        warning(
+            events,
+            &format!(
+                "目标 {} 的产物有 {count} 份 .ipk（取最新一份 {}）",
+                spec.id,
+                ipk.display()
+            ),
+        );
+    }
+    let structure = match poly_bundle::check_ipk_structure(&ipk) {
+        Ok(structure) => structure,
+        Err(err) => return Err(bundle_diagnostic(spec, &err).into()),
+    };
+    warning(
+        events,
+        &format!(
+            "目标 {} 的 .ipk 结构检查：{} 条目，control Package={} Version={}（appinfo id={} type={}）",
+            spec.id,
+            structure.entries.len(),
+            structure.package,
+            structure.version,
+            structure.app_id,
+            structure.app_type
+        ),
+    );
+    let app = staged.join("ipk").join("app");
+    match poly_bundle::ares_package_tool() {
+        Ok(tool) if app.is_dir() => {
+            // ares-package 是打包器兼校验器（吃载荷目录）：对暂存载荷真跑，输出进独立 scratch
+            let scratch = staged.join("ipk").join("verify-ares");
+            let command = poly_bundle::Command::new(
+                tool.display().to_string(),
+                [
+                    app.display().to_string(),
+                    "-o".to_string(),
+                    scratch.display().to_string(),
+                ],
+            )
+            .in_dir(staged.join("ipk"));
+            match poly_bundle::exec::run(&command) {
+                Ok(_) => warning(
+                    events,
+                    &format!(
+                        "目标 {} 的 ares-package 真跑通过：{}",
+                        spec.id,
+                        command.line()
+                    ),
+                ),
+                Err(err @ BundleError::ToolMissing { .. }) => {
+                    warning(
+                        events,
+                        &format!("目标 {} 的 ares-package 未跑：{err}", spec.id),
+                    );
+                }
+                Err(err) => {
+                    return Err(webtv_defect(
+                        spec,
+                        format!("ares-package 判决不通过：{err}"),
+                        "修 appinfo / 载荷后重跑 poly build --target webos-tv",
+                    )
+                    .into());
+                }
+            }
+        }
+        Ok(_) => warning(
+            events,
+            &format!(
+                "目标 {} 的 ares-package 未跑：暂存载荷目录 {} 不在场（内建结构断言已过；可重跑 \
+                 poly build --target webos-tv 重建暂存面）",
+                spec.id,
+                app.display()
+            ),
+        ),
+        Err(reason) => warning(
+            events,
+            &format!(
+                "目标 {} 的 ares-package 未跑：{reason}（内建结构断言已过；SDK 校验器缺席如实注记）",
+                spec.id
+            ),
+        ),
+    }
+    for id in ids {
+        events.emit(&BuildEvent::Verified {
+            checker: id.clone(),
+            ok: true,
+        });
+    }
+    Ok(true)
+}
+
+/// VIDAA / Vizio 应用包沙箱自检腿（`sandbox-selfcheck`，T-M4-10）：与打包器**同一份**检查
+/// （[`poly_bundle::check_web_app_structure`] 三条规则：入口文件 / 清单字段 / 体积；缺陷硬失败），
+/// 体积上限按 `[budget].size` 判定——与 `package` 阶段同一门禁（`fail` 策略下硬失败，
+/// 判定结果照进事件流）。两平台无本地 SDK 校验器（目标声明只挂本 id），自检即真跑面。
+fn verify_sandbox_selfcheck(
+    project: &Project,
+    spec: &TargetSpec,
+    ids: &[String],
+    events: &mut dyn EventSink,
+) -> Result<bool, StageError> {
+    let Some(platform) = poly_bundle::WebAppPlatform::from_target(&spec.id) else {
+        warning(
+            events,
+            &format!(
+                "目标 {} 未校验：sandbox-selfcheck 只服务 vidaa-tv / smartcast-tv 两个 web TV 目标",
+                spec.id
+            ),
+        );
+        return Ok(false);
+    };
+    let staged = project::packages_root(&project.root).join(&spec.id);
+    let Some((package, count)) = staged_file(&staged, "zip") else {
+        warning(
+            events,
+            &format!(
+                "目标 {} 未校验：{} 下没有 *.zip（先跑 poly build 把产物流到打包暂存目录）",
+                spec.id,
+                staged.display()
+            ),
+        );
+        return Ok(false);
+    };
+    if count > 1 {
+        warning(
+            events,
+            &format!(
+                "目标 {} 的产物有 {count} 份包（取最新一份 {}）",
+                spec.id,
+                package.display()
+            ),
+        );
+    }
+    let structure = match poly_bundle::check_web_app_structure(&package, platform) {
+        Ok(structure) => structure,
+        Err(err) => return Err(bundle_diagnostic(spec, &err).into()),
+    };
+    // 体积规则：与 package 阶段同一判据（[budget].size / policy；`startup_ms` 尚无采集来源）
+    let budget = poly_core::job::Budget {
+        size: project.config.budget.size,
+        startup_ms: None,
+        policy: project.config.budget.policy,
+    };
+    let mut volume = format!(
+        "体积 {} 字节（未设 [budget].size，不设门禁）",
+        structure.bytes
+    );
+    if let Some(verdict) = poly_core::budget::size_verdict(structure.bytes, &budget) {
+        events.emit(&verdict.event(&spec.id, &spec.package.format));
+        if verdict.exceeded && budget.policy == poly_core::job::SizePolicy::Fail {
+            return Err(verdict.failure(&spec.id, &spec.package.format).into());
+        }
+        volume = format!(
+            "体积 {} 字节（预算上限 {}，{}）",
+            structure.bytes,
+            verdict.limit,
+            if verdict.exceeded {
+                "超预算（策略 warn）"
+            } else {
+                "在预算内"
+            }
+        );
+    }
+    warning(
+        events,
+        &format!(
+            "目标 {} 的沙箱自检：{} 条目，入口 {}（清单 {} 字段齐备），{}",
+            spec.id,
+            structure.entries.len(),
+            structure.entry,
+            structure.manifest,
+            volume
+        ),
+    );
+    for id in ids {
+        events.emit(&BuildEvent::Verified {
+            checker: id.clone(),
+            ok: true,
+        });
+    }
+    Ok(true)
+}
+
 /// 对单个目标做二跑比对；返回是否真的比对了（`false` = 告警跳过并已说明原因）。
 fn compare(
     project: &Project,
@@ -1120,13 +1463,19 @@ mod tests {
 
     /// 建最小工程骨架（含 `polypack.toml` 的 package 段：`.app` 名由它派生）。
     fn fixture(tag: &str) -> (std::path::PathBuf, Project) {
-        const FIXTURE_TOML: &str = "[package]\nname = \"fixture-app\"\nversion = \"0.0.1\"\n[ui]\nframework = \"react\"\nentry = \"index.html\"\n[core]\ncrate = \"core\"\n";
+        fixture_with(
+            tag,
+            "[package]\nname = \"fixture-app\"\nversion = \"0.0.1\"\n[ui]\nframework = \"react\"\nentry = \"index.html\"\n[core]\ncrate = \"core\"\n",
+        )
+    }
+
+    /// 同 [`fixture`]，但用给定 `polypack.toml`（如带 `[budget]` 的夹具）。
+    fn fixture_with(tag: &str, toml: &str) -> (std::path::PathBuf, Project) {
         let root =
             std::env::temp_dir().join(format!("polypack-verify-reg-{tag}-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&root);
         std::fs::create_dir_all(root.join("core")).expect("工程目录可建");
-        let config =
-            poly_core::config::PolypackConfig::parse(FIXTURE_TOML).expect("fixture 配置应合法");
+        let config = poly_core::config::PolypackConfig::parse(toml).expect("fixture 配置应合法");
         let project = Project {
             root: root.clone(),
             config,
@@ -1770,6 +2119,177 @@ mod tests {
             problems.iter().any(|item| item.contains("src/extra.js")),
             "{problems:?}"
         );
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    /// web 系 TV（T-M4-08/09/10）三个校验器 id 都落在已接入实现上。
+    #[test]
+    fn web_tv_verifiers_are_served() {
+        assert_eq!(verifier_for("wgt-lint"), Some(Verifier::WgtLint));
+        assert_eq!(verifier_for("ares-package"), Some(Verifier::AresPackage));
+        assert_eq!(
+            verifier_for("sandbox-selfcheck"),
+            Some(Verifier::SandboxSelfcheck)
+        );
+        for id in ["tizen-tv", "webos-tv", "vidaa-tv", "smartcast-tv"] {
+            let spec = Registry::builtin()
+                .get(id)
+                .cloned()
+                .unwrap_or_else(|| panic!("内建注册表缺少 {id}"));
+            assert_eq!(spec.tier, 3, "{id} 应为 L3（tier 3）");
+        }
+    }
+
+    /// Tizen 腿：真造 `.wgt` → 结构检查过检并发出 `Verified`；缺清单的坏件硬失败（不降级）。
+    #[test]
+    fn wgt_leg_verifies_synthetic_package_and_fails_hard_on_defects() {
+        let (root, project) = fixture("wgt-leg");
+        let spec = Registry::builtin()
+            .get("tizen-tv")
+            .expect("内建 tizen-tv 目标")
+            .clone();
+        let staged = root.join(".polypack/packages/tizen-tv");
+        std::fs::create_dir_all(&staged).expect("暂存目录可建");
+        let index = staged.join("index.html");
+        std::fs::write(&index, "<!doctype html><html></html>").expect("写入口");
+        let icon = staged.join("icon.png");
+        std::fs::write(&icon, b"\x89PNG").expect("写图标");
+        let config = staged.join("config.xml");
+        std::fs::write(
+            &config,
+            "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n\
+             <widget xmlns=\"http://www.w3.org/ns/widgets\" xmlns:tizen=\"http://tizen.org/ns/widgets\" \
+             id=\"com.polypack.fixture.fixtureapp\" version=\"0.0.1\" width=\"1920\" height=\"1080\" \
+             viewmodes=\"maximized\">\n\
+             \x20 <icon src=\"icon.png\"/>\n\
+             \x20 <content src=\"index.html\"/>\n\
+             \x20 <tizen:application id=\"com.polypack.fixture.fixtureapp\" \
+             package=\"com.polypack.fixture\" required_version=\"2.3\"/>\n\
+             \x20 <tizen:profile name=\"tv-samsung\"/>\n\
+             </widget>\n",
+        )
+        .expect("写清单");
+        let good = staged.join("fixture-app-0.0.1.wgt");
+        poly_bundle::zipwrite::write_zip(
+            &[
+                ("config.xml".to_string(), config.clone()),
+                ("icon.png".to_string(), icon),
+                ("index.html".to_string(), index),
+            ],
+            &good,
+        )
+        .expect("合成 wgt");
+
+        let mut sink = poly_core::events::HumanSink {
+            out: Vec::<u8>::new(),
+        };
+        assert!(
+            verify_target(&project, &spec, &mut sink).expect("结构检查应通过"),
+            "合成 .wgt 应过检"
+        );
+        let text = String::from_utf8_lossy(&sink.out).into_owned();
+        assert!(text.contains(".wgt 结构检查"), "{text}");
+        assert!(text.contains("com.polypack.fixture.fixtureapp"), "{text}");
+        assert!(text.contains("wgt-lint"), "{text}");
+
+        // 坏件（缺 config.xml）→ 硬失败，不降级成跳过
+        std::fs::remove_file(&good).expect("清掉合格件");
+        let bad_index = staged.join("index.html");
+        let bad = staged.join("other-0.0.1.wgt");
+        poly_bundle::zipwrite::write_zip(&[("index.html".to_string(), bad_index)], &bad)
+            .expect("合成缺清单 wgt");
+        let err = verify_target(&project, &spec, &mut sink).expect_err("缺清单必须硬失败");
+        assert_eq!(err.diagnostic.code.to_string(), "poly::E_BND_0006");
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    /// VIDAA / Vizio 沙箱自检腿：过检发 `Verified`；体积超 `[budget].size` 且 `fail` 策略硬失败。
+    #[test]
+    fn sandbox_leg_enforces_entry_manifest_and_budget() {
+        let (root, project) = fixture("sandbox-leg");
+        let spec = Registry::builtin()
+            .get("vidaa-tv")
+            .expect("内建 vidaa-tv 目标")
+            .clone();
+        let staged = root.join(".polypack/packages/vidaa-tv");
+        std::fs::create_dir_all(&staged).expect("暂存目录可建");
+        let index = staged.join("index.html");
+        std::fs::write(&index, "<!doctype html><html></html>").expect("写入口");
+        let manifest = staged.join("manifest.json");
+        std::fs::write(
+            &manifest,
+            "{\"pkgname\":\"com.polypack.fixture\",\"appname\":\"Fixture\",\
+             \"version\":\"0.0.1\",\"page\":{\"index\":\"index.html\"}}",
+        )
+        .expect("写清单");
+        let package = staged.join("fixture-app-0.0.1.zip");
+        poly_bundle::zipwrite::write_zip(
+            &[
+                ("index.html".to_string(), index.clone()),
+                ("manifest.json".to_string(), manifest.clone()),
+            ],
+            &package,
+        )
+        .expect("合成应用包");
+
+        let mut sink = poly_core::events::HumanSink {
+            out: Vec::<u8>::new(),
+        };
+        assert!(
+            verify_target(&project, &spec, &mut sink).expect("沙箱自检应通过"),
+            "合成应用包应过检"
+        );
+        let text = String::from_utf8_lossy(&sink.out).into_owned();
+        assert!(text.contains("沙箱自检"), "{text}");
+        assert!(text.contains("不设门禁"), "未设预算须如实说明：{text}");
+
+        // 预算 fail：size 调到 1 字节 → E_BUDGET_0001 硬失败（体积规则接进 verify）
+        let (root2, project2) = fixture_with(
+            "sandbox-budget",
+            "[package]\nname = \"fixture-app\"\nversion = \"0.0.1\"\n[ui]\nframework = \"react\"\n\
+             entry = \"index.html\"\n[core]\ncrate = \"core\"\n[budget]\nsize = 1\npolicy = \"fail\"\n",
+        );
+        let staged2 = root2.join(".polypack/packages/vidaa-tv");
+        std::fs::create_dir_all(&staged2).expect("暂存目录可建");
+        std::fs::write(staged2.join("index.html"), "<html></html>").expect("写入口");
+        std::fs::write(
+            staged2.join("manifest.json"),
+            "{\"pkgname\":\"com.polypack.fixture\",\"appname\":\"Fixture\",\
+             \"version\":\"0.0.1\",\"page\":{\"index\":\"index.html\"}}",
+        )
+        .expect("写清单");
+        let package2 = staged2.join("fixture-app-0.0.1.zip");
+        poly_bundle::zipwrite::write_zip(
+            &[
+                ("index.html".to_string(), staged2.join("index.html")),
+                ("manifest.json".to_string(), staged2.join("manifest.json")),
+            ],
+            &package2,
+        )
+        .expect("合成应用包");
+        let err = verify_target(&project2, &spec, &mut sink).expect_err("超预算必须硬失败");
+        assert_eq!(err.diagnostic.code.to_string(), "poly::E_BUDGET_0001");
+        let _ = std::fs::remove_dir_all(&root);
+        let _ = std::fs::remove_dir_all(&root2);
+    }
+
+    /// webOS 腿：暂存目录没有 `.ipk`（打包未就绪）→ 告警跳过，不硬失败。
+    #[test]
+    fn ares_leg_skips_when_no_ipk_is_staged() {
+        let (root, project) = fixture("ares-leg");
+        let spec = Registry::builtin()
+            .get("webos-tv")
+            .expect("内建 webos-tv 目标")
+            .clone();
+        let mut sink = poly_core::events::HumanSink {
+            out: Vec::<u8>::new(),
+        };
+        assert!(
+            !verify_target(&project, &spec, &mut sink).expect("缺产物不该失败"),
+            "无 .ipk 应如实跳过"
+        );
+        let text = String::from_utf8_lossy(&sink.out).into_owned();
+        assert!(text.contains("没有 *.ipk"), "{text}");
         let _ = std::fs::remove_dir_all(&root);
     }
 }
