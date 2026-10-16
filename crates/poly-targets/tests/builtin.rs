@@ -91,7 +91,16 @@ const L1_COLUMNS: &[(
 #[test]
 fn builtin_has_seven_valid_targets() {
     let registry = Registry::builtin();
-    assert_eq!(registry.all().count(), 7, "L1 恰为七目标");
+    assert_eq!(
+        registry.all().filter(|spec| spec.tier == 1).count(),
+        7,
+        "L1 恰为七目标"
+    );
+    assert_eq!(
+        registry.all().count(),
+        11,
+        "M3 起内建 = L1 七 + L2 小程序族四（wechat / alipay / douyin / quickapp）"
+    );
     for spec in registry.all() {
         spec.validate()
             .unwrap_or_else(|e| panic!("内建目标 {} 未通过校验: {e}", spec.id));
@@ -100,7 +109,12 @@ fn builtin_has_seven_valid_targets() {
 
 #[test]
 fn builtin_ids_are_the_l1_set() {
-    let ids: BTreeSet<String> = Registry::builtin().ids().into_iter().collect();
+    let registry = Registry::builtin();
+    let ids: BTreeSet<String> = registry
+        .all()
+        .filter(|spec| spec.tier == 1)
+        .map(|spec| spec.id.clone())
+        .collect();
     let expected: BTreeSet<String> = [
         "android",
         "ios",
@@ -114,6 +128,17 @@ fn builtin_ids_are_the_l1_set() {
     .into_iter()
     .collect();
     assert_eq!(ids, expected);
+
+    let l2: BTreeSet<String> = registry
+        .all()
+        .filter(|spec| spec.tier == 2)
+        .map(|spec| spec.id.clone())
+        .collect();
+    let expected_l2: BTreeSet<String> = ["wechat", "alipay", "douyin", "quickapp"]
+        .map(String::from)
+        .into_iter()
+        .collect();
+    assert_eq!(l2, expected_l2, "L2 恰为小程序族四目标");
 }
 
 #[test]
@@ -159,11 +184,30 @@ fn linux_host_resolves_four_l1_targets_from_all() {
         .expect("内建目标解析不应失败");
 
     let selected: BTreeSet<&str> = resolved.selected.iter().map(|s| s.id.as_str()).collect();
+    let l1: BTreeSet<&str> = resolved
+        .selected
+        .iter()
+        .filter(|s| s.tier == 1)
+        .map(|s| s.id.as_str())
+        .collect();
     assert_eq!(
-        selected,
+        l1,
         BTreeSet::from(["android", "harmonyos", "linux", "web"]),
         "Linux 宿主下 iOS / macOS / Windows 因宿主不可达被排除"
     );
+    // L2 小程序族声明三宿主（Taro 编译不绑定本地宿主）→ 任何宿主下都入选
+    let l2: BTreeSet<&str> = resolved
+        .selected
+        .iter()
+        .filter(|s| s.tier == 2)
+        .map(|s| s.id.as_str())
+        .collect();
+    assert_eq!(
+        l2,
+        BTreeSet::from(["wechat", "alipay", "douyin", "quickapp"]),
+        "小程序族四目标应全部入选"
+    );
+    assert_eq!(selected.len(), l1.len() + l2.len());
 
     let excluded: BTreeSet<&str> = resolved.excluded.iter().map(|e| e.id.as_str()).collect();
     assert_eq!(excluded, BTreeSet::from(["ios", "macos", "windows"]));
@@ -171,6 +215,38 @@ fn linux_host_resolves_four_l1_targets_from_all() {
         assert!(!target.reason.trim().is_empty(), "{} 缺排除原因", target.id);
     }
 
-    // 内建目标均为 L1，不涉及厂商授权分支。
+    // 内建目标均为 L1 / L2，不涉及厂商授权分支。
     assert!(resolved.excluded.iter().all(|e| !e.reason.contains("L7")));
+}
+
+/// T-M3-05 / T-M3-06 验收（声明侧）：L2 小程序族四目标按 ROADMAP §3.3 前四行逐列对齐。
+#[allow(clippy::type_complexity)] // 同上：测试数据表与表格对照优先
+const L2_COLUMNS: &[(&str, &str, &str, &str, &str)] = &[
+    // id / ui / package.format / builder / verify[0]
+    ("wechat", "taro", "weapp", "taro-weapp", "wechat-devtools-cli"),
+    ("alipay", "taro", "alipay", "taro-alipay", "alipay-devtools-cli"),
+    ("douyin", "taro", "tt", "taro-tt", "douyin-devtools-cli"),
+    ("quickapp", "taro", "quickapp", "taro-quickapp", "hap-toolkit-lint"),
+];
+
+#[test]
+fn builtin_matches_roadmap_3_3_mini_programs() {
+    let registry = Registry::builtin();
+    for (id, ui, format, builder, verify) in L2_COLUMNS {
+        let spec = registry.get(id).unwrap_or_else(|| panic!("缺少目标 {id}"));
+        assert_eq!(spec.tier, 2, "{id}: 小程序族为 L2");
+        assert_eq!(spec.runtime, Runtime::Wasm, "{id}: wasm 进宿主沙箱");
+        assert_eq!(spec.bridge, Bridge::WasmBindgen, "{id}: wasm-bindgen");
+        assert_eq!(
+            spec.ui.iter().map(String::as_str).collect::<Vec<_>>(),
+            vec![*ui],
+            "{id}: ui"
+        );
+        assert_eq!(spec.package.format, *format, "{id}: package.format");
+        assert_eq!(spec.package.builder, *builder, "{id}: package.builder");
+        assert_eq!(spec.verify.first().map(String::as_str), Some(*verify), "{id}: verify");
+        assert!(spec.signing.is_none(), "{id}: 签名在平台侧（上传签名），本地无签名引用");
+        assert_eq!(spec.hosts.len(), 3, "{id}: Taro 编译不绑定本地宿主");
+        assert!(spec.notes.is_some(), "{id}: 需边界 / 降级说明");
+    }
 }

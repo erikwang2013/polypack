@@ -178,6 +178,10 @@ fn verifier_owner(id: &str) -> Option<&'static str> {
         "signtool-verify" => Some("Windows 链（M2 之后）"),
         "lintian" | "rpmlint" => Some("Linux 仓库检查（M3 之后）"),
         "html-validate" | "sri-check" => Some("Web 链（M2 之后；SRI 清单已由打包器产出）"),
+        "wechat-devtools-cli" | "alipay-devtools-cli" | "douyin-devtools-cli" => {
+            Some("小程序开发者工具 CLI 校验（T-M3-11；本机无 devtools 时 SKIP-with-print）")
+        }
+        "hap-toolkit-lint" => Some("快应用链（T-M3-12 接入：hap-toolkit lint 校验 .rpk）"),
         _ => None,
     }
 }

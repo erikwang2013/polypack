@@ -1,0 +1,34 @@
+{
+  "name": "@polypack/adapter-taro",
+  "version": "0.1.0",
+  "description": "RendererAdapter 契约的小程序族装配层（Taro，React 语法：微信 / 支付宝 / 抖音 / 快应用）",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "./src/index.js",
+  "exports": {
+    ".": "./src/index.js",
+    "./example": "./example.js"
+  },
+  "bin": {
+    "polypack-taro-api": "./bin/check-api.mjs"
+  },
+  "files": [
+    "src",
+    "bin",
+    "example.js",
+    "host"
+  ],
+  "scripts": {
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=20.11"
+  },
+  "peerDependencies": {
+    "react": ">=18"
+  },
+  "devDependencies": {
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0"
+  }
+}

@@ -72,7 +72,7 @@ impl Registry {
         Ok(Self { specs: map })
     }
 
-    /// 内建目标注册表（L1 七目标见 `builtin`）。
+    /// 内建目标注册表（L1 七目标 + L2 小程序族四目标见 `builtin`）。
     pub fn builtin() -> Self {
         Self::from_specs(crate::builtin::builtin()).expect("内建目标必须通过校验")
     }
