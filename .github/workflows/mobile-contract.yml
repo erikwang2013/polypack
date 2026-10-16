@@ -77,8 +77,12 @@ jobs:
           TMPDIR: ${{ runner.temp }}
         run: |
           cargo test -p poly-bundle --test packagers_android --no-fail-fast -- --nocapture
+          cargo test -p poly-bundle --test packagers_android_tv --no-fail-fast -- --nocapture
           cargo test -p poly-sign --no-fail-fast -- --nocapture
           cargo test -p poly-cli --test contract_m2 --no-fail-fast -- --nocapture
+          # T-M4-04/05：Android TV / Fire TV 同链契约与 Leanback 清单（mock 每提交、真跑每夜；
+          # 设备冒烟腿无 AVD 时 SKIP-with-print——CI 侧设备面归 tv-smoke 工作流，T-M4-13）
+          cargo test -p poly-cli --test contract_m4_tv --no-fail-fast -- --nocapture
 
       - name: 留产物（真跑；测试失败也留，便于定位）
         if: ${{ always() && env.POLY_CONTRACT_REAL == '1' }}
