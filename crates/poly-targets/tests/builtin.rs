@@ -2,7 +2,7 @@
 
 use std::collections::BTreeSet;
 
-use poly_targets::{Bridge, Host, Registry, Runtime, TargetRegistry, TargetRequest};
+use poly_targets::{Bridge, Host, Registry, Runtime, TargetRequest};
 
 /// §3.2 判别列：id / hosts / runtime / bridge / ui / package.format / builder / signing。
 #[allow(clippy::type_complexity)] // 测试数据表，拆成 struct 反而更难与表格对照
