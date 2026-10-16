@@ -1,5 +1,7 @@
-//! 小程序族打包器（T-M3-06）：微信 / 支付宝 / 抖音走 Taro 编译（`taro build --type`），
-//! 快应用到「编译工程」为止（Taro 4 无 quickapp 平台插件；`.rpk` 由 T-M3-12 hap-toolkit 环节收口）。
+//! 小程序族打包器（T-M3-06）＋快应用 `.rpk` 收口（T-M3-12）：微信 / 支付宝 / 抖音走 Taro
+//! 编译（`taro build --type`），快应用组装 hap-toolkit 就绪的编译工程并真跑 `hap build`
+//! 出 `.rpk`（Taro 4 无 quickapp 平台插件；hap-toolkit 缺席时编译工程照常交付，`.rpk` 腿
+//! 如实跳过并注记）。
 //!
 //! 产物为目录 `<out_dir>/miniapp/`：`dist/`（Taro 编译出的代码包本体）+ devtools 描述符
 //! （`miniprogramRoot` 归一到 `./dist/`）——即「开发者工具打开该目录即可预览」的形态。
@@ -128,7 +130,9 @@ const DOUYIN: MiniSpec = MiniSpec {
 
 const QUICKAPP: MiniSpec = MiniSpec {
     id: "quickapp",
-    format: "quickapp",
+    // T-M3-12 收口：产物格式翻到 `rpk`（hap-toolkit 构建出 `.rpk`；产物顶形态仍是
+    // `miniapp/` 目录，`.rpk` 落在 `dist/` 内——与 poly-targets 的 L2 声明逐字对齐）。
+    format: "rpk",
     taro_type: None,
     descriptor_source: None,
     descriptor_target: None,
@@ -143,7 +147,7 @@ pub struct WechatMini;
 pub struct AlipayMini;
 /// 抖音小程序代码包（`tt`）。
 pub struct DouyinMini;
-/// 快应用编译工程（`quickapp`；`.rpk` 由 T-M3-12 hap-toolkit 收口）。
+/// 快应用（`rpk`；组装编译工程 + `hap build` 出 `.rpk`，T-M3-12）。
 pub struct QuickApp;
 
 impl Packager for WechatMini {
@@ -216,7 +220,8 @@ impl Packager for QuickApp {
         Ok(BundlePlan::new().skipping(
             "taro",
             "Taro 4 无 quickapp 平台插件（npm 未发布 @tarojs/plugin-platform-quickapp）：\
-             快应用编译腿跳过，本目标直接组装 hap-toolkit 就绪的编译工程（.rpk 归 T-M3-12）",
+             快应用编译腿跳过，本目标直接组装 hap-toolkit 就绪的编译工程（`.rpk`：package 腿跑 \
+             `hap build`，T-M3-12；工具缺席时跳过并注记）",
         ))
     }
 
@@ -469,7 +474,7 @@ fn package_quickapp(inputs: &BundleInputs, spec: &TargetSpec) -> Result<Artifact
     let app_ux = format!(
         "<script>\n\
          // PolyPack 编译工程入口（T-M3-06 生成的骨架：Taro 4 无 quickapp 平台插件，\n\
-         // 快应用编译腿跳过——本工程即平台工具链（hap-toolkit）的输入，.rpk 归 T-M3-12）\n\
+         // 快应用编译腿跳过——本工程即平台工具链（hap-toolkit）的输入，.rpk 由 hap build 产出）\n\
          export default {{\n\
          \x20 onCreate() {{\n\
          \x20   console.log('POLYPACK_QUICKAPP target=quickapp version={version}')\n\
@@ -545,6 +550,9 @@ fn package_quickapp(inputs: &BundleInputs, spec: &TargetSpec) -> Result<Artifact
 
     let bridge_note = stage_wasm_bridge(inputs, &src, &QUICKAPP)?;
 
+    // `.rpk` 收口（T-M3-12）：hap-toolkit 在场真跑 `hap build`；缺席如实跳过（编译工程照常交付）
+    let rpk_note = build_rpk(&dir)?;
+
     let mut notes = vec![
         format!(
             "编译工程：{}（hap-toolkit 就绪：src/manifest.json + src/app.ux + src/pages/index/index.ux）",
@@ -554,9 +562,9 @@ fn package_quickapp(inputs: &BundleInputs, spec: &TargetSpec) -> Result<Artifact
          ——快应用不走 Taro 编译，工程由本打包器组装"
             .to_string(),
         "manifest 必填面（icon / config / router.entry）与 src/config-phone.json 按 hap-toolkit \
-         2.1.1 的 schema 补齐（真跑 `hap build` 实证）；icon 为 32×32 占位 PNG，品牌图标归 T-M3-12"
+         2.1.1 的 schema 补齐（真跑 `hap build` 实证）；icon 为 32×32 占位 PNG（商店提审素材不在本环节）"
             .to_string(),
-        "`.rpk` 与商店校验：T-M3-12（hap-toolkit build + lint 入 verify 阶段）".to_string(),
+        rpk_note,
         format!(
             "快应用调试器 / 平台预览：本机无（R4：自动化止步提审）；工程清单 package={} versionCode={version_code}",
             product.identifier
@@ -571,6 +579,108 @@ fn package_quickapp(inputs: &BundleInputs, spec: &TargetSpec) -> Result<Artifact
 
     fsutil::dir_artifact(QUICKAPP.id, QUICKAPP.format, &dir, notes)
 }
+
+/// hap-toolkit 真跑腿（T-M3-12）：在组装好的编译工程里执行 `hap build`，收 `dist/*.rpk`。
+///
+/// 三态语义（与 [`exec`] 的环境槽口径一致）：
+/// - **工具缺席**（`POLYPACK_HAP` 未设且 PATH 无 `hap`，或 `POLYPACK_HAP` 指了不存在的路径）
+///   = 跳过：返回 notes 行的跳过说明，编译工程照常交付（本地无工具链不红）；
+/// - **工具在场但构建失败** = 硬失败（`ToolFailed` 直出，产物缺陷不降级成跳过）；
+/// - **构建成功** = 清掉中间物（`node_modules/` 的 babel 缓存 + `build/`，真跑实证的落点），
+///   返回 `.rpk` 清单 notes 行。
+fn build_rpk(dir: &Path) -> Result<String, BundleError> {
+    let hap = match hap_cli() {
+        Ok(path) => path,
+        Err(reason) => {
+            return Ok(format!(
+                "跳过：hap-toolkit（{reason}）——dist/*.rpk 未产出，装齐工具链后重跑"
+            ));
+        }
+    };
+    exec::run(&Command::new(hap.display().to_string(), ["build"]).in_dir(dir))?;
+    // 中间物清理：hap build 的 babel-loader 缓存与 webpack 中间目录（真跑实证：
+    // <工程>/node_modules/.cache 与 <工程>/build/，都不属交付面）
+    for leftover in ["node_modules", "build"] {
+        let path = dir.join(leftover);
+        if path.is_dir() {
+            std::fs::remove_dir_all(&path).map_err(io_err(&path))?;
+        }
+    }
+    let dist = dir.join(DIST_DIR);
+    let mut rpks: Vec<PathBuf> = std::fs::read_dir(&dist)
+        .map_err(io_err(&dist))?
+        .flatten()
+        .map(|entry| entry.path())
+        .filter(|path| path.is_file() && path.extension().is_some_and(|ext| ext == "rpk"))
+        .collect();
+    rpks.sort();
+    if rpks.is_empty() {
+        return Err(BundleError::InvalidInput {
+            packager: QUICKAPP.id,
+            field: "dist(*.rpk)",
+            value: dist.display().to_string(),
+            reason: "hap build 报成功但 dist/ 里没有 .rpk——工具链与工程形态不匹配".to_string(),
+        });
+    }
+    let described: Vec<String> = rpks
+        .iter()
+        .map(|path| {
+            let name = path
+                .file_name()
+                .map(|name| name.to_string_lossy().into_owned())
+                .unwrap_or_default();
+            let bytes = std::fs::metadata(path).map(|meta| meta.len()).unwrap_or(0);
+            format!("{name}（{bytes} 字节）")
+        })
+        .collect();
+    Ok(format!(
+        ".rpk：dist/{}（hap build 真跑；hap-toolkit 盖章产物——zip / build.txt 带时间戳，\
+         不参与复现逐字节比对）",
+        described.join("、")
+    ))
+}
+
+/// hap-toolkit CLI 定位：`POLYPACK_HAP`（直指 hap-toolkit 的 `bin/hap`）优先，其次 PATH。
+///
+/// `Err(reason)` = 环境缺工具（**不是**本目标的失败）：打包腿降级为 notes 里的跳过说明；
+/// verify 侧（[`quickapp_hap_root`]）同口径跳过 lint 腿。
+fn hap_cli() -> Result<PathBuf, String> {
+    if let Some(value) = std::env::var_os("POLYPACK_HAP") {
+        let path = PathBuf::from(&value);
+        if path.is_file() {
+            return Ok(path);
+        }
+        return Err(format!(
+            "POLYPACK_HAP={} 不存在（应指向 hap-toolkit 的 bin/hap）",
+            path.display()
+        ));
+    }
+    exec::tool_path("hap").ok_or_else(|| {
+        "PATH 里没有 hap（npm i -D hap-toolkit，或设 POLYPACK_HAP=<...>/node_modules/.bin/hap）"
+            .to_string()
+    })
+}
+
+/// hap-toolkit 安装根（`lib/gen-webpack-conf/validate.js` 所在；verify 侧 lint 腿入口）。
+///
+/// 从 CLI 路径反推（`<root>/bin/<cli>` → `<root>`，真跑布局：`.bin/hap → hap-toolkit/bin/index.js`）。
+/// `Err(reason)` = 环境缺工具，语义同 [`hap_cli`]。
+pub fn quickapp_hap_root() -> Result<PathBuf, String> {
+    let cli = hap_cli()?;
+    let canonical = std::fs::canonicalize(&cli).unwrap_or(cli);
+    let candidate = canonical.parent().and_then(Path::parent);
+    match candidate {
+        Some(root) if root.join(HAP_VALIDATE_REL).is_file() => Ok(root.to_path_buf()),
+        _ => Err(format!(
+            "从 {} 推不出 hap-toolkit 安装根（须含 {HAP_VALIDATE_REL}）",
+            canonical.display()
+        )),
+    }
+}
+
+/// lint 实证锚点相对 hap-toolkit 安装根的路径（2.1.1 真跑定位：`validate.js` 导出
+/// `validateJson`，即 hap-toolkit 的 manifest schema 校验本体）。
+const HAP_VALIDATE_REL: &str = "lib/gen-webpack-conf/validate.js";
 
 // ---------------------------------------------------------------- 共用
 
@@ -777,7 +887,7 @@ mod tests {
         assert_eq!(WechatMini.id(), "wechat");
         assert_eq!(WechatMini.format(), "weapp");
         assert_eq!(QuickApp.id(), "quickapp");
-        assert_eq!(QuickApp.format(), "quickapp");
+        assert_eq!(QuickApp.format(), "rpk");
     }
 
     #[test]
@@ -823,7 +933,7 @@ mod tests {
         let dir = std::env::temp_dir().join(format!("poly-quickapp-plan-{}", std::process::id()));
         let bundle = inputs(&dir);
         let plan = QuickApp
-            .plan(&bundle, &spec("quickapp", "quickapp"))
+            .plan(&bundle, &spec("quickapp", "rpk"))
             .expect("计划必须生成");
         assert!(plan.commands.is_empty(), "快应用无外部编译命令");
         assert_eq!(plan.skipped.len(), 1, "Taro 编译腿须如实记入 skipped");
@@ -839,9 +949,9 @@ mod tests {
         let dir = std::env::temp_dir().join(format!("poly-quickapp-pkg-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         let artifact = QuickApp
-            .package(&inputs(&dir), &spec("quickapp", "quickapp"))
+            .package(&inputs(&dir), &spec("quickapp", "rpk"))
             .expect("快应用工程必须产出");
-        assert_eq!(artifact.format, "quickapp");
+        assert_eq!(artifact.format, "rpk");
         assert_eq!(artifact.path, dir.join("miniapp"));
         let src = artifact.path.join("src");
         for rel in [
@@ -906,7 +1016,7 @@ mod tests {
         let mut bundle = inputs(&dir);
         bundle.miniapp_bridge = Some(bridge);
         let artifact = QuickApp
-            .package(&bundle, &spec("quickapp", "quickapp"))
+            .package(&bundle, &spec("quickapp", "rpk"))
             .expect("wasm 出口在场必须随包");
         for rel in [
             "manifest.json",
@@ -946,7 +1056,7 @@ mod tests {
         let mut bundle = inputs(&dir);
         bundle.miniapp_bridge = Some(bridge);
         let err = QuickApp
-            .package(&bundle, &spec("quickapp", "quickapp"))
+            .package(&bundle, &spec("quickapp", "rpk"))
             .expect_err("缺 loader 的半成品出口目录必须拒绝");
         assert_eq!(err.code(), crate::error::codes::E_BND_0003);
         assert!(
@@ -954,5 +1064,122 @@ mod tests {
             "报文须点名缺的文件：{err}"
         );
         let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// 子进程标记（区分父 / 子两条腿；env 注入走子进程，见 [`rerun_with_env`]）。
+    const HAP_CHILD: &str = "POLYPACK_HAP_CHILD_TEST";
+
+    /// 以注入环境变量精确重跑本测试（子进程腿）。
+    ///
+    /// Rust 2024 进程内 `set_var` 是 unsafe（本仓 forbid unsafe），且并行测试共享进程
+    /// 环境——口径同 poly-publish/tests/credentials.rs 的 env 注入腿。
+    fn rerun_with_env(test_name: &str, envs: &[(&str, &str)]) {
+        let exe = std::env::current_exe().expect("测试可执行路径");
+        let full = format!("packagers::miniapp::tests::{test_name}");
+        let mut command = std::process::Command::new(exe);
+        command.args([full.as_str(), "--exact", "--nocapture"]);
+        for (key, value) in envs {
+            command.env(key, value);
+        }
+        let status = command.status().expect("子进程可执行");
+        assert!(status.success(), "子进程断言失败（见上方输出）");
+    }
+
+    /// hap-toolkit 在场腿（stub 脚本代真工具）：`hap build` 收口 `.rpk` + 中间物清理 + notes。
+    ///
+    /// stub 只证「定位 → 执行 → 收 rpk → 清中间物 → 注记」的接线；真 hap-toolkit 2.1.1 的
+    /// 产出（`.rpk` 内部结构）与 lint 语义在 poly-cli 的 verify 腿 / real 契约腿断言。
+    #[cfg(unix)]
+    #[test]
+    fn quickapp_hap_build_leg_runs_the_located_toolkit() {
+        if std::env::var_os(HAP_CHILD).is_some() {
+            let dir = std::env::temp_dir()
+                .join(format!("poly-quickapp-hap-child-{}", std::process::id()));
+            let _ = std::fs::remove_dir_all(&dir);
+            let artifact = QuickApp
+                .package(&inputs(&dir), &spec("quickapp", "rpk"))
+                .expect("工具在场打包必须成功");
+            let dist = artifact.path.join("dist");
+            let rpks: Vec<String> = std::fs::read_dir(&dist)
+                .expect("dist 可读（stub 应已建）")
+                .flatten()
+                .map(|entry| entry.file_name().to_string_lossy().into_owned())
+                .filter(|name| name.ends_with(".rpk"))
+                .collect();
+            assert_eq!(rpks.len(), 1, "应恰好收一份 .rpk：{rpks:?}");
+            assert!(
+                artifact
+                    .notes
+                    .iter()
+                    .any(|note| note.contains(".rpk：dist/") && note.contains("hap build 真跑")),
+                "notes 须记 .rpk 收口：{:?}",
+                artifact.notes
+            );
+            assert!(
+                !artifact.path.join("node_modules").exists()
+                    && !artifact.path.join("build").exists(),
+                "中间物（node_modules / build）须清掉"
+            );
+            let _ = std::fs::remove_dir_all(&dir);
+            return;
+        }
+        // 父进程：造 stub toolkit（可执行脚本）后以 POLYPACK_HAP 注入重跑
+        let root =
+            std::env::temp_dir().join(format!("poly-quickapp-hap-stub-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        std::fs::create_dir_all(&root).expect("stub 目录可建");
+        let stub = root.join("hap");
+        fsutil::write_text(
+            &stub,
+            "#!/bin/sh\nset -e\nmkdir -p dist node_modules/.cache build/intermediates\n\
+             printf 'PK\\003\\004stub-rpk' > dist/pax-notes.debug.1.2.3.rpk\n",
+        )
+        .expect("写 stub 脚本");
+        use std::os::unix::fs::PermissionsExt as _;
+        std::fs::set_permissions(&stub, std::fs::Permissions::from_mode(0o755))
+            .expect("stub 可执行位");
+        rerun_with_env(
+            "quickapp_hap_build_leg_runs_the_located_toolkit",
+            &[
+                (HAP_CHILD, "1"),
+                ("POLYPACK_HAP", stub.to_str().expect("stub 路径")),
+            ],
+        );
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    /// hap-toolkit 缺席腿：`POLYPACK_HAP` 指了不存在的路径 = 跳过（编译工程照常交付 + 注记）。
+    #[test]
+    fn quickapp_hap_absent_is_a_skip_note_not_a_failure() {
+        if std::env::var_os(HAP_CHILD).is_some() {
+            let dir = std::env::temp_dir()
+                .join(format!("poly-quickapp-hap-absent-{}", std::process::id()));
+            let _ = std::fs::remove_dir_all(&dir);
+            let artifact = QuickApp
+                .package(&inputs(&dir), &spec("quickapp", "rpk"))
+                .expect("缺工具不得失败（环境槽语义）");
+            assert!(
+                !artifact.path.join("dist").exists(),
+                "缺工具不得产出 dist（不许伪造 .rpk）"
+            );
+            assert!(
+                artifact.notes.iter().any(|note| note.contains("跳过：hap-toolkit")
+                    && note.contains("POLYPACK_HAP")),
+                "notes 须点名跳过原因与修复动作：{:?}",
+                artifact.notes
+            );
+            let _ = std::fs::remove_dir_all(&dir);
+            return;
+        }
+        let missing = std::env::temp_dir()
+            .join(format!("poly-hap-missing-{}", std::process::id()))
+            .join("hap");
+        rerun_with_env(
+            "quickapp_hap_absent_is_a_skip_note_not_a_failure",
+            &[
+                (HAP_CHILD, "1"),
+                ("POLYPACK_HAP", missing.to_str().expect("路径")),
+            ],
+        );
     }
 }

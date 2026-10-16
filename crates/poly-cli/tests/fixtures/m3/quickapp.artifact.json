@@ -1,11 +1,11 @@
 {
   "target": "quickapp",
-  "builder": "taro-quickapp",
+  "builder": "hap-toolkit",
   "signing": null,
   "verifiers": ["hap-toolkit-lint"],
   "artifacts": [
     {
-      "format": "quickapp",
+      "format": "rpk",
       "extension": null,
       "entries": [
         "miniapp/package.json",

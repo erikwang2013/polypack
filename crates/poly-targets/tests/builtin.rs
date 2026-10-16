@@ -238,13 +238,9 @@ const L2_COLUMNS: &[(&str, &str, &str, &str, &str)] = &[
         "alipay-devtools-cli",
     ),
     ("douyin", "taro", "tt", "taro-tt", "douyin-devtools-cli"),
-    (
-        "quickapp",
-        "taro",
-        "quickapp",
-        "taro-quickapp",
-        "hap-toolkit-lint",
-    ),
+    // T-M3-12 收口：快应用 format/builder 按 T-M3-06 预告翻到 `rpk` / `hap-toolkit`
+    // （§3.3 快应用行「打包器与产物：`.rpk`」）
+    ("quickapp", "taro", "rpk", "hap-toolkit", "hap-toolkit-lint"),
 ];
 
 #[test]

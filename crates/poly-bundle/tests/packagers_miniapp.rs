@@ -354,7 +354,7 @@ fn quickapp_engineering_project_is_hap_toolkit_ready() {
     let t = Temp::new("quickapp");
     let bundle = inputs(&t);
     let spec = spec("quickapp");
-    let packager = poly_bundle::find("quickapp", "quickapp").expect("quickapp 打包器");
+    let packager = poly_bundle::find("quickapp", "rpk").expect("quickapp 打包器");
     let plan = packager.plan(&bundle, &spec).expect("快应用计划必须生成");
     assert!(plan.commands.is_empty(), "快应用无外部编译命令");
     assert_eq!(plan.skipped.len(), 1, "Taro 编译腿须如实记入 skipped");
@@ -362,7 +362,7 @@ fn quickapp_engineering_project_is_hap_toolkit_ready() {
     let artifact = packager
         .package(&bundle, &spec)
         .expect("快应用编译工程必须产出");
-    assert_eq!(artifact.format, "quickapp");
+    assert_eq!(artifact.format, "rpk");
     assert_eq!(artifact.path, t.join("out/miniapp"));
     for rel in [
         "package.json",

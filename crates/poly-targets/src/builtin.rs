@@ -207,16 +207,20 @@ pub fn builtin() -> Vec<TargetSpec> {
             bridge: Bridge::WasmBindgen,
             ui: vec!["taro".to_string()],
             package: PackageSpec {
-                // T-M3-06 止于「编译工程」（Taro quickapp 目标）；`.rpk` 收口归 T-M3-12
-                // （hap-toolkit 构建，届时本行 format / builder 翻到 `rpk` / `hap-toolkit`）。
-                format: "quickapp".to_string(),
-                builder: "taro-quickapp".to_string(),
+                // T-M3-12 收口（T-M3-06 预告的翻法）：产物格式 = `rpk`、打包器 = `hap-toolkit`
+                // ——与 ROADMAP §3.3 快应用行「打包器与产物：`.rpk`」逐字对齐；产物顶形态仍是
+                // `miniapp/` 目录（`.rpk` 落在 `dist/`，随包 wasm 出口在 `src/`）。
+                format: "rpk".to_string(),
+                builder: "hap-toolkit".to_string(),
             },
             signing: None,
             verify: vec!["hap-toolkit-lint".to_string()],
             publish: vec!["quickapp-union-store".to_string()],
             experimental: false,
-            notes: Some("快应用编译工程（hap-toolkit 就绪）；.rpk 与 lint 归 T-M3-12".to_string()),
+            notes: Some(
+                "快应用 `.rpk`（hap-toolkit 构建）；lint 入 verify、提审走联盟商店（T-M3-12）"
+                    .to_string(),
+            ),
         },
     ]
 }

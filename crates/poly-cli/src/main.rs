@@ -10,6 +10,7 @@ mod init;
 mod mood;
 mod package;
 mod project;
+mod publish;
 mod retry;
 mod scan;
 mod sign;
@@ -53,6 +54,8 @@ enum Command {
     Retry(retry::Args),
     /// 产物校验：缺省跑目标声明的校验器（codesign / spctl），`--reproducible` 做二跑比对。
     Verify(verify::Args),
+    /// 商店提审（R4 止步提审）：产物定位 → 凭据引用解析 → 上传 / 提审 / 轮询（幂等重跑）。
+    Publish(publish::Args),
 }
 
 fn main() -> std::process::ExitCode {
@@ -72,6 +75,7 @@ fn main() -> std::process::ExitCode {
         Command::Scan(args) => scan::run(&args, cli.json),
         Command::Retry(args) => retry::run(&args, cli.json),
         Command::Verify(args) => verify::run(&args, cli.json),
+        Command::Publish(args) => publish::run(&args, cli.json),
     };
     if !cli.json {
         let (face, text) = match &result {

@@ -42,6 +42,11 @@ use crate::project;
 /// 签名块判定：`META-INF/` 下的 `*.SF` / `*.RSA` / `*.DSA` / `*.EC`（zip 签名约定）。
 const SIGNATURE_EXTENSIONS: [&str; 4] = [".SF", ".RSA", ".DSA", ".EC"];
 
+/// 小程序族产物目录名（`<packages>/<target>/miniapp/`，与 poly-bundle 同口径）。
+const MINIAPP_DIR: &str = "miniapp";
+/// 代码包目录名（`<miniapp>/dist/`，同 poly-bundle 口径）。
+const DIST_DIR: &str = "dist";
+
 /// `poly verify` 的参数。
 #[derive(Debug, clap::Args)]
 pub struct Args {
@@ -91,8 +96,8 @@ pub fn run(args: &Args, json: bool) -> Result<i32, Diagnostic> {
             )
             .with_hint(
                 "校验器按 TargetSpec.verify 声明注册：ios 的 codesign-verify / spctl、harmonyos 的 \
-                 hap-sign-verify / hap-structure-check 已接入；其余 id 的归属见告警，\
-                 可先用 poly verify --reproducible 做可复现比对",
+                 hap-sign-verify / hap-structure-check、quickapp 的 hap-toolkit-lint 已接入；\
+                 其余 id 的归属见告警，可先用 poly verify --reproducible 做可复现比对",
             ));
         }
         return Ok(0);
@@ -159,6 +164,9 @@ enum Verifier {
     HapSign,
     /// HAP 结构检查（[`poly_bundle::check_hap_structure`]，与 HAP 打包器同一实现）。
     HapStructure,
+    /// 快应用 `.rpk` 的 hap-toolkit lint（validate.js 的 `validateJson` + rpk 结构 /
+    /// 源清单交叉检查，T-M3-12；注意与上面的 HarmonyOS `Hap*` 两个变体不同链）。
+    QuickAppLint,
 }
 
 /// 校验器 id → 已接入实现（`None` = 未接入，归属查 [`verifier_owner`]）。
@@ -167,6 +175,7 @@ fn verifier_for(id: &str) -> Option<Verifier> {
         "codesign-verify" | "spctl" => Some(Verifier::IosCodesign),
         "hap-sign-verify" => Some(Verifier::HapSign),
         "hap-structure-check" => Some(Verifier::HapStructure),
+        "hap-toolkit-lint" => Some(Verifier::QuickAppLint),
         _ => None,
     }
 }
@@ -190,7 +199,6 @@ fn verifier_owner(id: &str) -> Option<&'static str> {
         "wechat-devtools-cli" | "alipay-devtools-cli" | "douyin-devtools-cli" => {
             Some("小程序开发者工具 CLI 校验（T-M3-11；本机无 devtools 时 SKIP-with-print）")
         }
-        "hap-toolkit-lint" => Some("快应用链（T-M3-12 接入：hap-toolkit lint 校验 .rpk）"),
         _ => None,
     }
 }
@@ -273,11 +281,13 @@ fn verify_target(
     let mut ios_ids: Vec<String> = Vec::new();
     let mut hap_sign_ids: Vec<String> = Vec::new();
     let mut hap_structure_ids: Vec<String> = Vec::new();
+    let mut quickapp_lint_ids: Vec<String> = Vec::new();
     for id in &spec.verify {
         match verifier_for(id) {
             Some(Verifier::IosCodesign) => ios_ids.push(id.clone()),
             Some(Verifier::HapSign) => hap_sign_ids.push(id.clone()),
             Some(Verifier::HapStructure) => hap_structure_ids.push(id.clone()),
+            Some(Verifier::QuickAppLint) => quickapp_lint_ids.push(id.clone()),
             None => unserved.push(match verifier_owner(id) {
                 Some(owner) => format!("{id}（{owner}）"),
                 // 注册表有 id 但没人认领：如实点名到具体 id，测试保证这里在 M2 的注册表上是死路
@@ -305,6 +315,9 @@ fn verify_target(
     }
     if !hap_structure_ids.is_empty() {
         checked |= verify_hap_structure(project, spec, &hap_structure_ids, events)?;
+    }
+    if !quickapp_lint_ids.is_empty() {
+        checked |= verify_quickapp_lint(project, spec, &quickapp_lint_ids, events)?;
     }
     Ok(checked)
 }
@@ -475,6 +488,271 @@ fn verify_hap_structure(
     }
 }
 
+/// 快应用 `.rpk` lint 腿（`hap-toolkit-lint`，T-M3-12）：产物 `dist/*.rpk` → rpk 结构（必需
+/// 条目）→ rpk 内 `manifest.json`（hap build 的合并产物）与源 `src/manifest.json` 交叉核对 →
+/// 在 hap-toolkit 的 `validate.js`（`validateJson`：ajv + manifest-schema，即 hap-toolkit
+/// 「lint」的本体）上过 schema 校验。
+///
+/// 环境槽语义（口径同其它腿）：工具链不在场（hap-toolkit / node）或产物无 `.rpk`（打包时
+/// 工具缺席）→ 告警跳过；rpk 结构缺陷 / 清单交叉不符 / schema 命中 → 硬失败（产物缺陷不降级）。
+fn verify_quickapp_lint(
+    project: &Project,
+    spec: &TargetSpec,
+    ids: &[String],
+    events: &mut dyn EventSink,
+) -> Result<bool, StageError> {
+    let staged = project::packages_root(&project.root)
+        .join(&spec.id)
+        .join(MINIAPP_DIR);
+    let Some((rpk, count)) = quickapp_rpk(&staged) else {
+        warning(
+            events,
+            &format!(
+                "目标 {} 未校验：{} 下没有 dist/*.rpk（打包时 hap-toolkit 不在场——装齐工具链后\
+                 重跑 poly build 再校验）",
+                spec.id,
+                staged.display()
+            ),
+        );
+        return Ok(false);
+    };
+    if count > 1 {
+        warning(
+            events,
+            &format!(
+                "目标 {} 的产物有 {count} 份 .rpk（取最新一份 {}）",
+                spec.id,
+                rpk.display()
+            ),
+        );
+    }
+    // 工具链（hap-toolkit 安装根 + node）：缺席按环境槽跳过，绝不假装校验过
+    let root = match poly_bundle::quickapp_hap_root() {
+        Ok(root) => root,
+        Err(reason) => {
+            warning(events, &format!("目标 {} 未校验：{reason}", spec.id));
+            return Ok(false);
+        }
+    };
+    let Some(node) = poly_bundle::exec::tool_path("node") else {
+        warning(
+            events,
+            &format!(
+                "目标 {} 未校验：PATH 里没有 node（schema 校验经 hap-toolkit 的 node 实现承载）",
+                spec.id
+            ),
+        );
+        return Ok(false);
+    };
+
+    // 结构：rpk 必需条目齐备（真跑实证的条目面）
+    let entries = poly_bundle::zipwrite::entry_names(&rpk).map_err(|err| {
+        quickapp_defect(
+            spec,
+            format!("{} 不是可读的 zip 容器：{err}", file_label(&rpk)),
+        )
+    })?;
+    for required in ["manifest.json", "app.js", "META-INF/CERT"] {
+        if !entries.iter().any(|name| name == required) {
+            return Err(quickapp_defect(
+                spec,
+                format!(
+                    "{} 缺必需条目 {required}（hap build 产物面漂移）",
+                    file_label(&rpk)
+                ),
+            )
+            .into());
+        }
+    }
+    let manifest_text = match poly_bundle::zipwrite::entry_text(&rpk, "manifest.json")
+        .map_err(|err| quickapp_defect(spec, format!("读 manifest.json 失败：{err}")))?
+    {
+        Some(text) => text,
+        None => {
+            return Err(
+                quickapp_defect(spec, format!("{} 缺 manifest.json", file_label(&rpk))).into(),
+            );
+        }
+    };
+    let manifest: serde_json::Value = serde_json::from_str(&manifest_text)
+        .map_err(|err| quickapp_defect(spec, format!("rpk 内 manifest.json 非法 JSON：{err}")))?;
+
+    // 源清单交叉核对（打包器组装的 src/manifest.json 是事实来源）
+    let source_manifest = staged.join("src").join("manifest.json");
+    if source_manifest.is_file() {
+        let source = std::fs::read_to_string(&source_manifest)
+            .map_err(|err| quickapp_defect(spec, format!("读源清单失败：{err}")))?;
+        let source: serde_json::Value = serde_json::from_str(&source)
+            .map_err(|err| quickapp_defect(spec, format!("源清单非法 JSON：{err}")))?;
+        for key in ["package", "versionName", "versionCode"] {
+            if manifest.get(key) != source.get(key) {
+                return Err(quickapp_defect(
+                    spec,
+                    format!(
+                        "rpk 内 manifest.{key}（{}）与源清单（{}）不一致",
+                        manifest
+                            .get(key)
+                            .cloned()
+                            .unwrap_or(serde_json::Value::Null),
+                        source.get(key).cloned().unwrap_or(serde_json::Value::Null)
+                    ),
+                )
+                .into());
+            }
+        }
+    } else {
+        warning(
+            events,
+            &format!(
+                "目标 {} 的源清单缺席（{}）——交叉核对跳过，只做 rpk 内 schema 校验",
+                spec.id,
+                source_manifest.display()
+            ),
+        );
+    }
+
+    // schema 校验：真 hap-toolkit 的 validateJson（stdlib stdin 传 manifest，驱动见常量）
+    let schema_errors = match run_hap_lint(&node, &root, &manifest_text) {
+        Ok(errors) => errors,
+        Err(reason) => {
+            warning(events, &format!("目标 {} 未校验：{reason}", spec.id));
+            return Ok(false);
+        }
+    };
+    if !schema_errors.is_empty() {
+        return Err(quickapp_defect(
+            spec,
+            format!(
+                "hap-toolkit schema 校验命中 {} 项：{}",
+                schema_errors.len(),
+                schema_errors.join("；")
+            ),
+        )
+        .into());
+    }
+    warning(
+        events,
+        &format!(
+            "目标 {} 的 .rpk 校验：{} 条目，manifest package={} versionName={}（hap-toolkit validateJson 通过）",
+            spec.id,
+            entries.len(),
+            manifest
+                .get("package")
+                .and_then(serde_json::Value::as_str)
+                .unwrap_or("(缺)"),
+            manifest
+                .get("versionName")
+                .and_then(serde_json::Value::as_str)
+                .unwrap_or("(缺)")
+        ),
+    );
+    for id in ids {
+        events.emit(&BuildEvent::Verified {
+            checker: id.clone(),
+            ok: true,
+        });
+    }
+    Ok(true)
+}
+
+/// 产物里的 `.rpk` 定位：`<staged>/dist/*.rpk`（排序取最新一份）；返回 `(路径, 份数)`。
+fn quickapp_rpk(staged: &Path) -> Option<(PathBuf, usize)> {
+    let dist = staged.join(DIST_DIR);
+    let mut candidates: Vec<PathBuf> = std::fs::read_dir(&dist)
+        .ok()?
+        .flatten()
+        .map(|entry| entry.path())
+        .filter(|path| path.is_file() && path.extension().is_some_and(|ext| ext == "rpk"))
+        .collect();
+    candidates.sort();
+    let count = candidates.len();
+    candidates.pop().map(|path| (path, count))
+}
+
+/// lint 驱动（`node -e` 嵌入）：在 hap-toolkit 安装根上解析 `validate.js`，从 stdin 读
+/// manifest JSON，把 `validateJson` 的判决按一行 JSON 打到 stdout。
+///
+/// 用 `node -e` + stdin（不落临时文件、不依赖 node_modules 解析 cwd）：`createRequire`
+/// 以安装根的 `package.json` 为基准，`validate.js` 的依赖（ajv / ajv-errors / manifest-schema /
+/// @hap-toolkit/*）按真安装布局解析（真跑实证：2.1.1 hoisted 与嵌套两种布局都命中）。
+const HAP_LINT_DRIVER: &str = r#"const path = require('path');
+const [kit] = process.argv.slice(-1);
+const createRequire = require('module').createRequire;
+const req = createRequire(path.join(kit, 'package.json'));
+const validate = req(path.join(kit, 'lib/gen-webpack-conf/validate.js'));
+let text = '';
+process.stdin.setEncoding('utf8');
+process.stdin.on('data', (chunk) => { text += chunk; });
+process.stdin.on('end', () => {
+  const manifest = JSON.parse(text);
+  const errors = validate.validateJson(manifest, 'manifest.json');
+  console.log(JSON.stringify({ ok: errors.length === 0, errors: errors.map((e) => e.message) }));
+});"#;
+
+/// 跑 lint 驱动；`Ok(errors)` = 驱动判决的 schema 错误清单（空 = 通过），
+/// `Err(reason)` = 环境侧执行失败（驱动起不来 / 非零退出 / 输出非法——按跳过语义上抛）。
+fn run_hap_lint(node: &Path, root: &Path, manifest: &str) -> Result<Vec<String>, String> {
+    use std::io::Write as _;
+
+    let mut child = std::process::Command::new(node)
+        .arg("-e")
+        .arg(HAP_LINT_DRIVER)
+        .arg(root)
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
+        .spawn()
+        .map_err(|err| format!("lint 驱动（node）启动失败：{err}"))?;
+    {
+        let mut stdin = child.stdin.take().expect("已管道化 stdin");
+        stdin
+            .write_all(manifest.as_bytes())
+            .map_err(|err| format!("lint 驱动写入失败：{err}"))?;
+    }
+    let output = child
+        .wait_with_output()
+        .map_err(|err| format!("lint 驱动等待失败：{err}"))?;
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(format!(
+            "lint 驱动退出码 {}：{}（hap-toolkit 安装须完整，含其依赖）",
+            output.status,
+            stderr.trim().chars().take(400).collect::<String>()
+        ));
+    }
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let line = stdout
+        .lines()
+        .rev()
+        .find(|line| !line.trim().is_empty())
+        .unwrap_or("");
+    let value: serde_json::Value = serde_json::from_str(line.trim())
+        .map_err(|err| format!("lint 驱动输出非法 JSON：{err}"))?;
+    let errors = value
+        .get("errors")
+        .and_then(serde_json::Value::as_array)
+        .map(|items| {
+            items
+                .iter()
+                .map(|item| item.as_str().unwrap_or("(非字符串错误项)").to_string())
+                .collect::<Vec<String>>()
+        })
+        .ok_or_else(|| "lint 驱动输出缺 errors 字段".to_string())?;
+    if value.get("ok").and_then(serde_json::Value::as_bool) != Some(true) && errors.is_empty() {
+        return Err("lint 驱动判决非法（ok=false 但无错误清单）".to_string());
+    }
+    Ok(errors)
+}
+
+/// `.rpk` 产物缺陷诊断（产物缺陷硬失败，不降级成跳过）。
+fn quickapp_defect(spec: &TargetSpec, message: impl Into<String>) -> Diagnostic {
+    Diagnostic::error(
+        codes::E_VERIFY_0003,
+        format!("目标 {} 的 .rpk 校验失败：{}", spec.id, message.into()),
+    )
+    .with_hint("修打包输入后重跑 poly build --target quickapp（hap-toolkit 在场时重出 .rpk）")
+}
+
 /// 校验对象 HAP：优先已签名件（`<未签名名>-signed.hap` 约定，否则 `*-signed.hap` 扫描——
 /// 签名器产物命名 `poly_sign::harmony::signed_output`）；缺已签名件时退化到未签名 HAP，
 /// 供结构检查（对未签件同样成立）；返回 `(路径, 是否已签名)`。
@@ -565,6 +843,20 @@ fn compare(
         return Ok(false);
     }
 
+    // hap-toolkit 盖章的 .rpk（zip / build.txt 带时间戳，工具无确定性开关）自身字节二跑必不同：
+    // 如实说明并把它排除出逐字节比对（其余文件照比），语义同 signed 件的「绝不假装通过」
+    if let Some(rpk) = stamped_rpk(&run_dirs[0]).or_else(|| stamped_rpk(&run_dirs[1])) {
+        warning(
+            events,
+            &format!(
+                "目标 {} 的 .rpk（{}）由 hap-toolkit 盖章（zip / build.txt 时间戳）——该件不参与\
+                 逐字节复现比对，产物其余文件照比",
+                spec.id,
+                file_label(&rpk)
+            ),
+        );
+    }
+
     // 声明产物之外，同目录的其余顶层文件（Android：未签名 APK + .apks）也逐件比，
     // 两者任一不一致都收敛到同一条 E_VERIFY_0001
     let compared = compare_artifacts(a, b).and_then(|digest| {
@@ -652,8 +944,13 @@ fn compare_artifacts(a: &Artifact, b: &Artifact) -> Result<String, Vec<String>> 
                 Ok(manifest) => manifest,
                 Err(err) => return Err(vec![format!("读取 b 清单失败：{err}")]),
             };
+            // hap-toolkit 盖章件（`*.rpk` 内嵌时间戳）不参与逐字节比对（调用侧已告警说明）
+            let stamped = |path: &str| path.ends_with(".rpk");
             let mut problems = Vec::new();
             for (path, entry) in &manifest_a.files {
+                if stamped(path) {
+                    continue;
+                }
                 match manifest_b.files.get(path) {
                     None => problems.push(format!("b 缺失: {path}")),
                     Some(found) if found.integrity != entry.integrity => problems.push(format!(
@@ -664,7 +961,7 @@ fn compare_artifacts(a: &Artifact, b: &Artifact) -> Result<String, Vec<String>> 
                 }
             }
             for path in manifest_b.files.keys() {
-                if !manifest_a.files.contains_key(path) {
+                if !stamped(path) && !manifest_a.files.contains_key(path) {
                     problems.push(format!("b 清单外新增: {path}"));
                 }
             }
@@ -674,6 +971,7 @@ fn compare_artifacts(a: &Artifact, b: &Artifact) -> Result<String, Vec<String>> 
             let canonical: String = manifest_a
                 .files
                 .iter()
+                .filter(|(path, _)| !stamped(path))
                 .map(|(path, entry)| format!("{path} {}\n", entry.integrity))
                 .collect();
             Ok(poly_bundle::sri::integrity_of(canonical.as_bytes()))
@@ -766,6 +1064,19 @@ fn signed_entry(artifact: &Artifact) -> Option<String> {
                 .iter()
                 .any(|extension| upper.ends_with(extension))
     })
+}
+
+/// 二跑产物目录里的 `.rpk`（hap-toolkit 盖章件；浅扫已知落点 `<dir>/miniapp/dist/`）。
+fn stamped_rpk(dir: &Path) -> Option<PathBuf> {
+    let dist = dir.join(MINIAPP_DIR).join(DIST_DIR);
+    let mut found: Vec<PathBuf> = std::fs::read_dir(&dist)
+        .ok()?
+        .flatten()
+        .map(|entry| entry.path())
+        .filter(|path| path.is_file() && path.extension().is_some_and(|ext| ext == "rpk"))
+        .collect();
+    found.sort();
+    found.pop()
 }
 
 /// 产物形态名（JSON 报告的 `kind` 字段）。
@@ -1178,6 +1489,289 @@ mod tests {
             "{problems:?}"
         );
 
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    // ------------------------------------------------------------ 快应用 lint 腿（T-M3-12）
+
+    /// 子进程标记（env 注入走子进程：Rust 2024 进程内 `set_var` 是 unsafe，本仓 forbid）。
+    const LINT_CHILD: &str = "POLYPACK_LINT_CHILD_TEST";
+
+    /// 以注入环境变量精确重跑本测试（子进程腿；口径同 poly-publish/tests/credentials.rs）。
+    fn rerun_with_env(test_name: &str, envs: &[(&str, &str)]) {
+        let exe = std::env::current_exe().expect("测试可执行路径");
+        let full = format!("verify::tests::{test_name}");
+        let mut command = std::process::Command::new(exe);
+        command.args([full.as_str(), "--exact", "--nocapture"]);
+        for (key, value) in envs {
+            command.env(key, value);
+        }
+        let status = command.status().expect("子进程可执行");
+        assert!(status.success(), "子进程断言失败（见上方输出）");
+    }
+
+    /// 合成 stub hap-toolkit 安装根（真工具缺席时测接线）：`bin/hap` + `package.json` +
+    /// `lib/gen-webpack-conf/validate.js`（`validateJson` 只认 `package == "com.polypack.good"`）。
+    fn stub_toolkit(root: &Path) {
+        let bin = root.join("bin");
+        let conf = root.join("lib/gen-webpack-conf");
+        std::fs::create_dir_all(&bin).expect("stub bin 可建");
+        std::fs::create_dir_all(&conf).expect("stub conf 可建");
+        std::fs::write(bin.join("hap"), b"#!/bin/sh\nexit 0\n").expect("写假 hap");
+        std::fs::write(root.join("package.json"), "{}\n").expect("写假 package.json");
+        std::fs::write(
+            conf.join("validate.js"),
+            "exports.validateJson = function (manifest, label) {\n  \
+             if (manifest.package === 'com.polypack.good') return [];\n  \
+             return [new Error('校验 ' + label + ' 错误（stub toolkit）：package 须为 com.polypack.good')];\n};\n",
+        )
+        .expect("写 stub validate.js");
+    }
+
+    /// 合成 `.rpk`（zip：条目名 → 内容文本），落 `<dir>/<name>`。
+    fn synth_rpk(dir: &Path, name: &str, entries: &[(&str, &str)]) -> PathBuf {
+        let parts = dir.join("parts");
+        std::fs::create_dir_all(&parts).expect("条目源目录可建");
+        let mut listed = Vec::new();
+        for (entry, body) in entries {
+            let path = parts.join(entry.replace('/', "_"));
+            std::fs::write(&path, body).expect("写条目源文件");
+            listed.push(((*entry).to_string(), path));
+        }
+        std::fs::create_dir_all(dir).expect("dist 可建");
+        let out = dir.join(name);
+        poly_bundle::zipwrite::write_zip(&listed, &out).expect("合成 rpk");
+        out
+    }
+
+    /// quickapp 声明的 `hap-toolkit-lint` 已接入（服务归属登记同步移除，测试防回退）。
+    #[test]
+    fn quickapp_lint_verifier_is_served() {
+        let quickapp = Registry::builtin()
+            .get("quickapp")
+            .expect("内建 quickapp 目标")
+            .clone();
+        assert_eq!(quickapp.verify, vec!["hap-toolkit-lint"]);
+        assert_eq!(
+            verifier_for("hap-toolkit-lint"),
+            Some(Verifier::QuickAppLint)
+        );
+        assert!(
+            verifier_owner("hap-toolkit-lint").is_none(),
+            "已接入的校验器不得再挂归属登记"
+        );
+    }
+
+    /// 产物无 `.rpk`（打包时工具缺席）→ 告警跳过；该判定先于工具链探测，任意环境可跑。
+    #[test]
+    fn quickapp_lint_skips_without_rpk_artifact() {
+        let (root, project) = fixture("qa-no-rpk");
+        let spec = Registry::builtin()
+            .get("quickapp")
+            .expect("内建 quickapp 目标")
+            .clone();
+        let mut sink = poly_core::events::HumanSink {
+            out: Vec::<u8>::new(),
+        };
+        assert!(
+            !verify_quickapp_lint(
+                &project,
+                &spec,
+                &["hap-toolkit-lint".to_string()],
+                &mut sink
+            )
+            .expect("无产物不该失败"),
+            "无 .rpk → 未校验"
+        );
+        let text = String::from_utf8_lossy(&sink.out).into_owned();
+        assert!(text.contains("dist/*.rpk"), "{text}");
+        assert!(text.contains("hap-toolkit"), "{text}");
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    /// lint 腿（stub toolkit 代真工具）：接线（node 驱动 + 判决解析）与三态——
+    /// schema 命中 / 结构缺条目 = E_VERIFY_0003 硬失败，合规件给 `Verified`。
+    ///
+    /// 真 hap-toolkit 的 schema 语义（ajv + manifest-schema）在 real 契约腿（工具在场时）断言。
+    #[test]
+    fn quickapp_lint_leg_checks_rpk_and_runs_schema_validation() {
+        if std::env::var_os(LINT_CHILD).is_some() {
+            let (root, project) = fixture("qa-lint-child");
+            let spec = Registry::builtin()
+                .get("quickapp")
+                .expect("内建 quickapp 目标")
+                .clone();
+            let staged = root.join(".polypack/packages/quickapp/miniapp");
+            let src = staged.join("src");
+            let dist = staged.join("dist");
+            std::fs::create_dir_all(&src).expect("src 可建");
+            let ids = vec!["hap-toolkit-lint".to_string()];
+            let mut sink = poly_core::events::HumanSink {
+                out: Vec::<u8>::new(),
+            };
+            let good_manifest = "{\"package\":\"com.polypack.good\",\"versionName\":\"0.1.0\",\
+                                 \"versionCode\":100,\"router\":{\"entry\":\"pages/index\"}}";
+            let rpk_entries = [
+                ("manifest.json", good_manifest),
+                ("app.js", "App({})"),
+                ("META-INF/CERT", "cert"),
+            ];
+
+            // 例 1：合规件 → 通过并给 `hap-toolkit-lint` 的 Verified 判决
+            std::fs::write(src.join("manifest.json"), good_manifest).expect("写源清单");
+            synth_rpk(&dist, "com.good.debug.0.1.0.rpk", &rpk_entries);
+            assert!(
+                verify_quickapp_lint(&project, &spec, &ids, &mut sink).expect("合规件应通过"),
+                "合规件应校验过"
+            );
+            let text = String::from_utf8_lossy(&sink.out).into_owned();
+            assert!(text.contains("hap-toolkit-lint"), "{text}");
+            assert!(text.contains("com.polypack.good"), "{text}");
+            assert!(text.contains("→ true"), "{text}");
+
+            // 例 2：schema 命中（stub 拒绝 package）→ E_VERIFY_0003 硬失败
+            let bad_manifest = "{\"package\":\"com.polypack.bad\",\"versionName\":\"0.1.0\",\
+                                \"versionCode\":100}";
+            std::fs::write(src.join("manifest.json"), bad_manifest).expect("改写源清单");
+            let _ = std::fs::remove_dir_all(&dist);
+            synth_rpk(
+                &dist,
+                "com.bad.debug.0.1.0.rpk",
+                &[
+                    ("manifest.json", bad_manifest),
+                    ("app.js", "App({})"),
+                    ("META-INF/CERT", "cert"),
+                ],
+            );
+            let err = verify_quickapp_lint(&project, &spec, &ids, &mut sink)
+                .expect_err("schema 命中必须硬失败");
+            assert_eq!(err.diagnostic.code.to_string(), "poly::E_VERIFY_0003");
+            assert!(err.to_string().contains("schema 校验命中"), "{err}");
+
+            // 例 3：rpk 缺必需条目（app.js）→ E_VERIFY_0003 硬失败（结构缺陷不降级）
+            std::fs::write(src.join("manifest.json"), good_manifest).expect("源清单回合规");
+            let _ = std::fs::remove_dir_all(&dist);
+            synth_rpk(
+                &dist,
+                "com.good2.debug.0.1.0.rpk",
+                &[("manifest.json", good_manifest), ("META-INF/CERT", "cert")],
+            );
+            let err = verify_quickapp_lint(&project, &spec, &ids, &mut sink)
+                .expect_err("缺必需条目必须硬失败");
+            assert_eq!(err.diagnostic.code.to_string(), "poly::E_VERIFY_0003");
+            assert!(err.to_string().contains("缺必需条目"), "{err}");
+            let _ = std::fs::remove_dir_all(&root);
+            return;
+        }
+        // 父进程：造 stub toolkit 后以 POLYPACK_HAP 注入重跑
+        let kit = std::env::temp_dir().join(format!("polypack-lint-kit-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&kit);
+        stub_toolkit(&kit);
+        rerun_with_env(
+            "quickapp_lint_leg_checks_rpk_and_runs_schema_validation",
+            &[
+                (LINT_CHILD, "1"),
+                (
+                    "POLYPACK_HAP",
+                    kit.join("bin/hap").to_str().expect("stub 路径"),
+                ),
+            ],
+        );
+        let _ = std::fs::remove_dir_all(&kit);
+    }
+
+    /// 工具链（hap-toolkit）缺席腿：`.rpk` 在场但工具不在 → 告警跳过，不假绿也不硬失败。
+    #[test]
+    fn quickapp_lint_skips_when_toolkit_is_absent() {
+        if std::env::var_os(LINT_CHILD).is_some() {
+            let (root, project) = fixture("qa-lint-nokit");
+            let spec = Registry::builtin()
+                .get("quickapp")
+                .expect("内建 quickapp 目标")
+                .clone();
+            let dist = root.join(".polypack/packages/quickapp/miniapp/dist");
+            let manifest = "{\"package\":\"com.polypack.good\",\"versionName\":\"0.1.0\",\
+                            \"versionCode\":100}";
+            synth_rpk(
+                &dist,
+                "com.good.debug.0.1.0.rpk",
+                &[
+                    ("manifest.json", manifest),
+                    ("app.js", "App({})"),
+                    ("META-INF/CERT", "cert"),
+                ],
+            );
+            let mut sink = poly_core::events::HumanSink {
+                out: Vec::<u8>::new(),
+            };
+            assert!(
+                !verify_quickapp_lint(
+                    &project,
+                    &spec,
+                    &["hap-toolkit-lint".to_string()],
+                    &mut sink
+                )
+                .expect("缺工具不该失败"),
+                ".rpk 在场但工具缺席 → 未校验"
+            );
+            let text = String::from_utf8_lossy(&sink.out).into_owned();
+            assert!(text.contains("未校验"), "{text}");
+            assert!(text.contains("POLYPACK_HAP"), "{text}");
+            let _ = std::fs::remove_dir_all(&root);
+            return;
+        }
+        let missing = std::env::temp_dir()
+            .join(format!("polypack-lint-nokit-{}", std::process::id()))
+            .join("hap");
+        rerun_with_env(
+            "quickapp_lint_skips_when_toolkit_is_absent",
+            &[
+                (LINT_CHILD, "1"),
+                ("POLYPACK_HAP", missing.to_str().expect("路径")),
+            ],
+        );
+    }
+
+    /// 复现比对把 hap-toolkit 盖章的 `.rpk` 排除在逐字节比对之外（其余文件照比、照报差异）。
+    #[test]
+    fn stamped_rpk_is_carved_out_of_reproducible_compare() {
+        let root = std::env::temp_dir().join(format!("polypack-repro-rpk-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        let make = |tag: &str, rpk: &[u8], extra: &str| -> Artifact {
+            let miniapp = root.join(tag).join("miniapp");
+            std::fs::create_dir_all(miniapp.join("src")).expect("src 可建");
+            std::fs::create_dir_all(miniapp.join("dist")).expect("dist 可建");
+            std::fs::write(miniapp.join("src/manifest.json"), "{}").expect("写源清单");
+            std::fs::write(miniapp.join("src/extra.js"), extra).expect("写对照件");
+            std::fs::write(miniapp.join("dist/x.rpk"), rpk).expect("写 rpk");
+            Artifact {
+                target: "quickapp".to_string(),
+                format: "quickapp".to_string(),
+                path: miniapp,
+                bytes: 0,
+                kind: ArtifactKind::Directory,
+                notes: Vec::new(),
+            }
+        };
+        let a = make("a", b"rpk-run-a", "same");
+        let b = make("b", b"rpk-run-b", "same");
+        assert!(
+            compare_artifacts(&a, &b).is_ok(),
+            ".rpk 差异（盖章时间戳）应被排除出比对"
+        );
+        assert_eq!(
+            stamped_rpk(&root.join("a")),
+            Some(root.join("a/miniapp/dist/x.rpk")),
+            "盖章件定位"
+        );
+
+        // 对照：非 .rpk 文件差异仍如实报出
+        std::fs::write(root.join("b/miniapp/src/extra.js"), "changed").expect("改写对照件");
+        let problems = compare_artifacts(&a, &b).expect_err("非 rpk 差异必须报出");
+        assert!(
+            problems.iter().any(|item| item.contains("src/extra.js")),
+            "{problems:?}"
+        );
         let _ = std::fs::remove_dir_all(&root);
     }
 }
