@@ -1,0 +1,14 @@
+# DevEco/hvigor 生成物（SDK 与工具链产出，不入库）
+/oh_modules
+/local.properties
+/.idea
+**/build
+/.hvigor
+**/.cxx
+/.clangd
+/.clang-format
+/.clang-tidy
+
+# 桥产物注入点（T-M3-01：`poly bridge ohos` 的库注入到这里，不入库）：
+# <工程根>/bridge/harmonyos/<abi>/libpax.so → entry/libs/<abi>/
+/entry/libs/*/*.so

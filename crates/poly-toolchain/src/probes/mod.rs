@@ -6,6 +6,7 @@
 pub mod android_ndk;
 pub mod android_sdk;
 pub mod emsdk;
+pub mod harmonyos_sdk;
 pub mod msvc;
 pub mod rust;
 pub mod xcode;

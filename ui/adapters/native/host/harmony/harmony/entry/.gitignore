@@ -1,0 +1,8 @@
+/build
+/.preview
+/.cxx
+/oh_modules
+/assets
+
+# RNOH 打包链注入的 JS bundle（T-M3-03/04：metro → rawfile）
+/src/main/resources/rawfile/assets

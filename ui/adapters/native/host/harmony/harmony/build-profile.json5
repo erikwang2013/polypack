@@ -1,0 +1,42 @@
+{
+  "app": {
+    "products": [
+      {
+        "name": "default",
+        "signingConfig": "default",
+        // 对齐本机 command-line-tools 自带的 HarmonyOS SDK 5.1.1(19)（安装 SDK 不在场的
+        // API 版本会直接解析失败）。注意：RNOH 0.84.3 har 的 ArkTS 源码用到
+        // @ohos.net.webSocket 的 pingInterval/pongTimeout（0.84.3 新增的 websocket 心跳，
+        // d.ts 标注 @since 21）——API 19 SDK 编译该 har 必报 2 处 ArkTS 错误（T-M3-01 实测，
+        // 详见 README「阻塞与挂载点」）；上 API ≥ 21 的 SDK（HarmonyOS 6.0.1+）时把这里
+        // 同步改到对应版本。
+        "compatibleSdkVersion": "5.1.1(19)",
+        "targetSdkVersion": "5.1.1(19)",
+        "runtimeOS": "HarmonyOS",
+        // 官方模板此处有 "nativeCompiler": "BiSheng"——BiSheng 只在 DevEco IDE 内分发，
+        // command-line-tools 的 SDK 不含（toolchains 下无 bisheng），故省略（用内置 clang）。
+      },
+    ],
+    "buildModeSet": [
+      {
+        "name": "debug",
+      },
+      {
+        "name": "release",
+      },
+    ],
+    "signingConfigs": [],
+  },
+  "modules": [
+    {
+      "name": "entry",
+      "srcPath": "./entry",
+      "targets": [
+        {
+          "name": "default",
+          "applyToProducts": ["default"],
+        },
+      ],
+    },
+  ],
+}

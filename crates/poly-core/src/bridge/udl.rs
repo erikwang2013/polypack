@@ -19,6 +19,8 @@ pub struct Function {
     pub name: String,
     /// 参数名（有序）。
     pub args: Vec<String>,
+    /// 参数类型文本（与 [`Self::args`] 同序，原样保留，如 `string` / `u32`）。
+    pub arg_types: Vec<String>,
     /// 返回类型文本（原样保留，如 `string` / `sequence<u32>`）。
     pub ret: String,
 }
@@ -186,22 +188,29 @@ fn parse_function(statement: &str) -> Option<Function> {
     if name.is_empty() || !name.chars().all(|ch| ch.is_alphanumeric() || ch == '_') {
         return None;
     }
-    let args = split_args(&head[open + 1..close])
-        .into_iter()
-        .filter_map(|arg| {
-            let arg = arg.trim();
-            if arg.is_empty() {
-                return None;
-            }
-            // `string name` / `string? name` / `sequence<u32> values`：末段即参数名
-            let name = arg.rsplit_once(char::is_whitespace)?.1.trim();
-            let name = name.trim_end_matches(['?', '=']).trim();
-            (!name.is_empty()).then(|| name.to_string())
-        })
-        .collect();
+    let mut args = Vec::new();
+    let mut arg_types = Vec::new();
+    for arg in split_args(&head[open + 1..close]) {
+        let arg = arg.trim();
+        if arg.is_empty() {
+            continue;
+        }
+        // `string name` / `string? name` / `sequence<u32> values`：末段即参数名，其前是类型
+        let Some((ty, raw_name)) = arg.rsplit_once(char::is_whitespace) else {
+            continue;
+        };
+        let name = raw_name.trim_end_matches(['?', '=']).trim();
+        if name.is_empty() {
+            continue;
+        }
+        args.push(name.to_string());
+        // 类型文本原样保留（`string?` 的 `?` 是语义，不许抹掉——可选与空串在 FFI 层不同义）
+        arg_types.push(ty.trim().to_string());
+    }
     Some(Function {
         name: name.to_string(),
         args,
+        arg_types,
         ret: ret.trim().to_string(),
     })
 }

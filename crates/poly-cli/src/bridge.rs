@@ -1,12 +1,14 @@
-//! `poly bridge`：uniffi 桥生成器与 Android AAR 组装（T-M2-01 / T-M2-02）。
+//! `poly bridge`：uniffi 桥生成器、Android AAR 组装与 HarmonyOS NAPI 模块（T-M2-01 / T-M2-02 / T-M3-01）。
 //!
-//! - `poly bridge generate`：由单处接口定义（核心 crate 的 UDL）生成 Kotlin / Swift 绑定，
-//!   落点 `<root>/bridge/{kotlin,swift}`；`--cache` 走库级缓存（键含接口摘要，见
-//!   `poly_core::bridge::bridge_cache_key`）。
+//! - `poly bridge generate`：由单处接口定义（核心 crate 的 UDL）生成 Kotlin / Swift 绑定与
+//!   napi C 胶水，落点 `<root>/bridge/{kotlin,swift,napi}`；`--cache` 走库级缓存（键含接口
+//!   摘要，见 `poly_core::bridge::bridge_cache_key`）。
 //! - `poly bridge aar`：核心 → 各 ABI 的 JNI `.so`（NDK 交叉编译）+ 绑定 → `.aar`
 //!   （`jni/<abi>/` + `classes.jar` + 最小清单），走库级缓存（二跑命中）。
+//! - `poly bridge ohos`：胶水 → 各 ABI 的自包含 NAPI 模块 `.so`（HarmonyOS triple 交叉编译），
+//!   落点 `<root>/bridge/harmonyos/<abi>/lib<ns>.so`（RNOH / ArkTS 宿主直接装载）。
 //!
-//! 引擎 / NDK / kotlinc 任一缺失都按 skip-if-missing 语义如实报告，绝不产假产物。
+//! 引擎 / NDK / OHOS SDK / kotlinc 任一缺失都按 skip-if-missing 语义如实报告，绝不产假产物。
 
 use std::path::PathBuf;
 
@@ -27,10 +29,12 @@ pub struct Args {
 /// bridge 子命令。
 #[derive(Debug, clap::Subcommand)]
 pub enum BridgeCommand {
-    /// 生成 Kotlin / Swift 绑定（单处接口定义 → 两端绑定）。
+    /// 生成 Kotlin / Swift 绑定与 napi C 胶水（单处接口定义 → 各端绑定）。
     Generate(GenerateArgs),
     /// 组装 Android AAR（各 ABI 的 JNI `.so` + 绑定 + 最小清单）。
     Aar(AarArgs),
+    /// 构建 HarmonyOS NAPI 模块（胶水 + 各 ABI 自包含 `.so`，RNOH / ArkTS 可装载）。
+    Ohos(OhosArgs),
 }
 
 /// `poly bridge generate` 的参数。
@@ -39,7 +43,7 @@ pub struct GenerateArgs {
     /// 工程配置路径。
     #[arg(long, default_value = "polypack.toml")]
     pub config: PathBuf,
-    /// 目标语言（可重复；缺省 `all` = 全部已接入出口：kotlin + swift）。
+    /// 目标语言（可重复；缺省 `all` = 全部已接入出口：kotlin + swift + napi）。
     #[arg(long = "lang", value_name = "LANG")]
     pub langs: Vec<String>,
     /// 走库级缓存（键含接口摘要）。
@@ -76,11 +80,23 @@ pub struct AarArgs {
     pub no_cache: bool,
 }
 
+/// `poly bridge ohos` 的参数。
+#[derive(Debug, clap::Args)]
+pub struct OhosArgs {
+    /// 工程配置路径。
+    #[arg(long, default_value = "polypack.toml")]
+    pub config: PathBuf,
+    /// ABI 目录名或 triple（可重复；缺省 arm64-v8a = 真机）。
+    #[arg(long = "abi", value_name = "ABI")]
+    pub abis: Vec<String>,
+}
+
 /// 执行 `poly bridge`；返回进程退出码。
 pub fn run(args: &Args, json: bool) -> Result<i32, Diagnostic> {
     match &args.command {
         BridgeCommand::Generate(args) => generate(args, json),
         BridgeCommand::Aar(args) => assemble_aar(args, json),
+        BridgeCommand::Ohos(args) => assemble_ohos(args, json),
     }
 }
 
@@ -108,8 +124,8 @@ fn generate(args: &GenerateArgs, json: bool) -> Result<i32, Diagnostic> {
         let cache = Cache::from_root(project::cache_root(&project.root));
         let source = bridge::interface_source(&project).map_err(err)?;
         let interface = bridge::interface_digest(&source).map_err(err)?;
-        let keys = bridge::bridge_cache_keys(&project, &interface, "uniffi", "local", &langs)
-            .map_err(err)?;
+        let keys =
+            bridge::bridge_cache_keys(&project, &interface, "local", &langs).map_err(err)?;
         bridge::restore_or_generate(&cache, &keys, &project, events.as_mut()).map_err(err)?;
         logged_outputs(&project, &langs)?
     } else {
@@ -386,10 +402,10 @@ fn profile_name(profile: crate::build::ProfileArg) -> &'static str {
     }
 }
 
-/// 解析 `--lang`（缺省 = 已接入出口 kotlin + swift）。
+/// 解析 `--lang`（缺省 = 已接入出口 kotlin + swift + napi）。
 fn parse_langs(values: &[String]) -> Result<Vec<BridgeLang>, Diagnostic> {
     if values.is_empty() || values.iter().any(|value| value == "all") {
-        return Ok(vec![BridgeLang::Kotlin, BridgeLang::Swift]);
+        return Ok(vec![BridgeLang::Kotlin, BridgeLang::Swift, BridgeLang::Napi]);
     }
     let mut langs = Vec::new();
     for value in values {
@@ -403,8 +419,102 @@ fn parse_langs(values: &[String]) -> Result<Vec<BridgeLang>, Diagnostic> {
 
 /// 未知语言 → `poly::E_BRIDGE_0002` + 可选值清单。
 fn unknown_lang(value: &str) -> Diagnostic {
-    Diagnostic::error(codes::E_BRIDGE_0002, format!("未知的绑定语言: {value}"))
-        .with_hint("可选：kotlin / swift（M2 已接入）、napi / wasm-bindgen / cffi（M3）、all")
+    Diagnostic::error(codes::E_BRIDGE_0002, format!("未知的绑定语言: {value}")).with_hint(
+        "可选：kotlin / swift（uniffi 引擎）、napi（C 胶水，M3 已接入）、wasm-bindgen / cffi（M3 待接入）、all",
+    )
+}
+
+/// `poly bridge ohos`：UDL → C 胶水 → 各 ABI 自包含 NAPI 模块 `.so`。
+///
+/// 胶水由 T-M3-01 的 napi 出口产出（同一份 UDL，绝不手写第二份绑定）；模块 = 胶水 +
+/// 核心 staticlib 一起链，单文件自包含（RNOH / ArkTS 只装载一个 `.so`）。
+fn assemble_ohos(args: &OhosArgs, json: bool) -> Result<i32, Diagnostic> {
+    let project = project::load(&args.config)?;
+    let source = bridge::interface_source(&project).map_err(err)?;
+    let namespace = bridge::namespace(&source).map_err(err)?;
+    let abis = parse_ohos_abis(&args.abis)?;
+    let sdk = bridge::napi::OhosSdk::discover().ok_or_else(missing_ohos_sdk)?;
+
+    let mut events = project::sink(json);
+    let output = bridge::napi::generate(&project, &source).map_err(err)?;
+    let glue = match output.files.first() {
+        Some(file) => output.dir.join(file),
+        None => {
+            return Err(Diagnostic::error(
+                codes::E_BRIDGE_0003,
+                "napi 生成未产出胶水文件（生成器异常）",
+            )
+            .with_hint("报告 bug：poly bridge generate --lang napi 应对任意合法 UDL 产出 .c"));
+        }
+    };
+    let core_dir = project.root.join(&project.config.core.crate_path);
+    let mut modules = Vec::new();
+    for abi in &abis {
+        events.emit(&poly_core::BuildEvent::Warning {
+            stage: "bridge".to_string(),
+            message: format!("交叉编译 {}（{}）…", abi.dir, abi.triple),
+        });
+        let lib = bridge::napi::build_lib(&core_dir, *abi, &sdk, events.as_mut()).map_err(err)?;
+        let out_dir = project
+            .root
+            .join("bridge")
+            .join("harmonyos")
+            .join(abi.dir);
+        let so = bridge::napi::build_module(
+            &glue,
+            &lib,
+            &namespace,
+            *abi,
+            &sdk,
+            &out_dir,
+            events.as_mut(),
+        )
+        .map_err(err)?;
+        modules.push(so);
+    }
+    report(
+        json,
+        serde_json::json!({
+            "event": "bridge-ohos",
+            "schema": bridge::BRIDGE_SCHEMA,
+            "sdk": sdk.describe(),
+            "glue": glue.to_string_lossy(),
+            "modules": modules.iter().map(|path| path.to_string_lossy()).collect::<Vec<_>>(),
+            "abi": abis.iter().map(|abi| abi.dir).collect::<Vec<_>>(),
+        }),
+    );
+    Ok(0)
+}
+
+/// 解析 OHOS `--abi`（缺省 arm64-v8a：真机）。
+fn parse_ohos_abis(values: &[String]) -> Result<Vec<bridge::napi::OhosAbi>, Diagnostic> {
+    if values.is_empty() {
+        return Ok(vec![bridge::napi::ABIS[0]]);
+    }
+    let mut abis = Vec::new();
+    for value in values {
+        let abi = bridge::napi::OhosAbi::parse(value).ok_or_else(|| {
+            let choices: Vec<&str> = bridge::napi::ABIS.iter().map(|abi| abi.dir).collect();
+            Diagnostic::error(codes::E_BRIDGE_0003, format!("未知的 ABI: {value}"))
+                .with_hint(format!("可选：{}", choices.join(" / ")))
+        })?;
+        if !abis.contains(&abi) {
+            abis.push(abi);
+        }
+    }
+    Ok(abis)
+}
+
+/// OHOS SDK 缺失 → `poly::E_BRIDGE_0003` + 修复提示（skip-if-missing：不产半份模块）。
+fn missing_ohos_sdk() -> Diagnostic {
+    Diagnostic::error(
+        codes::E_BRIDGE_0003,
+        "未找到 HarmonyOS SDK（交叉编译 NAPI 模块 `.so` 的前提）",
+    )
+    .with_hint(
+        "设 $HARMONYOS_TOOLS（command-line-tools 根）/ $DEVECO_SDK_HOME（DevEco 的 sdk 目录）\
+         / $POLYPACK_OHOS_SDK（直接指向 …/sdk/default/openharmony）；poly doctor 可核对",
+    )
 }
 
 /// 解析 `--abi`（缺省 arm64-v8a + x86_64：真机与模拟器/仿真器各一）。
