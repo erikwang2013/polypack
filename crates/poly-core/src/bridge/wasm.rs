@@ -9,9 +9,11 @@
 //!   → 生成 shim crate（<root>/.polypack/wasm-shim/<lib>_wasm/：`#[wasm_bindgen]` 包住 UDL 函数）
 //!   → cargo build --release --target wasm32-unknown-unknown（CARGO_TARGET_DIR 隔离在 shim 内）
 //!   → wasm-bindgen CLI --target no-modules（官方发行版，定位见 [`WasmBindgen`]）
+//!   → wasm-opt -Oz 裁剪（binaryen，定位见 [`WasmOpt`]；T-M3-08 的体积裁剪时机在
+//!     **出口目录生成后、随包拷贝前**——随包条目即优化后字节）
 //!   → <root>/bridge/wasm-bindgen/：
 //!       <lib>_wasm.js（胶水；尾附 CJS 出口）· <lib>_wasm_bg.wasm
-//!       polypack-loader.js（加载/初始化适配层）· manifest.json（白名单清单）
+//!       polypack-loader.js（加载/初始化适配层）· manifest.json（白名单清单 + 体积元数据）
 //! ```
 //!
 //! ## API 面白名单（两道闸，验收对应两处负例）
@@ -29,6 +31,12 @@
 //! 绝不产假产物。CLI 版本必须与 shim 钉住的 crate 版本完全一致（CLI 与 crate 错配的原始报错
 //! 很难定位，故生成期显式核对）。
 //!
+//! ## 体积（T-M3-08，R10 对策）
+//!
+//! wasm-opt（binaryen）缺失或裁剪失败**不阻断**：告警放行、`size.wasm_opt.applied=false`
+//! 如实记进清单（绝不静默——静默会让「没裁剪」伪装成「裁剪无收益」）。前后字节对比写进
+//! 清单的 `size` 段（产物元数据），并随 `poly bridge wasm` 报告与构建事件流输出。
+//!
 //! shortcut: shim 只覆盖顶层函数（与 [`udl`] 的「浅解析」同层）；`dictionary` / `enum` /
 //! `interface` / `callback` 类型在 M3 白名单里就没有放行，需要时先扩解析器与映射表。
 
@@ -39,6 +47,7 @@ use poly_cache::Digest;
 use serde::Serialize;
 
 use super::udl;
+pub use super::wasm_opt::{SizeInfo, WasmOpt, WasmOptInfo};
 use crate::diagnostics::{Diagnostic, codes};
 use crate::events::{BuildEvent, EventSink};
 use crate::plan::{Project, StageError};
@@ -179,7 +188,7 @@ pub fn shim_manifest_toml(core_dir: &Path, package: &str, core_package: &str) ->
     )
 }
 
-/// 沙箱清单（`manifest.json`）：白名单函数面 + 加载期核对所需的模块名。
+/// 沙箱清单（`manifest.json`）：白名单函数面 + 加载期核对所需的模块名 + 体积元数据。
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct Manifest {
     /// 清单自身的版本（[`SANDBOX_SCHEMA`]）。
@@ -200,6 +209,8 @@ pub struct Manifest {
     pub engine: String,
     /// 白名单函数面（UDL 声明序）。
     pub functions: Vec<ManifestFunction>,
+    /// 体积元数据（T-M3-08；缓存命中路径经 [`read_size`] 回读）。
+    pub size: SizeInfo,
 }
 
 /// 清单里的一个函数（名 / 参数 / 返回）。
@@ -224,7 +235,12 @@ pub struct ManifestArg {
 }
 
 /// 组装清单（确定性字段序；函数按 UDL 声明序）。
-pub fn manifest_for(interface: &udl::Interface, out_name: &str, engine: &str) -> Manifest {
+pub fn manifest_for(
+    interface: &udl::Interface,
+    out_name: &str,
+    engine: &str,
+    size: SizeInfo,
+) -> Manifest {
     Manifest {
         schema: SANDBOX_SCHEMA.to_string(),
         bridge: super::BRIDGE_SCHEMA.to_string(),
@@ -234,6 +250,7 @@ pub fn manifest_for(interface: &udl::Interface, out_name: &str, engine: &str) ->
         wasm: format!("./{out_name}_bg.wasm"),
         import_module: format!("./{out_name}_bg.js"),
         engine: engine.to_string(),
+        size,
         functions: interface
             .functions
             .iter()
@@ -402,19 +419,19 @@ fn bindgen_on_path() -> Option<PathBuf> {
     None
 }
 
-/// 工具缓存根：`~/.cache/polypack/tools/wasm-bindgen`（与 kotlinc / bundletool 的约定同源）。
-fn tool_cache() -> Option<PathBuf> {
+/// 工具缓存根：`~/.cache/polypack/tools/<tool>`（与 kotlinc / bundletool 的约定同源）。
+pub(super) fn tool_cache_dir(tool: &str) -> Option<PathBuf> {
     let home = std::env::var_os("HOME")
         .or_else(|| std::env::var_os("USERPROFILE"))
         .map(PathBuf::from)?;
-    Some(home.join(".cache/polypack/tools/wasm-bindgen"))
+    Some(home.join(".cache/polypack/tools").join(tool))
 }
 
 /// 缓存里找 CLI：官方发行包解包后形态不一（`<版本>/<发行目录>/wasm-bindgen` 或
 /// `<发行目录>/wasm-bindgen` 或直接 `<wasm-bindgen>`），下探 ≤2 层收集候选，
 /// 优先路径含钉住版本的，其次取字典序最大（与 kotlinc 的 jna 取法同风格）。
 fn cached_bindgen() -> Option<PathBuf> {
-    let root = tool_cache()?;
+    let root = tool_cache_dir("wasm-bindgen")?;
     let mut candidates = Vec::new();
     let mut stack = vec![(root.clone(), 0usize)];
     while let Some((dir, depth)) = stack.pop() {
@@ -501,9 +518,12 @@ pub fn generate(
 
     clear_dir(out_dir)?;
     bindgen.generate(&wasm, out_dir, &out_name)?;
+    // 裁剪时机（T-M3-08 接口契约）：出口目录生成后、随包拷贝前——随包条目即优化后字节
+    let size =
+        super::wasm_opt::optimize_wasm(&out_dir.join(format!("{out_name}_bg.wasm")), events)?;
     append_glue_tail(&out_dir.join(format!("{out_name}.js")))?;
 
-    let manifest = manifest_for(&interface, &out_name, &engine);
+    let manifest = manifest_for(&interface, &out_name, &engine, size);
     std::fs::write(out_dir.join(MANIFEST_FILE), manifest_json(&manifest))
         .map_err(|err| io_error(&out_dir.join(MANIFEST_FILE), err))?;
     std::fs::write(out_dir.join(LOADER_FILE), loader_js(&manifest))
@@ -662,7 +682,10 @@ fn append_glue_tail(glue: &Path) -> Result<(), StageError> {
 }
 
 /// wasm 出口产物的库级缓存键：核心 crate 源树 + 锁文件 + 出口与 triple + **接口摘要** +
-/// 引擎（CLI 版本）+ profile。
+/// 引擎（CLI 版本）+ **裁剪工具指纹** + profile。
+///
+/// 裁剪工具进键（T-M3-08）：wasm-opt 版本（或缺失）变则产物字节变——缺它的机器不该拿到
+/// 别机裁过的树，换版本也不该复用旧字节。
 pub fn cache_key(
     project: &Project,
     interface: &Digest,
@@ -687,9 +710,13 @@ pub fn cache_key(
         sources,
         lockfile,
         target_spec: format!("wasm-bindgen:{WASM_TRIPLE}:{core_crate}_wasm"),
+        // 裁剪工具缺失时记 `wasm-opt:none`：键区分「裁过的树」与「没裁的树」
         toolchain: format!(
-            "{}+{SANDBOX_SCHEMA}+{engine}+{interface}",
-            super::BRIDGE_SCHEMA
+            "{}+{SANDBOX_SCHEMA}+{engine}+{interface}+{}",
+            super::BRIDGE_SCHEMA,
+            super::wasm_opt::WasmOpt::discover()
+                .map(|tool| tool.fingerprint())
+                .unwrap_or_else(|| "wasm-opt:none".to_string())
         ),
         profile: profile.to_string(),
     }))

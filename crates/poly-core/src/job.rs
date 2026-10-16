@@ -39,6 +39,28 @@ pub struct CredentialRef {
     pub source: CredentialSource,
 }
 
+/// 超预算策略（`[budget].policy`）。
+#[derive(
+    Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema,
+)]
+#[serde(rename_all = "lowercase")]
+pub enum SizePolicy {
+    /// 超预算仅告警（默认：本地开发不拦）。
+    #[default]
+    Warn,
+    /// 超预算即失败（CI 门禁；`poly::E_BUDGET_0001`）。
+    Fail,
+}
+
+impl std::fmt::Display for SizePolicy {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(match self {
+            SizePolicy::Warn => "warn",
+            SizePolicy::Fail => "fail",
+        })
+    }
+}
+
 /// 产物预算（§2 原则 4）。
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Budget {
@@ -46,6 +68,9 @@ pub struct Budget {
     pub size: Option<u64>,
     /// 启动时延上限（毫秒）。
     pub startup_ms: Option<u64>,
+    /// 超预算策略（缺省 `warn`；`fail` 时超预算中止，见 [`SizePolicy`]）。
+    #[serde(default)]
+    pub policy: SizePolicy,
 }
 
 /// 构建时限预算（ROADMAP §5.4 的默认值）。

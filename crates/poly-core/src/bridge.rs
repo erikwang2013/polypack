@@ -36,6 +36,7 @@ mod engine;
 pub mod kotlinc;
 pub mod udl;
 pub mod wasm;
+pub mod wasm_opt;
 
 pub use engine::UniffiEngine;
 
