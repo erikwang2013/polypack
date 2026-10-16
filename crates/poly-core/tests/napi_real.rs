@@ -161,10 +161,10 @@ fn host_node_include() -> Option<PathBuf> {
     let mut candidates = Vec::new();
     if let Some(path) = std::env::var_os("PATH") {
         for dir in std::env::split_paths(&path) {
-            if dir.join("node").is_file() {
-                if let Some(prefix) = dir.parent() {
-                    candidates.push(prefix.join("include/node"));
-                }
+            if dir.join("node").is_file()
+                && let Some(prefix) = dir.parent()
+            {
+                candidates.push(prefix.join("include/node"));
             }
         }
     }

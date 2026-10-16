@@ -674,8 +674,8 @@ fn emit_return(func: &str, lib: &str, ctype: CType) -> String {
 /// 模块注册：属性表 + `napi_register_module_v1`（node/RNOH）+ `napi_module_register`
 /// 构造函数（ArkTS 装载路径，仅 `__OHOS__`）。
 fn emit_init(namespace: &str, functions: &[super::udl::Function]) -> String {
-    let mut out = format!(
-        "\n/* 模块注册：两个入口共用同一张属性表。 */\nstatic napi_value PolyInit(napi_env env, napi_value exports) {{\n  napi_property_descriptor props[] = {{\n"
+    let mut out = String::from(
+        "\n/* 模块注册：两个入口共用同一张属性表。 */\nstatic napi_value PolyInit(napi_env env, napi_value exports) {\n  napi_property_descriptor props[] = {\n",
     );
     for function in functions {
         out.push_str(&format!(

@@ -264,15 +264,15 @@ fn reserved_exits_fail_before_engine_lookup() {
     let temp = TempDir::new("reserved");
     let project = fixture(temp.path(), UDL);
     let mut sink = HumanSink { out: Vec::new() };
-    for lang in [BridgeLang::Cffi] {
-        let err = bridge::generate(&project, &[lang], &mut sink).expect_err("保留出口必须报错");
-        assert_code(err, codes::E_BRIDGE_0002, "M3");
-        assert!(
-            !project.root.join("bridge").join(lang.dir()).exists(),
-            "{} 不该产出目录",
-            lang.dir()
-        );
-    }
+    // 仅剩 Cffi 一个保留出口（Napi 于 T-M3-01 转正、Wasm 于 T-M3-07 走编译产物形态）
+    let lang = BridgeLang::Cffi;
+    let err = bridge::generate(&project, &[lang], &mut sink).expect_err("保留出口必须报错");
+    assert_code(err, codes::E_BRIDGE_0002, "M3");
+    assert!(
+        !project.root.join("bridge").join(lang.dir()).exists(),
+        "{} 不该产出目录",
+        lang.dir()
+    );
     // wasm 出口（T-M3-07）已接引擎但是**编译产物形态**：绑定流水线拒绝并指向 `poly bridge wasm`
     //（避免在 `bridge/wasm-bindgen` 落半份绑定形态的产物）
     let err = bridge::generate(&project, &[BridgeLang::WasmBindgen], &mut sink)

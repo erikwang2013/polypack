@@ -9,6 +9,7 @@
 //! - `keystore` + `store_password` + `key_alias` + `key_password`：应用签名密钥（PKCS12）；
 //! - `app_cert`：应用证书链（PEM / 证书链字节）——HAP 的 `sign-app -appCertFile`；
 //! - `profile`：已签名 Profile（p7b 字节）——`sign-app -profileFile`。
+//!
 //! `app_cert` / `profile` 缺失时在此快速失败（E_SIG_0002），绝不空手签名。
 //!
 //! **脱敏**：与 apksigner 不同，hap-sign-tool 的口令只能进 **argv**（无 `env:` 间接）。
