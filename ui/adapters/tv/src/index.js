@@ -19,11 +19,13 @@ export {
   DIRECTIONS,
   KEY_MAP,
   createFocusEngine,
+  createTvFocus,
   handleKey,
   hasNoDeadEnds,
   reachableFrom,
   traversalSnapshot,
 } from "./focus.js";
+export { checkConnectivity, deriveFocusNodes } from "./geometry.js";
 
 /**
  * 创建目标适配器（RendererAdapter 契约对象）。

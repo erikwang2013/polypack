@@ -1,4 +1,4 @@
-// T-M4-01 代理渲染测试：同一示例页面组件树经 react-dom/server 静态渲染。
+// T-M4-01/02 代理渲染测试：同一示例页面组件树经 react-dom/server 静态渲染。
 // 定位：TV 真机 / 模拟器预览需设备链，本测试是代理证据，非真机证据；
 // 断言四件事：① 语义标记与 poly init 模板页一致；② 焦点环随方向键移动（capabilities 驱动）；
 // ③ data-focus 观测锚点（T-M4-13 冒烟通道）；④ 安全区外框由 platformStyle().safeArea 派生。
@@ -69,20 +69,36 @@ test("代理渲染：同一示例页面组件树可渲染，语义标记与 poly
   assert.match(html, /data-testid="tv-card"/, "页卡锚点");
 });
 
-test("降级驱动：TV 基线（focusNav true）渲染焦点环；方向键移动环随焦点", { skip }, () => {
+test("降级驱动：TV 基线（focusNav true）渲染焦点环；四向移动环随焦点（T-M4-02 冒烟）", { skip }, () => {
   const { page } = setup();
   const first = render(page);
   assert.equal(focusedId(first), "counter", "初始焦点 = counter");
   assert.equal(ringCount(first), 1, "恰好一个节点带焦点环");
 
-  assert.deepEqual(page.onKey("ArrowDown"), { type: "move", direction: "down", from: "counter", to: "reset" });
-  const moved = render(page);
-  assert.equal(focusedId(moved), "reset", "方向键移动后焦点锚点随动");
-  assert.equal(ringCount(moved), 1, "环随焦点移动（旧位置无残留）");
-  assert.ok(moved.indexOf(`data-testid="reset"`) < moved.indexOf(ACCENT), "环落在 reset 节点上");
-
-  assert.deepEqual(page.onKey("ArrowUp"), { type: "move", direction: "up", from: "reset", to: "counter" });
-  assert.equal(focusedId(render(page)), "counter", "方向键回移恢复");
+  // 2×2 网格四向走查（几何推导遍历图；每步：描述符 + DOM 锚点 + 环可见性）
+  const walk = [
+    ["ArrowDown", "detail"],
+    ["ArrowRight", "exit"],
+    ["ArrowUp", "reset"],
+    ["ArrowLeft", "counter"],
+  ];
+  for (const [key, to] of walk) {
+    const result = page.onKey(key);
+    assert.equal(result.type, "move", `${key} 应为移动`);
+    assert.equal(result.to, to, `${key} → ${to}`);
+    const html = render(page);
+    assert.equal(focusedId(html), to, `方向键移动后焦点锚点随动（${key}）`);
+    assert.equal(ringCount(html), 1, "环随焦点移动（旧位置无残留）");
+    assert.ok(html.indexOf(`data-testid="${to}"`) < html.indexOf(ACCENT), `环落在 ${to} 节点上`);
+  }
+  // 无死路：边界方向原地且环不灭
+  assert.deepEqual(page.onKey("ArrowUp"), {
+    type: "move",
+    direction: "up",
+    from: "counter",
+    to: "counter",
+  });
+  assert.equal(ringCount(render(page)), 1, "边界原地后环仍在");
 });
 
 test("安全区外框：padding 由 platformStyle().safeArea 派生（CSS 百分比形态）", { skip }, () => {
@@ -103,7 +119,7 @@ test("交互路径：OK 键激活推进计数（无指针环境的中心键通�
   assert.deepEqual(page.getState(), { focus: "counter", clicks: 0 });
   assert.deepEqual(page.onKey("Enter"), { type: "activate", id: "counter" });
   assert.equal(page.getState().clicks, 1, "计数按钮推进");
-  page.onKey("ArrowDown");
+  page.onKey("ArrowRight");
   assert.deepEqual(page.onKey("DPAD_CENTER"), { type: "activate", id: "reset" });
   assert.equal(page.getState().clicks, 0, "重置清零");
   assert.equal(focusedId(render(page)), "reset", "激活不移动焦点");
