@@ -10,7 +10,8 @@
 //!
 //! wasm 沙箱出口（T-M3-07 的 `<工程根>/bridge/wasm-bindgen/` 四文件）在场即整目录拷进
 //! 随包根（Taro 目标 `dist/`、快应用 `src/`），加载契约见出口内的 `polypack-loader.js`；
-//! 缺席不报错（无 wasm 出口的工程照常打包）。
+//! 缺席不报错（无 wasm 出口的工程照常打包）。实现落在 [`crate::webapp::stage_bridge`]
+//! （T-M4 起 web 系 TV 目标复用同一份，口径唯一）。
 //!
 //! 宿主（Taro 工程）解析：`<host_project>/ui`（poly 工程的 ui/ 即 Taro 工程）→ `<host_project>`
 //! 自身 → `<host_project>/ui/adapters/taro/host`（本仓适配器布局：宿主骨架落包内 `host/`）。
@@ -27,15 +28,13 @@ use crate::exec;
 use crate::fsutil;
 use crate::inputs::{BundleInputs, version_parts};
 use crate::packager::{Artifact, BundlePlan, Command, Packager};
+use crate::webapp::stage_bridge;
 
 /// 产物目录名（`<out_dir>/miniapp/`）。
 const MINIAPP_DIR: &str = "miniapp";
 
 /// 代码包目录名（Taro `outputRoot` 落点）。
 const DIST_DIR: &str = "dist";
-
-/// wasm 沙箱出口（T-M3-07）在随包根下的相对路径（与工程根侧同名，引用口径统一）。
-const BRIDGE_REL: &str = "bridge/wasm-bindgen";
 
 /// 页面路径（app.config 的 pages 清单与结构断言的锚点）。
 const PAGE: &str = "pages/index/index";
@@ -285,7 +284,7 @@ fn package_taro(
 
     exec::run_all(&plan.commands)?;
     assert_code_package(&dist, mini)?;
-    let bridge_note = stage_wasm_bridge(inputs, &dist, mini)?;
+    let bridge_note = stage_bridge(inputs, &dist, mini.id)?;
 
     let mut notes = vec![
         format!(
@@ -548,7 +547,7 @@ fn package_quickapp(inputs: &BundleInputs, spec: &TargetSpec) -> Result<Artifact
     );
     fsutil::write_text(&dir.join("package.json"), &package_json)?;
 
-    let bridge_note = stage_wasm_bridge(inputs, &src, &QUICKAPP)?;
+    let bridge_note = stage_bridge(inputs, &src, QUICKAPP.id)?;
 
     // `.rpk` 收口（T-M3-12）：hap-toolkit 在场真跑 `hap build`；缺席如实跳过（编译工程照常交付）
     let rpk_note = build_rpk(&dir)?;
@@ -796,64 +795,6 @@ fn dist_dir(inputs: &BundleInputs) -> PathBuf {
     miniapp_dir(inputs).join(DIST_DIR)
 }
 
-/// wasm 沙箱出口（T-M3-07 的四个随包文件）随代码包分发：`miniapp_bridge` 目录整拷到
-/// `dest_root`（Taro 目标 = `dist/`、快应用 = `src/`，都在各自平台的随包根内）。
-///
-/// 目录缺席 = 工程没跑过 `poly bridge wasm`（或本无 wasm 接口）——不属错误，notes 也不占行；
-/// 在场则两个不变式文件必须齐备，缺一即拒（半成品出口目录不许静默进包）。打包期不解析
-/// wasm / 胶水内容：白名单与导入面核对是 loader 的加载期闸（T-M3-07），不在这里重复。
-fn stage_wasm_bridge(
-    inputs: &BundleInputs,
-    dest_root: &Path,
-    mini: &MiniSpec,
-) -> Result<Option<String>, BundleError> {
-    let Some(src) = inputs.miniapp_bridge.as_deref() else {
-        return Ok(None);
-    };
-    if !src.is_dir() {
-        return Ok(None);
-    }
-    for invariant in ["manifest.json", "polypack-loader.js"] {
-        if !src.join(invariant).is_file() {
-            return Err(BundleError::InvalidInput {
-                packager: mini.id,
-                field: "miniapp_bridge",
-                value: src.join(invariant).display().to_string(),
-                reason: format!(
-                    "wasm 出口目录在场但缺 {invariant}——半成品不许随包，重跑 poly bridge wasm"
-                ),
-            });
-        }
-    }
-    let dest = dest_root.join(BRIDGE_REL);
-    fsutil::copy_tree(src, &dest)?;
-    // 只是拷，不重编：随包字节 = 出口目录当前字节（T-M3-08 的裁剪时机在出口层，
-    // 「出口目录生成后、随包拷贝前」——打包器不做二次处理）
-    let bytes = fsutil::tree_bytes(&dest)?;
-    let wasm = match wasm_leaf_bytes(&dest)? {
-        Some(wasm) => format!("，其中 wasm {wasm} 字节"),
-        None => String::new(),
-    };
-    Ok(Some(format!(
-        "wasm 沙箱出口随包：{BRIDGE_REL}/（{bytes} 字节{wasm}；随包字节即出口层 wasm-opt 裁剪后字节；\
-         加载契约 polypack-loader.js 的 load(bytes)）"
-    )))
-}
-
-/// 出口目录内 `.wasm` 文件的字节数（T-M3-08 体积报告；T-M3-07 四文件形态下恰一个）。
-fn wasm_leaf_bytes(dir: &Path) -> Result<Option<u64>, BundleError> {
-    let mut total: Option<u64> = None;
-    for entry in std::fs::read_dir(dir).map_err(io_err(dir))? {
-        let entry = entry.map_err(io_err(dir))?;
-        let path = entry.path();
-        if path.extension().is_some_and(|ext| ext == "wasm") {
-            let len = entry.metadata().map_err(io_err(&path))?.len();
-            total = Some(total.unwrap_or(0) + len);
-        }
-    }
-    Ok(total)
-}
-
 /// 读文本（错误带路径）。
 fn read_text(path: &Path) -> Result<String, BundleError> {
     std::fs::read_to_string(path).map_err(io_err(path))
@@ -862,6 +803,7 @@ fn read_text(path: &Path) -> Result<String, BundleError> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::webapp::BRIDGE_REL;
     use poly_targets::{Bridge, Host, PackageSpec, Runtime};
 
     fn spec(id: &str, format: &str) -> TargetSpec {

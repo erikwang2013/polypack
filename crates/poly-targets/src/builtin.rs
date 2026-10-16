@@ -8,6 +8,8 @@
 //! M4 增补 L3 电视两目标（android-tv / fire-tv，tier 3，ROADMAP §3.4 前两行，T-M4-04）：
 //! 两目标复用同一条 Android 打包链（`apk` / `android-aapt2`），差异只在清单（Leanback）
 //! 与发布渠道（TV 轨道 / 亚马逊应用商店）。
+//! M4 增补 L3 web 系 TV 四目标（tizen-tv / webos-tv / vidaa-tv / smartcast-tv，tier 3，
+//! ROADMAP §3.4，T-M4-08/09/10）：wasm 核心 + react-dom UI，wgt / ipk / web-app 出包。
 
 use crate::spec::{Bridge, Host, PackageSpec, Runtime, TargetSpec};
 
@@ -269,6 +271,94 @@ pub fn builtin() -> Vec<TargetSpec> {
             publish: vec!["amazon-appstore".to_string()],
             experimental: false,
             notes: Some("复用 Android TV 同一 APK 链，渠道指向亚马逊应用商店".to_string()),
+        },
+        // ---- L3 web 系 TV 四目标（T-M4-08 / T-M4-09 / T-M4-10，ROADMAP §3.4）：wasm 核心 +
+        // react-dom UI，一份 UI 产物多目标复用（同源同摘要，T-M4-09 验收口径）。签名边界如实
+        // 入 notes：Tizen 作者证书归三星工具链（本机无 tizen CLI）；webOS 发布签名在平台侧；
+        // VIDAA / Vizio 无签名、无推送（只出沙箱自检包）。 ----
+        TargetSpec {
+            id: "tizen-tv".to_string(),
+            tier: 3,
+            hosts: vec![Host::Win, Host::Linux, Host::Macos],
+            runtime: Runtime::Wasm,
+            bridge: Bridge::WasmBindgen,
+            ui: vec!["react-dom".to_string()],
+            package: PackageSpec {
+                format: "wgt".to_string(),
+                builder: "tizen-wgt".to_string(),
+            },
+            signing: Some("tizen-author".to_string()),
+            verify: vec!["wgt-lint".to_string()],
+            publish: vec!["tizen-seller-office".to_string()],
+            experimental: false,
+            notes: Some(
+                "web 运行时（Tizen TV）；作者证书签名（凭据引用 tizen-author）与侧载安装归三星\
+                 工具链（本机无 tizen CLI，SDK 校验器缺席时如实跳过）"
+                    .to_string(),
+            ),
+        },
+        TargetSpec {
+            id: "webos-tv".to_string(),
+            tier: 3,
+            hosts: vec![Host::Win, Host::Linux, Host::Macos],
+            runtime: Runtime::Wasm,
+            bridge: Bridge::WasmBindgen,
+            ui: vec!["react-dom".to_string()],
+            package: PackageSpec {
+                format: "ipk".to_string(),
+                builder: "webos-ares".to_string(),
+            },
+            signing: None,
+            verify: vec!["ares-package".to_string()],
+            publish: vec!["lg-content-store".to_string()],
+            experimental: false,
+            notes: Some(
+                "web 运行时（LG webOS）；签名按平台侧（LG Content Store 发布签名），本地不签名\
+                 （本机无 ares-cli，SDK 校验器缺席时如实跳过）"
+                    .to_string(),
+            ),
+        },
+        TargetSpec {
+            id: "vidaa-tv".to_string(),
+            tier: 3,
+            hosts: vec![Host::Win, Host::Linux, Host::Macos],
+            runtime: Runtime::Wasm,
+            bridge: Bridge::WasmBindgen,
+            ui: vec!["react-dom".to_string()],
+            package: PackageSpec {
+                format: "web-app".to_string(),
+                builder: "vidaa-web-app".to_string(),
+            },
+            signing: None,
+            verify: vec!["sandbox-selfcheck".to_string()],
+            publish: vec!["vidaa-store".to_string()],
+            experimental: false,
+            notes: Some(
+                "web 运行时（海信 VIDAA）；无签名、无推送——只出沙箱自检包（入口 / 清单字段 / \
+                 体积），提审与安装归平台商店侧"
+                    .to_string(),
+            ),
+        },
+        TargetSpec {
+            id: "smartcast-tv".to_string(),
+            tier: 3,
+            hosts: vec![Host::Win, Host::Linux, Host::Macos],
+            runtime: Runtime::Wasm,
+            bridge: Bridge::WasmBindgen,
+            ui: vec!["react-dom".to_string()],
+            package: PackageSpec {
+                format: "web-app".to_string(),
+                builder: "smartcast-web-app".to_string(),
+            },
+            signing: None,
+            verify: vec!["sandbox-selfcheck".to_string()],
+            publish: vec!["vizio-platform".to_string()],
+            experimental: false,
+            notes: Some(
+                "web 运行时（Vizio SmartCast，远程托管）；无签名、无推送——只出沙箱自检包\
+                 （入口 / 清单字段 / 体积），提报与安装归平台侧"
+                    .to_string(),
+            ),
         },
     ]
 }

@@ -98,8 +98,10 @@ fn builtin_has_seven_valid_targets() {
     );
     assert_eq!(
         registry.all().count(),
-        13,
-        "M4 起内建 = L1 七 + L2 小程序族四（wechat / alipay / douyin / quickapp）+ L3 电视两（android-tv / fire-tv）"
+        17,
+        "M4 起内建 = L1 七 + L2 小程序族四（wechat / alipay / douyin / quickapp）+ \
+         L3 电视两（android-tv / fire-tv）+ L3 web 系 TV 四（tizen-tv / webos-tv / vidaa-tv / \
+         smartcast-tv，T-M4-08/09/10）"
     );
     for spec in registry.all() {
         spec.validate()
@@ -215,7 +217,8 @@ fn linux_host_resolves_four_l1_targets_from_all() {
         BTreeSet::from(["wechat", "alipay", "douyin", "quickapp"]),
         "小程序族四目标应全部入选"
     );
-    // L3 电视两目标同声明三宿主（复用 Android 工具链）→ Linux 宿主下也全部入选
+    // L3 电视两目标同声明三宿主（复用 Android 工具链）→ Linux 宿主下也全部入选；
+    // L3 web 系 TV 四目标声明三宿主（web 运行时，同 web 的宿主面）→ 任何宿主下都入选
     let l3: BTreeSet<&str> = resolved
         .selected
         .iter()
@@ -224,8 +227,15 @@ fn linux_host_resolves_four_l1_targets_from_all() {
         .collect();
     assert_eq!(
         l3,
-        BTreeSet::from(["android-tv", "fire-tv"]),
-        "电视两目标应全部入选"
+        BTreeSet::from([
+            "android-tv",
+            "fire-tv",
+            "tizen-tv",
+            "webos-tv",
+            "vidaa-tv",
+            "smartcast-tv"
+        ]),
+        "电视两目标与 web 系 TV 四目标应全部入选"
     );
     assert_eq!(selected.len(), l1.len() + l2.len() + l3.len());
 
@@ -235,7 +245,7 @@ fn linux_host_resolves_four_l1_targets_from_all() {
         assert!(!target.reason.trim().is_empty(), "{} 缺排除原因", target.id);
     }
 
-    // 内建目标均为 L1 / L2，不涉及厂商授权分支。
+    // 内建目标均为 L1 / L2 / L3，不涉及厂商授权分支。
     assert!(resolved.excluded.iter().all(|e| !e.reason.contains("L7")));
 }
 
@@ -339,4 +349,83 @@ fn builtin_matches_roadmap_3_4_tv() {
         );
         assert!(!spec.experimental, "{id}: 非实验目标");
     }
+}
+
+/// T-M4-08 / T-M4-09 / T-M4-10 验收（声明侧）：L3 web 系 TV 四目标按 ROADMAP §3.4 逐列对齐；
+/// T-M4-10 的边界口径（无签名 / 无推送）落在 `notes`。
+#[allow(clippy::type_complexity)] // 同上：测试数据表与表格对照优先
+const L3_WEB_TV_COLUMNS: &[(&str, &str, &str, &str, Option<&str>)] = &[
+    // id / package.format / builder / verify[0] / signing
+    (
+        "tizen-tv",
+        "wgt",
+        "tizen-wgt",
+        "wgt-lint",
+        Some("tizen-author"), // Tizen 作者证书（三星签名工具，凭据引用）
+    ),
+    (
+        "webos-tv",
+        "ipk",
+        "webos-ares",
+        "ares-package",
+        None, // 平台侧（LG Content Store 发布签名）
+    ),
+    (
+        "vidaa-tv",
+        "web-app",
+        "vidaa-web-app",
+        "sandbox-selfcheck",
+        None,
+    ),
+    (
+        "smartcast-tv",
+        "web-app",
+        "smartcast-web-app",
+        "sandbox-selfcheck",
+        None,
+    ),
+];
+
+#[test]
+fn builtin_matches_roadmap_3_4_web_tv() {
+    let registry = Registry::builtin();
+    for (id, format, builder, verify, signing) in L3_WEB_TV_COLUMNS {
+        let spec = registry.get(id).unwrap_or_else(|| panic!("缺少目标 {id}"));
+        assert_eq!(spec.tier, 3, "{id}: web 系 TV 为 L3");
+        assert_eq!(spec.runtime, Runtime::Wasm, "{id}: wasm 核心");
+        assert_eq!(spec.bridge, Bridge::WasmBindgen, "{id}: wasm-bindgen");
+        assert_eq!(
+            spec.ui.iter().map(String::as_str).collect::<Vec<_>>(),
+            vec!["react-dom"],
+            "{id}: ui"
+        );
+        assert_eq!(spec.package.format, *format, "{id}: package.format");
+        assert_eq!(spec.package.builder, *builder, "{id}: package.builder");
+        assert_eq!(
+            spec.verify.first().map(String::as_str),
+            Some(*verify),
+            "{id}: verify"
+        );
+        assert_eq!(spec.signing.as_deref(), *signing, "{id}: signing");
+        assert_eq!(spec.hosts.len(), 3, "{id}: web 运行时三宿主全可达");
+        assert!(spec.notes.is_some(), "{id}: 边界须如实入 notes");
+    }
+
+    // T-M4-10 边界口径：VIDAA / Vizio 的 notes 明确「无签名、无推送」
+    for id in ["vidaa-tv", "smartcast-tv"] {
+        let notes = registry
+            .get(id)
+            .and_then(|spec| spec.notes.clone())
+            .unwrap_or_else(|| panic!("{id} 缺 notes"));
+        assert!(
+            notes.contains("无签名") && notes.contains("无推送"),
+            "{id}: {notes}"
+        );
+    }
+    // webOS 的发布签名按平台侧标注（T-M4-09）
+    let notes = registry
+        .get("webos-tv")
+        .and_then(|spec| spec.notes.clone())
+        .expect("webos-tv 缺 notes");
+    assert!(notes.contains("平台侧"), "webos-tv: {notes}");
 }
