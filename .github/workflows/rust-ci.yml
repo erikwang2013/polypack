@@ -50,10 +50,15 @@ jobs:
         # 会掩盖后续 crate 的问题；三宿主加固期需要全景）
         run: cargo test --workspace --no-fail-fast
 
-      # UI 适配层测试（T-M2-04/05）：纯 node:test，无 npm install 也绿（缺依赖时 skip 不 fail）
+      # UI 适配层测试（T-M2-04/05 native；T-M3-05 taro、T-M4-01 tv 同挂）：纯 node:test，
+      # 无 npm install 也绿（缺依赖时 skip 不 fail）；目录未落地时跳过（前向兼容新包）
       - name: ui 适配层测试（node --test）
-        working-directory: ui/adapters/native
-        run: node --test
+        run: |
+          for dir in ui/adapters/native ui/adapters/taro ui/adapters/tv; do
+            [ -d "$dir" ] || continue
+            echo "== $dir =="
+            (cd "$dir" && node --test)
+          done
 
       # 供应链检查只需跑一次，固定挂在 Linux 宿主（T-M0-11）
       - name: cargo-deny（licenses / bans / advisories）
