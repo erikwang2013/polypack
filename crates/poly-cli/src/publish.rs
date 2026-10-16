@@ -443,6 +443,10 @@ mod tests {
             std::env::temp_dir().join(format!("polypack-publish-{tag}-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&root);
         std::fs::create_dir_all(&root).expect("工程目录可建");
+        // 根形态归一：`project::load` 内部 canonicalize（mac 的 /var→/private/var；win 的 8.3
+        // 短名→`\\?\` 长名）——测试从这里派生的一切路径须同一形态，否则交叉断言在 mac/win
+        // 上错位（CI 实证 2026-10-17）。
+        let root = root.canonicalize().expect("工程根可规范化");
         std::fs::write(
             root.join("polypack.toml"),
             "[package]\nname = \"fixture-app\"\nversion = \"0.0.1\"\n[ui]\nframework = \"react\"\nentry = \"index.html\"\n[core]\ncrate = \"core\"\n",
@@ -454,10 +458,13 @@ mod tests {
 
     /// 种一个 `.rpk` 到目标产物落点（内容随意——本层只看定位与字节数）。
     fn seed_rpk(root: &std::path::Path, target: &str, name: &str) -> PathBuf {
+        // 逐段 join（不夹带 `/` 的多段字符串）：Windows 上分隔符形态与定位器一致。
         let dist = root
-            .join(".polypack/packages")
+            .join(".polypack")
+            .join("packages")
             .join(target)
-            .join("miniapp/dist");
+            .join("miniapp")
+            .join("dist");
         std::fs::create_dir_all(&dist).expect("dist 可建");
         let path = dist.join(name);
         std::fs::write(&path, b"PK\x03\x04stub-rpk").expect("写 .rpk");

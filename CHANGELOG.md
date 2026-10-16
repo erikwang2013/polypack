@@ -14,9 +14,9 @@ Notable changes are recorded here; since v1.0.0, tags and releases follow `vX.Y.
 *M3 HarmonyOS & mini-program delivery — RNOH host + NAPI outlet, HAP packager + hap-sign-tool chain, adapter-taro + four-target Taro pipeline (incl. real .rpk), wasm sandbox outlet with a two-gate allowlist + wasm-opt trimming (−51%) + the `[budget]` gate, three publish clients on a zero-fork driver with a single-file carrier, devtools contract tests + the sixth workflow. Full-battery verification and all six workflows green on three hosts.*
 
 ### Fixed
-- **CI 逐环修复与如实更正**（2026-10-16/17）：devtools 契约登录态路径断言兼容 Windows Debug 转义（windows-2022 实证）；`cargo-deny` 与 `cargo-audit` 双配置豁免 RUSTSEC-2023-0071（rsa Marvin 计时侧信道——上游无修复版、仅本地签名无解密面；audit 腿此前被 deny 挡在前面掩盖）；`probes` 计时用例边距加固（重载假红实证）；`bridge-real` NDK 安装 retry 与留产物空转修复（RAII 先删 → `POLY_KEEP_TEMP` 通道；非空回执后翻 `error`）；清单统一（poly-publish / base64 进根 `workspace.dependencies`）。更正：v1.4.0 记「`schedule` 触发历史为 0」实为观察窗口过短——首夜即已触发（best-effort 延迟约 3 小时），mobile-contract 真实模式经 schedule 全绿。
+- **CI 逐环修复与如实更正**（2026-10-16/17）：devtools 契约登录态路径断言兼容 Windows Debug 转义（windows-2022 实证）；`cargo-deny` 与 `cargo-audit` 双配置豁免 RUSTSEC-2023-0071（rsa Marvin 计时侧信道——上游无修复版、仅本地签名无解密面；audit 腿此前被 deny 挡在前面掩盖）；`probes` 计时用例边距加固（重载假红实证）；`bridge-real` NDK 安装 retry 与留产物空转修复（RAII 先删 → `POLY_KEEP_TEMP` 通道；非空回执后翻 `error`）；清单统一（poly-publish / base64 进根 `workspace.dependencies`）；跨平台路径形态三修（quickapp lint 腿 root 去 Windows verbatim 前缀——node `createRequire` 不认该前缀；publish 定位器断言形态归一——mac `/private/var`、win 8.3 短名，均三宿主 CI 实证）。更正：v1.4.0 记「`schedule` 触发历史为 0」实为观察窗口过短——首夜即已触发（best-effort 延迟约 3 小时），mobile-contract 真实模式经 schedule 全绿。
 
-*CI hardening ring by ring (Windows path assertion, dual-config RUSTSEC-2023-0071 exemption, probes timing margins, NDK retry + artifact keep-temp); manifest unification; and an honest correction — the `schedule` trigger does fire (fired ~3 h late on its first night).*
+*CI hardening ring by ring (Windows path assertion, dual-config RUSTSEC-2023-0071 exemption, probes timing margins, NDK retry + artifact keep-temp); manifest unification; cross-platform path-shape fixes (Windows verbatim prefix, macOS `/private/var` short/long names); and an honest correction — the `schedule` trigger does fire (fired ~3 h late on its first night).*
 
 ## [1.4.0] — 2026-10-16
 

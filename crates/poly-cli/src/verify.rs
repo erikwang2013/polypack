@@ -1620,11 +1620,9 @@ mod tests {
             // 例 1：合规件 → 通过并给 `hap-toolkit-lint` 的 Verified 判决
             std::fs::write(src.join("manifest.json"), good_manifest).expect("写源清单");
             synth_rpk(&dist, "com.good.debug.0.1.0.rpk", &rpk_entries);
-            assert!(
-                verify_quickapp_lint(&project, &spec, &ids, &mut sink).expect("合规件应通过"),
-                "合规件应校验过"
-            );
+            let ok = verify_quickapp_lint(&project, &spec, &ids, &mut sink).expect("合规件应通过");
             let text = String::from_utf8_lossy(&sink.out).into_owned();
+            assert!(ok, "合规件应校验过；告警流：{text}");
             assert!(text.contains("hap-toolkit-lint"), "{text}");
             assert!(text.contains("com.polypack.good"), "{text}");
             assert!(text.contains("→ true"), "{text}");

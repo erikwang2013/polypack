@@ -670,12 +670,28 @@ pub fn quickapp_hap_root() -> Result<PathBuf, String> {
     let canonical = std::fs::canonicalize(&cli).unwrap_or(cli);
     let candidate = canonical.parent().and_then(Path::parent);
     match candidate {
-        Some(root) if root.join(HAP_VALIDATE_REL).is_file() => Ok(root.to_path_buf()),
+        Some(root) if root.join(HAP_VALIDATE_REL).is_file() => {
+            Ok(strip_verbatim_prefix(root.into()))
+        }
         _ => Err(format!(
             "从 {} 推不出 hap-toolkit 安装根（须含 {HAP_VALIDATE_REL}）",
             canonical.display()
         )),
     }
+}
+
+/// 去掉 Windows `canonicalize` 的 `\\?\` 扩展长度前缀（仅盘符形态）：该路径会经
+/// `node -e` 驱动交给 `createRequire`，而 Node 模块加载器不认 verbatim 前缀（CI
+/// windows-2022 实证 2026-10-17：前缀路径 → require 解析失败 → 驱动非零退出 → lint
+/// 腿误判「未校验」）；去前缀后仍是同一实路径（回到 Win32 常规形态）。UNC 等非盘符形态原样保留。
+fn strip_verbatim_prefix(path: PathBuf) -> PathBuf {
+    #[cfg(windows)]
+    if let Some(rest) = path.to_string_lossy().strip_prefix(r"\\?\") {
+        if rest.as_bytes().get(1) == Some(&b':') {
+            return PathBuf::from(rest);
+        }
+    }
+    path
 }
 
 /// lint 实证锚点相对 hap-toolkit 安装根的路径（2.1.1 真跑定位：`validate.js` 导出
