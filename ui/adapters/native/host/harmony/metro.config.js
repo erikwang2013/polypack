@@ -20,8 +20,9 @@ const config = {
     }),
   },
   // @polypack/adapter-native 以 file:../.. 链接，真实路径在工程根之外 →
-  // 必须纳入 watch 树，否则解析报 UnableToResolveError（与 android 宿主同因，T-M2-05 实测）
-  watchFolders: [path.resolve(__dirname, '../..')],
+  // 必须纳入 watch 树，否则解析报 UnableToResolveError（与 android 宿主同因，T-M2-05 实测）；
+  // @polypack/adapter-tv（file:../../../tv，T-M4-14 TV 安全区单一源）同因同办
+  watchFolders: [path.resolve(__dirname, '../..'), path.resolve(__dirname, '../../../tv')],
 };
 
 module.exports = mergeConfig(

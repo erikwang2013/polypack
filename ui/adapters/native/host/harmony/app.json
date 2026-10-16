@@ -2,6 +2,7 @@
   "name": "PaxApp",
   "displayName": "PolyPack App",
   "polypack": {
-    "pointer": "touch"
+    "pointer": "touch",
+    "tv": false
   }
 }

@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "@polypack/adapter-native": "file:../..",
+    "@polypack/adapter-tv": "file:../../../tv",
     "@react-native-oh/react-native-harmony": "0.84.3",
     "react": "19.2.3",
     "react-native": "0.84.1"
