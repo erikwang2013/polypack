@@ -135,8 +135,14 @@ impl AndroidAab {
         if android.manifest.is_none() {
             let has_icon = icon_mipmap(inputs, &android).is_some();
             let package = android_package(&inputs.product.identifier)?;
-            let manifest =
-                generated_manifest(&inputs.product, &package, &android, &stage, has_icon, flavor);
+            let manifest = generated_manifest(
+                &inputs.product,
+                &package,
+                &android,
+                &stage,
+                has_icon,
+                flavor,
+            );
             plan = plan.with_script(stage.manifest.clone(), manifest);
         }
         for script in generated_res(&inputs.product, &android, &stage) {
@@ -1059,7 +1065,10 @@ mod tests {
         );
         assert!(!tv.contains("android:banner"), "{tv}");
         let aab = generated_manifest(&product, &package, &android, &stage, false, AAB_FLAVOR);
-        assert!(!aab.contains("leanback") && !aab.contains("touchscreen"), "{aab}");
+        assert!(
+            !aab.contains("leanback") && !aab.contains("touchscreen"),
+            "{aab}"
+        );
 
         // 输入 res 里画了 drawable*/tv_banner.*：banner 引用出现；无 tv_banner 的 res 仍不写。
         let base = std::env::temp_dir().join(format!("poly-tv-banner-{}", std::process::id()));

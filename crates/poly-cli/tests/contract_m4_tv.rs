@@ -226,7 +226,10 @@ fn tv_targets_share_one_apk_chain_and_keep_their_own_channels() {
     );
 
     // 渠道（publish）分别指向金样声明的商店，且互不相同。
-    for (spec, want) in [(&android_tv, "google-play-tv"), (&fire_tv, "amazon-appstore")] {
+    for (spec, want) in [
+        (&android_tv, "google-play-tv"),
+        (&fire_tv, "amazon-appstore"),
+    ] {
         assert_eq!(spec.publish, vec![want.to_string()], "{} 渠道", spec.id);
         assert_eq!(
             spec.publish,
@@ -238,13 +241,19 @@ fn tv_targets_share_one_apk_chain_and_keep_their_own_channels() {
 
     // notes 如实标注 ROADMAP §3.4 的两条口径（Leanback 清单 / 复用同一链 + 亚马逊渠道）。
     let notes = android_tv.notes.clone().unwrap_or_default();
-    assert!(notes.contains("Leanback"), "android-tv notes 应点明 Leanback：{notes}");
+    assert!(
+        notes.contains("Leanback"),
+        "android-tv notes 应点明 Leanback：{notes}"
+    );
     let fire_notes = fire_tv.notes.clone().unwrap_or_default();
     assert!(
         fire_notes.contains("复用") && fire_notes.contains("亚马逊"),
         "fire-tv notes 应点明复用链与亚马逊渠道：{fire_notes}"
     );
-    assert!(!android_tv.experimental && !fire_tv.experimental, "两目标均非 experimental");
+    assert!(
+        !android_tv.experimental && !fire_tv.experimental,
+        "两目标均非 experimental"
+    );
 }
 
 /// mock：TV 计划链（`plan()` 只组装脚本与命令；Android SDK 缺席时打 NOTE——CI 三宿主可能
@@ -292,7 +301,10 @@ fn tv_plan_chain_carries_leanback_lines_or_note() {
                     "aapt2",
                     "link",
                 ] {
-                    assert!(blob.contains(marker), "{target} TV 计划链缺 {marker}：\n{blob}");
+                    assert!(
+                        blob.contains(marker),
+                        "{target} TV 计划链缺 {marker}：\n{blob}"
+                    );
                 }
                 assert!(
                     !blob.contains("android:banner"),
@@ -379,7 +391,10 @@ fn entries_report(expected: &[String], actual: &[String]) -> String {
 fn golden_drift_is_reported_with_diff() {
     let golden = load_golden("android-tv");
     let expected = value_str_list(&artifact_of(&golden, "apk")["entries"]);
-    let full = vec!["AndroidManifest.xml".to_string(), "resources.arsc".to_string()];
+    let full = vec![
+        "AndroidManifest.xml".to_string(),
+        "resources.arsc".to_string(),
+    ];
     assert!(
         unmatched_patterns(&expected, &full).is_empty(),
         "合规清单不得报违约：{}",
@@ -534,10 +549,17 @@ fn real_artifact_check(target: &str) {
         String::from_utf8_lossy(&build.stderr)
     );
 
-    let mut log = format!("T-M4-05 契约 real 模式：{target}\n工程：{}\n\n{build_log}\n", workdir.display());
+    let mut log = format!(
+        "T-M4-05 契约 real 模式：{target}\n工程：{}\n\n{build_log}\n",
+        workdir.display()
+    );
     for (index, artifact) in artifacts(&golden).iter().enumerate() {
         let format = artifact["format"].as_str().expect("声明格式").to_string();
-        let found = artifact_file_entries(&workdir, &extension_of_artifact(artifact), artifact["name"].as_str());
+        let found = artifact_file_entries(
+            &workdir,
+            &extension_of_artifact(artifact),
+            artifact["name"].as_str(),
+        );
         let Some((path, names)) = found else {
             if index == 0 {
                 eprintln!(

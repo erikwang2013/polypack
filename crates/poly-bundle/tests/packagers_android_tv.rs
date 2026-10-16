@@ -302,9 +302,7 @@ fn device_has_leanback() -> bool {
     Command::new("adb")
         .args(["shell", "pm", "list", "features"])
         .output()
-        .is_ok_and(|out| {
-            String::from_utf8_lossy(&out.stdout).contains("android.software.leanback")
-        })
+        .is_ok_and(|out| String::from_utf8_lossy(&out.stdout).contains("android.software.leanback"))
 }
 
 /// 设备声明的 ABI（`ro.product.cpu.abilist`，按序）；adb 失败或为空 → 空表（调用方 SKIP）。
@@ -465,7 +463,13 @@ fn tv_format_mismatch_is_rejected() {
         let err = AndroidTv(id).plan(&bundle, &spec).unwrap_err();
         assert_eq!(err.code(), codes::E_BND_0003, "{id}");
         assert!(
-            matches!(err, poly_bundle::error::BundleError::InvalidInput { field: "spec.package.format", .. }),
+            matches!(
+                err,
+                poly_bundle::error::BundleError::InvalidInput {
+                    field: "spec.package.format",
+                    ..
+                }
+            ),
             "{id}"
         );
     }
@@ -492,7 +496,9 @@ fn tv_plan_carries_leanback_and_optional_banner() {
     };
 
     // 无 res 输入（生成 res）：Leanback 两行在，banner 不写（不伪造资源）。
-    let plan = packager.plan(&bundle, &spec_tv("fire-tv")).expect("TV 计划");
+    let plan = packager
+        .plan(&bundle, &spec_tv("fire-tv"))
+        .expect("TV 计划");
     let manifest = manifest_of(&plan);
     assert!(
         manifest.contains(
@@ -513,10 +519,15 @@ fn tv_plan_carries_leanback_and_optional_banner() {
         .iter()
         .filter(|command| command.program.contains("aapt2"))
         .count();
-    assert_eq!(aapt2, 3, "aapt2 命令数（compile + link + link --proto-format）");
+    assert_eq!(
+        aapt2, 3,
+        "aapt2 命令数（compile + link + link --proto-format）"
+    );
     if tools.bundletool.is_some() {
         assert!(
-            plan.commands.iter().any(|c| c.line().contains("build-bundle")),
+            plan.commands
+                .iter()
+                .any(|c| c.line().contains("build-bundle")),
             "bundletool 在场时计划须含 build-bundle"
         );
     }
@@ -550,10 +561,15 @@ fn package_builds_tv_apk_with_leanback_manifest() {
     // 结构：lib/<abi> 与 banner 资源进包。
     let names = zipwrite::entry_names(&apk).expect("读 APK");
     assert!(
-        names.iter().any(|name| name == "lib/arm64-v8a/libpaxcore.so"),
+        names
+            .iter()
+            .any(|name| name == "lib/arm64-v8a/libpaxcore.so"),
         "{names:?}"
     );
-    assert!(names.iter().any(|name| name.contains("tv_banner")), "{names:?}");
+    assert!(
+        names.iter().any(|name| name.contains("tv_banner")),
+        "{names:?}"
+    );
 
     // Leanback / TV 轨道清单断言（aapt2 dump badging）。
     let badging = dump_badging(&tools, &apk);
@@ -587,7 +603,10 @@ fn package_builds_tv_apk_with_leanback_manifest() {
         );
     } else {
         assert!(
-            artifact.notes.iter().any(|note| note.contains("未执行 bundletool")),
+            artifact
+                .notes
+                .iter()
+                .any(|note| note.contains("未执行 bundletool")),
             "{:?}",
             artifact.notes
         );
@@ -733,8 +752,9 @@ fn host_apk() -> Option<PathBuf> {
         let path = PathBuf::from(path);
         return path.is_file().then_some(path);
     }
-    let path = Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../../ui/adapters/native/host/android/app/build/outputs/apk/release/app-release.apk");
+    let path = Path::new(env!("CARGO_MANIFEST_DIR")).join(
+        "../../ui/adapters/native/host/android/app/build/outputs/apk/release/app-release.apk",
+    );
     path.is_file().then_some(path)
 }
 

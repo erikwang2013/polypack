@@ -159,7 +159,10 @@ fn builtin_ids_are_the_l1_set() {
     .map(String::from)
     .into_iter()
     .collect();
-    assert_eq!(l3, expected_l3, "L3 恰为电视族七（tvos + android-tv / fire-tv + web 系四）");
+    assert_eq!(
+        l3, expected_l3,
+        "L3 恰为电视族七（tvos + android-tv / fire-tv + web 系四）"
+    );
 }
 
 #[test]
@@ -323,8 +326,20 @@ fn builtin_matches_roadmap_3_3_mini_programs() {
 #[allow(clippy::type_complexity)] // 同上：测试数据表与表格对照优先
 const L3_COLUMNS: &[(&str, &str, &str, &str, &str)] = &[
     // id / package.format / builder / publish[0] / notes 判词
-    ("android-tv", "apk", "android-aapt2", "google-play-tv", "Leanback"),
-    ("fire-tv", "apk", "android-aapt2", "amazon-appstore", "Android TV"),
+    (
+        "android-tv",
+        "apk",
+        "android-aapt2",
+        "google-play-tv",
+        "Leanback",
+    ),
+    (
+        "fire-tv",
+        "apk",
+        "android-aapt2",
+        "amazon-appstore",
+        "Android TV",
+    ),
 ];
 
 #[test]
