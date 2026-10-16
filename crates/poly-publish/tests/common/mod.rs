@@ -161,6 +161,21 @@ pub fn wechat_payload(appid: &str, secret: &str) -> serde_json::Value {
     })
 }
 
+/// 支付宝凭据载荷（网关 RSA2 应用私钥）。
+pub fn alipay_payload(app_id: &str) -> serde_json::Value {
+    serde_json::json!({
+        "app_id": app_id,
+        "private_key": test_private_key_pem(),
+    })
+}
+
+/// 抖音凭据载荷（access_token 外部注入；铸造链路未确证，客户端不做）。
+pub fn douyin_payload(access_token: &str) -> serde_json::Value {
+    serde_json::json!({
+        "access_token": access_token,
+    })
+}
+
 // ---------------------------------------------------------------- 测试密钥
 
 /// 测试 RSA 私钥（PKCS#8 PEM；运行时生成一次，进程内缓存）。
@@ -188,6 +203,24 @@ pub fn verify_raw_signature(message: &[u8], signature_b64: &str) {
     key.to_public_key()
         .verify(rsa::Pkcs1v15Sign::new_unprefixed(), message, &signature)
         .expect("签名须是该消息的 raw PKCS#1 v1.5 私钥运算（无 DigestInfo）");
+}
+
+/// 核验 RSA-SHA256 / PKCS#1 v1.5 签名（支付宝网关 RSA2 口径；测试侧用测试密钥公钥独立复算）。
+pub fn verify_rsa_sha256(message: &[u8], signature_b64: &str) {
+    use rsa::pkcs1::EncodeRsaPublicKey as _;
+    use rsa::pkcs8::DecodePrivateKey as _;
+
+    let key = rsa::RsaPrivateKey::from_pkcs8_pem(test_private_key_pem()).expect("测试密钥可解析");
+    let der = key.to_public_key().to_pkcs1_der().expect("公钥 PKCS#1 DER");
+    let signature = base64::engine::general_purpose::STANDARD
+        .decode(signature_b64)
+        .expect("签名为标准 base64");
+    ring::signature::UnparsedPublicKey::new(
+        &ring::signature::RSA_PKCS1_2048_8192_SHA256,
+        der.as_bytes(),
+    )
+    .verify(message, &signature)
+    .expect("签名须是该消息的 RSA-SHA256 PKCS#1 v1.5 签名");
 }
 
 /// DER → PEM（64 列折行；头 / 尾行由 `label` 参数拼装，源码行内不出现完整私钥头）。

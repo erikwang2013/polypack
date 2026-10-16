@@ -1,0 +1,10 @@
+# 供应链审计配置（T-M0-11 的 cargo-audit 腿）。cargo-deny 读 deny.toml，cargo-audit 读本文件
+# ——两边的豁免必须同步维护（交叉引用已互相注明）。
+[advisories]
+ignore = [
+    # RUSTSEC-2023-0071：rsa crate 的 Marvin 计时侧信道——RustCrypto 无修复版本
+    # （"No fixed upgrade is available"）。本仓用途仅本地对自有私钥做 PKCS#1 v1.5 **签名**
+    # （T-M3-09 微信 CI 协议），不含服务端解密面。触发复查：引入 RSA 解密路径、或上游出修复版。
+    # 同款豁免见 deny.toml 的 [advisories].ignore（两处须一致）。
+    "RUSTSEC-2023-0071",
+]

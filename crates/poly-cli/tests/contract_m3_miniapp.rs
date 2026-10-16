@@ -532,6 +532,12 @@ fn real_artifact_check(target: &str) {
         std::fs::write(bridge.join(name), bytes).expect("写出口文件");
     }
 
+    // 体积预算门禁（T-M3-08）在四端代码包上生效：人为把上限压到 1 字节（warn 策略），
+    // 构建仍须绿、事件流须给带 `poly::E_BUDGET_0001` 的 `budgeted` 判定（判定面 = 包体字节）。
+    let config = workdir.join("polypack.toml");
+    let text = std::fs::read_to_string(&config).expect("配置可读");
+    std::fs::write(&config, format!("{text}\n[budget]\nsize = 1\n")).expect("配置可写");
+
     let build = poly(&["build", "--target", target, "--json"], &workdir);
     assert!(
         build.status.success(),
@@ -539,6 +545,28 @@ fn real_artifact_check(target: &str) {
         build.status,
         String::from_utf8_lossy(&build.stderr)
     );
+    let stdout = String::from_utf8_lossy(&build.stdout);
+    let budgeted = stdout
+        .lines()
+        .filter(|line| !line.trim().is_empty())
+        .map(|line| serde_json::from_str::<serde_json::Value>(line).expect("JSON Lines"))
+        .find(|event| event["event"] == "budgeted")
+        .unwrap_or_else(|| panic!("{target} 应有体积预算判定事件：{stdout}"));
+    assert_eq!(budgeted["target"], target, "判定须点名目标：{budgeted}");
+    assert_eq!(budgeted["limit"], 1, "{budgeted}");
+    assert_eq!(
+        budgeted["code"], "poly::E_BUDGET_0001",
+        "四端代码包超预算必须带稳定错误码：{budgeted}"
+    );
+    // 判定的字节 = 同一份 Packaged 字节（无二次统计）
+    let packaged_bytes = stdout
+        .lines()
+        .filter(|line| !line.trim().is_empty())
+        .map(|line| serde_json::from_str::<serde_json::Value>(line).expect("JSON Lines"))
+        .find(|event| event["event"] == "packaged")
+        .map(|event| event["bytes"].clone())
+        .expect("应有 Packaged 事件");
+    assert_eq!(budgeted["bytes"], packaged_bytes, "{budgeted}");
 
     let Some(dir) = find_miniapp(&workdir) else {
         eprintln!(

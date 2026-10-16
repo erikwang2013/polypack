@@ -85,6 +85,21 @@ fn parse_udl(root: &Path, text: &str) -> udl::Interface {
     udl::parse_source(&file).expect("UDL 可解析")
 }
 
+/// 未裁剪的体积元数据（形态与 `wasm_opt::skipped` 一致：`applied=false` 时 before == after）。
+fn untrimmed_size(bytes: u64) -> wasm::SizeInfo {
+    wasm::SizeInfo {
+        wasm_bytes: bytes,
+        wasm_opt: wasm::WasmOptInfo {
+            applied: false,
+            tool: None,
+            args: "-Oz".to_string(),
+            before: bytes,
+            after: bytes,
+            note: Some("测试：未裁剪".to_string()),
+        },
+    }
+}
+
 /// 断言诊断码与提示（提示里必须给出可执行的下一步）。
 fn assert_code(error: StageError, code: poly_core::Code, hint_needle: &str) {
     assert_eq!(
@@ -217,10 +232,10 @@ fn manifest_and_loader_are_deterministic() {
     let temp = TempDir::new("manifest");
     let interface = parse_udl(temp.path(), UDL);
     let engine = format!("wasm-bindgen@{}", wasm::WASM_BINDGEN_VERSION);
-    let manifest = wasm::manifest_for(&interface, "pax_core_wasm", &engine);
+    let manifest = wasm::manifest_for(&interface, "pax_core_wasm", &engine, untrimmed_size(4321));
     assert_eq!(
         manifest,
-        wasm::manifest_for(&interface, "pax_core_wasm", &engine)
+        wasm::manifest_for(&interface, "pax_core_wasm", &engine, untrimmed_size(4321))
     );
     assert_eq!(manifest.schema, wasm::SANDBOX_SCHEMA);
     assert_eq!(manifest.bridge, bridge::BRIDGE_SCHEMA);
@@ -238,6 +253,12 @@ fn manifest_and_loader_are_deterministic() {
     assert_eq!(parsed["functions"][0]["args"][0]["name"], "name");
     assert_eq!(parsed["functions"][0]["args"][0]["type"], "string");
     assert_eq!(parsed["functions"][1]["name"], "add");
+    // 体积元数据（T-M3-08）：wasm 落盘字节 + wasm-opt 前后对比随清单进产物
+    assert_eq!(parsed["size"]["wasm_bytes"], 4321);
+    assert_eq!(parsed["size"]["wasm_opt"]["applied"], false);
+    assert_eq!(parsed["size"]["wasm_opt"]["before"], 4321);
+    assert_eq!(parsed["size"]["wasm_opt"]["after"], 4321);
+    assert_eq!(parsed["size"]["wasm_opt"]["args"], "-Oz");
     // 适配层：占位符一定被替换（留占位符 = 产物是死的），且二跑字节一致
     let loader = wasm::loader_js(&manifest);
     assert!(
@@ -246,6 +267,44 @@ fn manifest_and_loader_are_deterministic() {
     );
     assert!(loader.contains(r#""greet""#), "{loader}");
     assert_eq!(loader, wasm::loader_js(&manifest));
+}
+
+#[test]
+fn manifest_size_metadata_round_trips_through_read_size() {
+    let temp = TempDir::new("manifest-size");
+    let interface = parse_udl(temp.path(), UDL);
+    let engine = format!("wasm-bindgen@{}", wasm::WASM_BINDGEN_VERSION);
+    let size = wasm::SizeInfo {
+        wasm_bytes: 700,
+        wasm_opt: wasm::WasmOptInfo {
+            applied: true,
+            tool: Some("wasm-opt@133".to_string()),
+            args: "-Oz".to_string(),
+            before: 1000,
+            after: 700,
+            note: None,
+        },
+    };
+    let manifest = wasm::manifest_for(&interface, "pax_core_wasm", &engine, size.clone());
+    std::fs::write(
+        temp.path().join(wasm::MANIFEST_FILE),
+        wasm::manifest_json(&manifest),
+    )
+    .expect("写清单");
+
+    // 缓存命中路径（poly-cli 只拿到还原的目录）：凭 manifest.json 回读体积报告
+    assert_eq!(bridge::wasm_opt::read_size(temp.path()), Some(size));
+    // 旧清单（无 size 块）→ None：不伪造体积报告，也不报错
+    std::fs::write(
+        temp.path().join(wasm::MANIFEST_FILE),
+        "{\"schema\":\"wasm-sandbox/v1\"}\n",
+    )
+    .expect("写旧清单");
+    assert_eq!(bridge::wasm_opt::read_size(temp.path()), None);
+    assert_eq!(
+        bridge::wasm_opt::read_size(&temp.path().join("absent")),
+        None
+    );
 }
 
 #[test]
@@ -381,10 +440,12 @@ fn write_dist(dist: &Path, manifest: &wasm::Manifest, glue: &str, wasm: &[u8]) -
 
 fn sandbox_manifest(root: &Path) -> wasm::Manifest {
     let interface = parse_udl(root, UDL);
+    // 体积元数据取手拼模块的真实字节（沙箱用例不跑 wasm-opt：形态与真跑一致即可）
     wasm::manifest_for(
         &interface,
         "pax_core_wasm",
         &format!("wasm-bindgen@{}", wasm::WASM_BINDGEN_VERSION),
+        untrimmed_size(wasm_module(false).len() as u64),
     )
 }
 

@@ -420,8 +420,12 @@ fn login_state_injection_materializes_and_never_leaks() {
     );
     let shown = format!("{}\n{command:?}", command.line());
     assert_no_secret("调用面文本", &shown, secret);
+    // Windows 的 Debug 会把路径反斜杠转义（`\` → `\\`）：原始或转义形态任一命中即算「以路径出现」
+    //（CI windows-2022 实证，2026-10-16）。
+    let raw = login.path.display().to_string();
+    let escaped = format!("{raw:?}").trim_matches('"').to_string();
     assert!(
-        shown.contains(&login.path.display().to_string()),
+        shown.contains(&raw) || shown.contains(&escaped),
         "登录态须以路径出现在调用面：{shown}"
     );
     assert!(

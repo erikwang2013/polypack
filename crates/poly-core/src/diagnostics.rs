@@ -49,6 +49,8 @@ pub mod codes {
     pub const E_PLAN_0002: Code = Code::new("poly::E_PLAN_0002");
     /// 流水线 DAG 定义非法（节点重名 / 依赖缺失 / 成环）。
     pub const E_PLAN_0003: Code = Code::new("poly::E_PLAN_0003");
+    /// 产物体积超预算（`[budget].size`，策略 `fail` 时中止）。
+    pub const E_BUDGET_0001: Code = Code::new("poly::E_BUDGET_0001");
     /// 核心 crate 编译失败。
     pub const E_COMPILE_0001: Code = Code::new("poly::E_COMPILE_0001");
     /// UI 构建（vite / 内建静态打包）失败。

@@ -21,7 +21,7 @@ use poly_bundle::packagers::ios::swift;
 use poly_core::bridge;
 use poly_core::diagnostics::{Code, Diagnostic};
 use poly_core::events::{BuildEvent, EventSink};
-use poly_core::job::JobSpec;
+use poly_core::job::{JobSpec, SizePolicy};
 use poly_core::pipeline;
 use poly_core::plan::{Stage, StageContext, StageError, StageOutcome};
 use poly_targets::{Bridge, Host, TargetSpec, current_host};
@@ -131,6 +131,15 @@ fn package_target(
                 format: artifact.format.clone(),
                 bytes: artifact.bytes,
             });
+            // 体积预算门禁（T-M3-08，§2 原则 4）：逐产物判定，`fail` 策略下 package 节点
+            // 即失败（DAG 语义：sign / verify / publish 不再执行）。
+            if let Some(verdict) = poly_core::budget::size_verdict(artifact.bytes, &ctx.job.budget)
+            {
+                ctx.events.emit(&verdict.event(&spec.id, &artifact.format));
+                if verdict.exceeded && ctx.job.budget.policy == SizePolicy::Fail {
+                    return Err(verdict.failure(&spec.id, &artifact.format).into());
+                }
+            }
             // 打包器如实标注的降级（如缺 appimagetool 时产出 AppDir）转发为告警
             for note in &artifact.notes {
                 ctx.events.emit(&BuildEvent::Warning {

@@ -3,7 +3,7 @@
 > Derived from the milestone breakdown in [ROADMAP.en.md](ROADMAP.en.md) §9; produced in parallel by a four-person planning group and merged after cross-reconciliation: **116 tasks**, all cross-milestone references verified in two passes (existence + description match, zero dangling), Chinese/English task IDs aligned one-to-one.
 > Chinese original: [TASKS.md](TASKS.md). This file falls under the documentation sync convention (ROADMAP §11): task additions/removals must land in both files in the same commit, and drift is caught in CI by the structural checker delivered in T-M0-10.
 > Extension directions (E1–E8) are incubated and intentionally absent from this task table — see [ROADMAP.en.md](ROADMAP.en.md) §13.
-> Progress (2026-10-16): **M0 11/11** · **M1 delivered 15/15** (11 ✅; the matching CI legs for T-M1-02/05/06/07 are green — remaining tool-level notes live in the task entries) · **M2 delivered 15/15** (8 ✅: T-M2-02/06/07/08/09/11/14/15; T-M2-01/03/04/05/10/12/13 carry host/stage/settings notes — see each entry) · **CI green on all three hosts** (rust-ci#38654820649) plus four new M2 workflows (secret-scan ×3 hosts / mobile-contract mock-per-push + nightly real / bridge nightly real) · **M3 in progress (3/12)**: T-M3-05/06/07 delivered — see each entry.
+> Progress (2026-10-16): **M0 11/11** · **M1 delivered 15/15** (11 ✅; the matching CI legs for T-M1-02/05/06/07 are green — remaining tool-level notes live in the task entries) · **M2 delivered 15/15** (8 ✅: T-M2-02/06/07/08/09/11/14/15; T-M2-01/03/04/05/10/12/13 carry host/stage/settings notes — see each entry) · **CI green on all three hosts** (rust-ci#38654820649) plus four new M2 workflows (secret-scan ×3 hosts / mobile-contract mock-per-push + nightly real / bridge nightly real) · **M3 in progress (9/12)**: T-M3-01/02/03/04/05/06/07/09/11 delivered — see each entry.
 
 ## Team roster
 
@@ -388,7 +388,7 @@
 
 > Prerequisites: T-M0-09 (HarmonyOS SDK probe), T-M1-05 (Packager trait), T-M2-01 (bridge generator), T-M2-04/T-M2-05 (adapter-native and focus baseline), T-M2-11 (vault), T-M2-14 (contract-test golden infrastructure) | Exit criteria: all three mini programs preview in devtools; HarmonyOS HAP signs and installs; submission scripting is re-runnable
 
-### T-M3-01 · RNOH host and NAPI bridge integration
+### T-M3-01 · ✅ RNOH host and NAPI bridge integration (host template ui/adapters/native/host/harmony, 42 files + `poly bridge ohos`: truly cross-compiled self-contained OHOS aarch64 libpax.so 6,241,136 B + real node load-and-call parity greet/add same literals; poly doctor HarmonyOS dual scenarios; workspace 426 tests green; template HAP build stops at CompileArkTS — RNOH 0.84.3 har needs SDK ≥21 vs local 19, environment-side blocker, fix path documented in README)
 
 - Role: platforms
 - Deps: T-M2-01, T-M0-09
@@ -396,7 +396,7 @@
 - Deliverable: HarmonyOS host project template (RNOH) + NAPI (C ABI) bridge integration: `.so` build chain (HarmonyOS triple) and napi binding registration, with bridge artifacts emitted by the T-M2-01 generator.
 - Acceptance: the sample core loads as an NAPI module in the RNOH host; sample-interface calls match the Rust unit tests; `poly doctor` recognizes the HarmonyOS SDK and hints how to fix a missing one.
 
-### T-M3-02 · adapter-native on the RNOH host (capability mapping)
+### T-M3-02 · ✅ adapter-native on the RNOH host (capability mapping) (component-map strips host-specific props per target — harmonyos drops hasTVPreferredFocus, page tree untouched; native-registry family split + dual-host structure snapshots byte-identical; 63 tests, 62 green, 1 skipped (device leg SKIP with walkthrough manual); also fixes the real defect target "harmony"→"harmonyos" + sentinel test)
 
 - Role: ui-adapters
 - Deps: T-M2-04, T-M2-05
@@ -404,7 +404,7 @@
 - Deliverable: the RNOH host branch of adapter-native: component mapping plus HarmonyOS adaptation of `capabilities()`/token skinning; the page component tree stays untouched.
 - Acceptance: the same sample page renders identically on the Android RN and RNOH hosts (structure-snapshot comparison); the focus/navigation baseline works under RNOH (external keyboard/debug mode).
 
-### T-M3-03 · HAP packager (hvigor invocation chain)
+### T-M3-03 · ✅ HAP packager (hvigor invocation chain) (project config generation + host-template reuse/minimal fallback + hvigorw assembleHap; real 12,839 B unsigned HAP, second run 16 UP-TO-DATE, third run byte-identical; structure check 8 entries into the event stream; project kept outside out_dir to preserve incremental cache)
 
 - Role: packagers
 - Deps: T-M3-01, T-M1-05
@@ -412,7 +412,7 @@
 - Deliverable: `poly-bundle` HAP packager: project-config generation + hvigor build invocation + artifact collection, producing an unsigned HAP; build logs wired into the event stream.
 - Acceptance: `poly build --target harmonyos` emits the HAP; the HAP structure check (manifest/module/resource-index entries) passes; the second run hits the cache.
 
-### T-M3-04 · HAP signing and verification (hap-sign-tool)
+### T-M3-04 · ✅ HAP signing and verification (hap-sign-tool) (sign-app/verify-app phases; credentials all by reference — isolated keyring real run; really signed 48,063 B (Signing Block v3 / debug profile / Digest true / Verify success); verify leg hap-sign-verify + hap-structure-check both true; passwords only via argv → plan/diagnostics/event stream uniformly redacted; device leg with no hdc target = SKIP note; retry --from sign not wired for harmony, noted)
 
 - Role: release-sec
 - Deps: T-M3-03, T-M2-11
@@ -452,7 +452,7 @@
 - Deliverable: the `budget.size` check wired into the DAG (configurable warn/fail policy) + wasm-opt optimization and per-target trimming (the R10 countermeasure).
 - Acceptance: the sample app reports wasm and bundle sizes (event stream + terminal report); an artificial over-budget run warns with a locatable error code; before/after wasm-opt sizes are recorded in artifact metadata.
 
-### T-M3-09 · WeChat mini-program publish client (upload + submit + status polling)
+### T-M3-09 · ✅ WeChat mini-program publish client (upload + submit + status polling) (B-protocol container (miniprogram-ci 2.1.31 semantics) + raw PKCS#1 v1.5 signing + gzip upload / submit_audit / get_latest_auditstatus polling (85009 recovery path); four-step zero-fork driver — container-agnostic blake3 digest + resume-from-archive + at-least-once submit boundary; canonical-JSON receipts atomically persisted, kept forever; 28 contract tests green; real account leg without credentials = SKIP as-is; poly-core scan gains the appsecret-hex32 gated rule (32-hex falls in the high-entropy blind spot))
 
 - Role: release-sec
 - Deps: T-M3-06, T-M2-11
@@ -468,7 +468,7 @@
 - Deliverable: the Alipay Open Platform and Douyin Open Platform publish clients: the WeChat skeleton reused, platform differences confined to client implementations.
 - Acceptance: each platform's upload+submit+poll path runs; all three share a single Publisher interface (zero core forks); credentials are injected via the reference model.
 
-### T-M3-11 · Mini-program contract tests (devtools CLI + golden comparison)
+### T-M3-11 · ✅ Mini-program contract tests (devtools CLI + golden comparison) (contract_m3_devtools: registry verify declarations ↔ CLI table consistency (quickapp's hap-toolkit-lint owned by T-M3-12) + probe chain + credential injection as 0600 temp files destroyed after use + redaction assertions end to end; new workflow miniprogram-contract.yml (mock ubuntu per push / real macos-14 nightly at 18:47 offset); real mode without local CLIs = SKIP×3 as-is; CI vars/secrets list noted for setup)
 
 - Role: infra
 - Deps: T-M3-06, T-M2-14

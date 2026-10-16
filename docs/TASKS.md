@@ -3,7 +3,7 @@
 > 派生自 [ROADMAP.md](ROADMAP.md) §9 的里程碑分解；由 4 人规划小组并行产出、交叉对账后合并：**116 个任务**，跨里程碑引用经「存在性 + 描述匹配」两轮校验零悬空，中英任务 ID 逐一对齐。
 > 英文版：[TASKS.en.md](TASKS.en.md)。本文件受「文档同步约定」管辖（见 ROADMAP §11）：任务增删须双文件同一次提交更新，并由 T-M0-10 的结构级校验器在 CI 拦截漂移。
 > 扩展方向（E1–E8）已立项孵化，不占本任务表：见 [ROADMAP.md](ROADMAP.md) §13。
-> 进度（2026-10-16）：**M0 11/11** · **M1 已交付 15/15**（11 项 ✅；T-M1-02/05/06/07 的对应 CI 腿已全绿，余下工具级注记见任务条目）· **M2 已交付 15/15**（8 项 ✅：T-M2-02/06/07/08/09/11/14/15；T-M2-01/03/04/05/10/12/13 带宿主/阶段/设置注记，逐项见任务条目）· **CI 三宿主全绿**（rust-ci#38654820649）+ M2 新增四工作流（secret-scan 三宿主 / mobile-contract mock+夜跑真列 / bridge 夜跑真跑）· **M3 进行中（3/12）**：T-M3-05/06/07 已交付，逐项见任务条目。
+> 进度（2026-10-16）：**M0 11/11** · **M1 已交付 15/15**（11 项 ✅；T-M1-02/05/06/07 的对应 CI 腿已全绿，余下工具级注记见任务条目）· **M2 已交付 15/15**（8 项 ✅：T-M2-02/06/07/08/09/11/14/15；T-M2-01/03/04/05/10/12/13 带宿主/阶段/设置注记，逐项见任务条目）· **CI 三宿主全绿**（rust-ci#38654820649）+ M2 新增四工作流（secret-scan 三宿主 / mobile-contract mock+夜跑真列 / bridge 夜跑真跑）· **M3 进行中（9/12）**：T-M3-01/02/03/04/05/06/07/09/11 已交付，逐项见任务条目。
 
 ## 团队编制与角色
 
@@ -388,7 +388,7 @@
 
 > 前置依赖: T-M0-09（鸿蒙 SDK 探测）、T-M1-05（Packager 接口）、T-M2-01（桥生成器）、T-M2-04/T-M2-05（adapter-native 与焦点基线）、T-M2-11（密钥库）、T-M2-14（契约测试金样基建）｜出口条件: 三端小程序开发者工具预览通过；鸿蒙 HAP 签名安装；提审脚本化可重跑
 
-### T-M3-01 · RNOH 宿主与 NAPI 桥接入
+### T-M3-01 · ✅ RNOH 宿主与 NAPI 桥接入（ui/adapters/native/host/harmony 宿主模板 42 文件 + `poly bridge ohos`：OHOS aarch64 真交叉编译自包含 libpax.so 6,241,136B + node 真装载对拍 greet/add 同字面量；poly doctor 鸿蒙双场景；workspace 426 测全绿；模板 HAP 构建止于 CompileArkTS——RNOH 0.84.3 har 需 SDK ≥21 vs 本机 19，环境侧阻塞，修复路径入 README）
 
 - 角色: platforms
 - 依赖: T-M2-01、T-M0-09
@@ -396,7 +396,7 @@
 - 交付物: HarmonyOS 宿主工程模板（RNOH）+ NAPI（C ABI）桥接入：`.so` 编译链（HarmonyOS triple）与 napi 绑定注册，桥产物由 T-M2-01 生成器统一产出。
 - 验收: 示例核心以 NAPI 模块在 RNOH 宿主加载；示例接口调用结果与 Rust 单测一致；`poly doctor` 识别 HarmonyOS SDK 并对缺失给出修复提示。
 
-### T-M3-02 · RNOH 承载的 adapter-native（能力映射）
+### T-M3-02 · ✅ RNOH 承载的 adapter-native（能力映射）（component-map 按 target 剔宿主专属 prop——harmonyos 剔 hasTVPreferredFocus、页面树零改动；native-registry 分族 + 双宿主结构快照逐字节比对；63 测 62 绿 1 跳过（设备腿 SKIP 附走查手册）；兼修模板 target "harmony"→"harmonyos" 真缺陷 + 哨兵测试）
 
 - 角色: ui-adapters
 - 依赖: T-M2-04、T-M2-05
@@ -404,7 +404,7 @@
 - 交付物: adapter-native 的 RNOH 承载分支：组件映射、`capabilities()`/tokens 蒙皮的鸿蒙适配，页面组件树不改动。
 - 验收: 同一示例页面在 Android RN 与 RNOH 两宿主渲染一致（结构快照比对）；焦点/导航基线在 RNOH 下可用（外接键盘/调试模式）。
 
-### T-M3-03 · HAP 打包器（hvigor 调用链）
+### T-M3-03 · ✅ HAP 打包器（hvigor 调用链）（工程配置生成 + 宿主模板复用/最小骨架回退 + hvigorw assembleHap；真跑 12,839B 未签名 HAP、二跑 16 处 UP-TO-DATE、三跑字节一致；结构检查 8 条目入事件流；工程落 out_dir 外保增量缓存）
 
 - 角色: packagers
 - 依赖: T-M3-01、T-M1-05
@@ -412,7 +412,7 @@
 - 交付物: `poly-bundle` HAP 打包器：工程配置生成 + hvigor 构建调用 + 产物收集，产出未签名 HAP；构建日志接入事件流。
 - 验收: `poly build --target harmonyos` 直出 HAP；HAP 结构检查（清单/模块/资源清单项）通过；二跑缓存命中。
 
-### T-M3-04 · HAP 签名与校验（hap-sign-tool）
+### T-M3-04 · ✅ HAP 签名与校验（hap-sign-tool）（sign-app/verify-app 两相；凭据全引用——隔离 keyring 真跑；真签 48,063B（Signing Block v3 / profile debug / Digest true / Verify success）；verify 腿 hap-sign-verify + hap-structure-check 双 true；口令仅经 argv → 计划/诊断/事件流统一脱敏；设备腿 hdc 无目标=SKIP 注记；retry --from sign 未接 harmony 留注记）
 
 - 角色: release-sec
 - 依赖: T-M3-03、T-M2-11
@@ -452,7 +452,7 @@
 - 交付物: `budget.size` 预算检查接入 DAG（超预算告警/失败策略可配）+ wasm-opt 优化与按目标裁剪（R10 对策）。
 - 验收: 示例应用输出 wasm 与代码包体积报告（事件流 + 终端报告）；人为超预算触发告警且错误码可定位；wasm-opt 前后体积对比写进产物元数据。
 
-### T-M3-09 · 微信小程序 publish 客户端（上传 + 提审 + 状态轮询）
+### T-M3-09 · ✅ 微信小程序 publish 客户端（上传 + 提审 + 状态轮询）（B 协议容器（miniprogram-ci 2.1.31 口径）+ raw PKCS#1 v1.5 签名 + gzip 上传 / submit_audit / get_latest_auditstatus 轮询（85009 恢复路径）；四步零分叉驱动——容器无关 blake3 摘要 + 断点续走 + at-least-once 提审边界；回执 canonical JSON 原子落盘永久保留；契约 28 项全绿；真实账号腿无凭据=SKIP 如实；poly-core scan 增 appsecret-hex32 门控规则（32-hex 属高熵盲区））
 
 - 角色: release-sec
 - 依赖: T-M3-06、T-M2-11
@@ -468,7 +468,7 @@
 - 交付物: 支付宝开放平台与抖音开放平台 publish 客户端：复用微信骨架，平台差异收敛在客户端实现内。
 - 验收: 两平台各自的上传+提审+轮询路径跑通；三平台共用同一 Publisher 接口（核心零分叉）；凭据经引用模型注入。
 
-### T-M3-11 · 小程序契约测试（开发者工具 CLI + 金样比对）
+### T-M3-11 · ✅ 小程序契约测试（开发者工具 CLI + 金样比对）（contract_m3_devtools：注册表 verify 声明↔CLI 表一致（quickapp 的 hap-toolkit-lint 归 T-M3-12）+ 探测链 + 凭据注入 0600 临时文件用后即弃 + 全链脱敏断言；新 workflow miniprogram-contract.yml（mock ubuntu 每提交 / real macos-14 每夜 18:47 错峰）；真实档本机无 CLI=SKIP×3 如实；CI vars/secrets 清单留配置注记）
 
 - 角色: infra
 - 依赖: T-M3-06、T-M2-14

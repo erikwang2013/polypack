@@ -46,6 +46,22 @@ pub enum BuildEvent {
         /// 产物体积（字节）。
         bytes: u64,
     },
+    /// 体积预算判定（T-M3-08）：每个打包产物一条（`[budget].size` 未设时不发）。
+    Budgeted {
+        /// 目标 id。
+        target: String,
+        /// 产物格式。
+        format: String,
+        /// 产物体积（字节）。
+        bytes: u64,
+        /// 预算上限（字节）。
+        limit: u64,
+        /// 超预算的处理策略（`warn` / `fail`）。
+        policy: String,
+        /// 超预算时的稳定错误码（在预算内为 `None`）。
+        #[serde(skip_serializing_if = "Option::is_none")]
+        code: Option<String>,
+    },
     /// 校验完成。
     Verified {
         /// 校验器。
@@ -115,6 +131,19 @@ impl<W: Write> EventSink for HumanSink<W> {
             BuildEvent::UiBundled { adapter } => format!("• UI 打包：{adapter}"),
             BuildEvent::Signed { profile } => format!("• 签名：{profile}"),
             BuildEvent::Packaged { format, bytes } => format!("• 封装：{format}（{bytes} 字节）"),
+            BuildEvent::Budgeted {
+                target,
+                format,
+                bytes,
+                limit,
+                policy,
+                code,
+            } => match code {
+                Some(code) => format!(
+                    "⚠ 预算：{target}（{format}）超预算 {bytes}/{limit} 字节 [{code}]（策略 {policy}）"
+                ),
+                None => format!("• 预算：{target}（{format}）{bytes}/{limit} 字节（在预算内）"),
+            },
             BuildEvent::Verified { checker, ok } => format!("• 校验：{checker} → {ok}"),
             BuildEvent::Published { channel } => format!("• 发布：{channel}"),
             BuildEvent::Failed { stage, code, hint } => match hint {
