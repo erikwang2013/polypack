@@ -13,6 +13,13 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 const PKG = path.resolve(HERE, "..");
 const SCRIPT = path.join(PKG, "scripts", "build-and-check.mjs");
 
+// 系统 zip/unzip 依赖（任务预案 G10 既定缺口：Windows 原生缺 zip）——缺席时两条 e2e 按
+// SKIP-with-print 纪律跳过（不假装绿、不误红）；发射器/键映射单元测试不依赖 zip，三宿主照跑。
+// CI windows-2022 实证 2026-10-17：spawnSync zip ENOENT。
+const zipToolsAvailable =
+  !spawnSync("zip", ["-v"], { stdio: "ignore" }).error &&
+  !spawnSync("unzip", ["-V"], { stdio: "ignore" }).error;
+
 const cleanEnv = () => {
   const env = { ...process.env };
   delete env.POLY_ROKU_REAL;
@@ -23,7 +30,8 @@ const cleanEnv = () => {
 
 const runScript = (args) => spawnSync(process.execPath, [SCRIPT, ...args], { cwd: PKG, encoding: "utf8", env: cleanEnv() });
 
-test("端到端：出 zip + 结构自检全过 + 侧载 SKIP-with-print（无真机预案）", () => {
+test("端到端：出 zip + 结构自检全过 + 侧载 SKIP-with-print（无真机预案）", (t) => {
+  if (!zipToolsAvailable) return t.skip("zip/unzip 不可用（G10）——SKIP-with-print：本机装 zip 后重跑");
   const out = fs.mkdtempSync(path.join(os.tmpdir(), "roku-build-"));
   try {
     const r = runScript(["--out", out]);
@@ -42,7 +50,8 @@ test("端到端：出 zip + 结构自检全过 + 侧载 SKIP-with-print（无真
   }
 });
 
-test("失败径：manifest 缺 title → 退出码 1 且给出定位", () => {
+test("失败径：manifest 缺 title → 退出码 1 且给出定位", (t) => {
+  if (!zipToolsAvailable) return t.skip("zip/unzip 不可用（G10）——SKIP-with-print：本机装 zip 后重跑");
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "roku-broken-"));
   try {
     const src = path.join(tmp, "channel");
