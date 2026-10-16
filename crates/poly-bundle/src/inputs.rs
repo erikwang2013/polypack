@@ -240,6 +240,8 @@ pub struct BundleInputs {
     pub android: Option<AndroidInputs>,
     /// iOS 打包输入（T-M2-03 / T-M2-08；`None` → iOS 打包器报缺输入）。
     pub ios: Option<IosInputs>,
+    /// 小程序族宿主工程根（T-M3-06；Taro 工程候选链见 `packagers::miniapp`，缺省即缺输入）。
+    pub miniapp_host: Option<PathBuf>,
     /// 输出目录。
     pub out_dir: PathBuf,
 }
@@ -256,6 +258,7 @@ impl BundleInputs {
             web_manifest: None,
             android: None,
             ios: None,
+            miniapp_host: None,
             out_dir: out_dir.into(),
         }
     }

@@ -1,0 +1,12 @@
+{
+  "miniprogramRoot": "./dist/",
+  "projectname": "polypack-host-taro",
+  "description": "PolyPack Taro 宿主工程（T-M3-06）",
+  "appid": "tta0000000000000001",
+  "setting": {
+    "urlCheck": false,
+    "es6": false,
+    "minified": false
+  },
+  "compileType": "miniprogram"
+}

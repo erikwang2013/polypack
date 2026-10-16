@@ -1,0 +1,22 @@
+{
+  "target": "alipay",
+  "builder": "taro-alipay",
+  "signing": null,
+  "verifiers": ["alipay-devtools-cli"],
+  "artifacts": [
+    {
+      "format": "alipay",
+      "extension": null,
+      "entries": [
+        "miniapp/mini.project.json",
+        "miniapp/dist/app.json",
+        "miniapp/dist/app.js",
+        "miniapp/dist/app.acss",
+        "miniapp/dist/base.axml",
+        "miniapp/dist/pages/index/index.js",
+        "miniapp/dist/pages/index/index.json",
+        "miniapp/dist/pages/index/index.axml"
+      ]
+    }
+  ]
+}

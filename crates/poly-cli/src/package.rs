@@ -262,6 +262,11 @@ pub(crate) fn assemble_inputs(
                 }
             }
         }
+        // 小程序族（T-M3-06）：宿主工程根交打包器走候选链解析（<root>/ui → <root> → 包内 host/），
+        // Taro 编译与代码包组装都在打包器内（编译腿缺席由 environment_slot 按环境性缺失跳过）
+        "weapp" | "alipay" | "tt" | "quickapp" => {
+            inputs.miniapp_host = Some(project.root.clone());
+        }
         _ => {}
     }
     Ok(Some(inputs))

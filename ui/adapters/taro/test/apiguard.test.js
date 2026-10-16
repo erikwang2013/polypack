@@ -74,6 +74,25 @@ test("拒：白名单外的 Taro API（含裸下标形态）", () => {
   );
 });
 
+test("过：属性键形态 `window:` 不算使用 DOM 全局（Taro app.config 的标准键）", () => {
+  const code = [
+    "export default defineAppConfig({",
+    "  window: {",
+    "    navigationBarTitleText: 'PolyPack',",
+    "  },",
+    "  pages: ['pages/index/index'],",
+    "});",
+  ].join("\n");
+  assert.deepEqual(checkSource(code, { filename: "app.config.js" }).violations, []);
+
+  // 守卫只放行键位置：同一行里真正的全局使用照常命中
+  const mixed = checkSource("target: window.location.href;");
+  assert.deepEqual(
+    mixed.violations.map((v) => [v.line, v.kind, v.name]),
+    [[1, "forbidden-global", "window"]],
+  );
+});
+
 test("放行标记 poly:allow-api：同行豁免（构造样本 / 文档示例的出口）", () => {
   const code = [
     "const doc = document; // poly:allow-api 构造样本",

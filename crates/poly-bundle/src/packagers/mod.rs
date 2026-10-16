@@ -6,10 +6,12 @@
 //! - [`web`]：Web 静态站点（T-M1-08，含 SRI 清单）
 //! - [`android`]：AAB（T-M2-06 / T-M2-07，AAPT2 免 Gradle + bundletool）
 //! - [`ios`]：IPA（T-M2-03 / T-M2-08，XCFramework 绑定 + xcodebuild archive / 归档 Payload 直压）
+//! - [`miniapp`]：小程序族（T-M3-06，Taro 编译 + 代码包组装；快应用编译工程）
 
 pub mod android;
 pub mod dmg;
 pub mod ios;
 pub mod linux;
+pub mod miniapp;
 pub mod web;
 pub mod windows;

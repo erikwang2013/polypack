@@ -1,0 +1,22 @@
+{
+  "target": "douyin",
+  "builder": "taro-tt",
+  "signing": null,
+  "verifiers": ["douyin-devtools-cli"],
+  "artifacts": [
+    {
+      "format": "tt",
+      "extension": null,
+      "entries": [
+        "miniapp/project.config.json",
+        "miniapp/dist/app.json",
+        "miniapp/dist/app.js",
+        "miniapp/dist/app.ttss",
+        "miniapp/dist/base.ttml",
+        "miniapp/dist/pages/index/index.js",
+        "miniapp/dist/pages/index/index.json",
+        "miniapp/dist/pages/index/index.ttml"
+      ]
+    }
+  ]
+}

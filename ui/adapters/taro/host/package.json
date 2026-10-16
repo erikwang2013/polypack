@@ -1,0 +1,45 @@
+{
+  "name": "@polypack/host-taro",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Taro 宿主工程（T-M3-06）：装配 @polypack/adapter-taro + 微信/支付宝/抖音三平台编译（快应用走编译工程，口径见 test/host-structure.test.js）",
+  "browserslist": [
+    "defaults and fully supports es6-module",
+    "maintained node versions"
+  ],
+  "scripts": {
+    "build:weapp": "taro build --type weapp",
+    "build:alipay": "taro build --type alipay",
+    "build:tt": "taro build --type tt"
+  },
+  "dependencies": {
+    "@babel/runtime": "^7.24.4",
+    "@polypack/adapter-taro": "file:..",
+    "@tarojs/components": "4.3.0",
+    "@tarojs/helper": "4.3.0",
+    "@tarojs/plugin-framework-react": "4.3.0",
+    "@tarojs/plugin-platform-alipay": "4.3.0",
+    "@tarojs/plugin-platform-tt": "4.3.0",
+    "@tarojs/plugin-platform-weapp": "4.3.0",
+    "@tarojs/react": "4.3.0",
+    "@tarojs/runtime": "4.3.0",
+    "@tarojs/shared": "4.3.0",
+    "@tarojs/taro": "4.3.0",
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.24.4",
+    "@babel/plugin-transform-class-properties": "7.25.9",
+    "@babel/preset-react": "^7.24.1",
+    "@tarojs/cli": "4.3.0",
+    "@tarojs/taro-loader": "4.3.0",
+    "@tarojs/webpack5-runner": "4.3.0",
+    "babel-preset-taro": "4.3.0",
+    "postcss": "^8.5.6",
+    "webpack": "5.91.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

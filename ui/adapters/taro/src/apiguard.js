@@ -8,6 +8,7 @@
 //
 // 扫描是行级词边界匹配（同 poly-core scan.rs 的行内标记口径）：够用、确定、无 parser 依赖；
 // 字符串 / 注释里的同名词用同行标记 `poly:allow-api` 放行（构造样本与文档示例的出口）。
+// 属性键位置（`window:`）放行：Taro app.config 的标准键会被词边界匹配误伤（T-M3-06 真跑实证）。
 // 构建期入口：bin/check-api.mjs（poly-bundle 小程序打包器的编译前预检调用同一实现）。
 
 /** 允许的 Taro API 名（`Taro.<name>`）；每一行都对应本包或示例的真实使用面。 */
@@ -67,9 +68,14 @@ export const VIOLATION_KINDS = Object.freeze({
   "taro-api": "Taro API 不在白名单（宿主 API 面只认声明过的子集）",
 });
 
-const asPattern = (names) =>
-  new RegExp(`(?:^|[^\\w$.])(${names.map((n) => n.replace(/\W/g, "\\$&")).join("|")})\\b`, "g");
-const FORBIDDEN_PATTERN = asPattern([...FORBIDDEN_GLOBALS]);
+const asPattern = (names, guard = "") =>
+  new RegExp(
+    `(?:^|[^\\w$.])(${names.map((n) => n.replace(/\W/g, "\\$&")).join("|")})\\b${guard}`,
+    "g",
+  );
+// 属性键位置放行：`window: {...}`（Taro app.config 的标准键）是配置而非「使用浏览器全局」，
+// 词边界命中后紧跟 `:` 即对象键位置；`window.location` / `foo(window)` 照常命中。
+const FORBIDDEN_PATTERN = asPattern([...FORBIDDEN_GLOBALS], "(?!\\s*:)");
 const TARO_PATTERN = /Taro\s*(?:\.\s*([A-Za-z_$][\w$]*)|\[\s*["']([A-Za-z_$][\w$]*)["']\s*\])/g;
 
 /**

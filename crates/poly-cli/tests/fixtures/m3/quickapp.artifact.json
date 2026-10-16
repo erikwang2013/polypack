@@ -1,0 +1,20 @@
+{
+  "target": "quickapp",
+  "builder": "taro-quickapp",
+  "signing": null,
+  "verifiers": ["hap-toolkit-lint"],
+  "artifacts": [
+    {
+      "format": "quickapp",
+      "extension": null,
+      "entries": [
+        "miniapp/package.json",
+        "miniapp/src/manifest.json",
+        "miniapp/src/app.ux",
+        "miniapp/src/pages/index/index.ux",
+        "miniapp/src/logo.png",
+        "miniapp/src/config-phone.json"
+      ]
+    }
+  ]
+}

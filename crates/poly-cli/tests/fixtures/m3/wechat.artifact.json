@@ -1,0 +1,22 @@
+{
+  "target": "wechat",
+  "builder": "taro-weapp",
+  "signing": null,
+  "verifiers": ["wechat-devtools-cli"],
+  "artifacts": [
+    {
+      "format": "weapp",
+      "extension": null,
+      "entries": [
+        "miniapp/project.config.json",
+        "miniapp/dist/app.json",
+        "miniapp/dist/app.js",
+        "miniapp/dist/app.wxss",
+        "miniapp/dist/base.wxml",
+        "miniapp/dist/pages/index/index.js",
+        "miniapp/dist/pages/index/index.json",
+        "miniapp/dist/pages/index/index.wxml"
+      ]
+    }
+  ]
+}

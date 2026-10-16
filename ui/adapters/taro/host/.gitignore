@@ -1,0 +1,6 @@
+# 依赖与产物不入库：npm install 现装（Taro 4 工具链），编译产物由 poly-bundle
+# 小程序打包器注入 POLYPACK_OUTPUT_ROOT 落到 packages/<目标>/（口径见 test/host-structure.test.js）
+node_modules/
+dist/
+package-lock.json
+.swc/
