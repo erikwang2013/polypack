@@ -129,7 +129,8 @@ impl PublishError {
             ),
             Self::CredentialInvalid { .. } => Some(
                 "后端载荷须为 base64(JSON)：微信 {appid, secret, private_key} / \
-                 支付宝 {app_id, private_key[, app_auth_token]} / 抖音 {appid, secret}"
+                 支付宝 {app_id, private_key[, app_auth_token]} / 抖音 {access_token}\
+                 （token 外部注入，客户端不做铸造）"
                     .to_string(),
             ),
             Self::Http { .. } => Some(
@@ -137,14 +138,17 @@ impl PublishError {
                     .to_string(),
             ),
             Self::Platform { hint, .. } => hint.clone(),
-            Self::Input { .. } => {
-                Some("代码包应为目录（T-M3-06 产物：<...>/miniapp/dist）且含 app.json".to_string())
-            }
+            Self::Input { .. } => Some(
+                "代码包载具应为目录（T-M3-06 产物：<...>/miniapp/dist，含 app.json）\
+                 或单文件（如快应用 .rpk）"
+                    .to_string(),
+            ),
             Self::Archive { .. } => Some("核对归档目录（<root>/.polypack/publish）的权限与磁盘空间".to_string()),
             Self::Materials { .. } => Some(
-                "材料是平台侧配置的如实转述：微信 materials = item_list 数组（1–5 项，每项 \
+                "材料是平台侧配置的如实转述：微信 = item_list 数组（1–5 项，每项 \
                  {address, tag, first_class, second_class, third_class, first_id, second_id, \
-                 third_id}；类目须已在账号后台配置）"
+                 third_id}；类目须已在账号后台配置）；支付宝 = template_id + 提审文本字段 \
+                 （文件类字段未实现，给了即拒）；抖音 = template_id（数值）"
                     .to_string(),
             ),
             Self::PollTimeout { .. } => Some(

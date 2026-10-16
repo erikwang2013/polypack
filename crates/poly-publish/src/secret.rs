@@ -3,7 +3,8 @@
 //! 契约与 T-M2-11（`poly-sign::secret`）同源：后端载荷 = **base64(JSON)**，字段按平台约定：
 //! - 微信：`{"appid":"…","secret":"…","private_key":"<PEM 代码上传密钥>"}`；
 //! - 支付宝：`{"app_id":"…","private_key":"<PEM RSA2 应用私钥>","app_auth_token"?:"…"}`；
-//! - 抖音：`{"appid":"…","secret":"…"}`。
+//! - 抖音：`{"access_token":"…"}`（token 由外部链路获取后注入——铸造链路口径互斥、未实测，
+//!   见 [`DouyinCredentials`]）。
 //!
 //! 依赖方向约束（`crates/poly-cli/tests/dependency_direction.rs`）只允许本 crate 依赖
 //! `poly-core`，故不复用 poly-sign 的后端链：这里定义同形的 [`CredentialProvider`] 接缝 +
@@ -268,12 +269,14 @@ impl AlipayCredentials {
     }
 }
 
-/// 抖音凭据（自研小程序的 appid + AppSecret → access_token）。
+/// 抖音凭据（**access_token 外部注入**）。
+///
+/// 铸造链路未确证：官方文档在「自研小程序 `developer.toutiao.com/api/apps/v2/token`」与
+/// 「服务商 tpapp（两个候选 URL）」间口径互斥，且未实测——故客户端绝不自造 token，
+/// 只消费注入值（never fake）；token 铸造 / 刷新由外部链路（含 28001008 过期后重取）负责。
 pub struct DouyinCredentials {
-    /// 小程序 appid（如 `ttxxxx`）。
-    pub appid: String,
-    /// AppSecret（换 access_token 用；绝不进日志 / 错误 / 回执）。
-    pub secret: String,
+    /// 开放平台 access_token（`access-token` 头；绝不进日志 / 错误 / 回执）。
+    pub access_token: String,
     /// 命中的后端 id（诊断用）。
     pub source: &'static str,
 }
@@ -281,17 +284,16 @@ pub struct DouyinCredentials {
 impl std::fmt::Debug for DouyinCredentials {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("DouyinCredentials")
-            .field("appid", &self.appid)
-            .field("secret", &"<脱敏>")
+            .field("access_token", &"<脱敏>")
             .field("source", &self.source)
             .finish()
     }
 }
 
 impl DouyinCredentials {
-    /// 本凭据的脱敏器（覆盖 secret）。
+    /// 本凭据的脱敏器（覆盖 access_token）。
     pub fn redactor(&self) -> Redactor {
-        Redactor::new([self.secret.clone()])
+        Redactor::new([self.access_token.clone()])
     }
 }
 
@@ -353,25 +355,23 @@ pub fn alipay_credentials(
     })
 }
 
-/// 解析抖音凭据（载荷字段约定见模块头）。
+/// 解析抖音凭据（载荷字段约定见模块头：`{"access_token":"…"}`）。
 pub fn douyin_credentials(
     reference: &CredentialRef,
     providers: &[Box<dyn CredentialProvider>],
 ) -> Result<DouyinCredentials, PublishError> {
     #[derive(Deserialize)]
     struct Payload {
-        appid: String,
-        secret: String,
+        access_token: String,
     }
     let (payload, provider) = parse::<Payload>(reference, providers)?;
     require_all(
         reference,
         provider,
-        [("appid", &payload.appid), ("secret", &payload.secret)],
+        [("access_token", &payload.access_token)],
     )?;
     Ok(DouyinCredentials {
-        appid: payload.appid,
-        secret: payload.secret,
+        access_token: payload.access_token,
         source: provider,
     })
 }

@@ -5,9 +5,9 @@
 //! 回执永久保留（[`archive`]）。
 //!
 //! **零分叉**：三平台共用同一 [`Publisher`] 接口 + 共享驱动 [`flow::publish`]；平台差异
-//! （端点 / 签名 / 容器格式 / 状态码语义）全部收敛在客户端实现内（[`wechat`]，及后续
-//! alipay / douyin）。驱动只认 [`Job`] 与四步（upload / await_ready / submit / poll），
-//! 不认识任何平台名词。
+//! （端点 / 签名 / 容器格式 / 状态码语义 / 构建等待）全部收敛在客户端实现内
+//! （[`wechat`] / [`alipay`] / [`douyin`]；快应用联盟商店 T-M3-12 复用本骨架）。
+//! 驱动只认 [`Job`] 与四步（upload / await_ready / submit / poll），不认识任何平台名词。
 //!
 //! **凭据**：只给引用（[`poly_core::CredentialRef`]），值经 [`CredentialProvider`] 后端链
 //! 现取（[`MemoryProvider`] / [`EnvProvider`]，keyring / Vault 由 CLI 桥接——语义同
@@ -43,20 +43,26 @@
 //! # Ok(()) }
 //! ```
 
+pub mod alipay;
 pub mod archive;
+pub mod douyin;
 pub mod error;
 pub mod flow;
 pub mod secret;
 pub mod transport;
 pub mod wechat;
 
+mod package;
 mod time;
 
 use poly_core::CredentialRef;
 
+pub use alipay::AlipayPublisher;
 pub use archive::{Archive, AuditState, PollEntry, Receipt, SCHEMA_VERSION, receipt_key};
+pub use douyin::DouyinPublisher;
 pub use error::{PublishError, codes};
-pub use flow::{Package, PollPolicy, PublishOutcome, PublishRequest, publish};
+pub use flow::{PollPolicy, PublishOutcome, PublishRequest, publish};
+pub use package::Package;
 pub use secret::{CredentialProvider, EnvProvider, MemoryProvider, Redactor};
 pub use transport::{HttpRequest, HttpResponse, Method, Transport, UreqTransport};
 pub use wechat::WechatPublisher;
@@ -70,6 +76,8 @@ pub enum Channel {
     Alipay,
     /// 抖音开放平台（小程序）。
     Douyin,
+    /// 快应用联盟商店（T-M3-12 复用本骨架的提审脚本；客户端 impl 由 packagers 侧补）。
+    QuickApp,
 }
 
 impl Channel {
@@ -79,6 +87,7 @@ impl Channel {
             Self::Wechat => "wechat-open-platform",
             Self::Alipay => "alipay-open-platform",
             Self::Douyin => "douyin-open-platform",
+            Self::QuickApp => "quickapp-union-store",
         }
     }
 
@@ -88,6 +97,7 @@ impl Channel {
             "wechat-open-platform" => Some(Self::Wechat),
             "alipay-open-platform" => Some(Self::Alipay),
             "douyin-open-platform" => Some(Self::Douyin),
+            "quickapp-union-store" => Some(Self::QuickApp),
             _ => None,
         }
     }
@@ -118,6 +128,8 @@ pub struct Job<'a> {
     pub credential: &'a CredentialRef,
     /// 凭据后端链。
     pub providers: &'a [Box<dyn CredentialProvider>],
+    /// 平台侧等待 / 轮询预算（审核轮询与构建等待共用；来自 [`PublishRequest::poll`]）。
+    pub poll: &'a PollPolicy,
 }
 
 /// 上传结果。
@@ -171,5 +183,9 @@ pub trait Publisher: Send + Sync {
 
 /// 内置客户端清单（传输层共享）。CLI 按 `channel()` 派发；T-M3-10 起含三平台。
 pub fn builtin(transport: std::sync::Arc<dyn Transport>) -> Vec<Box<dyn Publisher>> {
-    vec![Box::new(WechatPublisher::new(transport))]
+    vec![
+        Box::new(WechatPublisher::new(transport.clone())),
+        Box::new(AlipayPublisher::new(transport.clone())),
+        Box::new(DouyinPublisher::new(transport)),
+    ]
 }
