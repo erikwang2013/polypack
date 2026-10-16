@@ -5,7 +5,8 @@
 //! 接口只写一份：核心 crate 的 UDL（`<core>/src/*.udl`，uniffi 的接口定义语言）。四端绑定由
 //! 生成器统一产出，**不手写任何一份**：Kotlin / Swift 走 uniffi 引擎（[`BridgeEngine::Uniffi`]），
 //! napi 走自带的 UDL→C 胶水出口（[`BridgeEngine::PolyNapi`]，T-M3-01：RNOH / ArkTS 宿主可装载的
-//! 自包含 `.so`，见 [`napi`]）；wasm-bindgen / cffi 已登记在 [`BridgeLang`] 上但标为 M3 消费点
+//! 自包含 `.so`，见 [`napi`]）；wasm-bindgen（小程序沙箱，T-M3-07）是编译产物形态、走 [`wasm`]
+//! （[`BridgeEngine::WasmBindgen`]）；cffi 已登记在 [`BridgeLang`] 上但标为 M3 消费点
 //! （[`BridgeEngine::Reserved`]），M3 接入时只换引擎、接口定义不动。
 //!
 //! ## 引擎（谁真正生成绑定代码）
@@ -37,6 +38,7 @@ mod engine;
 pub mod kotlinc;
 pub mod napi;
 pub mod udl;
+pub mod wasm;
 
 pub use engine::UniffiEngine;
 
@@ -58,8 +60,8 @@ pub const BRIDGE_SCHEMA: &str = "bridge/v1";
 
 /// 桥的目标语言（= 四端出口）。
 ///
-/// Kotlin / Swift 由 uniffi 引擎真实产出；napi / wasm-bindgen / cffi 是 M3 的消费点，
-/// 已在枚举与目录布局上登记，M3 只需接引擎。
+/// Kotlin / Swift 由 uniffi 引擎真实产出；wasm-bindgen 由 T-M3-07 接入（[`wasm`]，编译产物
+/// 形态）；napi / cffi 仍标为 M3 消费点，已在枚举与目录布局上登记，接入时只换引擎。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum BridgeLang {
     /// Kotlin（Android / JVM）。
@@ -68,7 +70,7 @@ pub enum BridgeLang {
     Swift,
     /// napi（C ABI：RNOH / ArkTS / Node），T-M3-01 接入。
     Napi,
-    /// wasm-bindgen（Web / WebView），M3 接入。
+    /// wasm-bindgen（小程序沙箱，T-M3-07 接入）。
     WasmBindgen,
     /// cffi（QNX / RTOS），M3 接入。
     Cffi,
@@ -111,7 +113,7 @@ impl BridgeLang {
         match self {
             Self::Kotlin | Self::Swift => BridgeEngine::Uniffi,
             Self::Napi => BridgeEngine::PolyNapi,
-            Self::WasmBindgen => BridgeEngine::Reserved { since: "M3" },
+            Self::WasmBindgen => BridgeEngine::WasmBindgen,
             Self::Cffi => BridgeEngine::Reserved { since: "M3" },
         }
     }
@@ -128,13 +130,17 @@ impl fmt::Display for BridgeLang {
     }
 }
 
-/// 生成引擎：uniffi（Kotlin / Swift）与 poly 自带的 napi C 胶水，其余出口是 M3 的登记位。
+/// 生成引擎：uniffi（绑定形态）、poly 自带的 napi C 胶水（T-M3-01）与 wasm-bindgen
+/// （编译产物形态，T-M3-07），其余出口是 M3 的登记位。
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BridgeEngine {
-    /// uniffi（Kotlin / Swift）。
+    /// uniffi（Kotlin / Swift）：由 UDL 经引擎生成绑定源码。
     Uniffi,
     /// poly 自带的 UDL→C 胶水出口（napi，T-M3-01；见 [`napi`]）。
     PolyNapi,
+    /// wasm-bindgen（小程序沙箱，T-M3-07）：编译产物形态（shim + cargo + 胶水 + 适配层），
+    /// 不落 [`generate`] 的绑定目录，走 [`wasm::generate`]（CLI：`poly bridge wasm`）。
+    WasmBindgen,
     /// 尚未接入的出口（M3 消费；调用即 `poly::E_BRIDGE_0002`）。
     Reserved {
         /// 计划接入的里程碑。
@@ -148,6 +154,7 @@ impl BridgeEngine {
         match self {
             Self::Uniffi => "uniffi",
             Self::PolyNapi => "poly-napi",
+            Self::WasmBindgen => "wasm-bindgen",
             Self::Reserved { .. } => "reserved",
         }
     }
@@ -286,18 +293,33 @@ pub fn generate(
     events: &mut dyn crate::events::EventSink,
 ) -> Result<Vec<BridgeOutput>, StageError> {
     let source = interface_source(project)?;
-    // 先验语言再找引擎：出口未接入是用户请求的问题，不该被「引擎不在场」掩盖
+    // 先验语言再找引擎：出口未接入（或形态不同）是用户请求的问题，不该被「引擎不在场」掩盖
     for lang in langs {
-        if let BridgeEngine::Reserved { since } = lang.engine() {
-            return Err(Diagnostic::error(
-                codes::E_BRIDGE_0002,
-                format!("出口 {} 的生成器尚未接入（计划于 {since}）", lang.id()),
-            )
-            .with_hint(
-                "已接入：--lang kotlin / swift（uniffi 引擎）/ napi（UDL→C 胶水，M3 的 T-M3-01）；\
-                 wasm-bindgen / cffi 由 M3 后续接入同一生成器",
-            )
-            .into());
+        match lang.engine() {
+            BridgeEngine::Reserved { since } => {
+                return Err(Diagnostic::error(
+                    codes::E_BRIDGE_0002,
+                    format!("出口 {} 的生成器尚未接入（计划于 {since}）", lang.id()),
+                )
+                .with_hint(
+                    "已接入：--lang kotlin / swift（uniffi 引擎）/ napi（UDL→C 胶水，M3 的 T-M3-01）；\
+                     wasm 走 `poly bridge wasm`；cffi 由 M3 后续接入同一生成器",
+                )
+                .into());
+            }
+            // wasm 出口是编译产物形态（shim + cargo + 胶水 + 适配层），不落绑定目录：
+            // 走 `poly bridge wasm`，别在绑定流水线里产出半份形态的产物
+            BridgeEngine::WasmBindgen => {
+                return Err(Diagnostic::error(
+                    codes::E_BRIDGE_0002,
+                    format!("出口 {} 是编译产物形态，不走绑定生成流水线", lang.id()),
+                )
+                .with_hint(
+                    "小程序沙箱的 wasm 出口走 `poly bridge wasm`（产出胶水 + 适配层 + 白名单清单）",
+                )
+                .into());
+            }
+            BridgeEngine::Uniffi | BridgeEngine::PolyNapi => {}
         }
     }
     let root = project.root.join("bridge");
@@ -326,7 +348,10 @@ pub fn generate(
                 }
             }
             BridgeEngine::PolyNapi => napi::generate(project, &source)?,
-            BridgeEngine::Reserved { .. } => unreachable!("保留出口已在前置检查拒绝"),
+            // 保留出口与 wasm 的产物形态出口都在前置检查里被拒（wasm 走 `poly bridge wasm`）
+            BridgeEngine::WasmBindgen | BridgeEngine::Reserved { .. } => {
+                unreachable!("保留/产物形态出口已在前置检查拒绝")
+            }
         };
         emit_generated(events, output.lang, &output.dir, &output.files);
         outputs.push(output);

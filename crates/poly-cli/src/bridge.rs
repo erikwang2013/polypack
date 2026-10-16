@@ -7,8 +7,10 @@
 //!   （`jni/<abi>/` + `classes.jar` + 最小清单），走库级缓存（二跑命中）。
 //! - `poly bridge ohos`：胶水 → 各 ABI 的自包含 NAPI 模块 `.so`（HarmonyOS triple 交叉编译），
 //!   落点 `<root>/bridge/harmonyos/<abi>/lib<ns>.so`（RNOH / ArkTS 宿主直接装载）。
+//! - `poly bridge wasm`（T-M3-07）：小程序沙箱的 wasm 出口——UDL 白名单 → shim（wasm-bindgen
+//!   包装）→ wasm32 编译 → 胶水 + 加载适配层 + 白名单清单，走库级缓存（命中还原不需要 CLI）。
 //!
-//! 引擎 / NDK / OHOS SDK / kotlinc 任一缺失都按 skip-if-missing 语义如实报告，绝不产假产物。
+//! 引擎 / NDK / OHOS SDK / kotlinc / wasm-bindgen 任一缺失都按 skip-if-missing 语义如实报告，绝不产假产物。
 
 use std::path::PathBuf;
 
@@ -35,6 +37,25 @@ pub enum BridgeCommand {
     Aar(AarArgs),
     /// 构建 HarmonyOS NAPI 模块（胶水 + 各 ABI 自包含 `.so`，RNOH / ArkTS 可装载）。
     Ohos(OhosArgs),
+    /// 编译小程序沙箱的 wasm 出口（UDL 白名单 → shim → wasm32 → 胶水 + 适配层 + 清单）。
+    Wasm(WasmArgs),
+}
+
+/// `poly bridge wasm` 的参数。
+#[derive(Debug, clap::Args)]
+pub struct WasmArgs {
+    /// 工程配置路径。
+    #[arg(long, default_value = "polypack.toml")]
+    pub config: PathBuf,
+    /// 产物落点（缺省 `<root>/bridge/wasm-bindgen/`；随代码包分发的那四个文件）。
+    #[arg(long)]
+    pub out: Option<PathBuf>,
+    /// 构建 profile（缓存键的「构建参数」输入）。
+    #[arg(long, value_enum, default_value_t = crate::build::ProfileArg::Local)]
+    pub profile: crate::build::ProfileArg,
+    /// 不走缓存（强制重编译 shim 与重生成胶水）。
+    #[arg(long = "no-cache")]
+    pub no_cache: bool,
 }
 
 /// `poly bridge generate` 的参数。
@@ -97,6 +118,7 @@ pub fn run(args: &Args, json: bool) -> Result<i32, Diagnostic> {
         BridgeCommand::Generate(args) => generate(args, json),
         BridgeCommand::Aar(args) => assemble_aar(args, json),
         BridgeCommand::Ohos(args) => assemble_ohos(args, json),
+        BridgeCommand::Wasm(args) => build_wasm(args, json),
     }
 }
 
@@ -324,6 +346,91 @@ fn assemble_aar(args: &AarArgs, json: bool) -> Result<i32, Diagnostic> {
     Ok(0)
 }
 
+/// `poly bridge wasm`（T-M3-07）：小程序沙箱的 wasm 出口。
+///
+/// 缓存键里的引擎串取**钉住的**版本常量（生成期才核对 CLI 版本）——命中还原不需要
+/// wasm-bindgen CLI 在场，CI 里可只靠缓存出产物。
+fn build_wasm(args: &WasmArgs, json: bool) -> Result<i32, Diagnostic> {
+    let project = project::load(&args.config)?;
+    let out = args.out.clone().unwrap_or_else(|| {
+        project
+            .root
+            .join("bridge")
+            .join(BridgeLang::WasmBindgen.dir())
+    });
+    let source = bridge::interface_source(&project).map_err(err)?;
+    let interface = bridge::interface_digest(&source).map_err(err)?;
+    let engine = format!("wasm-bindgen@{}", bridge::wasm::WASM_BINDGEN_VERSION);
+    let key = if args.no_cache {
+        None
+    } else {
+        Some(
+            bridge::wasm::cache_key(&project, &interface, &engine, profile_name(args.profile))
+                .map_err(err)?,
+        )
+    };
+    let cache = Cache::from_root(project::cache_root(&project.root));
+
+    // 命中：还原分发树，跳过 shim 编译与胶水生成
+    if let Some(key) = &key
+        && cache.restore_tree(key, &out).map_err(cache_err)?
+    {
+        let files = list_files(&out).map_err(|err| {
+            Diagnostic::error(
+                codes::E_BRIDGE_0003,
+                format!("缓存还原后读取产物失败（{}）: {err}", out.display()),
+            )
+            .with_hint("poly clean --all 后重跑 poly bridge wasm")
+        })?;
+        report_wasm(json, true, Some(key), &out, &files, None);
+        return Ok(0);
+    }
+
+    let mut events = project::sink(json);
+    let product = bridge::wasm::generate(&project, &out, events.as_mut()).map_err(err)?;
+    if let Some(key) = &key
+        && let Err(err) = cache.store_tree(key, &product.dir)
+    {
+        events.emit(&poly_core::BuildEvent::Warning {
+            stage: "bridge".to_string(),
+            message: format!("wasm 出口缓存写入失败（不阻断）: {err}"),
+        });
+    }
+    report_wasm(
+        json,
+        false,
+        key.as_ref(),
+        &product.dir,
+        &product.files,
+        Some(product.manifest.functions.len()),
+    );
+    Ok(0)
+}
+
+/// wasm 出口的输出报告（人读 / JSON 同一份字段）。
+fn report_wasm(
+    json: bool,
+    cached: bool,
+    key: Option<&poly_cache::Digest>,
+    dir: &std::path::Path,
+    files: &[PathBuf],
+    functions: Option<usize>,
+) {
+    let mut value = serde_json::json!({
+        "event": "bridge-wasm",
+        "schema": bridge::BRIDGE_SCHEMA,
+        "sandbox": bridge::wasm::SANDBOX_SCHEMA,
+        "cached": cached,
+        "key": key.map(|key| key.as_str().to_string()),
+        "dir": dir.to_string_lossy(),
+        "files": files.iter().map(|file| file.to_string_lossy()).collect::<Vec<_>>(),
+    });
+    if let Some(functions) = functions {
+        value["functions"] = serde_json::json!(functions);
+    }
+    report(json, value);
+}
+
 /// 编译 Kotlin 绑定为 `classes.jar`（kotlinc 缺失 → 错误，由调用方降级为告警）。
 fn compile_kotlin(
     project: &Project,
@@ -420,7 +527,8 @@ fn parse_langs(values: &[String]) -> Result<Vec<BridgeLang>, Diagnostic> {
 /// 未知语言 → `poly::E_BRIDGE_0002` + 可选值清单。
 fn unknown_lang(value: &str) -> Diagnostic {
     Diagnostic::error(codes::E_BRIDGE_0002, format!("未知的绑定语言: {value}")).with_hint(
-        "可选：kotlin / swift（uniffi 引擎）、napi（C 胶水，M3 已接入）、wasm-bindgen / cffi（M3 待接入）、all",
+        "可选：kotlin / swift（uniffi 引擎）、napi（C 胶水，M3 已接入）、\
+         wasm-bindgen（编译产物形态，走 `poly bridge wasm`）、cffi（M3 待接入）、all",
     )
 }
 
