@@ -26,6 +26,7 @@ pub use rpm::{Rpm, RpmStructure, check_rpm_structure, rpm_arch};
 pub use snap::{SNAP_PLUGS, Snap, SnapStructure, check_snap_structure};
 
 use std::path::{Path, PathBuf};
+#[cfg(unix)]
 use std::time::{Duration, UNIX_EPOCH};
 
 use poly_targets::TargetSpec;
