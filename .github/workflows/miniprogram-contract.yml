@@ -79,8 +79,17 @@ jobs:
           node-version: 20
 
       - name: Taro 工具链（真跑；@tarojs 4.3.0）
-        # 宿主工程未入库锁文件（npm install 即生成）；装不上即红——真编译的前提，不做静默降级
-        run: npm install --prefix ui/adapters/taro/host --no-audit --no-fund
+        # 宿主工程未入库锁文件（npm install 即生成）；装不上即红——真编译的前提，不做静默降级。
+        # retry 加固：2026-10-17 首夜 schedule 真跑在 macos 撞 npm arborist 内部崩溃
+        # （"Cannot read properties of null (reading 'edgesOut')"，已知瞬态类）；重试前清半成品，
+        # 3 次仍失败照旧红。
+        run: |
+          for i in 1 2 3; do
+            if npm install --prefix ui/adapters/taro/host --no-audit --no-fund; then exit 0; fi
+            echo "::warning::Taro 工具链安装第 $i 次失败（npm arborist 瞬态类），清理后重试"
+            rm -rf ui/adapters/taro/host/node_modules
+          done
+          exit 1
 
       - name: 三方 devtools CLI（尽力而为）
         # 支付宝 minidev / 抖音 tt-ide-cli 走 npm 分发，可无头安装；装不上不翻红——「缺 devtools
