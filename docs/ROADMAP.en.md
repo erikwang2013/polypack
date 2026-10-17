@@ -342,8 +342,10 @@ CI host × target-tier matrix:
 > manual dispatch): inside FreeBSD 14.5 / OpenBSD 7.9 QEMU VMs it runs a native `poly build` plus an
 > install smoke (`pkg install` + `pkg check -s` on FreeBSD; `make package` + `pkg_add` / `pkg_check`
 > on OpenBSD). The FreeBSD leg also exercises self-hosted pkg-repo signing via
-> `poly release --target freebsd` and asserts second-run idempotency. Build logs, the signed repo,
-> receipts, and packages are retained with the job for 14 days. Eight CI workflows total: `rust-ci` /
+> `poly release --target freebsd` and asserts second-run idempotency. The OpenBSD leg is
+> best-effort: hosted runners have no KVM, so when the image cannot boot under TCG it records
+> SKIP-with-print (missing logs are archived as a warning) until the image or boot path is fixed.
+> Build logs, the signed repo, receipts, and packages are retained with the job for 14 days. Eight CI workflows total: `rust-ci` /
 > `docs-check` / `secret-scan` / `mobile-contract` / `miniprogram-contract` / `tv-smoke` / `bridge` /
 > `bsd-ci`.
 

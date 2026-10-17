@@ -342,7 +342,9 @@ CI 宿主 × 目标层矩阵：
 > FreeBSD 14.5 / OpenBSD 7.9 QEMU VM 内 `poly build` 原生出包并做安装冒烟（FreeBSD 走
 > `pkg install` + `pkg check -s`，OpenBSD 走 `make package` + `pkg_add` / `pkg_check`）；
 > FreeBSD 腿同时真跑自托管 pkg 仓库签名（`poly release --target freebsd`）与二跑幂等断言。
-> 构建日志、签名仓库、回执与包随作业归档 14 天。CI 工作流共八个：`rust-ci` / `docs-check` /
+> OpenBSD 腿为尽力真跑：托管 runner 无 KVM，镜像在 TCG 下无法启动时按 SKIP-with-print 留痕
+> （日志缺失以 warn 归档），待镜像或启动方式修复后转真跑。构建日志、签名仓库、回执与包随
+> 作业归档 14 天。CI 工作流共八个：`rust-ci` / `docs-check` /
 > `secret-scan` / `mobile-contract` / `miniprogram-contract` / `tv-smoke` / `bridge` / `bsd-ci`。
 
 ## 9. 里程碑与任务分解

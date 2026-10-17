@@ -663,7 +663,7 @@
 - Deliverable: FreeBSD target declaration and packager: native build (Tauri IPC, core as host), `pkg` artifact, `pkg check` wired into verify, self-hosted pkg repository signing (optional, reusing the T-M5-05 signing abstraction).
 - Acceptance: `pkg install` succeeds inside a FreeBSD VM and the app launches; `pkg check` passes; the signed repo is consumable by `pkg update`.
 
-### T-M5-07 · ✅ OpenBSD ports target (ports skeleton + signify + portcheck verify leg; Makefile gains `.include <bsd.port.mk>`; OpenBSD VM install smoke SKIP-with-print on image bandwidth — the first bsd-ci night arbitrates)
+### T-M5-07 · ✅ OpenBSD ports target (ports skeleton + signify + portcheck verify leg; Makefile gains `.include <bsd.port.mk>`; OpenBSD VM install smoke records SKIP-with-print because the image cannot boot under TCG on KVM-less hosted runners (two real runs)
 
 - Role: platforms
 - Deps: —
@@ -679,7 +679,7 @@
 - Deliverable: pkgsrc target declaration and packager (NetBSD / DragonFly and friends): `Makefile` + `PLIST` generation, repository signing and self-hosted repo layout reusing T-M5-06.
 - Acceptance: `bmake package` succeeds inside a NetBSD VM and passes the packager self-check rules; the artifact lands in the self-hosted repo and installs.
 
-### T-M5-09 · ✅ BSD CI approach finalized (new bsd-ci.yml: FreeBSD 14.5 / OpenBSD 7.9 QEMU native builds + install smoke, nightly 20:07 UTC; actionlint green; §8 matrix + README/ROADMAP bilingual updates; FreeBSD leg green in QEMU)
+### T-M5-09 · ✅ BSD CI approach finalized (new bsd-ci.yml: FreeBSD 14.5 / OpenBSD 7.9 QEMU native builds + install smoke, nightly 20:07 UTC; actionlint green; §8 matrix + README/ROADMAP bilingual updates; FreeBSD leg green in QEMU; the best-effort OpenBSD leg records SKIP-with-print when the VM cannot boot)
 
 - Role: infra
 - Deps: T-M5-06, T-M5-07

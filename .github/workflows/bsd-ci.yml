@@ -144,6 +144,10 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: OpenBSD VM（原生构建 + ports 安装冒烟）
+        # 尽力腿（T-M5-09 评估口径）：托管 runner 无 KVM，OpenBSD 7.9 镜像在 TCG 下
+        # 两次实证 SSH 起不来（ssh exited 101）。失败不阻断工作流，由下方注记与证据
+        # 步骤如实留档；FreeBSD 腿承担 BSD 原生构建 + 安装冒烟的 CI 证据。
+        continue-on-error: true
         uses: vmactions/openbsd-vm@v1
         with:
           release: "7.9"
@@ -210,6 +214,15 @@ jobs:
             cp -R .polypack/packages/openbsd "$ART/packages"
             cp "$LOGS"/*.log "$ART/"
 
+      - name: OpenBSD 腿状态注记
+        if: always()
+        run: |
+          if [ ! -d .polypack/ci-logs/openbsd ]; then
+            echo "::warning title=OpenBSD SKIP-with-print::VM 未能启动（runner 无 KVM，TCG 下 7.9 镜像两次实证 SSH 失败）；骨架/安装冒烟待镜像或启动方式修复后重试。FreeBSD 腿已提供 BSD 原生构建 + 安装冒烟的 CI 证据。"
+          else
+            echo "OpenBSD 腿已产出日志（见证据 artifact）"
+          fi
+
       - name: 留证据（日志 + ports 骨架/产物；失败也留）
         if: always()
         uses: actions/upload-artifact@v4
@@ -219,5 +232,6 @@ jobs:
             .polypack/ci-logs/openbsd/**
             .polypack/ci-artifacts/openbsd/**
           include-hidden-files: true
-          if-no-files-found: error
+          # VM 起不来时无日志（SKIP 口径），证据缺失按 warn 留痕而非二次翻红
+          if-no-files-found: warn
           retention-days: 14

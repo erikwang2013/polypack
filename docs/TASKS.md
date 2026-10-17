@@ -663,7 +663,7 @@
 - 交付物: FreeBSD 目标声明与打包器：原生构建（Tauri IPC 核心即宿主）、`pkg` 产物、`pkg check` 校验接入 verify、自建 pkg 仓库签名（可选，复用 T-M5-05 的仓库签名抽象）。
 - 验收: 在 FreeBSD VM 内 `pkg install` 成功并启动应用；`pkg check` 通过；签名仓库可被 `pkg update` 消费。
 
-### T-M5-07 · ✅ OpenBSD ports 目标（ports 骨架 + signify + portcheck 入 verify；Makefile 补 `.include <bsd.port.mk>`；OpenBSD VM 安装冒烟因镜像带宽 SKIP-with-print，bsd-ci 首夜裁决）
+### T-M5-07 · ✅ OpenBSD ports 目标（ports 骨架 + signify + portcheck 入 verify；Makefile 补 `.include <bsd.port.mk>`；OpenBSD VM 安装冒烟在托管 runner（无 KVM / TCG）两次实证 SSH 起不来，按 SKIP-with-print 留痕）
 
 - 角色: platforms
 - 依赖: —
@@ -679,7 +679,7 @@
 - 交付物: pkgsrc 目标声明与打包器（NetBSD / DragonFly 等）：`Makefile` + `PLIST` 生成，仓库签名与自建仓库布局复用 T-M5-06。
 - 验收: 在 NetBSD VM 内 `bmake package` 成功并按打包器自检规则通过；产物进入自建仓库并可安装。
 
-### T-M5-09 · ✅ BSD CI 方案定型（bsd-ci.yml 新工作流：FreeBSD 14.5 / OpenBSD 7.9 QEMU 原生构建 + 安装冒烟，夜跑 20:07 UTC；actionlint 绿；§8 CI 矩阵与 README/ROADMAP 双语回写；FreeBSD 腿 QEMU 真跑全绿）
+### T-M5-09 · ✅ BSD CI 方案定型（bsd-ci.yml 新工作流：FreeBSD 14.5 / OpenBSD 7.9 QEMU 原生构建 + 安装冒烟，夜跑 20:07 UTC；actionlint 绿；§8 CI 矩阵与 README/ROADMAP 双语回写；FreeBSD 腿 QEMU 真跑全绿，OpenBSD 尽力腿 VM 起不来按 SKIP-with-print 留痕）
 
 - 角色: infra
 - 依赖: T-M5-06, T-M5-07
