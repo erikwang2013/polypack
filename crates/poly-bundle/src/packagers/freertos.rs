@@ -250,6 +250,7 @@ fn engine_lib(inputs: &BundleInputs, embedded: &EmbeddedInputs) -> Result<PathBu
     }
     let staging = inputs.out_dir.join("engine").join(ARCH);
     embedded::build_staticlib(&EngineBuild {
+        packager: ID,
         core_crate: embedded.engine_crate.as_path(),
         staging: &staging,
         target: TRIPLE,
