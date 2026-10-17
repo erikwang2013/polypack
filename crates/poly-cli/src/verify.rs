@@ -220,6 +220,9 @@ enum Verifier {
     VxWorksLd,
     /// Zephyr west 模板结构 + 在场时两板 `west build`（T-M6-06；环境缺席 SKIP-with-print）。
     ZephyrWestBuild,
+    /// FreeRTOS mps2-an385 板级包结构 + 在场时 QEMU 冒烟（T-M6-07；工具链 / 网络缺席
+    /// SKIP-with-print）。
+    FreeRtosQemuSmoke,
 }
 
 /// 校验器 id → 已接入实现（`None` = 未接入，归属查 [`verifier_owner`]）。
@@ -248,6 +251,7 @@ fn verifier_for(id: &str) -> Option<Verifier> {
         "c-abi-symbols" => Some(Verifier::CAbiSymbols),
         "vxworks-ld-check" => Some(Verifier::VxWorksLd),
         "zephyr-west-build" => Some(Verifier::ZephyrWestBuild),
+        "freertos-qemu-smoke" => Some(Verifier::FreeRtosQemuSmoke),
         _ => None,
     }
 }
@@ -372,6 +376,7 @@ fn verify_target(
     let mut cabi_ids: Vec<String> = Vec::new();
     let mut vxworks_ld_ids: Vec<String> = Vec::new();
     let mut zephyr_west_ids: Vec<String> = Vec::new();
+    let mut freertos_qemu_ids: Vec<String> = Vec::new();
     for id in &spec.verify {
         match verifier_for(id) {
             Some(Verifier::IosCodesign) => ios_ids.push(id.clone()),
@@ -397,6 +402,7 @@ fn verify_target(
             Some(Verifier::CAbiSymbols) => cabi_ids.push(id.clone()),
             Some(Verifier::VxWorksLd) => vxworks_ld_ids.push(id.clone()),
             Some(Verifier::ZephyrWestBuild) => zephyr_west_ids.push(id.clone()),
+            Some(Verifier::FreeRtosQemuSmoke) => freertos_qemu_ids.push(id.clone()),
             None => unserved.push(match verifier_owner(id) {
                 Some(owner) => format!("{id}（{owner}）"),
                 // 注册表有 id 但没人认领：如实点名到具体 id，测试保证这里在 M2 的注册表上是死路
@@ -477,8 +483,8 @@ fn verify_target(
         checked |= crate::verify_embedded::verify_arxml_schema(project, spec, &arxml_ids, events)?;
     }
     if !cabi_ids.is_empty() {
-        // 同一 verify id 覆盖四类嵌入式目标；两套实现按 staged 布局区分，按目标分发。
-        checked |= if matches!(spec.id.as_str(), "vxworks" | "zephyr") {
+        // 同一 verify id 覆盖五类嵌入式目标；两套实现按 staged 布局区分，按目标分发。
+        checked |= if matches!(spec.id.as_str(), "vxworks" | "zephyr" | "freertos") {
             crate::verify_rtos::verify_c_abi_symbols(project, spec, &cabi_ids, events)?
         } else {
             crate::verify_embedded::verify_c_abi_symbols(project, spec, &cabi_ids, events)?
@@ -489,6 +495,14 @@ fn verify_target(
     }
     if !zephyr_west_ids.is_empty() {
         checked |= crate::verify_rtos::verify_zephyr_west(project, spec, &zephyr_west_ids, events)?;
+    }
+    if !freertos_qemu_ids.is_empty() {
+        checked |= crate::verify_freertos::verify_freertos_qemu(
+            project,
+            spec,
+            &freertos_qemu_ids,
+            events,
+        )?;
     }
     Ok(checked)
 }
