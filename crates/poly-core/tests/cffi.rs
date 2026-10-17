@@ -56,7 +56,7 @@ fn collect_headers(dir: &Path, out: &mut Vec<PathBuf>) {
         let name = entry.file_name();
         if matches!(
             name.to_str(),
-            Some("target" | ".git" | "node_modules" | ".claude")
+            Some("target" | ".git" | "node_modules" | ".claude" | "build")
         ) {
             continue;
         }
