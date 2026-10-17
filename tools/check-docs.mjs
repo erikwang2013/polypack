@@ -6,12 +6,15 @@
  *   1) H2 / H3 标题数一致
  *   2) Markdown 表格行数（'^| ' 行）一致
  *   3) 对 TASKS 档对：任务 ID 集合逐一相同
+ *   4) L6 嵌入式 / 车机状态表与 TargetSpec 逐字一致（T-M6-12，见 gen-target-table.mjs）
  *
  * 零依赖。用法: node tools/check-docs.mjs   (一致 exit 0, 漂移 exit 1)
  */
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+
+import { checkGeneratedDocs } from './gen-target-table.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -48,5 +51,9 @@ for (const [zhPath, enPath] of PAIRS) {
     }
   }
 }
-console.log(failed ? `\n${failed} 项漂移` : '\n四对文档结构一致');
+const generated = checkGeneratedDocs();
+for (const line of generated.lines) (line.ok ? console.log : console.error)(line.text);
+failed += generated.failed;
+
+console.log(failed ? `\n${failed} 项漂移` : '\n四对文档结构一致（含 TargetSpec 状态表）');
 process.exit(failed ? 1 : 0);
