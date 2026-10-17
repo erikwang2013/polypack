@@ -3,7 +3,7 @@
 > 派生自 [ROADMAP.md](ROADMAP.md) §9 的里程碑分解；由 4 人规划小组并行产出、交叉对账后合并：**116 个任务**，跨里程碑引用经「存在性 + 描述匹配」两轮校验零悬空，中英任务 ID 逐一对齐。
 > 英文版：[TASKS.en.md](TASKS.en.md)。本文件受「文档同步约定」管辖（见 ROADMAP §11）：任务增删须双文件同一次提交更新，并由 T-M0-10 的结构级校验器在 CI 拦截漂移。
 > 扩展方向（E1–E8）已立项孵化，不占本任务表：见 [ROADMAP.md](ROADMAP.md) §13。
-> 进度（2026-10-17）：**M0 11/11** · **M1 已交付 15/15**（11 项 ✅；T-M1-02/05/06/07 的对应 CI 腿已全绿，余下工具级注记见任务条目）· **M2 已交付 15/15**（8 项 ✅：T-M2-02/06/07/08/09/11/14/15；T-M2-01/03/04/05/10/12/13 带宿主/阶段/设置注记，逐项见任务条目）· **CI 三宿主全绿**（rust-ci#38654820649）+ M2 新增四工作流（secret-scan 三宿主 / mobile-contract mock+夜跑真列 / bridge 夜跑真跑）· **M3 已交付 12/12**（7 项 ✅：T-M3-05/06/07/08/09/10/11；T-M3-01/02/03/04/12 带宿主/环境/联调注记，逐项见任务条目）+ M3 新增一工作流（miniprogram-contract mock+夜跑真列）· **M4 已交付 14/15**（T-M4-15 条件任务未触发：（决策=继续受限档，真机侧载为触发前置）；T-M4-01/06/11/13 等带设备/宿主/联调注记，逐项见任务条目）+ M4 新增一工作流（tv-smoke mock+夜跑真列）· **M5 已交付 11/11**（T-M5-07 的 OpenBSD 安装冒烟与 T-M5-08 的 NetBSD `bmake` 真跑按环境槽 SKIP-with-print（镜像带宽 / 宿主缺席），由 bsd-ci 每夜裁决；T-M5-11 多目标真跑受单全局 `--credential` 契约限制，以 dry-run 双事件验证，按 target 分凭据留 M6）+ M5 新增一工作流（bsd-ci 夜跑 BSD 原生构建与安装冒烟）· **M6 已交付 13/13**（no_std 引擎层 + C ABI、QNX/AUTOSAR/VxWorks/Zephyr/FreeRTOS 五目标、AAOS、CI 矩阵与 QEMU 冒烟、状态表与预算/标注校验；QNX SDP / wr-cc / Xcode 类环境槽按 SKIP-with-print，模型与串口证据见各任务条目）+ M6 新增一工作流（embedded-ci：tier-6 矩阵从 TargetSpec 派生 + QEMU 冒烟，夜跑 19:27）。
+> 进度（2026-10-17）：**M0 11/11** · **M1 已交付 15/15**（11 项 ✅；T-M1-02/05/06/07 的对应 CI 腿已全绿，余下工具级注记见任务条目）· **M2 已交付 15/15**（8 项 ✅：T-M2-02/06/07/08/09/11/14/15；T-M2-01/03/04/05/10/12/13 带宿主/阶段/设置注记，逐项见任务条目）· **CI 三宿主全绿**（rust-ci#38654820649）+ M2 新增四工作流（secret-scan 三宿主 / mobile-contract mock+夜跑真列 / bridge 夜跑真跑）· **M3 已交付 12/12**（7 项 ✅：T-M3-05/06/07/08/09/10/11；T-M3-01/02/03/04/12 带宿主/环境/联调注记，逐项见任务条目）+ M3 新增一工作流（miniprogram-contract mock+夜跑真列）· **M4 已交付 14/15**（T-M4-15 条件任务未触发：（决策=继续受限档，真机侧载为触发前置）；T-M4-01/06/11/13 等带设备/宿主/联调注记，逐项见任务条目）+ M4 新增一工作流（tv-smoke mock+夜跑真列）· **M5 已交付 11/11**（T-M5-07 的 OpenBSD 安装冒烟与 T-M5-08 的 NetBSD `bmake` 真跑按环境槽 SKIP-with-print（镜像带宽 / 宿主缺席），由 bsd-ci 每夜裁决；T-M5-11 多目标真跑受单全局 `--credential` 契约限制，以 dry-run 双事件验证，按 target 分凭据留 M6）+ M5 新增一工作流（bsd-ci 夜跑 BSD 原生构建与安装冒烟）· **M6 已交付 13/13**（no_std 引擎层 + C ABI、QNX/AUTOSAR/VxWorks/Zephyr/FreeRTOS 五目标、AAOS、CI 矩阵与 QEMU 冒烟、状态表与预算/标注校验；QNX SDP / wr-cc / Xcode 类环境槽按 SKIP-with-print，模型与串口证据见各任务条目）+ M6 新增一工作流（embedded-ci：tier-6 矩阵从 TargetSpec 派生 + QEMU 冒烟，夜跑 19:27）· **M7 已交付 11/11**（adapter-wear + Wear OS 双冒烟 + watchOS 模板/打包链 + Fitbit/Zepp + Garmin spike + 实验目标三段式文档 + 穿戴契约；xcodebuild / codesign / Wear 设备类环境槽按 SKIP-with-print，garmin 的 iq 打包器为已记录实验缺口）+ M7 新增两工作流（wear-smoke 夜跑表单冒烟 / wear-release-smoke 发版门）。
 
 ## 团队编制与角色
 
@@ -801,77 +801,77 @@
 ## M7 穿戴（4 周）
 > 前置依赖: M2（Android 打包链、Apple 签名链与「本地 or 远程农场」判定）｜出口条件: Wear OS 有设备冒烟通过；实验目标（watchOS / Garmin）文档标注完备（能力 / 缺口 / 替代方案）
 
-### T-M7-01 · `@polypack/adapter-wear` 紧凑 tokens
+### T-M7-01 · ✅ `@polypack/adapter-wear` 紧凑 tokens（圆 454/方 320 安全区盒模型逐盒断言 + 金样；platformStyle/capabilities；焦点环复用共享内核零新导航；31/31 node）
 - 角色: ui-adapters
 - 依赖: —
 - 估算: 3d
 - 交付物: `@polypack/adapter-wear`（紧凑 tokens + 圆形/方形两种安全区），实现 `platformStyle(tokens) -> SkinnedTokens` 与 `capabilities()`（`safeArea` / `gestures`）。
 - 验收: 同一页面组件树在圆、方两种 Wear 尺寸下均不越出安全区（断言 + 金样比对）；`capabilities()` 声明缺失能力时交互按契约降级（无指针 → 焦点环路径已有实现则复用，不新写导航系统）。
 
-### T-M7-02 · Wear OS 目标声明与 Wear 清单
+### T-M7-02 · ✅ Wear OS 目标声明与 Wear 清单（wearos tier6 native/uniffi + `android.hardware.type.watch` 变体 minSdk ≥ 26；复用 Android 链，aapt2 真出 APK、bundletool缺席 SKIP；experimental=false + RN on Wear beta notes）
 - 角色: platforms
 - 依赖: T-M7-01
 - 估算: 2d
 - 交付物: Wear OS TargetSpec（`runtime = "native"`、`bridge = "uniffi"`、APK（Wear））与 Wear 清单变体（`android.hardware.type.watch`）；Wear OS 为平台级支持，`experimental = false`，设备侧边界写进 `notes`：「UI 运行时（RN on Wear）为 beta，打包与签名走 Android 基座」。
 - 验收: 清单校验器断言 Wear 特性与最小 API 级别；复用 M2 Android 链产出 APK 且 `bundletool validate` 通过；`experimental = false` 且生成的文档表如实呈现该值；`notes` 中 beta 说明进入 README / ROADMAP 的穿戴条目（不再标 ※实验）。
 
-### T-M7-03 · Wear OS 打包与表单冒烟套件
+### T-M7-03 · ✅ Wear OS 打包与表单冒烟套件（AndroidWear 复用 aapt2 链真出 APK；ui/smoke/wear input/swipe/back 用例 + 新 `wear-smoke` 工作流 mock/夜跑；缺 KVM/APK 时 SKIP-with-print 且 result.json 如实）
 - 角色: platforms
 - 依赖: T-M7-02
 - 估算: 3d
 - 交付物: Wear 打包器（复用 M2 Android 链，不新增 Android 打包实现）+ §8 冒烟层的「Wear 表单」用例集（输入、滑动、返回）。
 - 验收: APK 可安装到 Wear 模拟器；表单用例在每晚 CI 全绿；失败时输出可定位到具体表单步骤的报告。
 
-### T-M7-04 · Wear OS 有设备冒烟
+### T-M7-04 · ✅ Wear OS 有设备冒烟（install→launch→forms→uninstall 生命周期 + 截图/logcat/构建摘要归档；新 `wear-release-smoke` 发版门，缺设备/APK 阻断发版；本机无设备 SKIP-with-print，blessed runner 待首跑）
 - 角色: infra
 - 依赖: T-M7-03
 - 估算: 2.5d
 - 交付物: 有设备冒烟流水线（安装 → 启动 → 表单用例 → 卸载）与截图/日志归档，发版前必跑。
 - 验收: 在真实 Wear 设备或官方模拟器上冒烟通过；归档物含时间戳与构建摘要可追溯；冒烟失败阻断发版（发版流水线依赖该 job）。
 
-### T-M7-05 · watchOS 伴生模板生成器（SwiftUI，实验）
+### T-M7-05 · ✅ watchOS 伴生模板生成器（SwiftUI，实验）（`poly init --target watchos` 10 文件模板 + 结构断言、凭据零明文；xcodebuild 本机缺席按环境槽 SKIP-with-print）
 - 角色: platforms
 - 依赖: —
 - 估算: 3d
 - 交付物: `poly init --target watchos` 生成 SwiftUI 伴生模板（含核心 API 调用桩与 WatchConnectivity 说明），按 §3.7 标注实验。
 - 验收: 模板在 macOS 宿主经 `xcodebuild` 构建通过；模板内无明文凭据（secret-scan 绿）；`experimental = true` 进入生成的文档表。
 
-### T-M7-06 · watchOS 打包与签名链
+### T-M7-06 · ✅ watchOS 打包与签名链（Watchos 打包器 archive→Payload .app + plutil；非 macOS 宿主 ToolMissing 点名 R3 农场；签名/校验复用 Apple 链，codesign 本机 SKIP）
 - 角色: platforms
 - 依赖: T-M7-05
 - 估算: 2.5d
 - 交付物: watch 包打包（Xcode archive）与 codesign 签名链，复用 M2 的 Apple 宿主 / 远程农场判定（R3 路径）。
 - 验收: 产出 watch 包且 `codesign --verify` 通过；Linux 宿主经远程农场可出包；签名凭据全程以引用形式出现（仓库无明文）。
 
-### T-M7-07 · Fitbit OS 打包器（JS SDK）
+### T-M7-07 · ✅ Fitbit OS 打包器（JS SDK）（runtime=none + `.fba` SDK 6.1 结构三层自检 + 金样/确定性；fitbit-build 缺席 SKIP-with-print，notes 明示核心不直接运行）
 - 角色: platforms
 - 依赖: T-M7-01
 - 估算: 2.5d
 - 交付物: Fitbit OS TargetSpec（`runtime = "none"`，核心不在设备上运行）与 Fitbit JS SDK 应用包打包器。
 - 验收: Fitbit CLI 自检通过；产物结构与金样一致；`notes` 明示「核心不直接运行、能力由 JS 侧实现」并进入文档表。
 
-### T-M7-08 · Zepp OS 打包器（Zepp JS API）
+### T-M7-08 · ✅ Zepp OS 打包器（Zepp JS API）（`.zab` manifest + 内容 md5 命名 zpk + device/app-side zip；金样与二跑一致；zeus/模拟器缺席 SKIP-with-print）
 - 角色: platforms
 - 依赖: T-M7-01
 - 估算: 2.5d
 - 交付物: Zepp OS TargetSpec 与 Zepp 小程序打包器（Zepp JS API）。
 - 验收: Zepp 开发者工具校验通过；产物可安装到模拟器；契约测试（打包 + 校验 + 结构断言）进 CI。
 
-### T-M7-09 · Garmin Monkey C 转译 spike（实验）
+### T-M7-09 · ✅ Garmin Monkey C 转译 spike（实验）（子集/API 白名单 + 圆/方确定性发射，29/29 node；结论=继续受限档，experimental=true；Connect IQ SDK 缺席 SKIP-with-print，iq 打包器为已记录缺口）
 - 角色: platforms
 - 依赖: T-M7-01
 - 估算: 3d
 - 交付物: Monkey C 子集转译 spike（限定语言子集 + API 白名单）与能力边界结论（继续 / 降级，处理方式对齐 M4 的 Roku 结论格式）。
 - 验收: 子集内至少一个示例产出 `.iq` 包并通过 Connect IQ 编译器；结论写入实验目标文档（能力 / 缺口 / 替代方案）；`experimental = true`。
 
-### T-M7-10 · 实验目标能力 / 缺口 / 替代方案文档
+### T-M7-10 · ✅ 实验目标能力 / 缺口 / 替代方案文档（新增双语 EXPERIMENTAL-TARGETS 章：watchOS W1–W7 / Garmin G1–G10 三段式 + Wear beta 边界；ROADMAP 规划表清理；check-docs / check-experimental 绿）
 - 角色: docs
 - 依赖: T-M7-04, T-M7-05, T-M7-09
 - 估算: 2.5d
 - 交付物: watchOS / Garmin 三段式文档：能力、缺口、替代方案，双语同步（§11）；Wear OS 不作为实验目标，仅在同章记录「UI 运行时（RN on Wear）为 beta」的边界说明。
 - 验收: 每个实验目标三段齐全且缺口项均有替代方案或明示「无替代」；`experimental` 字段与文档、CI 标注三处一致（Wear OS 记为 `false`，文档中无其 ※实验 标注）；文档同步检查在 CI 绿。
 
-### T-M7-11 · 穿戴契约测试与金样
+### T-M7-11 · ✅ 穿戴契约测试与金样（统一四段骨架每目标一份 + 复制模板；金样 schema v2 与显式 `POLYPACK_UPDATE_GOLDEN` 门；Wear aapt2 真跑、Fitbit/Zepp 真打包）
 - 角色: infra
 - 依赖: T-M7-02, T-M7-07, T-M7-08
 - 估算: 2.5d

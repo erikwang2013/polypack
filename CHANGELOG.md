@@ -6,6 +6,18 @@ Notable changes are recorded here; since v1.0.0, tags and releases follow `vX.Y.
 
 ## [Unreleased]
 
+## [1.9.0] — 2026-10-18
+
+### Added
+- **M7 穿戴交付**（2026-10-18，11/11）：`@polypack/adapter-wear`（圆/方安全区、紧凑 tokens、capabilities，焦点环复用共享内核）；Wear OS 目标（`wearos`，复用 Android 链 + watch 清单变体）与表单冒烟双轨（`wear-smoke` 夜跑 input/swipe/back、`wear-release-smoke` 发版门含安装→启动→卸载生命周期与截图/构建摘要归档）；watchOS SwiftUI 伴生模板（`poly init --target watchos`）与 watch 打包/签名链（复用 Apple 签名与 R3 农场判定，实验）；Fitbit `.fba` 与 Zepp `.zab` 打包器（runtime=none，结构/金样/确定性）；Garmin Monkey C 子集转译 spike（结论=继续受限档，实验）；实验目标能力/缺口/替代方案双语新章（watchOS W1–W7 / Garmin G1–G10 + Wear beta 边界）；穿戴契约测试与金样（统一四段骨架 + 显式 `POLYPACK_UPDATE_GOLDEN` 门）。**十一工作流三宿主全绿（新增 `wear-smoke` / `wear-release-smoke`）。**
+
+*M7 wearables delivery (11/11): adapter-wear with round/square safe areas; the Wear OS target reusing the Android chain plus the dual form-smoke tracks (nightly wear-smoke and a blocking wear-release-smoke gate with install→launch→uninstall lifecycle and screenshot/build-summary archives); the watchOS SwiftUI companion template and watch packaging/signing chain (experimental); Fitbit/Zepp packagers with structure goldens; the Garmin Monkey C subset spike (constrained-mode decision); the bilingual capability/gap/alternatives chapter for experimental targets; and the wearable contract suite with explicit golden updates. Eleven workflows green on three hosts (new wear-smoke / wear-release-smoke).*
+
+### Fixed
+- 穿戴链集成修复：Fitbit/Zepp 缺工程改报 `MissingInput`（环境槽 SKIP-with-print），`poly build --target all` 不再因用户未提供该平台工程硬失败；watchOS 归档来源断言按逻辑路径归一（Windows 反斜杠假红）。
+
+*Fixed during M7 integration: Fitbit/Zepp now report MissingInput (environment-slot SKIP) when the platform project is absent, so `--target all` no longer hard-fails; the watchOS archive-source assertion is normalized for Windows backslashes.*
+
 ## [1.8.0] — 2026-10-18
 
 ### Added

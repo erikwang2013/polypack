@@ -3,7 +3,7 @@
 > Derived from the milestone breakdown in [ROADMAP.en.md](ROADMAP.en.md) §9; produced in parallel by a four-person planning group and merged after cross-reconciliation: **116 tasks**, all cross-milestone references verified in two passes (existence + description match, zero dangling), Chinese/English task IDs aligned one-to-one.
 > Chinese original: [TASKS.md](TASKS.md). This file falls under the documentation sync convention (ROADMAP §11): task additions/removals must land in both files in the same commit, and drift is caught in CI by the structural checker delivered in T-M0-10.
 > Extension directions (E1–E8) are incubated and intentionally absent from this task table — see [ROADMAP.en.md](ROADMAP.en.md) §13.
-> Progress (2026-10-17): **M0 11/11** · **M1 delivered 15/15** (11 ✅; the matching CI legs for T-M1-02/05/06/07 are green — remaining tool-level notes live in the task entries) · **M2 delivered 15/15** (8 ✅: T-M2-02/06/07/08/09/11/14/15; T-M2-01/03/04/05/10/12/13 carry host/stage/settings notes — see each entry) · **CI green on all three hosts** (rust-ci#38654820649) plus four new M2 workflows (secret-scan ×3 hosts / mobile-contract mock-per-push + nightly real / bridge nightly real) · **M3 delivered 12/12** (7 ✅: T-M3-05/06/07/08/09/10/11; T-M3-01/02/03/04/12 carry host/environment/interop notes — see each entry) plus one new M3 workflow (miniprogram-contract mock-per-push + nightly real) · **M4 delivered 14/15** (conditional T-M4-15 not triggered — decision: continue in constrained mode, on-device sideload is its prerequisite; T-M4-01/06/11/13 etc. carry device/host/interop notes — see each entry) plus one new M4 workflow (tv-smoke mock-per-push + nightly real) · **M5 delivered 11/11** (T-M5-07 OpenBSD install smoke and T-M5-08 NetBSD `bmake` real run are SKIP-with-print per environment slot (image bandwidth / host absent), arbitrated by the first bsd-ci night; the multi-target true run is limited by the single global `--credential` contract and verified via dry-run dual events, per-target credentials deferred to M6) plus one new M5 workflow (bsd-ci nightly BSD native builds + install smoke) · **M6 delivered 13/13** (the no_std engine layer + C ABI, the QNX / AUTOSAR / VxWorks / Zephyr / FreeRTOS targets, AAOS, the CI matrix and QEMU smokes, and the status-table / budget / labeling validators; QNX SDP / wr-cc / Xcode-class environment slots record SKIP-with-print, with model and serial evidence in each task entry) plus one new M6 workflow (embedded-ci: tier-6 matrix derived from TargetSpec + QEMU smokes, nightly 19:27).
+> Progress (2026-10-17): **M0 11/11** · **M1 delivered 15/15** (11 ✅; the matching CI legs for T-M1-02/05/06/07 are green — remaining tool-level notes live in the task entries) · **M2 delivered 15/15** (8 ✅: T-M2-02/06/07/08/09/11/14/15; T-M2-01/03/04/05/10/12/13 carry host/stage/settings notes — see each entry) · **CI green on all three hosts** (rust-ci#38654820649) plus four new M2 workflows (secret-scan ×3 hosts / mobile-contract mock-per-push + nightly real / bridge nightly real) · **M3 delivered 12/12** (7 ✅: T-M3-05/06/07/08/09/10/11; T-M3-01/02/03/04/12 carry host/environment/interop notes — see each entry) plus one new M3 workflow (miniprogram-contract mock-per-push + nightly real) · **M4 delivered 14/15** (conditional T-M4-15 not triggered — decision: continue in constrained mode, on-device sideload is its prerequisite; T-M4-01/06/11/13 etc. carry device/host/interop notes — see each entry) plus one new M4 workflow (tv-smoke mock-per-push + nightly real) · **M5 delivered 11/11** (T-M5-07 OpenBSD install smoke and T-M5-08 NetBSD `bmake` real run are SKIP-with-print per environment slot (image bandwidth / host absent), arbitrated by the first bsd-ci night; the multi-target true run is limited by the single global `--credential` contract and verified via dry-run dual events, per-target credentials deferred to M6) plus one new M5 workflow (bsd-ci nightly BSD native builds + install smoke) · **M6 delivered 13/13** (the no_std engine layer + C ABI, the QNX / AUTOSAR / VxWorks / Zephyr / FreeRTOS targets, AAOS, the CI matrix and QEMU smokes, and the status-table / budget / labeling validators; QNX SDP / wr-cc / Xcode-class environment slots record SKIP-with-print, with model and serial evidence in each task entry) plus one new M6 workflow (embedded-ci: tier-6 matrix derived from TargetSpec + QEMU smokes, nightly 19:27) · **M7 delivered 11/11** (adapter-wear + the Wear OS dual smoke + the watchOS template/packaging chain + Fitbit/Zepp + the Garmin spike + the experimental-target three-section docs + wearable contracts; xcodebuild / codesign / Wear-device environment slots record SKIP-with-print, and the Garmin iq packager is a recorded experimental gap) plus two new M7 workflows (wear-smoke nightly form smoke / wear-release-smoke release gate).
 
 ## Team roster
 
@@ -801,77 +801,77 @@
 ## M7 wearables (4 weeks)
 > Prerequisites: M2 (Android packaging chain, Apple signing chain and the "local or remote farm" decision) | Exit criteria: Wear OS on-device smoke passes; experimental targets (watchOS / Garmin) are fully documented (capability / gap / alternatives)
 
-### T-M7-01 · `@polypack/adapter-wear` compact tokens
+### T-M7-01 · ✅ `@polypack/adapter-wear` compact tokens (round 454 / square 320 safe-area per-box assertions + goldens; platformStyle/capabilities; focus ring reuses the shared kernel, no new navigation; 31/31 node)
 - Role: ui-adapters
 - Deps: —
 - Estimate: 3d
 - Deliverable: `@polypack/adapter-wear` (compact tokens plus round/square safe areas) implementing `platformStyle(tokens) -> SkinnedTokens` and `capabilities()` (`safeArea` / `gestures`).
 - Acceptance: the same page component tree stays inside the safe area at both round and square Wear sizes (assertions plus golden comparison); when `capabilities()` reports a missing capability the interaction degrades per contract (no pointer also means reusing the existing focus-ring path, not writing a new navigation system).
 
-### T-M7-02 · Wear OS target declaration and Wear manifest
+### T-M7-02 · ✅ Wear OS target declaration and Wear manifest (wearos tier6 native/uniffi + `android.hardware.type.watch` variant with minSdk ≥ 26; Android chain reuse, real aapt2 APK, bundletool-absent SKIP; experimental=false with the RN-on-Wear beta note)
 - Role: platforms
 - Deps: T-M7-01
 - Estimate: 2d
 - Deliverable: Wear OS TargetSpec (`runtime = "native"`, `bridge = "uniffi"`, APK (Wear)) with a Wear manifest variant (`android.hardware.type.watch`); Wear OS is platform-level support, `experimental = false`, with the device-side boundary written into `notes`: "the UI runtime (RN on Wear) is beta; packaging and signing ride the Android base".
 - Acceptance: the manifest verifier asserts the Wear feature and minimum API level; the M2 Android chain produces an APK that passes `bundletool validate`; `experimental = false` and the generated docs table shows that value as-is; the beta wording in `notes` reaches the wearable entries of the README / ROADMAP (no ※experimental mark on Wear OS).
 
-### T-M7-03 · Wear OS packaging and form smoke suite
+### T-M7-03 · ✅ Wear OS packaging and form smoke suite (AndroidWear reuses the aapt2 chain for a real APK; ui/smoke/wear input/swipe/back cases + the new `wear-smoke` workflow mock/nightly; KVM/APK absence records SKIP-with-print with an honest result.json)
 - Role: platforms
 - Deps: T-M7-02
 - Estimate: 3d
 - Deliverable: a Wear packager (reusing the M2 Android chain, adding no second Android packaging implementation) plus the §8 "Wear form" smoke cases (input, swipe, back).
 - Acceptance: the APK installs on a Wear emulator; the form cases are green in nightly CI; failures produce a report pinpointing the exact form step.
 
-### T-M7-04 · Wear OS on-device smoke
+### T-M7-04 · ✅ Wear OS on-device smoke (install→launch→forms→uninstall lifecycle + screenshots/logcat/build-summary archive; the new `wear-release-smoke` release gate blocks on missing device/APK; no local device → SKIP-with-print, blessed runner pending first run)
 - Role: infra
 - Deps: T-M7-03
 - Estimate: 2.5d
 - Deliverable: an on-device smoke pipeline (install → launch → form cases → uninstall) with screenshot/log archival, required before releases.
 - Acceptance: the smoke passes on a real Wear device or the official emulator; archived artifacts carry a timestamp and build digest for traceability; a failing smoke blocks the release (the release pipeline depends on this job).
 
-### T-M7-05 · watchOS companion template generator (SwiftUI, experimental)
+### T-M7-05 · ✅ watchOS companion template generator (SwiftUI, experimental) (`poly init --target watchos` 10-file template + structural assertions, zero plaintext credentials; xcodebuild absent locally → SKIP-with-print)
 - Role: platforms
 - Deps: —
 - Estimate: 3d
 - Deliverable: `poly init --target watchos` generating a SwiftUI companion template (core-API call stubs and WatchConnectivity notes), marked experimental per §3.7.
 - Acceptance: the template builds via `xcodebuild` on a macOS host; it contains no plaintext credentials (secret-scan green); `experimental = true` reaches the generated docs table.
 
-### T-M7-06 · watchOS packaging and signing chain
+### T-M7-06 · ✅ watchOS packaging and signing chain (Watchos packager archive→Payload .app + plutil; non-macOS hosts get ToolMissing naming the R3 farm; signing/verification reuse the Apple chain, codesign SKIP locally)
 - Role: platforms
 - Deps: T-M7-05
 - Estimate: 2.5d
 - Deliverable: watch bundle packaging (Xcode archive) and the codesign signing chain, reusing the M2 Apple host / remote-farm decision (the R3 path).
 - Acceptance: the watch bundle is produced and `codesign --verify` passes; a Linux host can produce it through the remote farm; signing credentials appear only as references throughout (nothing plaintext in-repo).
 
-### T-M7-07 · Fitbit OS packager (JS SDK)
+### T-M7-07 · ✅ Fitbit OS packager (JS SDK) (runtime=none + `.fba` SDK 6.1 three-layer structure self-check + goldens/determinism; fitbit-build absent → SKIP-with-print, notes state the core does not run on-device)
 - Role: platforms
 - Deps: T-M7-01
 - Estimate: 2.5d
 - Deliverable: Fitbit OS TargetSpec (`runtime = "none"`, the core does not run on-device) with a Fitbit JS SDK app-package packager.
 - Acceptance: the Fitbit CLI self-check passes; the artifact structure matches the golden; `notes` states "core does not run on-device, capability lives in JS" and reaches the docs table.
 
-### T-M7-08 · Zepp OS packager (Zepp JS API)
+### T-M7-08 · ✅ Zepp OS packager (Zepp JS API) (`.zab` manifest + content-md5-named zpk + device/app-side zip; goldens and byte-identical reruns; zeus/simulator absence → SKIP-with-print)
 - Role: platforms
 - Deps: T-M7-01
 - Estimate: 2.5d
 - Deliverable: Zepp OS TargetSpec with a Zepp mini-app packager (Zepp JS API).
 - Acceptance: Zepp devtools validation passes; the artifact installs on the emulator; its contract test (package + verify + structure assertions) runs in CI.
 
-### T-M7-09 · Garmin Monkey C transpile spike (experimental)
+### T-M7-09 · ✅ Garmin Monkey C transpile spike (experimental) (subset/API allowlist + deterministic round/square emit, 29/29 node; decision = continue in constrained mode, experimental=true; Connect IQ SDK absence → SKIP-with-print, the iq packager is a recorded gap)
 - Role: platforms
 - Deps: T-M7-01
 - Estimate: 3d
 - Deliverable: a Monkey C subset transpile spike (bounded language subset plus API allowlist) and a capability-boundary conclusion (continue / degrade), formatted like the M4 Roku conclusion.
 - Acceptance: at least one sample within the subset produces a `.iq` package and passes the Connect IQ compiler; the conclusion is written into the experimental-target doc (capability / gap / alternatives); `experimental = true`.
 
-### T-M7-10 · Experimental-target capability / gap / alternatives docs
+### T-M7-10 · ✅ Experimental-target capability / gap / alternatives docs (new bilingual EXPERIMENTAL-TARGETS chapter: watchOS W1–W7 / Garmin G1–G10 three sections + the Wear beta boundary; ROADMAP planned-table cleanup; check-docs / check-experimental green)
 - Role: docs
 - Deps: T-M7-04, T-M7-05, T-M7-09
 - Estimate: 2.5d
 - Deliverable: three-part documentation (capability, gap, alternatives) for watchOS / Garmin, synced bilingually (§11); Wear OS is not an experimental target and is covered only by a boundary note in the same chapter: "the UI runtime (RN on Wear) is beta".
 - Acceptance: every experimental target has all three sections, and each gap either has an alternative or an explicit "no alternative"; the `experimental` field agrees across docs and CI annotations (Wear OS reads `false`, and no ※experimental mark appears for it in the docs); the doc-sync check is green in CI.
 
-### T-M7-11 · Wearable contract tests and goldens
+### T-M7-11 · ✅ Wearable contract tests and goldens (unified four-section skeleton per target + a copy template; golden schema v2 with an explicit `POLYPACK_UPDATE_GOLDEN` gate; Wear runs aapt2 for real, Fitbit/Zepp package for real)
 - Role: infra
 - Deps: T-M7-02, T-M7-07, T-M7-08
 - Estimate: 2.5d

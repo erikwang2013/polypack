@@ -363,9 +363,15 @@ CI host × target-tier matrix:
 > QNX / AUTOSAR / VxWorks / Zephyr / FreeRTOS cross-compiles and QEMU smokes on ubuntu-latest;
 > toolchains are cached under pinned versions, missing SDP / wr-cc and friends record
 > SKIP-with-print with a REAL/SKIP job summary; logs, serial output, and result.json are retained
-> for 14 days. Nine CI workflows total: `rust-ci` /
+> for 14 days.
+>
+> `wear-smoke` (mock per push; nightly + manual real run) runs the Wear form suite (input / swipe /
+> back) behind the KVM + `vars.POLYPACK_WEAR_FORM_APK` gate; when the gate is absent it records
+> SKIP-with-print and writes an all-SKIP result.json. `wear-release-smoke` is the release gate
+> (`workflow_call` / `release: published`): a failed or non-real device leg blocks the release,
+> with evidence retained for 90 days. Eleven CI workflows total: `rust-ci` /
 > `docs-check` / `secret-scan` / `mobile-contract` / `miniprogram-contract` / `tv-smoke` / `bridge` /
-> `bsd-ci` / `embedded-ci`.
+> `bsd-ci` / `embedded-ci` / `wear-smoke` / `wear-release-smoke`.
 
 ## 9. Milestones and task breakdown
 

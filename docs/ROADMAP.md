@@ -361,9 +361,14 @@ CI 宿主 × 目标层矩阵：
 > （新增 tier-6 目标自动进矩阵），在 ubuntu-latest 上跑 QNX / AUTOSAR / VxWorks / Zephyr /
 > FreeRTOS 交叉编译与 QEMU 冒烟；工具链按钉扎版本缓存，缺 SDP / wr-cc 等按 SKIP-with-print
 > 并在 job summary 列 REAL/SKIP；日志、串口与 result.json 归档 14 天。
-> CI 工作流共九个：`rust-ci` / `docs-check` /
+>
+> `wear-smoke`（mock 每提交；每夜 + 手动真跑）在 KVM + `vars.POLYPACK_WEAR_FORM_APK` 门后跑
+> Wear 表单套件（输入 / 滑动 / 返回）；缺门时 SKIP-with-print 并写全 SKIP 的 result.json。
+> `wear-release-smoke` 为发版门（`workflow_call` / `release: published`），设备腿失败或未真跑
+> 即阻断发版，证据归档 90 天。
+> CI 工作流共十一个：`rust-ci` / `docs-check` /
 > `secret-scan` / `mobile-contract` / `miniprogram-contract` / `tv-smoke` / `bridge` / `bsd-ci` /
-> `embedded-ci`。
+> `embedded-ci` / `wear-smoke` / `wear-release-smoke`。
 
 ## 9. 里程碑与任务分解
 
