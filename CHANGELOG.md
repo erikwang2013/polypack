@@ -14,9 +14,9 @@ Notable changes are recorded here; since v1.0.0, tags and releases follow `vX.Y.
 *M6 embedded & automotive delivery (13/13): the no_std engine layer and poly_engine_* C ABI with a single-source header; six L6 targets (Android Automotive, QNX, AUTOSAR, VxWorks, Zephyr, FreeRTOS) with real builds/QEMU where toolchains exist and honest SKIP-with-print elsewhere; the TargetSpec-derived CI matrix and shared QEMU smoke runner; the generated L6 status table with drift checks; L6 size budgets and the three-way experimental validator. Nine workflows green on three hosts (new embedded-ci).*
 
 ### Fixed
-- 集成期真跑修复（三宿主 CI 实证）：`--target all` 遇 CI 缺 nightly `rust-src` / 目标 std 时硬失败 → 引擎静态库构建前预检并降级为环境槽 SKIP-with-print；头文件唯一性扫描只认含 `poly_engine_abi_version` 的头（FreeRTOS 模板辅助声明不再误判）；`EngineBuild.packager` 与统一 `EmbeddedInputs`（含 `prebuilt`）对齐；AAOS 目标补 adapter-native 能力矩阵行。
+- 集成期真跑修复（三宿主 CI 实证）：`--target all` 遇 CI 缺 nightly `rust-src` / 目标 std 时硬失败 → 引擎静态库构建前预检并降级为环境槽 SKIP-with-print；头文件唯一性扫描只认含 `poly_engine_abi_version` 的头（FreeRTOS 模板辅助声明不再误判）；`EngineBuild.packager` 与统一 `EmbeddedInputs`（含 `prebuilt`）对齐；AAOS 目标补 adapter-native 能力矩阵行；`CARGO_HOME` remap 改为无条件登记（CI 新建 CARGO_HOME 时 `registry` 预检为假，静态库残留绝对路径触发 §5.3 硬失败）；Zephyr `qemu_x86` 引擎从 i686 改 **i586**（i686 ABI 强制 SSE2，qemu32 无 → Invalid opcode）并在嵌入式 wrapper 关闭 blake3 全部 x86 SIMD 运行时分派（本机容器 QEMU 三步 PASS + SMOKE PASS 实证）；供应链豁免 RUSTSEC-2026-0370/0371/0372（zbus 4.x unmaintained，非漏洞，keyring Linux 凭据面，升级路径 zbus 5）。
 
-*Fixed during M6 integration across the three-host CI: embedded toolchain preflight for missing nightly rust-src / target std (now SKIP-with-print), a scope-correct header-uniqueness scan, the unified EmbeddedInputs/EngineBuild fields, and the AAOS row in the adapter-native capability matrix.*
+*Fixed during M6 integration across the three-host CI: embedded toolchain preflight for missing nightly rust-src / target std (now SKIP-with-print), a scope-correct header-uniqueness scan, the unified EmbeddedInputs/EngineBuild fields, the AAOS capability-matrix row, an unconditional CARGO_HOME path remap (fresh CI homes triggered §5.3), the Zephyr qemu_x86 engine moved to i586 with blake3 x86 SIMD disabled (qemu32 lacks SSE2), and supply-chain exemptions for RUSTSEC-2026-0370/0371/0372 (zbus 4.x unmaintained, not vulnerabilities).*
 
 ## [1.7.0] — 2026-10-17
 

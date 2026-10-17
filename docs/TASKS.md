@@ -770,7 +770,7 @@
 - 交付物: QNX 镜像的 QEMU 冒烟脚本（启动 → 引擎层自检 → 退出码判定 → 串口日志归档），接入每晚流水线。
 - 验收: 冒烟在每晚 CI 通过；失败时输出 `Failed{stage, code, hint}` 且串口日志可定位到具体自检项；`poly retry --from verify` 可独立重跑该阶段。
 
-### T-M6-10 · ✅ QEMU 冒烟：Zephyr（`west build -t run` + 退出码/具名步骤断言；与 T-M6-09 共用同一解析器与归档格式；ARM 真跑、x86 本机 QEMU ROM 限制如实判失败并定位）
+### T-M6-10 · ✅ QEMU 冒烟：Zephyr（`west build -t run` + 退出码/具名步骤断言；与 T-M6-09 共用同一解析器与归档格式；ARM 与 CI x86 容器均真跑通过——x86 引擎改 i586 + blake3 关 SIMD 后三步 PASS + SMOKE PASS，本机 QEMU ROM 限制已记录）
 - 角色: infra
 - 依赖: T-M6-06, T-M6-08
 - 估算: 2.5d

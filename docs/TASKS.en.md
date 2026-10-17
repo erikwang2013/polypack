@@ -770,7 +770,7 @@
 - Deliverable: a QEMU smoke script for the QNX image (boot → engine-layer self-check → exit-code assertion → serial log archival), wired into the nightly pipeline.
 - Acceptance: the smoke passes in nightly CI; on failure it emits `Failed{stage, code, hint}` and the serial log pinpoints the failing self-check; `poly retry --from verify` re-runs that stage standalone.
 
-### T-M6-10 · ✅ QEMU smoke: Zephyr (`west build -t run` + exit-code/named-step assertions; shares the same parser and archive format as T-M6-09; ARM runs for real, the x86 host QEMU ROM limitation is judged a failure with logs and located)
+### T-M6-10 · ✅ QEMU smoke: Zephyr (`west build -t run` + exit-code/named-step assertions; shares the same parser and archive format as T-M6-09; both ARM and CI x86 containers run for real — after moving the x86 engine to i586 and disabling blake3 SIMD, all three steps plus SMOKE PASS; the local QEMU ROM limitation is recorded)
 - Role: infra
 - Deps: T-M6-06, T-M6-08
 - Estimate: 2.5d
