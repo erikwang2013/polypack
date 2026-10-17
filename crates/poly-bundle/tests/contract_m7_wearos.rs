@@ -227,7 +227,7 @@ fn wear_manifest_validator_requires_watch_feature_and_min_sdk() {
 /// 口径守卫：Wear 打包器只认 `apk`，传入别的格式即报错（不静默按别家格式出包）。
 #[test]
 fn wearos_format_mismatch_is_rejected() {
-    use poly_bundle::packager::{find, Packager};
+    use poly_bundle::packager::find;
     use poly_targets::{Host, PackageSpec};
 
     let mut spec = TargetSpec::new_stub(TARGET, 6, &[Host::Win, Host::Linux, Host::Macos]);
