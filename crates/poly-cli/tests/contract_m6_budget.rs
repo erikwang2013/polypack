@@ -36,11 +36,12 @@ use poly_core::events::BuildEvent;
 use poly_core::job::{Budget, SizePolicy};
 use poly_targets::{Registry, TargetSpec};
 
-/// 已注册的 7 个 tier-6 目标（T-M6-01..07/11 + T-M7-05/06 watchos 的声明面）。
-const TIER6_IDS: [&str; 7] = [
+/// 已注册的 8 个 tier-6 目标（T-M6-01..07/11 + T-M7-09 garmin + T-M7-05/06 watchos）。
+const TIER6_IDS: [&str; 8] = [
     "android-automotive",
     "autosar",
     "freertos",
+    "garmin",
     "qnx",
     "vxworks",
     "watchos",

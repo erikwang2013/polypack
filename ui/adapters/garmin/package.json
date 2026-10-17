@@ -1,0 +1,23 @@
+{
+  "name": "@polypack/adapter-garmin",
+  "version": "0.0.0-spike",
+  "description": "Garmin Connect IQ Monkey C 子集转译 spike（T-M7-09）：复用 adapter-wear 紧凑 tokens / 安全区 / 能力面 → Monkey C 发射 + 子集断言 + .iq 工程结构自检；核心不参与，实验档",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "./src/index.js",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "files": [
+    "src",
+    "scripts",
+    "CAPABILITY-BOUNDARY-DRAFT.md"
+  ],
+  "scripts": {
+    "test": "node --test",
+    "build": "node scripts/build-and-check.mjs"
+  },
+  "engines": {
+    "node": ">=20.11"
+  }
+}
