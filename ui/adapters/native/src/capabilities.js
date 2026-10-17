@@ -16,6 +16,9 @@ export const CAPABILITY_MATRIX = Object.freeze({
   // T-M4-06 RN-tvOS：TV 基线（同 adapter-tv 矩阵口径——遥控器恒无指针 → focusNav 常开；
   // 无系统返回手势 → 走显式 Back 入口降级分支）。host 提示仍可覆盖。
   tvos: Object.freeze({ focusNav: true, safeArea: true, gestures: false }),
+  // T-M6-11 Android Automotive：车机形态（触摸屏常态 → 手势开；航向/旋钮输入经 host 提示
+  // 或 pointer=none 降级驱动 focusNav）。声明 react-native 承载，须在矩阵内。
+  "android-automotive": Object.freeze({ focusNav: false, safeArea: true, gestures: true }),
 });
 
 /** 契约三键（输出顺序即此顺序）。 */

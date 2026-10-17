@@ -7,3 +7,4 @@ pub mod probe;
 pub mod probes;
 
 pub use probe::{Probe, ProbeResult, Toolchain, default_probes};
+pub use probes::qnx_sdp::{SdpEnv, sdp_env, sdp_root};

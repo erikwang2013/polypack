@@ -13,6 +13,14 @@
 //! M5 增补 L5 BSD 家族目标（tier 5，ROADMAP §3.6）：OpenBSD ports（T-M5-07，ports 骨架 +
 //! signify / portcheck；Linux 宿主可发起的交叉面，真构建归 OpenBSD VM / T-M5-09）与
 //! ChromeOS 双轨（T-M5-10：Crostini deb + PWA 两目标，分别复用 Linux deb / Web 链）。
+//! M6 增补 L6 嵌入式 / 车机目标（tier 6，ROADMAP §3.7）：Android Automotive（T-M6-11）、
+//! QNX（T-M6-03，staticlib + cffi + 镜像 / 库）、AUTOSAR Adaptive（T-M6-04，staticlib +
+//! cffi + ARXML 清单；无 UI、自部署）、VxWorks（T-M6-05，库 / 镜像 kit）与 Zephyr
+//! （T-M6-06，west 工程模板 + no_std 引擎模块）。
+
+use alloc::string::ToString;
+use alloc::vec;
+use alloc::vec::Vec;
 
 use crate::spec::{Bridge, Host, PackageSpec, Runtime, TargetSpec};
 
@@ -621,6 +629,139 @@ pub fn builtin() -> Vec<TargetSpec> {
                  DragonFly 等同源）；Linux 交叉发起只生成骨架并做结构自检，bmake package / \
                  pkg_add 真跑归 NetBSD VM（T-M5-09）；仓库签名走 pkg_admin gpg-sign-package\
                  （逐包 GPG，仓库为扁平 .tgz + pkg_summary.gz，客户端 GPG_KEYRING_VERIFY）"
+                    .to_string(),
+            ),
+        },
+        // ---- L6 嵌入式（T-M6-05 / T-M6-06，ROADMAP §3.7）：VxWorks / Zephyr ----
+        // 两者都复用 T-M6-02 的 `poly_engine_*` C ABI（唯一生成头文件），无 UI；
+        // 引擎层以应用侧 wrapper staticlib 链入（poly-core 只出 rlib，应用提供 allocator /
+        // panic_handler）。VxWorks 默认出库（配置可覆盖为 `image` 部署 kit）；`wr-cc` 缺席时
+        // verify 用 nm 闭包 / 结构断言真跑并 SKIP-with-print。Zephyr 出 west 工程模板，
+        // `west build` 覆盖 qemu_x86 / qemu_cortex_m3 两板。
+        TargetSpec {
+            id: "vxworks".to_string(),
+            tier: 6,
+            hosts: vec![Host::Win, Host::Linux],
+            runtime: Runtime::Staticlib,
+            bridge: Bridge::Cffi,
+            ui: vec![],
+            package: PackageSpec {
+                format: "library".to_string(),
+                builder: "vxworks-wr".to_string(),
+            },
+            signing: None,
+            verify: vec!["c-abi-symbols".to_string(), "vxworks-ld-check".to_string()],
+            publish: vec!["self-hosted".to_string()],
+            experimental: false,
+            notes: Some(
+                "无 UI、cffi、no_std；format = `library`（默认，静态库）或 `image`（部署 kit zip，\
+                 配置 [targets.vxworks].format 覆盖）；wr-cc / wr-ld 缺席时产物用 nm 符号闭包 \
+                 + 结构断言校验并 SKIP-with-print，绝不伪造可加载镜像"
+                    .to_string(),
+            ),
+        },
+        TargetSpec {
+            id: "zephyr".to_string(),
+            tier: 6,
+            hosts: vec![Host::Win, Host::Linux, Host::Macos],
+            runtime: Runtime::Staticlib,
+            bridge: Bridge::Cffi,
+            ui: vec![],
+            package: PackageSpec {
+                format: "west".to_string(),
+                builder: "zephyr-west".to_string(),
+            },
+            signing: None,
+            verify: vec!["c-abi-symbols".to_string(), "zephyr-west-build".to_string()],
+            publish: vec!["self-hosted".to_string()],
+            experimental: false,
+            notes: Some(
+                "无 UI、cffi、no_std；west 工程模板（zephyr module + 引擎静态库模块链入），\
+                 qemu_x86 / qemu_cortex_m3 两板 `west build` 验收；最小 CONFIG_* 集随模板版本化；\
+                 west / Zephyr SDK 缺席时按环境槽 SKIP-with-print"
+                    .to_string(),
+            ),
+        },
+        // ---- L6 车机（T-M6-11，ROADMAP §3.7）：Android Automotive ----
+        // 复用 Android 链（format = `apk`、builder = `android-aapt2`；AAPT2 + bundletool +
+        // apksigner 不另起第二套实现），差异只在清单变体（`android.hardware.type.automotive`）
+        // 与发布渠道。车厂 / OEM 渠道无统一公开 API：`oem-channel` 是占位 Publisher，返回
+        // 「需 OEM 凭据引用」的明确错误，绝不伪造提交。
+        TargetSpec {
+            id: "android-automotive".to_string(),
+            tier: 6,
+            hosts: vec![Host::Win, Host::Linux, Host::Macos],
+            runtime: Runtime::Native,
+            bridge: Bridge::Uniffi,
+            ui: vec!["react-native".to_string()],
+            package: PackageSpec {
+                format: "apk".to_string(),
+                builder: "android-aapt2".to_string(),
+            },
+            signing: Some("android-keystore".to_string()),
+            verify: vec![
+                "apksigner-verify".to_string(),
+                "bundletool-validate".to_string(),
+            ],
+            publish: vec!["oem-channel".to_string()],
+            experimental: false,
+            notes: Some(
+                "AAOS 清单（android.hardware.type.automotive）；车厂渠道，无统一公开 API——\
+                 发布需 OEM 凭据引用（占位 Publisher，不伪造提交）"
+                    .to_string(),
+            ),
+        },
+        // ---- L6 嵌入式 / 车机（T-M6-03/04，ROADMAP §3.7）：QNX / AUTOSAR Adaptive ----
+        // 两目标共享 T-M6-02 的 `poly_engine_*` C ABI（头文件由 poly-core 生成器唯一产出）。
+        // QNX：`image` 主产物（部署镜像 tar；SDP 在场时另出 mkifs `.ifs` 与静态库），配置
+        // `[targets.qnx].format = "library"` 可把 `.a` 提为主产物；无 SDP 时交叉编译按环境槽
+        // SKIP-with-print，绝不伪造二进制。AUTOSAR：宿主静态库 + ARXML 清单，ARXML 的
+        // 服务 / 端口由同一 C ABI 清单派生（一一对应），无 UI、自部署。
+        TargetSpec {
+            id: "qnx".to_string(),
+            tier: 6,
+            hosts: vec![Host::Win, Host::Linux, Host::Macos],
+            runtime: Runtime::Staticlib,
+            bridge: Bridge::Cffi,
+            ui: Vec::new(),
+            package: PackageSpec {
+                format: "image".to_string(),
+                builder: "qnx-sdp".to_string(),
+            },
+            signing: None,
+            verify: vec![
+                "qnx-image-structure".to_string(),
+                "c-abi-symbols".to_string(),
+            ],
+            publish: vec!["self-hosted".to_string()],
+            experimental: false,
+            notes: Some(
+                "headless 核心（可选 HMI 归平台侧）；静态库 + 部署镜像（附 mkifs buildfile，\
+                 可引导 .ifs / QEMU 归 T-M6-09）；交叉编译需 QNX SDP（$QNX_HOST / \
+                 $QNX_TARGET）与 Rust QNX target，无 SDP 时按环境槽 SKIP-with-print，\
+                 不伪造二进制；自部署"
+                    .to_string(),
+            ),
+        },
+        TargetSpec {
+            id: "autosar".to_string(),
+            tier: 6,
+            hosts: vec![Host::Win, Host::Linux, Host::Macos],
+            runtime: Runtime::Staticlib,
+            bridge: Bridge::Cffi,
+            ui: Vec::new(),
+            package: PackageSpec {
+                format: "arxml".to_string(),
+                builder: "autosar-adaptive".to_string(),
+            },
+            signing: None,
+            verify: vec!["arxml-schema".to_string(), "c-abi-symbols".to_string()],
+            publish: vec!["self-hosted".to_string()],
+            experimental: false,
+            notes: Some(
+                "无 UI、自部署；AUTOSAR Adaptive 清单（ARXML）由 poly_engine_* C ABI 单一来源\
+                 派生（服务 / 端口与导出符号一一对应）；no_std 可选（引擎层 \
+                 --no-default-features，应用提供 global_allocator / panic_handler）"
                     .to_string(),
             ),
         },

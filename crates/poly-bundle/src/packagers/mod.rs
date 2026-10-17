@@ -4,7 +4,7 @@
 //! - [`dmg`]：macOS DMG（T-M1-06，hdiutil 组装 + 拖拽安装布局）
 //! - [`linux`]：deb / AppImage / rpm / Flatpak / Snap（T-M1-07、T-M5-01..04）
 //! - [`web`]：Web 静态站点（T-M1-08，含 SRI 清单）
-//! - [`android`]：AAB 与 TV 变体（T-M2-06 / T-M2-07 / T-M4-04，AAPT2 免 Gradle + bundletool）
+//! - [`android`]：AAB 与 TV / AAOS 变体（T-M2-06 / T-M2-07 / T-M4-04 / T-M6-11，AAPT2 免 Gradle + bundletool）
 //! - [`ios`]：IPA（T-M2-03 / T-M2-08，XCFramework 绑定 + xcodebuild archive / 归档 Payload 直压）
 //! - [`harmony`]：HAP（T-M3-03，工程配置生成 + hvigor 调用 + 结构检查）
 //! - [`miniapp`]：小程序族（T-M3-06，Taro 编译 + 代码包组装；快应用编译工程）
@@ -15,9 +15,16 @@
 //! - [`freebsd`]：FreeBSD pkg（T-M5-06，`pkg create` + pkg 暂存树 / manifest 结构自检）
 //! - [`pkgsrc`]：NetBSD / DragonFly pkgsrc 骨架（T-M5-08，Makefile / PLIST / DESCR + 结构自检）
 //! - [`roku`]：Roku 频道 `.zip`（T-M4-15，复用 SceneGraph 发射器 + 侧载结构自检）
+//! - [`qnx`]：QNX 静态库 + 部署镜像（T-M6-03，QNX SDP 交叉；无 SDP 按环境槽 SKIP）
+//! - [`autosar`]：AUTOSAR Adaptive 静态库 + ARXML 服务清单（T-M6-04，C ABI 单一来源）
+//! - [`embedded`]：嵌入式共享实现（T-M6-05/06，引擎静态库构建 / C ABI 断言 / §5.3 路径审计）
+//! - [`vxworks`]：VxWorks 库 / 镜像 kit（T-M6-05，wr-cc 链接腿 + nm 符号断言）
+//! - [`zephyr`]：Zephyr west 工程模板（T-M6-06，module 链入 no_std 引擎 + 两板构建）
 
 pub mod android;
+pub mod autosar;
 pub mod dmg;
+pub mod embedded;
 pub mod freebsd;
 pub mod harmony;
 pub mod ios;
@@ -25,9 +32,12 @@ pub mod linux;
 pub mod miniapp;
 pub mod openbsd;
 pub mod pkgsrc;
+pub mod qnx;
 pub mod roku;
 pub mod tizen;
+pub mod vxworks;
 pub mod web;
 pub mod webos;
 pub mod webtv;
 pub mod windows;
+pub mod zephyr;

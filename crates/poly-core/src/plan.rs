@@ -15,7 +15,7 @@ use std::path::PathBuf;
 use crate::config::PolypackConfig;
 use crate::diagnostics::{Diagnostic, codes};
 use crate::events::{BuildEvent, EventSink};
-use crate::job::JobSpec;
+use crate::job::{JobError, JobSpec};
 
 /// 阶段执行失败（携带稳定诊断）。
 #[derive(Debug, Clone, PartialEq)]
@@ -332,46 +332,29 @@ impl Stage for PlanStage {
     }
 
     fn plan(&self, job: &JobSpec) -> Result<(), StageError> {
-        if job.targets.is_empty() {
-            return Err(
-                Diagnostic::error(codes::E_PLAN_0001, "JobSpec 未包含任何目标")
-                    .with_hint("检查 polypack.toml 的 [targets.*] 段或 --target 参数")
-                    .into(),
-            );
-        }
-        let mut seen = std::collections::BTreeSet::new();
-        for spec in &job.targets {
-            if !seen.insert(spec.id.as_str()) {
-                return Err(Diagnostic::error(
-                    codes::E_PLAN_0001,
-                    format!("目标重复: {}", spec.id),
-                )
-                .with_hint("每个目标在 JobSpec.targets 中只能出现一次")
-                .into());
-            }
-            if let Err(err) = spec.validate() {
-                return Err(Diagnostic::error(
-                    codes::E_TGT_0003,
-                    format!("目标 {} 声明非法: {err}", spec.id),
-                )
-                .with_hint("核对 polypack.toml 的 [targets.*] 段与目标注册表声明")
-                .into());
-            }
-            if let Some(name) = &spec.signing
-                && !job.secrets.iter().any(|secret| &secret.name == name)
-            {
-                return Err(Diagnostic::error(
+        // 校验实现在引擎层（`JobSpec::validate`，no_std 可用）；这里只做诊断映射。
+        job.validate().map_err(|err| {
+            match err {
+                JobError::EmptyTargets => {
+                    Diagnostic::error(codes::E_PLAN_0001, "JobSpec 未包含任何目标")
+                        .with_hint("检查 polypack.toml 的 [targets.*] 段或 --target 参数")
+                }
+                JobError::DuplicateTarget(id) => {
+                    Diagnostic::error(codes::E_PLAN_0001, format!("目标重复: {id}"))
+                        .with_hint("每个目标在 JobSpec.targets 中只能出现一次")
+                }
+                JobError::InvalidTarget { id, reason } => {
+                    Diagnostic::error(codes::E_TGT_0003, format!("目标 {id} 声明非法: {reason}"))
+                        .with_hint("核对 polypack.toml 的 [targets.*] 段与目标注册表声明")
+                }
+                JobError::MissingCredential { target, name } => Diagnostic::error(
                     codes::E_PLAN_0002,
-                    format!(
-                        "目标 {} 引用凭据档案 {name}，但 JobSpec 缺少对应凭据引用",
-                        spec.id
-                    ),
+                    format!("目标 {target} 引用凭据档案 {name}，但 JobSpec 缺少对应凭据引用"),
                 )
-                .with_hint("检查配置的 signing 档案与凭据来源（密钥库 / Vault / CI 注入）")
-                .into());
+                .with_hint("检查配置的 signing 档案与凭据来源（密钥库 / Vault / CI 注入）"),
             }
-        }
-        Ok(())
+            .into()
+        })
     }
 
     fn run(&self, ctx: &mut StageContext<'_>) -> Result<StageOutcome, StageError> {

@@ -98,12 +98,13 @@ fn builtin_has_seven_valid_targets() {
     );
     assert_eq!(
         registry.all().count(),
-        27,
-        "M5 起内建 = L1 七 + L2 小程序族四（wechat / alipay / douyin / quickapp）+ \
+        32,
+        "M6 起内建 = L1 七 + L2 小程序族四（wechat / alipay / douyin / quickapp）+ \
          L3 电视族八（tvos + android-tv / fire-tv + tizen-tv / webos-tv / vidaa-tv / smartcast-tv \
          + roku※实验，T-M4-04/07/08/09/10/12）+ L5 OpenBSD / FreeBSD / NetBSD（T-M5-07/06/08）+\
          发行版三（ubuntu / fedora / mint，T-M5-01）+ ChromeOS 双轨（chromeos / chromeos-pwa，\
-         T-M5-10）"
+         T-M5-10）+ L6 车机 / 嵌入式五目标（android-automotive，T-M6-11；qnx / autosar，\
+         T-M6-03/04；vxworks / zephyr，T-M6-05/06）"
     );
     for spec in registry.all() {
         spec.validate()
@@ -298,7 +299,23 @@ fn linux_host_resolves_four_l1_targets_from_all() {
         ]),
         "L5 OpenBSD / FreeBSD / NetBSD + 发行版三 + ChromeOS 双轨应全部入选"
     );
-    assert_eq!(selected.len(), l1.len() + l2.len() + l3.len() + l5.len());
+    // L6 车机 / 嵌入式：android-automotive 声明三宿主；qnx / autosar / vxworks / zephyr
+    // 声明 Linux 宿主 → 在 Linux 宿主下全部入选
+    let l6: BTreeSet<&str> = resolved
+        .selected
+        .iter()
+        .filter(|s| s.tier == 6)
+        .map(|s| s.id.as_str())
+        .collect();
+    assert_eq!(
+        l6,
+        BTreeSet::from(["android-automotive", "qnx", "autosar", "vxworks", "zephyr"]),
+        "L6 车机 + 嵌入式五目标应入选"
+    );
+    assert_eq!(
+        selected.len(),
+        l1.len() + l2.len() + l3.len() + l5.len() + l6.len()
+    );
 
     let excluded: BTreeSet<&str> = resolved.excluded.iter().map(|e| e.id.as_str()).collect();
     assert_eq!(
@@ -310,7 +327,7 @@ fn linux_host_resolves_four_l1_targets_from_all() {
         assert!(!target.reason.trim().is_empty(), "{} 缺排除原因", target.id);
     }
 
-    // 内建目标为 L1 / L2 / L3 / L5，不涉及厂商授权分支。
+    // 内建目标为 L1 / L2 / L3 / L5 / L6，不涉及厂商授权分支。
     assert!(resolved.excluded.iter().all(|e| !e.reason.contains("L7")));
 }
 
@@ -636,4 +653,115 @@ fn bsd_targets_are_reachable_on_bsd_hosts() {
             "{id}: Linux 交叉发起保留"
         );
     }
+}
+
+/// T-M6-11 验收（声明侧）：Android Automotive 按 ROADMAP §3.7 逐列对齐。
+/// §3.7 行 = native · uniffi / APK（AAOS）/ 签名同 Android / bundletool / 车厂 · OEM 渠道；
+/// 打包链复用 M2（builder `android-aapt2`），发布渠道是 `oem-channel` 占位 Publisher。
+#[test]
+fn builtin_matches_roadmap_3_7_automotive() {
+    let spec = Registry::builtin()
+        .get("android-automotive")
+        .expect("内建 android-automotive 目标")
+        .clone();
+    assert_eq!(spec.tier, 6, "Android Automotive 属 L6（ROADMAP §3.7）");
+    assert_eq!(
+        spec.hosts,
+        vec![Host::Win, Host::Linux, Host::Macos],
+        "复用 Android 工具链（三宿主）"
+    );
+    assert_eq!(spec.runtime, Runtime::Native, "§3.7 核心运行时 = native");
+    assert_eq!(spec.bridge, Bridge::Uniffi, "§3.7 桥 = uniffi");
+    assert_eq!(
+        spec.ui.iter().map(String::as_str).collect::<Vec<_>>(),
+        vec!["react-native"],
+        "RN 承载 UI（同 Android）"
+    );
+    assert_eq!(spec.package.format, "apk", "§3.7 产物 = APK（AAOS）");
+    assert_eq!(
+        spec.package.builder, "android-aapt2",
+        "复用 M2 Android 打包链（不新增第二套实现）"
+    );
+    assert_eq!(
+        spec.signing.as_deref(),
+        Some("android-keystore"),
+        "§3.7 签名 = 同 Android（凭据引用）"
+    );
+    assert_eq!(
+        spec.verify,
+        ["apksigner-verify", "bundletool-validate"].map(String::from),
+        "§3.7 产物校验 = bundletool（+ apksigner 取证）"
+    );
+    assert_eq!(
+        spec.publish,
+        vec!["oem-channel".to_string()],
+        "§3.7 发布渠道 = 车厂 / OEM（占位 Publisher）"
+    );
+    assert!(
+        !spec.experimental,
+        "§3.7 未标 ※实验：打包链为正式 Android 链"
+    );
+    let notes = spec.notes.as_deref().unwrap_or("");
+    assert!(
+        notes.contains("车厂渠道，无统一公开 API"),
+        "边界口径须如实入 notes：{notes}"
+    );
+    assert!(
+        notes.contains("android.hardware.type.automotive") && notes.contains("不伪造提交"),
+        "AAOS 清单变体与占位发布边界须入 notes：{notes}"
+    );
+}
+
+/// T-M6-03/04 验收（声明侧）：QNX 与 AUTOSAR Adaptive 按 ROADMAP §3.7 逐列对齐。
+///
+/// §3.7：QNX = staticlib · cffi / 镜像 · 库 / 平台侧签名 / QNX 交叉编译冒烟 / 自部署；
+/// AUTOSAR = staticlib · cffi（no_std 可选）/ ARXML + 库 / 无签名 / CI 编译矩阵 / 自部署 / 无 UI。
+#[test]
+fn builtin_matches_roadmap_3_7_qnx_autosar() {
+    let registry = Registry::builtin();
+    let qnx = registry.get("qnx").expect("内建 qnx 目标").clone();
+    assert_eq!(qnx.tier, 6, "QNX 属 L6（ROADMAP §3.7）");
+    assert_eq!(qnx.hosts, vec![Host::Win, Host::Linux, Host::Macos]);
+    assert_eq!(qnx.runtime, Runtime::Staticlib, "§3.7 运行时 = staticlib");
+    assert_eq!(qnx.bridge, Bridge::Cffi, "§3.7 桥 = cffi");
+    assert!(qnx.ui.is_empty(), "headless 核心（UI 可选层归平台侧）");
+    assert_eq!(qnx.package.format, "image", "主产物格式 = image");
+    assert_eq!(qnx.package.builder, "qnx-sdp", "打包器 = QNX SDP");
+    assert!(qnx.signing.is_none(), "§3.7 签名 = 平台侧，本地无凭据引用");
+    assert!(
+        qnx.verify.iter().any(|id| id == "c-abi-symbols"),
+        "复用 T-M6-02 C ABI 的符号校验"
+    );
+    let notes = qnx.notes.as_deref().unwrap_or("");
+    assert!(
+        notes.contains("SKIP-with-print") && notes.contains("QNX SDP"),
+        "无 SDP 的 SKIP 口径须入 notes：{notes}"
+    );
+
+    let autosar = registry.get("autosar").expect("内建 autosar 目标").clone();
+    assert_eq!(autosar.tier, 6, "AUTOSAR 属 L6（ROADMAP §3.7）");
+    assert_eq!(autosar.hosts, vec![Host::Win, Host::Linux, Host::Macos]);
+    assert_eq!(
+        autosar.runtime,
+        Runtime::Staticlib,
+        "§3.7 运行时 = staticlib"
+    );
+    assert_eq!(autosar.bridge, Bridge::Cffi, "§3.7 桥 = cffi");
+    assert!(autosar.ui.is_empty(), "§3.7 无 UI");
+    assert_eq!(autosar.package.format, "arxml", "产物 = ARXML 清单 + 库");
+    assert_eq!(autosar.package.builder, "autosar-adaptive");
+    assert!(autosar.signing.is_none(), "§3.7 签名 = —");
+    assert!(
+        autosar.verify.iter().any(|id| id == "arxml-schema"),
+        "ARXML 需 schema 校验器"
+    );
+    let notes = autosar.notes.as_deref().unwrap_or("");
+    assert!(
+        notes.contains("无 UI、自部署"),
+        "验收字面要求 notes 声明「无 UI、自部署」：{notes}"
+    );
+    assert!(
+        notes.contains("no_std"),
+        "no_std 可选口径须入 notes：{notes}"
+    );
 }
