@@ -297,6 +297,10 @@ fn verifier_owner(id: &str) -> Option<&'static str> {
         "wechat-devtools-cli" | "alipay-devtools-cli" | "douyin-devtools-cli" => {
             Some("小程序开发者工具 CLI 校验（T-M3-11；本机无 devtools 时 SKIP-with-print）")
         }
+        "iq-structure-check" => Some(
+            "Garmin `.iq` 工程 / 包结构自检（T-M7-09 Node spike 已实现：manifest / jungle / \
+             strings / Monkey C 子集；Rust 校验器接线归 T-M7-10）",
+        ),
         _ => None,
     }
 }

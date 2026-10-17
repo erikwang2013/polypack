@@ -17,6 +17,9 @@
 //! QNX（T-M6-03，staticlib + cffi + 镜像 / 库）、AUTOSAR Adaptive（T-M6-04，staticlib +
 //! cffi + ARXML 清单；无 UI、自部署）、VxWorks（T-M6-05，库 / 镜像 kit）与 Zephyr
 //! （T-M6-06，west 工程模板 + no_std 引擎模块）。
+//! M7 增补 Garmin Connect IQ 目标（T-M7-09，tier 6，experimental）：构建期 Monkey C 子集
+//! 转译（复用 adapter-wear 紧凑 tokens / 安全区 / 共享焦点序），产物 `.iq`；本机无
+//! Connect IQ SDK 时编译器腿 SKIP-with-print，结构 / 子集断言真跑。
 
 use alloc::string::ToString;
 use alloc::vec;
@@ -24,7 +27,8 @@ use alloc::vec::Vec;
 
 use crate::spec::{Bridge, Host, PackageSpec, Runtime, TargetSpec};
 
-/// 全部内建目标（L1 七 + L2 小程序族四 + L3 电视族八 + L5 发行版三 / OpenBSD / ChromeOS 双轨）。
+/// 全部内建目标（L1 七 + L2 小程序族四 + L3 电视族八 + L5 发行版三 / OpenBSD / ChromeOS 双轨
+/// + L6 车机 / 嵌入式六 + Garmin Connect IQ 实验目标）。
 pub fn builtin() -> Vec<TargetSpec> {
     vec![
         TargetSpec {
@@ -795,6 +799,29 @@ pub fn builtin() -> Vec<TargetSpec> {
                 "无 UI、自部署；AUTOSAR Adaptive 清单（ARXML）由 poly_engine_* C ABI 单一来源\
                  派生（服务 / 端口与导出符号一一对应）；no_std 可选（引擎层 \
                  --no-default-features，应用提供 global_allocator / panic_handler）"
+                    .to_string(),
+            ),
+        },
+        // ---- L6 Garmin Connect IQ（T-M7-09，Monkey C 子集转译 spike）----
+        TargetSpec {
+            id: "garmin".to_string(),
+            tier: 6,
+            hosts: vec![Host::Win, Host::Linux, Host::Macos],
+            runtime: Runtime::None,
+            bridge: Bridge::None,
+            ui: vec!["monkey-c-subset".to_string()],
+            package: PackageSpec {
+                format: "iq".to_string(),
+                builder: "garmin-monkeyc".to_string(),
+            },
+            signing: None,
+            verify: vec!["iq-structure-check".to_string()],
+            publish: vec!["connect-iq-store".to_string()],
+            experimental: true,
+            notes: Some(
+                "实验：Monkey C 子集受限转译——仅 UI 子集 + 原生逻辑（Monkey C 重写，无 JS \
+                 运行时）；工程结构自检可用，Connect IQ 编译与真机实证待补（T-M7-10 触发前置；\
+                 能力边界见 ui/adapters/garmin/CAPABILITY-BOUNDARY-DRAFT.md）"
                     .to_string(),
             ),
         },
