@@ -1,0 +1,23 @@
+{
+  "name": "@polypack/adapter-wear",
+  "version": "0.1.0",
+  "description": "RendererAdapter 契约的穿戴装配层：紧凑 tokens（圆 / 方安全区）+ 能力降级（无指针复用共享焦点内核）",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "./src/index.js",
+  "exports": {
+    ".": "./src/index.js",
+    "./example": "./example.js"
+  },
+  "files": [
+    "src",
+    "example.js",
+    "golden"
+  ],
+  "scripts": {
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=20.11"
+  }
+}
