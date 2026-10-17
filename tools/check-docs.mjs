@@ -2,7 +2,7 @@
 /**
  * check-docs.mjs — 结构级双文档校验（T-M0-10 第 3 部分的前置交付）
  *
- * 对四对中英文档做结构对账（不做全文翻译比对）：
+ * 对五对中英文档做结构对账（不做全文翻译比对）：
  *   1) H2 / H3 标题数一致
  *   2) Markdown 表格行数（'^| ' 行）一致
  *   3) 对 TASKS 档对：任务 ID 集合逐一相同
@@ -24,6 +24,7 @@ const PAIRS = [
   ['docs/ROADMAP.md', 'docs/ROADMAP.en.md'],
   ['docs/TASKS.md', 'docs/TASKS.en.md'],
   ['docs/FARM.md', 'docs/FARM.en.md'],
+  ['docs/EXPERIMENTAL-TARGETS.md', 'docs/EXPERIMENTAL-TARGETS.en.md'],
 ];
 
 const count = (text, re) => (text.match(re) || []).length;
@@ -69,6 +70,6 @@ try {
 console.log(
   failed
     ? `\n${failed} 项漂移`
-    : '\n四对文档结构一致（含 TargetSpec 状态表与 experimental 三处一致）',
+    : '\n五对文档结构一致（含 TargetSpec 状态表与 experimental 三处一致）',
 );
 process.exit(failed ? 1 : 0);

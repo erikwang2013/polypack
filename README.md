@@ -90,16 +90,16 @@ poly release --target android,ios,wechat,tizen --publish
 | L5 | FreeBSD | 原生构建 | pkg |
 | L5 | OpenBSD | 原生构建 | ports |
 | L5 | BSD 家族（NetBSD / DragonFly 等） | 原生构建 | pkgsrc 等 |
-| L6 | Apple watchOS | 伴生应用（SwiftUI 模板）※实验 | watch 包 |
-| L6 | Wear OS | RN / 轻量运行时 | APK → Play |
+| L6 | Apple watchOS | 伴生应用（SwiftUI 模板）※实验 | watch 包（Xcode）→ App Store |
+| L6 | Wear OS | RN / 轻量运行时（beta）；打包与签名走 Android 基座 | APK（Wear）→ Play |
 | L6 | Android Automotive | React Native（Android） | APK → 车厂渠道 |
 | L6 | QNX | Rust 核心 + 可选 HMI 层 | 镜像 / 静态库 |
 | L6 | AUTOSAR（Adaptive） | 无 UI（核心库） | ARXML / 静态库 |
 | L6 | VxWorks | 无 UI（核心库） | 静态库 / 镜像 |
 | L6 | RTOS（Zephyr / FreeRTOS） | 无 UI（no_std 核心） | 静态库 |
-| L6 | Fitbit OS | Fitbit JS SDK | Fitbit 应用包 |
-| L6 | Garmin（Connect IQ） | Monkey C 转译 ※实验 | .iq 包 |
-| L6 | Zepp OS | Zepp JS API | Zepp 小程序 |
+| L6 | Fitbit OS | Fitbit JS SDK | `.fba` 应用包 → Fitbit Gallery |
+| L6 | Garmin（Connect IQ） | Monkey C 转译 ※实验 | `.iq` 包（spike 无内建 iq 打包器 → SKIP-with-print） |
+| L6 | Zepp OS | Zepp JS API | `.zab` 小程序 → Zepp 商店 |
 | L7 | PlayStation | 官方 SDK 插件（需授权） | 平台包 |
 | L7 | Xbox | GDK 插件（需授权） | 平台包 |
 | L7 | Nintendo Switch | NintendoSDK 插件（需授权） | 平台包 |
@@ -127,6 +127,8 @@ poly release --target android,ios,wechat,tizen --publish
 | `zephyr` | `staticlib` | `cffi` | `west` · `zephyr-west` | — | `c-abi-symbols`, `zephyr-west-build`, `zephyr-qemu-smoke` | `self-hosted` | `false` | 无 UI、cffi、no_std；west 工程模板（zephyr module + 引擎静态库模块链入），qemu_x86 / qemu_cortex_m3 两板 `west build` 验收；最小 CONFIG_* 集随模板版本化；west / Zephyr SDK 缺席时按环境槽 SKIP-with-print |
 | `zepp` | `none` | `none` | `zab` · `zeus` | — | `zepp-structure-check` | `zepp-store` | `false` | 核心不直接运行、能力由 Zepp JS API 侧实现（runtime = none）；Zepp 小程序 `.zab`（外层 manifest.json + <md5>.zpk，zpk 内含 device.zip / app-side.zip，结构同 zpm）；zeus / 模拟器缺席时安装与工具链校验 SKIP-with-print，结构断言真跑；签名 / 提审归 Zepp 商店平台侧 |
 <!-- END GENERATED: l6-embedded-status -->
+
+**`garmin` 打包器缺口**：T-M7-09 为 Monkey C 转译 spike（`ui/adapters/garmin` 独立 Node 模块，同 M4 Roku 形态），`poly-bundle` 尚无内建 `iq` 打包器——`poly build --target garmin` 的 package 阶段会以「无内建打包器（format = iq）」SKIP-with-print，不伪造 `.iq`；Rust 打包器列为条件任务。`watchos` / `garmin` 的能力 / 缺口 / 替代方案见 [docs/EXPERIMENTAL-TARGETS.md](docs/EXPERIMENTAL-TARGETS.md)；`wearos` 为平台级目标（beta 边界同章记录，不标 ※实验）。
 
 ---
 
@@ -193,7 +195,7 @@ PolyPack 的界面只写一遍（React），由适配层按端映射到**该平�
 | HarmonyOS 族（含 TV） | React Native for OpenHarmony | HarmonyOS Design |
 | 小程序族（微信 / 支付宝 / 抖音 / 快应用） | Taro（React 语法编译） | 各平台原生组件 |
 | 电视 Web 端（Tizen / webOS / VIDAA / Vizio / KaiOS） | react-dom（打包为 wgt / ipk / 应用包） | 10-foot UI + 焦点导航系统 |
-| 穿戴（Wear OS / watchOS / Fitbit / Zepp） | RN / JS 轻量运行时（实验） | 紧凑型 tokens |
+| 穿戴（Wear OS / watchOS / Fitbit / Garmin / Zepp） | RN（Wear beta）/ SwiftUI 模板 / JS 侧 / Monkey C 子集 | 紧凑型 tokens |
 | 嵌入式 / 车机（QNX / AUTOSAR / RTOS） | headless 核心（可选 HMI 层） | 平台 HMI 规范 |
 
 ## 快速开始（规划中 API）
@@ -304,7 +306,7 @@ polypack/
 | M4 | TV 家族（Android TV / Fire TV / tvOS / Tizen / webOS / VIDAA / Vizio；Roku 受限适配） |
 | M5 | 桌面发行版与 BSD（deb / rpm / Flatpak / Snap / AppImage / pkg / ports / ChromeOS） |
 | M6 | 嵌入式与车机（headless 核心：QNX / AUTOSAR / VxWorks / RTOS / Android Automotive） |
-| M7 | 穿戴（Wear OS / watchOS 伴生 / Fitbit / Garmin / Zepp，实验） |
+| M7 | 穿戴（Wear OS 平台级；watchOS / Garmin 实验；Fitbit / Zepp JS 打包） |
 | M8 | WASM 插件 SDK、远程构建农场、商店发布流水线、生态 GA |
 
 完整规划（含逐平台支持细节、风险与对策）见 **[docs/ROADMAP.md](docs/ROADMAP.md)**；任务级分解（116 任务 / 283 人日，含角色、依赖、验收标准与排期备注）见 **[docs/TASKS.md](docs/TASKS.md)**。

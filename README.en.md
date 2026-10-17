@@ -92,16 +92,16 @@ The full 13-step journey is in [Request lifecycle](#request-lifecycle) below.
 | L5 | FreeBSD | native build | pkg |
 | L5 | OpenBSD | native build | ports |
 | L5 | BSD family (NetBSD / DragonFly, …) | native build | pkgsrc, etc. |
-| L6 | Apple watchOS | companion app (SwiftUI template) ※experimental | watch bundle |
-| L6 | Wear OS | RN / lightweight runtime | APK → Play |
+| L6 | Apple watchOS | companion app (SwiftUI template) ※experimental | watch bundle (Xcode) → App Store |
+| L6 | Wear OS | RN / lightweight runtime (beta); packaging and signing on the Android base | APK (Wear) → Play |
 | L6 | Android Automotive | React Native (Android) | APK → OEM channels |
 | L6 | QNX | Rust core + optional HMI layer | image / static library |
 | L6 | AUTOSAR (Adaptive) | headless (core library) | ARXML / static library |
 | L6 | VxWorks | headless (core library) | static library / image |
 | L6 | RTOS (Zephyr / FreeRTOS) | headless (no_std core) | static library |
-| L6 | Fitbit OS | Fitbit JS SDK | Fitbit app package |
-| L6 | Garmin (Connect IQ) | Monkey C transpile ※experimental | .iq package |
-| L6 | Zepp OS | Zepp JS API | Zepp mini app |
+| L6 | Fitbit OS | Fitbit JS SDK | `.fba` app package → Fitbit Gallery |
+| L6 | Garmin (Connect IQ) | Monkey C transpile ※experimental | `.iq` package (spike: no built-in iq packager → SKIP-with-print) |
+| L6 | Zepp OS | Zepp JS API | `.zab` mini app → Zepp store |
 | L7 | PlayStation | official SDK plugin (license required) | platform bundle |
 | L7 | Xbox | GDK plugin (license required) | platform bundle |
 | L7 | Nintendo Switch | NintendoSDK plugin (license required) | platform bundle |
@@ -129,6 +129,8 @@ The table below covers the eleven registered L6 embedded / automotive / wearable
 | `zephyr` | `staticlib` | `cffi` | `west` · `zephyr-west` | none | `c-abi-symbols`, `zephyr-west-build`, `zephyr-qemu-smoke` | `self-hosted` | `false` | 无 UI、cffi、no_std；west 工程模板（zephyr module + 引擎静态库模块链入），qemu_x86 / qemu_cortex_m3 两板 `west build` 验收；最小 CONFIG_* 集随模板版本化；west / Zephyr SDK 缺席时按环境槽 SKIP-with-print |
 | `zepp` | `none` | `none` | `zab` · `zeus` | none | `zepp-structure-check` | `zepp-store` | `false` | 核心不直接运行、能力由 Zepp JS API 侧实现（runtime = none）；Zepp 小程序 `.zab`（外层 manifest.json + <md5>.zpk，zpk 内含 device.zip / app-side.zip，结构同 zpm）；zeus / 模拟器缺席时安装与工具链校验 SKIP-with-print，结构断言真跑；签名 / 提审归 Zepp 商店平台侧 |
 <!-- END GENERATED: l6-embedded-status -->
+
+**`garmin` packager gap**: T-M7-09 is a Monkey C transpile spike (a standalone Node module under `ui/adapters/garmin`, same form as the M4 Roku work); `poly-bundle` has no built-in `iq` packager yet — the package stage of `poly build --target garmin` SKIP-with-prints with "no built-in packager (format = iq)" and never fakes a `.iq`; the Rust packager is a conditional task. See [docs/EXPERIMENTAL-TARGETS.en.md](docs/EXPERIMENTAL-TARGETS.en.md) for watchOS / Garmin capability / gap / alternatives; `wearos` is platform-level (its beta boundary is recorded in the same chapter and carries no ※experimental marker).
 
 ---
 
@@ -195,7 +197,7 @@ The interface is written once (React) and mapped by the adapter layer onto **eac
 | HarmonyOS family (incl. TV) | React Native for OpenHarmony | HarmonyOS Design |
 | Mini-program family (WeChat / Alipay / Douyin / Quick App) | Taro (React syntax) | each platform's native components |
 | TV web runtime (Tizen / webOS / VIDAA / Vizio / KaiOS) | react-dom (packaged as wgt / ipk / app bundle) | 10-foot UI + focus navigation |
-| Wearables (Wear OS / watchOS / Fitbit / Zepp) | RN / lightweight JS runtime (experimental) | compact tokens |
+| Wearables (Wear OS / watchOS / Fitbit / Garmin / Zepp) | RN (Wear beta) / SwiftUI template / JS side / Monkey C subset | compact tokens |
 | Embedded / automotive (QNX / AUTOSAR / RTOS) | headless core (optional HMI layer) | platform HMI specs |
 
 ## Quick start (planned API)
@@ -306,7 +308,7 @@ Incubated extension directions (SBOM / monorepo / incremental releases / OTA / s
 | M4 | TV family (Android TV / Fire TV / tvOS / Tizen / webOS / VIDAA / Vizio; Roku constrained adapter) |
 | M5 | desktop distributions & BSD (deb / rpm / Flatpak / Snap / AppImage / pkg / ports / ChromeOS) |
 | M6 | embedded & automotive (headless core: QNX / AUTOSAR / VxWorks / RTOS / Android Automotive) |
-| M7 | wearables (Wear OS / watchOS companion / Fitbit / Garmin / Zepp, experimental) |
+| M7 | wearables (Wear OS platform-level; watchOS / Garmin experimental; Fitbit / Zepp JS packaging) |
 | M8 | WASM plugin SDK, remote build farm, store publishing pipelines, ecosystem GA |
 
 The complete plan (per-platform support detail, risks, and mitigations) lives in **[docs/ROADMAP.en.md](docs/ROADMAP.en.md)**; the task-level breakdown (116 tasks / 283 person-days, with roles, dependencies, acceptance criteria, and scheduling notes) is in **[docs/TASKS.en.md](docs/TASKS.en.md)**.
