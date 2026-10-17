@@ -77,6 +77,19 @@ fn generates_pkg_stage_and_manifest_matching_payload() {
         "{manifest}"
     );
 
+    // pkg create -M 不扫根目录：plist 是文件清单的唯一来源，必须与载荷同源。
+    let plist = std::fs::read_to_string(plist_path(&inputs)).unwrap();
+    let lines: Vec<&str> = plist.lines().collect();
+    assert_eq!(
+        lines,
+        [
+            "bin/pax-notes",
+            "lib/pax-notes/app.js",
+            "share/applications/pax-notes.desktop",
+        ],
+        "plist 内容：{plist}"
+    );
+
     let structure =
         check_pkg_structure(&stage, &manifest_path(&inputs)).expect("自产暂存树必过结构检查");
     assert_eq!(structure.name, "pax-notes");
