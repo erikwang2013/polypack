@@ -36,6 +36,7 @@ pub use packager::{
     Artifact, ArtifactKind, BundlePlan, Command, Packager, ScriptFile, Skipped, builtin, find,
     for_spec,
 };
+pub use packagers::freebsd::{PkgStructure, check_pkg_structure};
 pub use packagers::harmony::{HapStructure, check_hap_structure};
 pub use packagers::linux::{
     AppdirStructure, DebStructure, FlatpakStructure, RpmStructure, SnapStructure,

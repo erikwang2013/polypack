@@ -67,7 +67,6 @@ impl Drop for Scratch {
 fn request<'a>(repo: &'a Path, artifacts: &'a [Artifact], kind: RepoKind) -> RepoRequest<'a> {
     RepoRequest {
         target: "stable",
-        version: "1.0-1",
         repo,
         kind,
         signing: None,

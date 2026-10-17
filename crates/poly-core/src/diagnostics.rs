@@ -97,7 +97,7 @@ pub mod codes {
     pub const E_RELEASE_0002: Code = Code::new("poly::E_RELEASE_0002");
     /// 发布回执读写 / schema / 身份校验失败（回执永久保留，不静默重建）。
     pub const E_RELEASE_0003: Code = Code::new("poly::E_RELEASE_0003");
-    /// pkg 仓库后端未接线（T-M5-06；`--dry-run` 不受影响）。
+    /// 仓库后端未接线（历史：T-M5-06 前 pkg 占位；现已无目标走此码，保留稳定编号）。
     pub const E_RELEASE_0004: Code = Code::new("poly::E_RELEASE_0004");
     /// 仓库元数据生成失败（产物解析 / 目录写盘 / 签名失败，非签名域错误码另透传）。
     pub const E_RELEASE_0005: Code = Code::new("poly::E_RELEASE_0005");

@@ -47,7 +47,6 @@ struct MockBackend {
 impl RepoBackend for MockBackend {
     fn publish(&self, request: &RepoRequest<'_>) -> Result<(), Diagnostic> {
         assert_eq!(request.kind, RepoKind::Rpm);
-        assert_eq!(request.version, "0.1.0");
         assert_eq!(request.credential, Some("keyring:release"));
         assert!(request.repo.ends_with(".polypack/repo"));
         assert!(!request.artifacts.is_empty());
@@ -227,13 +226,20 @@ fn resolve_targets_dedupes_and_reports_unknown_ids() {
     assert_eq!(err.code.to_string(), "poly::E_TGT_0001");
 }
 
+/// T-M5-06：pkg 已接本地后端；本机无 pkg(8) 时如实报 E_RELEASE_0005 且不落回执。
+/// 有 pkg 的宿主（FreeBSD）跳过该分支断言——真跑与安装冒烟归 T-M5-09 VM。
 #[test]
-fn pending_backend_reports_unwired_code_and_leaves_no_receipt() {
-    let (root, project) = fixture("pending");
-    seed(&root, "fedora", "app-0.1.0.rpm", b"bytes");
-    let prepared = prepared(&root, &project, "fedora", "rpm");
-    let err = release_target(&prepared, None, &PendingBackend, 1).expect_err("未接线");
-    assert_eq!(err.code.to_string(), "poly::E_RELEASE_0004");
+fn pkg_backend_requires_pkg_tool_and_leaves_no_receipt() {
+    if poly_bundle::exec::tool_present("pkg") {
+        eprintln!("SKIP：本机有 pkg(8)，缺工具分支不可复现（FreeBSD 真跑归 T-M5-09）");
+        return;
+    }
+    let (root, project) = fixture("pkg-backend");
+    seed(&root, "freebsd", "app-0.1.0.pkg", b"bytes");
+    let prepared = prepared(&root, &project, "freebsd", "pkg");
+    let err = release_target(&prepared, None, &repo::LocalBackend, 1).expect_err("缺 pkg 须失败");
+    assert_eq!(err.code.to_string(), "poly::E_RELEASE_0005");
+    assert!(err.message.contains("FreeBSD"), "{}", err.message);
     assert!(!prepared.receipt.exists(), "失败不落回执");
     let _ = std::fs::remove_dir_all(&root);
 }
