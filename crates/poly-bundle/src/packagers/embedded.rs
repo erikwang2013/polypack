@@ -259,13 +259,7 @@ fn require_toolchain(build: &EngineBuild<'_>) -> Result<(), BundleError> {
     if build.nightly {
         let command = Command::new(
             "rustup",
-            [
-                "component",
-                "list",
-                "--installed",
-                "--toolchain",
-                "nightly",
-            ],
+            ["component", "list", "--installed", "--toolchain", "nightly"],
         );
         let installed = match exec::run(&command) {
             Ok(output) => String::from_utf8_lossy(&output.stdout).into_owned(),
