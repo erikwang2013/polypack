@@ -195,7 +195,8 @@ pub trait Packager: Send + Sync {
 /// M5：Linux 发行版 rpm / Flatpak / Snap（ubuntu / fedora / mint，T-M5-01/02/03）+
 /// BSD 家族 ports / pkg / pkgsrc（openbsd T-M5-07 / freebsd T-M5-06 / netbsd T-M5-08）+
 /// Roku 频道 zip（T-M4-15）；M6：AAOS 变体 android-automotive（复用 aab 链，T-M6-11）+
-/// VxWorks 库 / 镜像（T-M6-05，两 format 共用同一 kit 构建）+ Zephyr west 模板（T-M6-06））。
+/// VxWorks 库 / 镜像（T-M6-05，两 format 共用同一 kit 构建）+ Zephyr west 模板（T-M6-06）+
+/// FreeRTOS QEMU 示例板（T-M6-07））。
 pub fn builtin() -> Vec<Box<dyn Packager>> {
     vec![
         Box::new(crate::packagers::windows::WixMsi),
@@ -231,6 +232,7 @@ pub fn builtin() -> Vec<Box<dyn Packager>> {
         Box::new(crate::packagers::vxworks::VxWorksLibrary),
         Box::new(crate::packagers::vxworks::VxWorksImage),
         Box::new(crate::packagers::zephyr::ZephyrWest),
+        Box::new(crate::packagers::freertos::FreeRtosBoard),
     ]
 }
 

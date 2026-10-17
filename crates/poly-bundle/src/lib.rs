@@ -43,6 +43,7 @@ pub use packagers::autosar::{
     xmllint_command, xmllint_tool,
 };
 pub use packagers::freebsd::{PkgStructure, check_pkg_structure};
+pub use packagers::freertos::{FreeRtosStructure, check_freertos_structure};
 pub use packagers::harmony::{HapStructure, check_hap_structure};
 pub use packagers::linux::{
     AppdirStructure, DebStructure, FlatpakStructure, RpmStructure, SnapStructure,

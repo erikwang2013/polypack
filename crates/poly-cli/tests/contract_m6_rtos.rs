@@ -1,18 +1,23 @@
-//! T-M6-03/04 验收：QNX 静态库 + 镜像、AUTOSAR Adaptive 静态库 + ARXML。
+//! T-M6-03/04/07 验收：QNX 静态库 + 镜像、AUTOSAR Adaptive 静态库 + ARXML、
+//! FreeRTOS QEMU 示例板。
 //!
 //! 默认（mock）只跑结构与 SKIP 口径：注册表 / 打包器解析、无 SDP 时 SKIP-with-print
-//! 且不落任何伪造产物、doctor 的 qnx-sdp 探测行。真实静态库构建与 `poly build --target
-//! qnx` 的端到端 SKIP 由 `POLY_CONTRACT_REAL=1` 开启（本机/CI 手动验收）。
+//! 且不落任何伪造产物、doctor 的 qnx-sdp 探测行。真实静态库构建、`poly build --target
+//! qnx` 的端到端 SKIP 与 FreeRTOS 板级包 + QEMU 冒烟由 `POLY_CONTRACT_REAL=1` 开启
+//! （本机/CI 手动验收）。
 
 mod common;
 
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use common::{combined, init_project, poly};
+use common::{combined, command_available, init_project, poly};
 use poly_bundle::embedded::{EmbeddedInputs, QnxEnv};
 use poly_bundle::inputs::{BundleInputs, ProductInfo};
-use poly_bundle::{AutosarAdaptive, Packager, QnxImage, builtin, check_arxml, find};
+use poly_bundle::packagers::freertos::FreeRtosBoard;
+use poly_bundle::{
+    AutosarAdaptive, Packager, QnxImage, builtin, check_arxml, check_freertos_structure, find,
+};
 use poly_targets::{Host, PackageSpec, Registry, TargetSpec};
 
 fn real_mode() -> bool {
@@ -114,6 +119,84 @@ fn qnx_and_autosar_targets_and_packagers_are_wired() {
     unique.sort();
     unique.dedup();
     assert_eq!(pairs.len(), unique.len(), "打包器 (id, format) 不得重复");
+}
+
+/// T-M6-07 声明侧：目标 / 打包器 / verify id 全部接线。
+#[test]
+fn freertos_target_and_packager_are_wired() {
+    let freertos = spec("freertos");
+    assert_eq!(freertos.tier, 6, "FreeRTOS 应为 L6");
+    assert!(
+        freertos.hosts.contains(&Host::Linux),
+        "FreeRTOS 应 Linux 可达"
+    );
+    assert!(freertos.ui.is_empty(), "FreeRTOS 无 UI");
+    assert_eq!(freertos.runtime, poly_targets::Runtime::Staticlib);
+    assert_eq!(freertos.bridge, poly_targets::Bridge::Cffi);
+    assert_eq!(freertos.package.format, "board");
+    assert_eq!(freertos.package.builder, "freertos-qemu");
+    assert_eq!(
+        freertos.verify,
+        vec![
+            "c-abi-symbols".to_string(),
+            "freertos-qemu-smoke".to_string()
+        ]
+    );
+    assert_eq!(
+        find("freertos", "board").map(|packager| packager.id()),
+        Some("freertos")
+    );
+}
+
+/// 真实 FreeRTOS 板级包：引擎静态库 + 模板真产 + 结构断言 + QEMU 冒烟。
+#[test]
+fn freertos_package_builds_board_and_qemu_smoke() {
+    if !real_mode() {
+        eprintln!("SKIP：真实 FreeRTOS 板级包与 QEMU 冒烟需 POLY_CONTRACT_REAL=1");
+        return;
+    }
+    let guard = TempDir::new("poly-freertos-real");
+    let out = guard.path().join("out");
+    std::fs::create_dir_all(&out).unwrap();
+    let mut inputs = BundleInputs::new(product(), &out);
+    inputs.embedded = Some(embedded(&out, None, true));
+    let artifact = FreeRtosBoard
+        .package(&inputs, &spec("freertos"))
+        .expect("FreeRTOS 板级包应真跑通过");
+    assert_eq!(artifact.format, "board");
+    let board = out.join("board");
+    let structure = check_freertos_structure(&board).expect("板级包结构检查");
+    assert_eq!(structure.board, "mps2-an385");
+    assert_eq!(structure.triple, "thumbv7m-none-eabi");
+    assert_eq!(structure.symbols, ffi_symbols());
+
+    if !command_available("arm-none-eabi-gcc", &["--version"])
+        || !command_available("qemu-system-arm", &["--version"])
+    {
+        eprintln!("SKIP QEMU：本机缺 arm-none-eabi-gcc / qemu-system-arm");
+        return;
+    }
+    let sample = board.join("sample");
+    let kernel_dir = std::env::var_os("POLYPACK_FREERTOS_KERNEL_DIR")
+        .map(PathBuf::from)
+        .unwrap_or_else(|| guard.path().join("kernel"));
+    let smoke = Command::new("make")
+        .arg("smoke")
+        .arg(format!("KERNEL_DIR={}", kernel_dir.display()))
+        .arg(format!(
+            "BUILD_DIR={}",
+            guard.path().join("build").display()
+        ))
+        .current_dir(&sample)
+        .output()
+        .expect("make 可执行");
+    let text = combined(&smoke);
+    eprintln!("FreeRTOS smoke 输出：{text}");
+    assert!(smoke.status.success(), "QEMU 冒烟失败：{text}");
+    assert!(
+        text.contains("poly_engine version=") && text.contains("SMOKE PASS"),
+        "须打印引擎版本行且 QEMU 退出码 0：{text}"
+    );
 }
 
 #[test]

@@ -632,12 +632,13 @@ pub fn builtin() -> Vec<TargetSpec> {
                     .to_string(),
             ),
         },
-        // ---- L6 嵌入式（T-M6-05 / T-M6-06，ROADMAP §3.7）：VxWorks / Zephyr ----
-        // 两者都复用 T-M6-02 的 `poly_engine_*` C ABI（唯一生成头文件），无 UI；
+        // ---- L6 嵌入式（T-M6-05/06/07，ROADMAP §3.7）：VxWorks / Zephyr / FreeRTOS ----
+        // 三者都复用 T-M6-02 的 `poly_engine_*` C ABI（唯一生成头文件），无 UI；
         // 引擎层以应用侧 wrapper staticlib 链入（poly-core 只出 rlib，应用提供 allocator /
         // panic_handler）。VxWorks 默认出库（配置可覆盖为 `image` 部署 kit）；`wr-cc` 缺席时
         // verify 用 nm 闭包 / 结构断言真跑并 SKIP-with-print。Zephyr 出 west 工程模板，
-        // `west build` 覆盖 qemu_x86 / qemu_cortex_m3 两板。
+        // `west build` 覆盖 qemu_x86 / qemu_cortex_m3 两板。FreeRTOS 出 QEMU 示例板包，
+        // mps2-an385 上真跑引擎调用并以 semihosting 退出码 0 结束。
         TargetSpec {
             id: "vxworks".to_string(),
             tier: 6,
@@ -679,6 +680,33 @@ pub fn builtin() -> Vec<TargetSpec> {
                 "无 UI、cffi、no_std；west 工程模板（zephyr module + 引擎静态库模块链入），\
                  qemu_x86 / qemu_cortex_m3 两板 `west build` 验收；最小 CONFIG_* 集随模板版本化；\
                  west / Zephyr SDK 缺席时按环境槽 SKIP-with-print"
+                    .to_string(),
+            ),
+        },
+        TargetSpec {
+            id: "freertos".to_string(),
+            tier: 6,
+            hosts: vec![Host::Win, Host::Linux, Host::Macos],
+            runtime: Runtime::Staticlib,
+            bridge: Bridge::Cffi,
+            ui: vec![],
+            package: PackageSpec {
+                format: "board".to_string(),
+                builder: "freertos-qemu".to_string(),
+            },
+            signing: None,
+            verify: vec![
+                "c-abi-symbols".to_string(),
+                "freertos-qemu-smoke".to_string(),
+            ],
+            publish: vec!["self-hosted".to_string()],
+            experimental: false,
+            notes: Some(
+                "无 UI、cffi、no_std；FreeRTOS 示例板包（mps2-an385 / Cortex-M3，静态库 + \
+                 启动 / 中断 / UART / FreeRTOSConfig / Makefile 工程模板）；内核 V11.1.0 按 \
+                 tag + sha256 现拉不入库；`make smoke` 在 QEMU 中调用 poly_engine_* 并以 \
+                 semihosting 退出码 0 结束；arm-none-eabi-gcc / qemu-system-arm / 网络缺席时\
+                 按环境槽 SKIP-with-print"
                     .to_string(),
             ),
         },

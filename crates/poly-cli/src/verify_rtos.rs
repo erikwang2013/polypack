@@ -1,6 +1,6 @@
-//! RTOS 校验器（T-M6-05 VxWorks / T-M6-06 Zephyr）。
+//! RTOS 校验器（T-M6-05 VxWorks / T-M6-06 Zephyr / T-M6-07 FreeRTOS）。
 //!
-//! 三条校验腿共用打包器的同一实现，避免「打包器自检绿、verify 另写一套」的漂移：
+//! 校验腿共用打包器的同一实现，避免「打包器自检绿、verify 另写一套」的漂移：
 //! - `c-abi-symbols`：头文件声明 vs 归档定义（`poly_engine_*`）、未解析符号闭包白名单、
 //!   no_std 断言、§5.3 绝对路径扫描。`nm` 缺席时告警跳过（不假装比过）。
 //! - `vxworks-ld-check`：kit 结构断言始终真跑；`wr-cc` 在场时用厂商链接器跑
@@ -8,6 +8,7 @@
 //! - `zephyr-west-build`：west 模板结构 / 版本化 CONFIG 集始终真跑；west + Zephyr SDK
 //!   在场时对 qemu_x86 与 qemu_cortex_m3 真跑 `west build`，并检查链接映射里引擎模块
 //!   与 no_std，缺席按环境槽 SKIP-with-print。
+//! - `freertos-qemu-smoke`：见 [`crate::verify_freertos`]（板级包结构真跑 + QEMU 冒烟）。
 
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -31,6 +32,9 @@ const ZEPHYR_LIBS: [&str; 2] = [
     "west/modules/poly_engine/lib/x86/libpolypack_engine.a",
     "west/modules/poly_engine/lib/arm/libpolypack_engine.a",
 ];
+pub(crate) const FREERTOS_ROOT: &str = "board";
+const FREERTOS_HEADER: &str = "board/include/polypack_engine.h";
+const FREERTOS_LIB: &str = "board/lib/arm/libpolypack_engine.a";
 
 /// VxWorks 运行时（libc / 编译器运行时）允许的未解析符号；闭包里出现别的即硬失败。
 const VXWORKS_ALLOWED_UNRESOLVED: &[&str] = &[
@@ -49,23 +53,30 @@ const ZEPHYR_ALLOWED_UNRESOLVED: &[&str] = &[
     "printk",
     "strlen",
 ];
+/// FreeRTOS 运行时（heap_4 / 板级 panic 钩子 / ARM unwind）允许的未解析符号。
+pub(crate) const FREERTOS_ALLOWED_UNRESOLVED: &[&str] = &[
+    "__aeabi_unwind_cpp_pr0",
+    "poly_engine_rt_panic",
+    "pvPortMalloc",
+    "vPortFree",
+];
 
-fn package_dir(project: &Project, spec: &TargetSpec) -> PathBuf {
+pub(crate) fn package_dir(project: &Project, spec: &TargetSpec) -> PathBuf {
     project::packages_root(&project.root).join(&spec.id)
 }
 
-fn defect(spec: &TargetSpec, message: String) -> StageError {
+pub(crate) fn defect(spec: &TargetSpec, message: String) -> StageError {
     Diagnostic::error(codes::E_VERIFY_0003, format!("目标 {}：{message}", spec.id)).into()
 }
 
-fn warning(events: &mut dyn EventSink, message: &str) {
+pub(crate) fn warning(events: &mut dyn EventSink, message: &str) {
     events.emit(&BuildEvent::Warning {
         stage: "verify".to_string(),
         message: message.to_string(),
     });
 }
 
-fn emit_verified(events: &mut dyn EventSink, ids: &[String]) {
+pub(crate) fn emit_verified(events: &mut dyn EventSink, ids: &[String]) {
     for id in ids {
         events.emit(&BuildEvent::Verified {
             checker: id.clone(),
@@ -92,6 +103,11 @@ pub(crate) fn verify_c_abi_symbols(
             package.join(ZEPHYR_HEADER),
             ZEPHYR_LIBS.iter().map(|rel| package.join(rel)).collect(),
             ZEPHYR_ALLOWED_UNRESOLVED,
+        ),
+        "freertos" => (
+            package.join(FREERTOS_HEADER),
+            vec![package.join(FREERTOS_LIB)],
+            FREERTOS_ALLOWED_UNRESOLVED,
         ),
         other => {
             warning(
@@ -400,7 +416,7 @@ fn check_zephyr_build(spec: &TargetSpec, board: &str, build_dir: &Path) -> Resul
 }
 
 /// 命令 stderr 的末段（诊断里只留可读的失败现场）。
-fn tail(stderr: &[u8]) -> String {
+pub(crate) fn tail(stderr: &[u8]) -> String {
     let text = String::from_utf8_lossy(stderr);
     let lines: Vec<&str> = text
         .lines()
