@@ -21,6 +21,9 @@ pub struct StaticSite;
 /// 产物格式（须与 `[targets.web].package.format` 一致）。
 const STATIC_SITE: &str = "static-site";
 
+/// 服务静态站点的目标：L1 `web` 与 T-M5-10 的 ChromeOS PWA 轨（同一条 Web 链）。
+const STATIC_SITE_TARGETS: &[&str] = &["web", "chromeos-pwa"];
+
 /// 内建 HTML 结构断言的最小标记集（大小写不敏感）。
 const HTML_REQUIRED: &[&str] = &["<!doctype html", "<html", "</html>", "<body", "</body>"];
 
@@ -38,6 +41,10 @@ impl Packager for StaticSite {
 
     fn format(&self) -> &'static str {
         STATIC_SITE
+    }
+
+    fn serves(&self, target_id: &str) -> bool {
+        STATIC_SITE_TARGETS.contains(&target_id)
     }
 
     fn plan(&self, inputs: &BundleInputs, spec: &TargetSpec) -> Result<BundlePlan, BundleError> {
@@ -199,7 +206,7 @@ fn assert_html_structure(site: &Path) -> Result<(), BundleError> {
 /// PWA manifest 结构与引用校验（错误一律 [`BundleError::InvalidInput`]）。
 ///
 /// shortcut: M1 只做结构与引用存在性校验，不做 W3C manifest 全量 schema 校验。
-fn validate_manifest(
+pub(crate) fn validate_manifest(
     value: &serde_json::Value,
     site: &Path,
     packager: &'static str,

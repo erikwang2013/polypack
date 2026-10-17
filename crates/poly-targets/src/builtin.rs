@@ -11,11 +11,12 @@
 //! web 系 TV 四目标（tizen-tv / webos-tv / vidaa-tv / smartcast-tv，T-M4-08/09/10：
 //! wasm 核心 + react-dom UI，wgt / ipk / web-app 出包）。
 //! M5 增补 L5 BSD 家族目标（tier 5，ROADMAP §3.6）：OpenBSD ports（T-M5-07，ports 骨架 +
-//! signify / portcheck；Linux 宿主可发起的交叉面，真构建归 OpenBSD VM / T-M5-09）。
+//! signify / portcheck；Linux 宿主可发起的交叉面，真构建归 OpenBSD VM / T-M5-09）与
+//! ChromeOS 双轨（T-M5-10：Crostini deb + PWA 两目标，分别复用 Linux deb / Web 链）。
 
 use crate::spec::{Bridge, Host, PackageSpec, Runtime, TargetSpec};
 
-/// 全部内建目标（L1 七 + L2 小程序族四 + L3 电视族七：tvos + android-tv / fire-tv + web 系四）。
+/// 全部内建目标（L1 七 + L2 小程序族四 + L3 电视族八 + L5 发行版三 / OpenBSD / ChromeOS 双轨）。
 pub fn builtin() -> Vec<TargetSpec> {
     vec![
         TargetSpec {
@@ -236,6 +237,57 @@ pub fn builtin() -> Vec<TargetSpec> {
                 "L5 发行版：deb 主档（Linux Mint 兼容 Ubuntu 仓库）；Flatpak 权限恰为 \
                  [--share=ipc, --socket=wayland, --socket=fallback-x11, --device=dri]\
                  （与打包器常量同源，T-M5-02）"
+                    .to_string(),
+            ),
+        },
+        // ---- L5 ChromeOS 双轨（T-M5-10，ROADMAP §3.6）：Crostini deb + PWA ----
+        // 两目标从同一次 JobSpec 的各出产物：Crostini 轨复用 Linux deb 打包器（不动 deb 逻辑，
+        // 只扩 serves），PWA 轨复用 Web 管线 / manifest / 静态站点打包器；PWA 三腿审计
+        // （manifest / 离线能力 / 安装性）由 `pwa-audit` 校验器接入 verify，真浏览器腿在
+        // Chrome 缺席时 SKIP-with-print（结构断言仍真跑）。Crostini 容器不可得时安装冒烟
+        // 同样 SKIP-with-print（契约测试以 Debian 容器 + dpkg -i 真跑替代并注记）。
+        TargetSpec {
+            id: "chromeos".to_string(),
+            tier: 5,
+            hosts: vec![Host::Linux],
+            runtime: Runtime::Native,
+            bridge: Bridge::TauriIpc,
+            ui: vec!["react-dom".to_string()],
+            package: PackageSpec {
+                format: "deb".to_string(),
+                builder: "linux-deb".to_string(),
+            },
+            signing: None,
+            verify: vec!["lintian".to_string()],
+            publish: vec!["self-hosted".to_string()],
+            experimental: false,
+            notes: Some(
+                "ChromeOS 双轨之 Crostini：复用 Linux deb 链（control / 维护者脚本 / AppStream \
+                 随载荷，不另写 deb 逻辑）；安装冒烟在 Crostini 容器不可得时 SKIP-with-print，\
+                 结构检查（deb 数据段 / control）仍真跑"
+                    .to_string(),
+            ),
+        },
+        TargetSpec {
+            id: "chromeos-pwa".to_string(),
+            tier: 5,
+            hosts: vec![Host::Win, Host::Linux, Host::Macos],
+            runtime: Runtime::Wasm,
+            bridge: Bridge::WasmBindgen,
+            ui: vec!["react-dom".to_string()],
+            package: PackageSpec {
+                format: "static-site".to_string(),
+                builder: "web-static".to_string(),
+            },
+            signing: None,
+            verify: vec!["pwa-audit".to_string()],
+            publish: vec!["self-hosted".to_string()],
+            experimental: false,
+            notes: Some(
+                "ChromeOS 双轨之 PWA：复用 Web 管线 + T-M1-04 manifest + T-M1-08 静态站点\
+                 打包器；离线能力 / manifest / 安装性审计由 pwa-audit 接入 verify。离线能力\
+                 要求应用自带 service worker 注册与缓存（模板不生成 SW）；真 Chrome 腿\
+                 （Page.getInstallabilityErrors + 断网重载）缺席时 SKIP-with-print"
                     .to_string(),
             ),
         },

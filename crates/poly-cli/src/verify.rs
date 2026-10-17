@@ -196,6 +196,10 @@ enum Verifier {
     SnapLint,
     /// AppStream 元数据（内建结构检查 + 在场时的 appstreamcli），T-M5-01/04。
     AppstreamValidate,
+    /// PWA 三腿审计（manifest / 离线能力 / 安装性；[`poly_bundle::audit_pwa`]），T-M5-10。
+    /// 真浏览器腿（Chrome `Page.getInstallabilityErrors` + 断网重载）由
+    /// `ui/smoke/pwa/audit.mjs` 另跑，Chrome 缺席时 SKIP-with-print。
+    PwaAudit,
 }
 
 /// 校验器 id → 已接入实现（`None` = 未接入，归属查 [`verifier_owner`]）。
@@ -216,6 +220,7 @@ fn verifier_for(id: &str) -> Option<Verifier> {
         "flatpak-lint" => Some(Verifier::FlatpakLint),
         "snap-lint" => Some(Verifier::SnapLint),
         "appstream-validate" => Some(Verifier::AppstreamValidate),
+        "pwa-audit" => Some(Verifier::PwaAudit),
         _ => None,
     }
 }
@@ -332,6 +337,7 @@ fn verify_target(
     let mut flatpak_ids: Vec<String> = Vec::new();
     let mut snap_ids: Vec<String> = Vec::new();
     let mut appstream_ids: Vec<String> = Vec::new();
+    let mut pwa_ids: Vec<String> = Vec::new();
     for id in &spec.verify {
         match verifier_for(id) {
             Some(Verifier::IosCodesign) => ios_ids.push(id.clone()),
@@ -349,6 +355,7 @@ fn verify_target(
             Some(Verifier::FlatpakLint) => flatpak_ids.push(id.clone()),
             Some(Verifier::SnapLint) => snap_ids.push(id.clone()),
             Some(Verifier::AppstreamValidate) => appstream_ids.push(id.clone()),
+            Some(Verifier::PwaAudit) => pwa_ids.push(id.clone()),
             None => unserved.push(match verifier_owner(id) {
                 Some(owner) => format!("{id}（{owner}）"),
                 // 注册表有 id 但没人认领：如实点名到具体 id，测试保证这里在 M2 的注册表上是死路
@@ -412,6 +419,9 @@ fn verify_target(
     }
     if !appstream_ids.is_empty() {
         checked |= verify_appstream_validate(project, spec, &appstream_ids, events)?;
+    }
+    if !pwa_ids.is_empty() {
+        checked |= verify_pwa_audit(project, spec, &pwa_ids, events)?;
     }
     Ok(checked)
 }
@@ -1870,6 +1880,77 @@ fn verify_appstream_validate(
     Ok(true)
 }
 
+/// PWA 三腿审计（`pwa-audit`，T-M5-10）：manifest / 离线能力 / 安装性的结构断言。
+///
+/// 与打包器同一份 manifest 校验（[`poly_bundle::audit_pwa`] → `validate_manifest`），
+/// 产物缺陷硬失败（E_VERIFY_0003），不降级成跳过。真浏览器腿（Chrome
+/// `Page.getInstallabilityErrors` + 断网重载）不在 verify 进程内跑：它需要浏览器与静态
+/// 托管，由 `ui/smoke/pwa/audit.mjs` 在 Chrome 在场时执行；Chrome 缺席时该脚本
+/// SKIP-with-print，verify 的结构断言仍是本机的真跑面。
+fn verify_pwa_audit(
+    project: &Project,
+    spec: &TargetSpec,
+    ids: &[String],
+    events: &mut dyn EventSink,
+) -> Result<bool, StageError> {
+    let site = project::packages_root(&project.root)
+        .join(&spec.id)
+        .join("site");
+    if !site.is_dir() {
+        warning(
+            events,
+            &format!(
+                "目标 {} 未校验：{} 不存在（先跑 poly build 把静态站点流到打包暂存目录）",
+                spec.id,
+                site.display()
+            ),
+        );
+        return Ok(false);
+    }
+    let audit = match poly_bundle::audit_pwa(&site) {
+        Ok(audit) => audit,
+        Err(err) => {
+            return Err(webtv_defect(
+                spec,
+                err.to_string(),
+                "补齐 manifest / service worker / ≥144px 图标后重跑 poly build --target chromeos-pwa",
+            )
+            .into());
+        }
+    };
+    warning(
+        events,
+        &format!("目标 {} 的 PWA manifest 审计：{}", spec.id, audit.manifest),
+    );
+    warning(
+        events,
+        &format!("目标 {} 的 PWA 离线能力审计：{}", spec.id, audit.offline),
+    );
+    warning(
+        events,
+        &format!(
+            "目标 {} 的 PWA 安装性审计：{}",
+            spec.id, audit.installability
+        ),
+    );
+    warning(
+        events,
+        &format!(
+            "目标 {} 的真浏览器腿未在 verify 内跑：`node ui/smoke/pwa/audit.mjs --site {}` \
+             （Chrome 缺席时 SKIP-with-print；manifest 结构断言已由本段真跑）",
+            spec.id,
+            site.display()
+        ),
+    );
+    for id in ids {
+        events.emit(&BuildEvent::Verified {
+            checker: id.clone(),
+            ok: true,
+        });
+    }
+    Ok(true)
+}
+
 /// 暂存树内首个 `*.metainfo.xml`（限深，目录按名排序保证确定性）。
 fn find_metainfo(dir: &Path, depth: usize) -> Option<PathBuf> {
     if depth == 0 {
@@ -2286,6 +2367,22 @@ mod tests {
         );
         assert!(
             verifier_owner("sideload-structure-check").is_none(),
+            "已接入的校验器不得再留 owner 占位"
+        );
+    }
+
+    /// ChromeOS PWA 轨的 `pwa-audit` 已接入（T-M5-10）；browser 模式下不可安装的
+    /// display 与离线能力缺失都由 `poly_bundle::audit_pwa` 硬失败（见 poly-bundle 测试）。
+    #[test]
+    fn pwa_audit_is_served_for_chromeos_pwa() {
+        let pwa = Registry::builtin()
+            .get("chromeos-pwa")
+            .expect("内建 chromeos-pwa 目标")
+            .clone();
+        assert_eq!(pwa.verify, vec!["pwa-audit"]);
+        assert_eq!(verifier_for("pwa-audit"), Some(Verifier::PwaAudit));
+        assert!(
+            verifier_owner("pwa-audit").is_none(),
             "已接入的校验器不得再留 owner 占位"
         );
     }
