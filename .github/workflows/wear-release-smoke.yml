@@ -8,7 +8,8 @@
 #     非 Wear）由「发布门判定」步骤读 result.json 判为不过——两道都红，release-gate job 才红；
 #   · **release-gate job** 依赖设备 job（needs + if: always()），失败即整个 workflow 失败。
 #     发版流水线可直接 `uses: ./.github/workflows/wear-release-smoke.yml`（workflow_call），
-#     把 release-gate 作为发版前置 job 依赖；release published 另为已发布版本留证复核。
+#     把 release-gate 作为发版前置 job 依赖；也可手动 dispatch 复核。不在 release published
+#     上自动触发：发布后复核无法回滚，且未配 vars 的仓库会把每次发布染红（门禁放在发版前）。
 #
 # 归档（artifact wear-release-smoke-evidence，90 天）：result.json（startedAt/finishedAt 时间戳 +
 # build.commit/dirty + APK SHA-256 构建摘要 + 失败 locate）、logcat.txt、逐 case 终态截图、
@@ -19,8 +20,6 @@ name: wear-release-smoke
 on:
   workflow_call:
   workflow_dispatch:
-  release:
-    types: [published]
 
 permissions:
   contents: read

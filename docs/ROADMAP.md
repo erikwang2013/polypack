@@ -364,8 +364,8 @@ CI 宿主 × 目标层矩阵：
 >
 > `wear-smoke`（mock 每提交；每夜 + 手动真跑）在 KVM + `vars.POLYPACK_WEAR_FORM_APK` 门后跑
 > Wear 表单套件（输入 / 滑动 / 返回）；缺门时 SKIP-with-print 并写全 SKIP 的 result.json。
-> `wear-release-smoke` 为发版门（`workflow_call` / `release: published`），设备腿失败或未真跑
-> 即阻断发版，证据归档 90 天。
+> `wear-release-smoke` 为发版门（`workflow_call` / 手动）：发版流水线以 workflow_call 把它作为
+> 前置依赖；设备腿失败或未真跑即阻断发版，证据归档 90 天。
 > CI 工作流共十一个：`rust-ci` / `docs-check` /
 > `secret-scan` / `mobile-contract` / `miniprogram-contract` / `tv-smoke` / `bridge` / `bsd-ci` /
 > `embedded-ci` / `wear-smoke` / `wear-release-smoke`。

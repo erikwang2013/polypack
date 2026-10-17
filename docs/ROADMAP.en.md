@@ -368,8 +368,8 @@ CI host × target-tier matrix:
 > `wear-smoke` (mock per push; nightly + manual real run) runs the Wear form suite (input / swipe /
 > back) behind the KVM + `vars.POLYPACK_WEAR_FORM_APK` gate; when the gate is absent it records
 > SKIP-with-print and writes an all-SKIP result.json. `wear-release-smoke` is the release gate
-> (`workflow_call` / `release: published`): a failed or non-real device leg blocks the release,
-> with evidence retained for 90 days. Eleven CI workflows total: `rust-ci` /
+> (`workflow_call` / manual): a release pipeline uses workflow_call to make it a prerequisite; a
+> failed or non-real device leg blocks the release, with evidence retained for 90 days. Eleven CI workflows total: `rust-ci` /
 > `docs-check` / `secret-scan` / `mobile-contract` / `miniprogram-contract` / `tv-smoke` / `bridge` /
 > `bsd-ci` / `embedded-ci` / `wear-smoke` / `wear-release-smoke`.
 
