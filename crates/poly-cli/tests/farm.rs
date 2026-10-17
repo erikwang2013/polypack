@@ -299,9 +299,9 @@ fn farm_loopback_returns_worker_failure_with_code_and_hint() {
     assert!(failed["hint"].is_string(), "失败事件带修复提示: {failed}");
 }
 
-/// R3 宿主阻断：农场投递**不**按发起地过滤目标——`--target ios` / `--target tvos`（Linux
-/// 发起，声明宿主 = macOS）应保留进任务并等 macOS worker 注册（此处无 worker → 等待注册
-/// 超时），绝不报「目标不可达」。
+/// R3 宿主阻断：农场投递**不**按发起地过滤目标——`--target ios` / `--target tvos` /
+/// `--target watchos`（Linux 发起，声明宿主 = macOS）应保留进任务并等 macOS worker 注册
+/// （此处无 worker → 等待注册超时），绝不报「目标不可达」。
 /// 宿主准入由 master 对 worker 的能力判据把关（语义见 core 侧 `farm_remote.rs` 的 mock 契约）。
 #[test]
 fn farm_submit_keeps_foreign_host_target_for_worker_admission() {
@@ -310,8 +310,9 @@ fn farm_submit_keeps_foreign_host_target_for_worker_admission() {
     write_project(&project, true);
     let farm = temp.path().join("farm");
 
-    // ios（T-M2-13 既有）与 tvos（T-M4-07：同一投递语义，声明宿主同为 macOS）
-    for target in ["ios", "tvos"] {
+    // ios（T-M2-13 既有）、tvos（T-M4-07：同一投递语义，声明宿主同为 macOS）与
+    // watchos（T-M7-06：xcodebuild 链同走 R3 远程农场 macOS worker）
+    for target in ["ios", "tvos", "watchos"] {
         let out = poly(
             &[
                 "farm",

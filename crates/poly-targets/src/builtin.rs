@@ -17,6 +17,8 @@
 //! QNX（T-M6-03，staticlib + cffi + 镜像 / 库）、AUTOSAR Adaptive（T-M6-04，staticlib +
 //! cffi + ARXML 清单；无 UI、自部署）、VxWorks（T-M6-05，库 / 镜像 kit）与 Zephyr
 //! （T-M6-06，west 工程模板 + no_std 引擎模块）。
+//! M7 增补 watchOS 伴生模板（T-M7-05/06，tier 6，experimental）：SwiftUI 模板 +
+//! xcodebuild archive + codesign，核心不直接运行（runtime = none，经 iOS 伴生 App 代理）。
 
 use alloc::string::ToString;
 use alloc::vec;
@@ -795,6 +797,34 @@ pub fn builtin() -> Vec<TargetSpec> {
                 "无 UI、自部署；AUTOSAR Adaptive 清单（ARXML）由 poly_engine_* C ABI 单一来源\
                  派生（服务 / 端口与导出符号一一对应）；no_std 可选（引擎层 \
                  --no-default-features，应用提供 global_allocator / panic_handler）"
+                    .to_string(),
+            ),
+        },
+        // ---- L6 穿戴（T-M7-05/06，ROADMAP §3.7 规划行）：watchOS 伴生模板（※实验） ----
+        // 手表端不跑核心（runtime = none）：SwiftUI 模板只含核心 API 调用桩 + WatchConnectivity
+        // 说明，真实调用经 iOS 伴生 App 代理。打包 / 签名复用 M2 Apple 链（xcodebuild archive →
+        // codesign），产物是 `export/Payload/<产品>.app`；宿主 = macOS，Linux / Windows 发起走
+        // 远程农场 macOS worker（R3，T-M2-13 协议）。凭据只以 `apple-codesign` 引用出现。
+        TargetSpec {
+            id: "watchos".to_string(),
+            tier: 6,
+            hosts: vec![Host::Macos],
+            runtime: Runtime::None,
+            bridge: Bridge::None,
+            ui: vec!["swiftui".to_string()],
+            package: PackageSpec {
+                format: "watch".to_string(),
+                builder: "watchos-xcodebuild".to_string(),
+            },
+            signing: Some("apple-codesign".to_string()),
+            verify: vec!["codesign-verify".to_string()],
+            publish: vec!["app-store".to_string()],
+            experimental: true,
+            notes: Some(
+                "实验：SwiftUI 伴生模板（核心 API 调用桩 + WatchConnectivity 说明），核心不直接\
+                 运行（runtime = none）；模板经 `poly init --target watchos` 生成，macOS 宿主 \
+                 `xcodebuild` 构建；Linux / Windows 发起走远程农场 macOS worker（R3）；签名复用 \
+                 M2 Apple 链（codesign，凭据只以 apple-codesign 引用出现）"
                     .to_string(),
             ),
         },

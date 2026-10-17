@@ -98,13 +98,13 @@ fn builtin_has_seven_valid_targets() {
     );
     assert_eq!(
         registry.all().count(),
-        33,
+        34,
         "M6 起内建 = L1 七 + L2 小程序族四（wechat / alipay / douyin / quickapp）+ \
          L3 电视族八（tvos + android-tv / fire-tv + tizen-tv / webos-tv / vidaa-tv / smartcast-tv \
          + roku※实验，T-M4-04/07/08/09/10/12）+ L5 OpenBSD / FreeBSD / NetBSD（T-M5-07/06/08）+\
          发行版三（ubuntu / fedora / mint，T-M5-01）+ ChromeOS 双轨（chromeos / chromeos-pwa，\
-         T-M5-10）+ L6 车机 / 嵌入式六目标（android-automotive，T-M6-11；qnx / autosar，\
-         T-M6-03/04；vxworks / zephyr，T-M6-05/06；freertos，T-M6-07）"
+         T-M5-10）+ L6 车机 / 嵌入式七目标（android-automotive，T-M6-11；qnx / autosar，\
+         T-M6-03/04；vxworks / zephyr，T-M6-05/06；freertos，T-M6-07；watchos※实验，T-M7-05/06）"
     );
     for spec in registry.all() {
         spec.validate()
@@ -300,7 +300,7 @@ fn linux_host_resolves_four_l1_targets_from_all() {
         "L5 OpenBSD / FreeBSD / NetBSD + 发行版三 + ChromeOS 双轨应全部入选"
     );
     // L6 车机 / 嵌入式：android-automotive 声明三宿主；qnx / autosar / vxworks / zephyr /
-    // freertos 声明 Linux 宿主 → 在 Linux 宿主下全部入选
+    // freertos 声明 Linux 宿主 → 在 Linux 宿主下全部入选；watchos 声明 macOS 专宿主 → 排除
     let l6: BTreeSet<&str> = resolved
         .selected
         .iter()
@@ -327,8 +327,8 @@ fn linux_host_resolves_four_l1_targets_from_all() {
     let excluded: BTreeSet<&str> = resolved.excluded.iter().map(|e| e.id.as_str()).collect();
     assert_eq!(
         excluded,
-        BTreeSet::from(["ios", "macos", "tvos", "windows"]),
-        "含 M4 的 tvos（声明宿主 = macOS）"
+        BTreeSet::from(["ios", "macos", "tvos", "watchos", "windows"]),
+        "含 M4 的 tvos / M7 的 watchos（声明宿主 = macOS）"
     );
     for target in &resolved.excluded {
         assert!(!target.reason.trim().is_empty(), "{} 缺排除原因", target.id);
@@ -798,6 +798,48 @@ fn builtin_matches_roadmap_3_7_freertos() {
     );
     let notes = freertos.notes.as_deref().unwrap_or("");
     for needle in ["mps2-an385", "QEMU", "sha256", "SKIP-with-print"] {
+        assert!(notes.contains(needle), "notes 缺 {needle}：{notes}");
+    }
+}
+
+/// T-M7-05/06 验收（声明侧）：watchOS 伴生模板目标（tier 6，实验）。
+#[test]
+fn builtin_matches_roadmap_3_7_watchos() {
+    let watchos = Registry::builtin()
+        .get("watchos")
+        .expect("内建 watchos 目标")
+        .clone();
+    assert_eq!(watchos.tier, 6, "watchOS 属 L6（ROADMAP §3.7）");
+    assert_eq!(
+        watchos.hosts,
+        vec![Host::Macos],
+        "打包依赖 Xcode → macOS 专宿主"
+    );
+    assert_eq!(watchos.runtime, Runtime::None, "手表端不直接运行核心");
+    assert_eq!(watchos.bridge, Bridge::None);
+    assert_eq!(
+        watchos.ui.iter().map(String::as_str).collect::<Vec<_>>(),
+        vec!["swiftui"],
+        "§3.7 UI = SwiftUI 伴生模板"
+    );
+    assert_eq!(watchos.package.format, "watch", "产物 = watch 包");
+    assert_eq!(watchos.package.builder, "watchos-xcodebuild");
+    assert_eq!(
+        watchos.signing.as_deref(),
+        Some("apple-codesign"),
+        "签名复用 M2 Apple 链（凭据引用）"
+    );
+    assert!(
+        watchos.verify.iter().any(|id| id == "codesign-verify"),
+        "校验复用 ios 链的 codesign-verify"
+    );
+    assert!(
+        watchos.publish.iter().any(|id| id == "app-store"),
+        "§3.7 发布 = App Store"
+    );
+    assert!(watchos.experimental, "伴生模板为实验目标");
+    let notes = watchos.notes.as_deref().unwrap_or("");
+    for needle in ["实验", "SwiftUI", "WatchConnectivity", "macOS", "远程农场"] {
         assert!(notes.contains(needle), "notes 缺 {needle}：{notes}");
     }
 }

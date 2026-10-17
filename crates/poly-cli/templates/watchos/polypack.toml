@@ -1,0 +1,25 @@
+# PolyPack 工程配置 — watchOS 伴生模板（实验，T-M7-05）
+schema = 1
+
+[package]
+name = "polypack-watch"
+version = "0.1.0"
+
+[ui]
+# 手表端 UI 是 SwiftUI（Xcode 构建，不进 React / vite 支线）
+framework = "swiftui"
+entry = "WatchApp/ContentView.swift"
+
+[core]
+# 手表端不直接运行 Rust 核心（runtime = none）：核心调用经 iOS 伴生 App 代理。
+# 该路径只用于与标准工程布局对齐；本模板不含 Rust crate。
+crate = "core"
+
+[targets.watchos]
+format = "watch"
+
+# 清理与保留策略（§5.5）
+[retention]
+cache_days = 30
+cache_gib = 20
+artifact_builds = 10
