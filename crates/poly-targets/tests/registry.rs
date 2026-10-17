@@ -5,7 +5,7 @@ use std::collections::BTreeSet;
 use poly_targets::spec::id_is_valid;
 use poly_targets::{Host, Registry, SpecError, TargetRegistry, TargetRequest, TargetSpec};
 
-/// 内建目标（L1 七 + L2 小程序族四 + L3 电视族八 + L5 发行版三）+ 一个 L7 占位目标
+/// 内建目标（L1 七 + L2 小程序族四 + L3 电视族八 + L5 发行版三 / OpenBSD / ChromeOS 双轨）+ 一个 L7 占位目标
 /// （用于覆盖厂商授权排除分支）。
 fn registry_with_l7() -> Registry {
     let mut specs = poly_targets::builtin::builtin();
@@ -55,6 +55,8 @@ fn all_on_linux_excludes_windows_only_and_l7_with_reasons() {
             "ubuntu",
             "fedora",
             "mint",
+            "chromeos",
+            "chromeos-pwa",
         ])
     );
 
@@ -149,15 +151,15 @@ fn allow_unreachable_keeps_all_targets() {
     let selected = selected_ids(&registry_with_l7(), &[Host::Linux], true);
     assert_eq!(
         selected.len(),
-        24, // L1 七 + L2 四 + L3 电视族八 + L5 四 + L7 一
+        26, // L1 七 + L2 四 + L3 电视族八 + L5 六 + L7 一
         "allow_unreachable 下 All 应全选: {selected:?}"
     );
 
     // 未开 allow_unreachable 时排除清单非空，两态互为对照
     assert_eq!(
         selected_ids(&registry_with_l7(), &[Host::Linux], false).len(),
-        19 // L1 四（Linux 可达）+ L2 四 + L3 电视族七（两 + web 系四 + roku）+ L5 四
-           // ——tvos 为 macOS 专宿主
+        21 // L1 四（Linux 可达）+ L2 四 + L3 电视族七（两 + web 系四 + roku）+ L5 六
+           // ——tvos 为 macOS 专宿主；chromeos deb 与 chromeos-pwa 均 Linux 可达
     );
 }
 

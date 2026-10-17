@@ -7,7 +7,7 @@
 ```text
 polypack.toml      工程配置（四端目标 windows / macos / linux / web + [retention]）
 core/              Rust 核心 crate（宿主可执行，启动输出应用版本；独立工作区）
-ui/                React 骨架（index.html / main.jsx / tokens.css / vite.config.js / public/icon.svg）
+ui/                React 骨架（index.html / main.jsx / tokens.css / vite.config.js / public/{icon.svg,sw.js}）
 icons/             安装包图标（<边长>x<边长>.png / icon.ico / icon.icns；手工放置优先于派生）
 .gitignore         忽略 node_modules / dist / target / .polypack
 ```

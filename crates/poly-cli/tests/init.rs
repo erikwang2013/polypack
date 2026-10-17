@@ -10,7 +10,7 @@ use std::process::{Command, Output};
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 /// 模板文件清单（单源为 src/init.rs 的 `FILES`，按字节序排列以便整集比对）。
-const TEMPLATE_FILES: [&str; 11] = [
+const TEMPLATE_FILES: [&str; 12] = [
     ".gitignore",
     "README.md",
     "core/Cargo.toml",
@@ -20,6 +20,7 @@ const TEMPLATE_FILES: [&str; 11] = [
     "ui/main.jsx",
     "ui/package.json",
     "ui/public/icon.svg",
+    "ui/public/sw.js",
     "ui/tokens.css",
     "ui/vite.config.js",
 ];

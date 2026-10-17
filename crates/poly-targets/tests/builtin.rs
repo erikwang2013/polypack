@@ -98,11 +98,11 @@ fn builtin_has_seven_valid_targets() {
     );
     assert_eq!(
         registry.all().count(),
-        23,
+        25,
         "M5 起内建 = L1 七 + L2 小程序族四（wechat / alipay / douyin / quickapp）+ \
          L3 电视族八（tvos + android-tv / fire-tv + tizen-tv / webos-tv / vidaa-tv / smartcast-tv \
          + roku※实验，T-M4-04/07/08/09/10/12）+ L5 OpenBSD（T-M5-07）+ 发行版三\
-         （ubuntu / fedora / mint，T-M5-01）"
+         （ubuntu / fedora / mint，T-M5-01）+ ChromeOS 双轨（chromeos / chromeos-pwa，T-M5-10）"
     );
     for spec in registry.all() {
         spec.validate()
@@ -178,8 +178,10 @@ fn builtin_ids_are_the_l1_set() {
             "ubuntu".to_string(),
             "fedora".to_string(),
             "mint".to_string(),
+            "chromeos".to_string(),
+            "chromeos-pwa".to_string(),
         ]),
-        "L5 = OpenBSD ports（T-M5-07）+ 发行版三（ubuntu / fedora / mint，T-M5-01）"
+        "L5 = OpenBSD ports（T-M5-07）+ 发行版三（T-M5-01）+ ChromeOS 双轨（T-M5-10）"
     );
 }
 
@@ -270,7 +272,8 @@ fn linux_host_resolves_four_l1_targets_from_all() {
         ]),
         "电视两目标 + web 系 TV 四目标 + roku（三宿主声明）应全部入选"
     );
-    // L5：openbsd 与发行版三（ubuntu / fedora / mint）均声明 Linux 宿主（交叉发起面）→ 同样入选
+    // L5：openbsd、发行版三与 ChromeOS deb 轨声明 Linux 宿主；chromeos-pwa 声明三宿主
+    // （web 运行时）→ 全部入选
     let l5: BTreeSet<&str> = resolved
         .selected
         .iter()
@@ -279,8 +282,15 @@ fn linux_host_resolves_four_l1_targets_from_all() {
         .collect();
     assert_eq!(
         l5,
-        BTreeSet::from(["openbsd", "ubuntu", "fedora", "mint"]),
-        "L5 OpenBSD + 发行版三（Linux 宿主）应全部入选"
+        BTreeSet::from([
+            "openbsd",
+            "ubuntu",
+            "fedora",
+            "mint",
+            "chromeos",
+            "chromeos-pwa"
+        ]),
+        "L5 OpenBSD + 发行版三 + ChromeOS 双轨应全部入选"
     );
     assert_eq!(selected.len(), l1.len() + l2.len() + l3.len() + l5.len());
 
@@ -489,6 +499,83 @@ fn builtin_matches_roadmap_3_4_web_tv() {
         .and_then(|spec| spec.notes.clone())
         .expect("webos-tv 缺 notes");
     assert!(notes.contains("平台侧"), "webos-tv: {notes}");
+}
+
+/// T-M5-10 验收（声明侧）：ChromeOS 双轨按 ROADMAP §3.6 逐列对齐。
+/// Crostini 轨 = deb（复用 Linux deb 链）；PWA 轨 = 静态站点 + PWA manifest（复用 Web 链）；
+/// 两轨均无签名 / 自托管，PWA 审计（`pwa-audit`）是 PWA 轨的产物校验器。
+#[test]
+fn builtin_matches_roadmap_3_6_chromeos_dual_track() {
+    let registry = Registry::builtin();
+
+    let crostini = registry
+        .get("chromeos")
+        .expect("内建 chromeos（Crostini）目标")
+        .clone();
+    assert_eq!(crostini.tier, 5, "ChromeOS 属 L5（ROADMAP §3.6）");
+    assert_eq!(crostini.hosts, vec![Host::Linux], "deb 打包需 Linux 宿主");
+    assert_eq!(crostini.runtime, Runtime::Native);
+    assert_eq!(crostini.bridge, Bridge::TauriIpc);
+    assert_eq!(
+        crostini.ui.iter().map(String::as_str).collect::<Vec<_>>(),
+        vec!["react-dom"]
+    );
+    assert_eq!(crostini.package.format, "deb");
+    assert_eq!(
+        crostini.package.builder, "linux-deb",
+        "复用 Linux deb 打包器"
+    );
+    assert_eq!(crostini.signing, None, "§3.6 签名列 = 无");
+    assert_eq!(
+        crostini.verify,
+        vec!["lintian".to_string()],
+        "deb 结构 + lintian 腿"
+    );
+    assert_eq!(crostini.publish, vec!["self-hosted".to_string()]);
+    assert!(
+        crostini.notes.as_deref().unwrap_or("").contains("Crostini"),
+        "Crostini 安装冒烟口径须入 notes"
+    );
+
+    let pwa = registry
+        .get("chromeos-pwa")
+        .expect("内建 chromeos-pwa 目标")
+        .clone();
+    assert_eq!(pwa.tier, 5);
+    assert_eq!(
+        pwa.hosts.len(),
+        3,
+        "web 运行时三宿主全可达（Win / Linux / macOS）"
+    );
+    assert_eq!(pwa.runtime, Runtime::Wasm);
+    assert_eq!(pwa.bridge, Bridge::WasmBindgen);
+    assert_eq!(
+        pwa.ui.iter().map(String::as_str).collect::<Vec<_>>(),
+        vec!["react-dom"]
+    );
+    assert_eq!(pwa.package.format, "static-site");
+    assert_eq!(pwa.package.builder, "web-static", "复用 Web 静态站点打包器");
+    assert_eq!(pwa.signing, None, "§3.6 签名列 = 无");
+    assert_eq!(
+        pwa.verify,
+        vec!["pwa-audit".to_string()],
+        "PWA 三腿审计接入 verify"
+    );
+    assert_eq!(pwa.publish, vec!["self-hosted".to_string()]);
+    assert!(
+        pwa.notes
+            .as_deref()
+            .unwrap_or("")
+            .contains("service worker"),
+        "离线能力对 SW 的要求须如实入 notes"
+    );
+    assert!(
+        pwa.notes
+            .as_deref()
+            .unwrap_or("")
+            .contains("SKIP-with-print"),
+        "Chrome 缺席时的跳过口径须入 notes"
+    );
 }
 
 /// T-M4-07 验收（声明侧）：L3 电视族首行 Apple tvOS 按 ROADMAP §3.4 逐列对齐。
