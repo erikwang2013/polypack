@@ -1,0 +1,20 @@
+{
+  "entries": [
+    "components/PolypackScene.brs",
+    "components/PolypackScene.xml",
+    "manifest",
+    "source/focusgraph.brs",
+    "source/main.brs"
+  ],
+  "manifest": {
+    "title": "Pax Notes",
+    "major_version": "1",
+    "minor_version": "2",
+    "build_version": "3",
+    "ui_resolutions": "fhd"
+  },
+  "focus": {
+    "nodes": 2,
+    "initial": "counter"
+  }
+}

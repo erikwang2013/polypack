@@ -12,6 +12,7 @@
 //! - [`webos`]：webOS TV `.ipk`（T-M4-09，Debian 形态 ar 归档 + 结构检查）
 //! - [`webtv`]：VIDAA / Vizio SmartCast 应用包（T-M4-10，两目标 + 沙箱自检）
 //! - [`openbsd`]：OpenBSD ports 骨架（T-M5-07，Makefile / PLIST / DESCR + signify / portcheck）
+//! - [`roku`]：Roku 频道 `.zip`（T-M4-15，复用 SceneGraph 发射器 + 侧载结构自检）
 
 pub mod android;
 pub mod dmg;
@@ -20,6 +21,7 @@ pub mod ios;
 pub mod linux;
 pub mod miniapp;
 pub mod openbsd;
+pub mod roku;
 pub mod tizen;
 pub mod web;
 pub mod webos;

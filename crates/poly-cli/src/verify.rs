@@ -97,7 +97,8 @@ pub fn run(args: &Args, json: bool) -> Result<i32, Diagnostic> {
             .with_hint(
                 "校验器按 TargetSpec.verify 声明注册：ios 的 codesign-verify / spctl、harmonyos 的 \
                  hap-sign-verify / hap-structure-check、quickapp 的 hap-toolkit-lint、web 系 TV 的 \
-                 wgt-lint / ares-package / sandbox-selfcheck、OpenBSD 的 portcheck 已接入；\
+                 wgt-lint / ares-package / sandbox-selfcheck / sideload-structure-check、\
+                 OpenBSD 的 portcheck 已接入；\
                  其余 id 的归属见告警，可先用 poly verify --reproducible 做可复现比对",
             ));
         }
@@ -180,6 +181,9 @@ enum Verifier {
     /// OpenBSD ports 骨架校验（[`poly_bundle::check_ports_structure`] 的内建结构断言 +
     /// 在场时的官方 `portcheck -N`，T-M5-07）。
     Portcheck,
+    /// Roku 频道 zip 的侧载结构自检（[`poly_bundle::check_roku_structure`]，与打包器同一实现；
+    /// 真机侧载腿本机不可得，按 T-M4-12 决策 SKIP-with-print，T-M4-15）。
+    RokuSideload,
 }
 
 /// 校验器 id → 已接入实现（`None` = 未接入，归属查 [`verifier_owner`]）。
@@ -193,6 +197,7 @@ fn verifier_for(id: &str) -> Option<Verifier> {
         "ares-package" => Some(Verifier::AresPackage),
         "sandbox-selfcheck" => Some(Verifier::SandboxSelfcheck),
         "portcheck" => Some(Verifier::Portcheck),
+        "sideload-structure-check" => Some(Verifier::RokuSideload),
         _ => None,
     }
 }
@@ -216,10 +221,6 @@ fn verifier_owner(id: &str) -> Option<&'static str> {
         "wechat-devtools-cli" | "alipay-devtools-cli" | "douyin-devtools-cli" => {
             Some("小程序开发者工具 CLI 校验（T-M3-11；本机无 devtools 时 SKIP-with-print）")
         }
-        "sideload-structure-check" => Some(
-            "Roku 侧载结构自检（T-M4-11 spike 已交付独立 node 自检脚本；入 DAG / 打包器归 \
-             条件任务 T-M4-15——真机侧载实证为触发前置，T-M4-12 决策：继续受限档）",
-        ),
         _ => None,
     }
 }
@@ -307,6 +308,7 @@ fn verify_target(
     let mut ares_ids: Vec<String> = Vec::new();
     let mut sandbox_ids: Vec<String> = Vec::new();
     let mut portcheck_ids: Vec<String> = Vec::new();
+    let mut roku_ids: Vec<String> = Vec::new();
     for id in &spec.verify {
         match verifier_for(id) {
             Some(Verifier::IosCodesign) => ios_ids.push(id.clone()),
@@ -317,6 +319,7 @@ fn verify_target(
             Some(Verifier::AresPackage) => ares_ids.push(id.clone()),
             Some(Verifier::SandboxSelfcheck) => sandbox_ids.push(id.clone()),
             Some(Verifier::Portcheck) => portcheck_ids.push(id.clone()),
+            Some(Verifier::RokuSideload) => roku_ids.push(id.clone()),
             None => unserved.push(match verifier_owner(id) {
                 Some(owner) => format!("{id}（{owner}）"),
                 // 注册表有 id 但没人认领：如实点名到具体 id，测试保证这里在 M2 的注册表上是死路
@@ -359,6 +362,9 @@ fn verify_target(
     }
     if !portcheck_ids.is_empty() {
         checked |= verify_ports(project, spec, &portcheck_ids, events)?;
+    }
+    if !roku_ids.is_empty() {
+        checked |= verify_roku_sideload(project, spec, &roku_ids, events)?;
     }
     Ok(checked)
 }
@@ -1228,6 +1234,74 @@ fn verify_ports(
     Ok(true)
 }
 
+/// Roku 侧载结构自检腿（`sideload-structure-check`，T-M4-15）：与打包器**同一份**检查
+/// （[`poly_bundle::check_roku_structure`]：zip 根布局 + manifest 必填字段 + SceneGraph XML
+/// 良构 + 焦点表 + BRS 形态；缺陷 E_BND_0006 硬失败）。真机侧载腿（ECP 探测 / `plugin_install`）
+/// 本机不可得——T-M4-12 决策写明真机侧载为后续前置，告警里如实打印 SKIP 句，不假装跑过。
+fn verify_roku_sideload(
+    project: &Project,
+    spec: &TargetSpec,
+    ids: &[String],
+    events: &mut dyn EventSink,
+) -> Result<bool, StageError> {
+    let staged = project::packages_root(&project.root).join(&spec.id);
+    let Some((package, count)) = staged_file(&staged, "zip") else {
+        warning(
+            events,
+            &format!(
+                "目标 {} 未校验：{} 下没有 *.zip（先跑 poly build 把产物流到打包暂存目录）",
+                spec.id,
+                staged.display()
+            ),
+        );
+        return Ok(false);
+    };
+    if count > 1 {
+        warning(
+            events,
+            &format!(
+                "目标 {} 的产物有 {count} 份 zip（取最新一份 {}）",
+                spec.id,
+                package.display()
+            ),
+        );
+    }
+    let structure = match poly_bundle::check_roku_structure(&package) {
+        Ok(structure) => structure,
+        Err(err) => return Err(bundle_diagnostic(spec, &err).into()),
+    };
+    warning(
+        events,
+        &format!(
+            "目标 {} 的侧载结构自检：{} 条目，manifest title={} 版本 {}.{}.{}，焦点表 {} 节点\
+             （initial={}）",
+            spec.id,
+            structure.entries.len(),
+            structure.title,
+            structure.major,
+            structure.minor,
+            structure.build,
+            structure.focus_nodes,
+            structure.initial_focus
+        ),
+    );
+    warning(
+        events,
+        &format!(
+            "目标 {} 的真机侧载腿 SKIP-with-print：本机无 Roku SDK / 设备 / 模拟器（T-M4-12 \
+             决策写明真机侧载为后续前置）；结构自检是本机真跑面",
+            spec.id
+        ),
+    );
+    for id in ids {
+        events.emit(&BuildEvent::Verified {
+            checker: id.clone(),
+            ok: true,
+        });
+    }
+    Ok(true)
+}
+
 /// 暂存目录下的 ports 骨架（`<staged>/ports/<DISTNAME>/`；多个取字典序最后一份）。
 fn staged_ports_dir(staged: &Path) -> Option<(PathBuf, usize)> {
     let mut dirs: Vec<PathBuf> = std::fs::read_dir(staged.join("ports"))
@@ -1611,6 +1685,24 @@ mod tests {
         }
         assert!(verifier_for("no-such-verifier").is_none());
         assert!(verifier_owner("no-such-verifier").is_none());
+    }
+
+    /// roku 的 `sideload-structure-check` 已由 owner 占位转为真实现（T-M4-15）。
+    #[test]
+    fn roku_sideload_structure_check_is_served() {
+        let roku = Registry::builtin()
+            .get("roku")
+            .expect("内建 roku 目标")
+            .clone();
+        assert_eq!(roku.verify, vec!["sideload-structure-check"]);
+        assert_eq!(
+            verifier_for("sideload-structure-check"),
+            Some(Verifier::RokuSideload)
+        );
+        assert!(
+            verifier_owner("sideload-structure-check").is_none(),
+            "已接入的校验器不得再留 owner 占位"
+        );
     }
 
     /// ios 声明的两个 id（`codesign-verify` / `spctl`）都落在 poly-sign 的同一份校验计划上。
@@ -2439,6 +2531,100 @@ mod tests {
         assert_eq!(err.diagnostic.code.to_string(), "poly::E_BUDGET_0001");
         let _ = std::fs::remove_dir_all(&root);
         let _ = std::fs::remove_dir_all(&root2);
+    }
+
+    /// Roku 侧载结构自检三态：合规过检发 `Verified`（含设备腿 SKIP-with-print）/
+    /// 缺条目 E_BND_0006 硬失败 / 缺产物告警跳过并说明原因。
+    #[test]
+    fn roku_sideload_leg_covers_pass_fail_and_skip() {
+        let (root, project) = fixture("roku-sideload");
+        let spec = Registry::builtin()
+            .get("roku")
+            .expect("内建 roku 目标")
+            .clone();
+        let staged = root.join(".polypack/packages/roku");
+        let mut sink = poly_core::events::HumanSink {
+            out: Vec::<u8>::new(),
+        };
+
+        // 三态 ①：缺产物 → 跳过并点名落点，不硬失败
+        assert!(!verify_target(&project, &spec, &mut sink).expect("缺产物不该失败"));
+        let text = String::from_utf8_lossy(&sink.out).replace('\\', "/");
+        assert!(text.contains("没有 *.zip"), "{text}");
+        assert!(text.contains(".polypack/packages/roku"), "{text}");
+
+        // 合规五件（与 poly-bundle 结构检查的口径一致）
+        let files = staged.join("files");
+        std::fs::create_dir_all(&files).expect("暂存目录可建");
+        let write = |name: &str, body: &str| {
+            let path = files.join(name);
+            std::fs::write(&path, body).expect("写频道件");
+            path
+        };
+        let manifest = write(
+            "manifest",
+            "title=Fixture Channel\nmajor_version=1\nminor_version=2\nbuild_version=3\n\
+             ui_resolutions=fhd\n",
+        );
+        let main = write(
+            "main.brs",
+            "sub Main()\n    screen = CreateObject(\"roSGScreen\")\n    \
+             scene = screen.CreateScene(\"PolypackScene\")\nend sub\n",
+        );
+        let focus = write(
+            "focusgraph.brs",
+            "function ppFocusGraph() as Object\n    return \
+             {\"order\":[\"counter\",\"reset\"],\"edges\":{\"counter\":{\"up\":\"counter\"},\
+             \"reset\":{\"down\":\"reset\"}},\"initial\":\"counter\"}\nend function\n",
+        );
+        let xml = write(
+            "scene.xml",
+            "<?xml version=\"1.0\" encoding=\"utf-8\" ?>\n\
+             <component name=\"PolypackScene\" extends=\"Scene\" initialFocus=\"node_counter\">\n  \
+             <children>\n    <Group id=\"node_counter\" translation=\"[0,0]\" focusable=\"true\" />\
+             \n  </children>\n</component>\n",
+        );
+        let scene = write(
+            "scene.brs",
+            "sub init()\nend sub\nfunction onKeyEvent(key as String, press as Boolean) as \
+             Boolean\n    m.top.findNode(\"node_counter\").setFocus(true)\n    return true\n\
+             end function\n",
+        );
+        let good = staged.join("fixture-app-0.0.1.zip");
+        poly_bundle::zipwrite::write_zip(
+            &[
+                ("manifest".to_string(), manifest),
+                ("source/main.brs".to_string(), main),
+                ("source/focusgraph.brs".to_string(), focus),
+                ("components/PolypackScene.xml".to_string(), xml),
+                ("components/PolypackScene.brs".to_string(), scene),
+            ],
+            &good,
+        )
+        .expect("合成合规频道包");
+
+        // 三态 ②：合规件 → 过检，结构摘要 + 设备腿 SKIP 句都进事件流
+        sink.out.clear();
+        assert!(
+            verify_target(&project, &spec, &mut sink).expect("合规频道包应过检"),
+            "合规件必须给出 Verified 判决"
+        );
+        let text = String::from_utf8_lossy(&sink.out).into_owned();
+        assert!(text.contains("侧载结构自检"), "{text}");
+        assert!(text.contains("Fixture Channel"), "{text}");
+        assert!(text.contains("焦点表 2 节点"), "{text}");
+        assert!(text.contains("SKIP-with-print"), "{text}");
+        assert!(text.contains("T-M4-12"), "{text}");
+        assert!(text.contains("sideload-structure-check"), "{text}");
+
+        // 三态 ③：坏件（缺 source/focusgraph.brs）→ E_BND_0006 硬失败，不降级成跳过
+        std::fs::remove_file(&good).expect("清掉合格件");
+        let bad = staged.join("broken-0.0.1.zip");
+        poly_bundle::zipwrite::write_zip(&[("manifest".to_string(), files.join("manifest"))], &bad)
+            .expect("合成坏频道包");
+        let err = verify_target(&project, &spec, &mut sink).expect_err("缺必需条目必须硬失败");
+        assert_eq!(err.diagnostic.code.to_string(), "poly::E_BND_0006");
+        let _ = std::fs::remove_dir_all(&root);
     }
 
     /// webOS 腿：暂存目录没有 `.ipk`（打包未就绪）→ 告警跳过，不硬失败。
