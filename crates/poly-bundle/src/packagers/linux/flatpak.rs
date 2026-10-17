@@ -346,7 +346,8 @@ fn walk(root: &Path, dir: &Path, out: &mut Vec<String>) -> Result<(), BundleErro
         if path.is_dir() {
             walk(root, &path, out)?;
         } else if let Ok(relative) = path.strip_prefix(root) {
-            out.push(relative.to_string_lossy().into_owned());
+            // 结构里的载荷路径是逻辑路径（与平台无关），Windows 反斜杠会被测试/清单比对漏掉。
+            out.push(relative.to_string_lossy().replace('\\', "/"));
         }
     }
     Ok(())

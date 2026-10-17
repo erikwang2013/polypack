@@ -178,6 +178,9 @@ fn rpm_spec(inputs: &BundleInputs) -> Result<String, BundleError> {
          mkdir -p \"%{buildroot}\"\n\
          cp -a \"%{_sourcedir}/payload/.\" \"%{buildroot}/\"\n",
     );
+    // rpm 内建 %clean 用未引号化的 %{buildroot}：TMPDIR 含 `(` / `&` 等元字符时
+    // shell 直接语法错误（测试路径 `ThreadId(10)` 实证），此处以引号版覆盖。
+    out.push_str("\n%clean\nrm -rf \"%{buildroot}\"\n");
     out.push_str("\n%files\n");
     out.push_str(&format!("/usr/bin/{binary}\n"));
     // 只声明产品自己的资源目录：`/lib`（或 /usr/lib）属于 filesystem 包，
