@@ -79,11 +79,18 @@ int main(void)
 	ok &= key != NULL;
 	poly_engine_string_free(key);
 
+	/* isa-debug-exit 会立刻终止 QEMU，控制台 FIFO 里尚未排空的标记会丢失
+	 * （CI qemu_x86 实证：其余步骤全过、退出码也正确，但日志只剩 version 行）。
+	 * 先让出 CPU 一小段时间给 UART 驱动排空，再按板级约定退出。 */
+	k_sleep(K_MSEC(100));
+
 	if (ok) {
 		printf("SMOKE PASS\n");
+		k_sleep(K_MSEC(100));
 		smoke_exit(0);
 	}
 	printf("SMOKE FAIL\n");
+	k_sleep(K_MSEC(100));
 	smoke_exit(1);
 	return 1;
 }

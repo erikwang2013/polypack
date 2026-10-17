@@ -33,8 +33,9 @@ const FORMAT: &str = "west";
 /// Zephyr 应用模板版本（`prj.conf` / manifest 与模板同版）。
 ///
 /// v2：自检输出具名步骤标记并按板级约定退出（T-M6-10）；v1 无标记、退出码不可判定。
+/// v3：退出前让 UART 排空（qemu_x86 isa-debug-exit 会丢弃 FIFO 中未发出的步骤标记）。
 /// 与 VxWorks / FreeRTOS 的共享 `embedded::TEMPLATE_VERSION` 独立演进。
-pub const TEMPLATE_VERSION: &str = "2";
+pub const TEMPLATE_VERSION: &str = "3";
 
 /// 模板覆盖的两块 QEMU 板（验收面：两块均 `west build` 成功）。
 pub const BOARDS: [&str; 2] = ["qemu_x86", "qemu_cortex_m3"];
@@ -408,10 +409,10 @@ mod tests {
 
     #[test]
     fn minimal_config_set_is_versioned() {
-        assert_eq!(TEMPLATE_VERSION, "2");
+        assert_eq!(TEMPLATE_VERSION, "3");
         assert_eq!(CONFIGS.len(), 5);
         let conf = prj_conf();
-        assert!(conf.contains("template v2"));
+        assert!(conf.contains("template v3"));
         for (key, value) in CONFIGS {
             assert!(conf.contains(&format!("{key}={value}")));
         }
@@ -424,7 +425,7 @@ mod tests {
     #[test]
     fn template_manifest_records_config() {
         let manifest: serde_json::Value = serde_json::from_str(&manifest()).expect("json");
-        assert_eq!(manifest["template_version"], "2");
+        assert_eq!(manifest["template_version"], "3");
         assert_eq!(manifest["boards"], serde_json::json!(BOARDS));
         assert_eq!(manifest["config"].as_object().map(|map| map.len()), Some(5));
     }
