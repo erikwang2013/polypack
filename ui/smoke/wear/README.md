@@ -1,9 +1,16 @@
-# Wear 表单冒烟套件（T-M7-03）
+# Wear 表单冒烟套件（T-M7-03/04）
 
 `wearos` 目标的 §8 表单用例集：**输入（input）→ 滑动（swipe）→ 返回（back）**。用 adb
 注入文本 / 滑动手势 / BACK 键，以 uiautomator dump 的可见文本为观测通道；`result.json`
 （schema `polypack/wear-smoke/v1`）逐 case / 逐 step 记录 `expect` / `observed` / `dump`，
 失败定位到**具体表单步骤**（例：`[swipe/swipe-to-note] 期望 step: note；实际 step: amount（dump: …）`）。
+
+T-M7-04 补齐**有设备冒烟生命周期与归档**：安装（`adb install -r`）→ 启动（每 case
+force-stop + monkey 冷启动）→ 表单用例 → 卸载（`finally`，失败也执行，设备不残留被测包）；
+`result.json` 含 `startedAt` / `finishedAt` 时间戳与 `build`（源码 `commit` / `dirty`、
+APK `bytes` / `sha256`、node / platform），失败记录额外带自描述的 `failure.locate`；
+同目录归档 `logcat.txt`、逐 case 终态截图 `<case>.png`、失败步截图 `<case>-<step>.png`、
+逐 step `uiautomator` dump `<case>-<step>.xml`。发版门见 `.github/workflows/wear-release-smoke.yml`。
 
 本套件只覆盖**真机/模拟器腿**；APK 产物与 `bundletool validate` 由 Rust 侧
 `crates/poly-bundle/tests/packagers_android_wear.rs` 真跑（本机无 bundletool 时该腿
@@ -38,7 +45,12 @@ node ui/smoke/wear/run.mjs --leg android \
 ```
 
 缺省 `--logs $POLYPACK_WEAR_SMOKE_LOGS`（否则 `target/wear-smoke-logs`）。退出码：任一
-case fail → 1；SKIP 不红。`result.json` 恒写（全 SKIP 也写，空产物即异常）。
+case / 卸载 fail → 1；SKIP 不红（发布门对 SKIP 另有阻断，见下）。`result.json` 恒写（全
+SKIP 也写，空产物即异常）。
+
+归档布局（同一 `--logs` 目录）：`result.json`、`logcat.txt`、`<case>.png`（终态）、
+`<case>-<step>.xml`（dump）、失败时 `<case>-<step>.png`。`result.json` 的 `build` 字段即
+构建摘要（commit + APK SHA-256），失败时 `targets[].failure.locate` 是可直接打印的步骤定位。
 
 ## 本机复现（Wear AVD）
 
@@ -74,3 +86,31 @@ Wear 镜像只有 x86_64 形态（与 google-tv 的 x86 相反）；`ro.build.ch
   `run.mjs --leg android`；门缺席 → run 步仍执行，驱动打印 SKIP 并写全 SKIP 的
   `result.json`，同时发 `::warning::` 注记（不静默降级）。证据（result.json + dump +
   失败截图）保留 14 天。
+
+## 发布门（`.github/workflows/wear-release-smoke.yml`，T-M7-04 新增文件）
+
+- **触发**：`workflow_dispatch`、`release: published`；并暴露 `workflow_call`，发版流水线可
+  直接 `uses: ./.github/workflows/wear-release-smoke.yml` 把 `release-gate` job 作为前置依赖。
+- **与夜跑的区别**：缺 `/dev/kvm` 或 `vars.POLYPACK_WEAR_FORM_APK` 时打印 SKIP-with-print
+  原因后以 `::error::` + exit 1 **阻断**（发版前必跑，SKIP 不放行）；run.mjs 表单失败 →
+  exit 1；驱动内部 SKIP（如设备非 Wear）由「发布门判定」步骤读 `result.json` 判为不过。
+- **失败定位**：`result.json` 的 `failure.locate`（例 `[swipe/swipe-to-note] 期望 …；实际 …`）
+  在 job 日志以 `::error::` 打印；artifact `wear-release-smoke-evidence`（90 天）含
+  `result.json`（时间戳 + build 摘要）、`logcat.txt`、截图与 dump。
+- **release-gate job**：`needs: wear-device-smoke` + `if: always()`；设备 job 失败 / 取消 /
+  未真跑 → gate job 红，依赖它的发版流水线被阻断。
+
+### blessed runner / 模拟器复跑（发布门同款）
+
+```sh
+# 1) 在 blessed runner（有 /dev/kvm）或本机装好 Wear 镜像后启动 AVD（命令同上一节）；
+# 2) 用发布门同款参数真跑（APK 与包名与 CI 变量一致）：
+POLYPACK_WEAR_FORM_PACKAGE="${POLYPACK_WEAR_FORM_PACKAGE:-com.polypack.weatform}" \
+node ui/smoke/wear/run.mjs --leg android --serial emulator-5554 \
+  --apk "$POLYPACK_WEAR_FORM_APK" --logs /tmp/wear-release-smoke-logs
+# 3) 发布门判定在 workflow 内联：读 result.json，仅 status=pass 且 pass=1 / fail=0 / skip=0
+#    放行；skip / fail / 缺 result.json 均 exit 1 并打印 failure.locate。
+```
+
+本机无 Wear system image / AVD / 在线设备时，第 2 步打印 `SKIP wearos（android）：…` 并写
+全 SKIP 的 `result.json`（exit 0）；发布门对同一结果判为阻断——这是有意的两种语义。
