@@ -13,6 +13,7 @@
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
+use poly_bundle::embedded::EmbeddedInputs;
 use poly_bundle::error::BundleError;
 use poly_bundle::inputs::{
     AndroidInputs, BundleInputs, HarmonyInputs, Icon, IconKind, IosInputs, NativeLib, ProductInfo,
@@ -40,6 +41,15 @@ const ICON_SVG_ROOT: &str = "icon.svg";
 
 /// PWA manifest 候选文件名（T-M1-04 产物，web 打包器必需输入）。
 const MANIFEST_NAMES: &[&str] = &["manifest.webmanifest", "manifest.json"];
+
+/// poly-core 引擎源码目录覆盖（嵌入式静态库的 path 依赖；缺省按仓库布局探测）。
+const ENGINE_CRATE_ENV: &str = "POLYPACK_ENGINE_CRATE";
+
+/// QNX 交叉 triple 覆盖（缺省是打包器内的 QNX 7.1 aarch64le）。
+const QNX_TRIPLE_ENV: &str = "POLYPACK_QNX_TRIPLE";
+
+/// 引擎层 no_std 开关（AUTOSAR 可选；非空即开）。
+const ENGINE_NO_STD_ENV: &str = "POLYPACK_ENGINE_NO_STD";
 
 /// Apple 交叉目标：`swift::package` 的 cargo `--target` 清单（缺一即造不出 XCFramework）。
 ///
@@ -306,6 +316,12 @@ pub(crate) fn assemble_inputs(
                 ..Default::default()
             });
         }
+        // 嵌入式 / 车机（T-M6-03/04）：头文件由 poly-core 生成器现场产出（唯一来源），
+        // 符号清单直接取 FFI_FUNCTIONS；QNX SDP 只探测不安装，缺席时打包器返回
+        // ToolMissing → environment_slot 的 SKIP-with-print。
+        "image" | "library" | "arxml" => {
+            inputs.embedded = Some(embedded_inputs(spec, out_dir)?);
+        }
         _ => {}
     }
     Ok(Some(inputs))
@@ -438,6 +454,59 @@ fn ios_inputs(project: &poly_core::Project) -> Result<IosInputs, StageError> {
         // T-M2-01 生成器的 Swift 落点，与 poly-bundle 的 bridge_dir 约定同源
         bindings_dir: Some(project.root.join("bridge").join("swift")),
     })
+}
+
+/// 嵌入式 / 车机打包输入（T-M6-03/04）：头文件 + C ABI 符号 + 引擎源码 + QNX SDP。
+///
+/// 头文件由 `poly_core::engine::header` 现场生成（唯一来源），符号清单直接来自
+/// `FFI_FUNCTIONS`——CLI 只搬运，不另造 ABI / 第二份头文件。
+fn embedded_inputs(spec: &TargetSpec, out_dir: &Path) -> Result<EmbeddedInputs, StageError> {
+    let header = poly_core::engine::header::write_header(out_dir)
+        .map_err(|err| project::io_error("写引擎 C 头文件", out_dir, err))?;
+    let engine_crate = engine_crate().ok_or_else(|| {
+        Diagnostic::error(
+            Code::new(poly_bundle::error::codes::E_BND_0002),
+            "缺少 poly-core 引擎源码：嵌入式静态库需要 path 依赖的引擎 crate",
+        )
+        .with_hint(format!(
+            "设 ${ENGINE_CRATE_ENV} 指向 poly-core 源码目录（仓库布局：crates/poly-core）"
+        ))
+    })?;
+    let host_triple = poly_core::compile::host_triple()?;
+    let symbols = poly_core::engine::ffi::FFI_FUNCTIONS
+        .iter()
+        .map(|function| function.name.to_string())
+        .collect();
+    let qnx = if spec.id == "qnx" {
+        poly_toolchain::sdp_env().map(|env| poly_bundle::QnxEnv {
+            root: env.root,
+            host: env.host,
+            target: env.target,
+        })
+    } else {
+        None
+    };
+    Ok(EmbeddedInputs {
+        header,
+        symbols,
+        engine_crate,
+        host_triple,
+        qnx,
+        qnx_triple: std::env::var(QNX_TRIPLE_ENV)
+            .ok()
+            .filter(|value| !value.trim().is_empty()),
+        no_std: std::env::var_os(ENGINE_NO_STD_ENV).is_some_and(|value| !value.is_empty()),
+    })
+}
+
+/// poly-core 源码目录：`$POLYPACK_ENGINE_CRATE` 优先，否则按仓库布局回退
+/// `<poly-cli>/../poly-core`（开发 / CI 构型；发行版需带源码或显式设环境变量）。
+fn engine_crate() -> Option<PathBuf> {
+    if let Some(path) = std::env::var_os(ENGINE_CRATE_ENV).filter(|value| !value.is_empty()) {
+        return Some(PathBuf::from(path));
+    }
+    let local = Path::new(env!("CARGO_MANIFEST_DIR")).join("../poly-core");
+    local.join("Cargo.toml").is_file().then_some(local)
 }
 
 /// 环境性缺失（宿主工具 / 输入未就绪）→ 告警跳过（`None`）；其余（配置非法、命令失败）→ 硬失败。

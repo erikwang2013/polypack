@@ -206,6 +206,15 @@ enum Verifier {
     /// 真浏览器腿（Chrome `Page.getInstallabilityErrors` + 断网重载）由
     /// `ui/smoke/pwa/audit.mjs` 另跑，Chrome 缺席时 SKIP-with-print。
     PwaAudit,
+    /// QNX 镜像载荷结构检查（[`poly_bundle::check_qnx_structure`]，与打包器同一实现；
+    /// 无 SDP 时打包按环境槽跳过，校验侧如实点名无产物），T-M6-03。
+    QnxImageStructure,
+    /// AUTOSAR ARXML 清单：结构断言 + 服务 / 端口与 C ABI 一一对应 + 在场时的
+    /// `xmllint --schema` 真跑（缺席打印 SKIP），T-M6-04。
+    ArxmlSchema,
+    /// 静态库归档的 `poly_engine_*` 导出符号与 C ABI 清单对照
+    /// （`nm -g --defined-only`；nm 缺席时退化为声明侧结构断言并打印 SKIP），T-M6-03/04。
+    CAbiSymbols,
 }
 
 /// 校验器 id → 已接入实现（`None` = 未接入，归属查 [`verifier_owner`]）。
@@ -229,6 +238,9 @@ fn verifier_for(id: &str) -> Option<Verifier> {
         "snap-lint" => Some(Verifier::SnapLint),
         "appstream-validate" => Some(Verifier::AppstreamValidate),
         "pwa-audit" => Some(Verifier::PwaAudit),
+        "qnx-image-structure" => Some(Verifier::QnxImageStructure),
+        "arxml-schema" => Some(Verifier::ArxmlSchema),
+        "c-abi-symbols" => Some(Verifier::CAbiSymbols),
         _ => None,
     }
 }
@@ -348,6 +360,9 @@ fn verify_target(
     let mut snap_ids: Vec<String> = Vec::new();
     let mut appstream_ids: Vec<String> = Vec::new();
     let mut pwa_ids: Vec<String> = Vec::new();
+    let mut qnx_ids: Vec<String> = Vec::new();
+    let mut arxml_ids: Vec<String> = Vec::new();
+    let mut cabi_ids: Vec<String> = Vec::new();
     for id in &spec.verify {
         match verifier_for(id) {
             Some(Verifier::IosCodesign) => ios_ids.push(id.clone()),
@@ -368,6 +383,9 @@ fn verify_target(
             Some(Verifier::SnapLint) => snap_ids.push(id.clone()),
             Some(Verifier::AppstreamValidate) => appstream_ids.push(id.clone()),
             Some(Verifier::PwaAudit) => pwa_ids.push(id.clone()),
+            Some(Verifier::QnxImageStructure) => qnx_ids.push(id.clone()),
+            Some(Verifier::ArxmlSchema) => arxml_ids.push(id.clone()),
+            Some(Verifier::CAbiSymbols) => cabi_ids.push(id.clone()),
             None => unserved.push(match verifier_owner(id) {
                 Some(owner) => format!("{id}（{owner}）"),
                 // 注册表有 id 但没人认领：如实点名到具体 id，测试保证这里在 M2 的注册表上是死路
@@ -440,6 +458,15 @@ fn verify_target(
     }
     if !pwa_ids.is_empty() {
         checked |= verify_pwa_audit(project, spec, &pwa_ids, events)?;
+    }
+    if !qnx_ids.is_empty() {
+        checked |= crate::verify_embedded::verify_qnx_image(project, spec, &qnx_ids, events)?;
+    }
+    if !arxml_ids.is_empty() {
+        checked |= crate::verify_embedded::verify_arxml_schema(project, spec, &arxml_ids, events)?;
+    }
+    if !cabi_ids.is_empty() {
+        checked |= crate::verify_embedded::verify_c_abi_symbols(project, spec, &cabi_ids, events)?;
     }
     Ok(checked)
 }
@@ -2616,7 +2643,7 @@ fn file_label(path: &Path) -> String {
 }
 
 /// `BundleError` → 诊断（错误码原样透传，`poly::E_BND_*`）。
-fn bundle_diagnostic(spec: &TargetSpec, err: &BundleError) -> Diagnostic {
+pub(crate) fn bundle_diagnostic(spec: &TargetSpec, err: &BundleError) -> Diagnostic {
     let mut diagnostic = Diagnostic::error(
         Code::new(err.code()),
         format!("目标 {} 打包失败：{err}", spec.id),
@@ -2628,7 +2655,7 @@ fn bundle_diagnostic(spec: &TargetSpec, err: &BundleError) -> Diagnostic {
 }
 
 /// 告警（跳过原因如实进事件流）。
-fn warning(events: &mut dyn EventSink, message: &str) {
+pub(crate) fn warning(events: &mut dyn EventSink, message: &str) {
     events.emit(&BuildEvent::Warning {
         stage: "verify".to_string(),
         message: message.to_string(),

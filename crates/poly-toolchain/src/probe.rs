@@ -38,7 +38,8 @@ pub trait Probe: Send + Sync {
     fn locate(&self) -> ProbeResult;
 }
 
-/// 默认探测集合：rust / android-sdk / android-ndk / harmonyos-sdk / xcode / msvc / emsdk。
+/// 默认探测集合：rust / android-sdk / android-ndk / harmonyos-sdk / xcode / msvc / emsdk /
+/// qnx-sdp（T-M6-03）。
 ///
 /// 具体实现见 [`crate::probes`]（每探测器一文件）。
 pub fn default_probes() -> Vec<Box<dyn Probe>> {
@@ -50,5 +51,6 @@ pub fn default_probes() -> Vec<Box<dyn Probe>> {
         Box::new(crate::probes::xcode::Xcode),
         Box::new(crate::probes::msvc::Msvc),
         Box::new(crate::probes::emsdk::Emsdk),
+        Box::new(crate::probes::qnx_sdp::QnxSdp),
     ]
 }

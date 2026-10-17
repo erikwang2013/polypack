@@ -17,12 +17,13 @@ fn probe(id: &str) -> Box<dyn Probe> {
 }
 
 #[test]
-fn default_probes_has_seven_unique_ids() {
+fn default_probes_has_eight_unique_ids() {
     let probes = default_probes();
     assert_eq!(
         probes.len(),
-        7,
-        "七类探测器：rust / android-sdk / android-ndk / harmonyos-sdk / xcode / msvc / emsdk"
+        8,
+        "八类探测器：rust / android-sdk / android-ndk / harmonyos-sdk / xcode / msvc / emsdk / \
+         qnx-sdp"
     );
     let ids: BTreeSet<&str> = probes.iter().map(|probe| probe.id()).collect();
     assert_eq!(ids.len(), probes.len(), "探测器 id 不得重复：{ids:?}");
@@ -159,4 +160,23 @@ fn run_capture_times_out_without_panicking() {
         elapsed < Duration::from_secs(10),
         "须在 10s 内返回：{elapsed:?}"
     );
+}
+
+#[test]
+fn qnx_sdp_probe_reports_root_or_install_hint() {
+    let result = probe("qnx-sdp").locate();
+    match &result.found {
+        Some(toolchain) => assert!(
+            toolchain.path.join("host").is_dir() && toolchain.path.join("target").is_dir(),
+            "命中的 QNX SDP 根必须含 host/ 与 target/：{}",
+            toolchain.path.display()
+        ),
+        None => {
+            let note = result.note.as_deref().unwrap_or_default();
+            assert!(
+                note.contains("QNX SDP") && note.contains("QNX_HOST"),
+                "缺失提示须给出可执行的修复（SDP 安装 / 环境变量）：{note}"
+            );
+        }
+    }
 }

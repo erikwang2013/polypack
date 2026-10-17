@@ -12,6 +12,7 @@
 //! - [`arwrite`]：`.ipk` 的 ar / ustar tar / gzip 读写（T-M4-09，确定性字节）
 
 pub mod arwrite;
+pub mod embedded;
 pub mod error;
 pub mod exec;
 pub mod fsutil;
@@ -26,6 +27,7 @@ pub mod tools;
 pub mod webapp;
 pub mod zipwrite;
 
+pub use embedded::{EmbeddedInputs, QnxEnv};
 pub use error::{BundleError, codes};
 pub use icons::{IconSet, derive as derive_icons};
 pub use inputs::{
@@ -35,6 +37,10 @@ pub use inputs::{
 pub use packager::{
     Artifact, ArtifactKind, BundlePlan, Command, Packager, ScriptFile, Skipped, builtin, find,
     for_spec,
+};
+pub use packagers::autosar::{
+    ArxmlStructure, AutosarAdaptive, SCHEMA_FILE as AUTOSAR_SCHEMA_FILE, check_arxml,
+    xmllint_command, xmllint_tool,
 };
 pub use packagers::freebsd::{PkgStructure, check_pkg_structure};
 pub use packagers::harmony::{HapStructure, check_hap_structure};
@@ -46,6 +52,7 @@ pub use packagers::linux::{
 pub use packagers::miniapp::quickapp_hap_root;
 pub use packagers::openbsd::{PortsStructure, check_ports_structure};
 pub use packagers::pkgsrc::{PkgsrcStructure, check_pkgsrc_structure};
+pub use packagers::qnx::{QnxImage, QnxLibrary, QnxStructure, check_qnx_structure};
 pub use packagers::roku::{RokuStructure, check_roku_structure};
 pub use packagers::tizen::{WgtStructure, check_wgt_structure, wgt_lint_tool};
 pub use packagers::webos::{IpkStructure, ares_package_tool, check_ipk_structure};

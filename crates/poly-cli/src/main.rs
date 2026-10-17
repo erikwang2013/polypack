@@ -16,6 +16,7 @@ mod retry;
 mod scan;
 mod sign;
 mod verify;
+mod verify_embedded;
 
 use clap::{Parser, Subcommand};
 

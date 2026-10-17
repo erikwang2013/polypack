@@ -224,6 +224,9 @@ pub fn builtin() -> Vec<Box<dyn Packager>> {
         Box::new(crate::packagers::freebsd::FreeBsdPkg),
         Box::new(crate::packagers::pkgsrc::Pkgsrc),
         Box::new(crate::packagers::roku::Roku),
+        Box::new(crate::packagers::qnx::QnxImage),
+        Box::new(crate::packagers::qnx::QnxLibrary),
+        Box::new(crate::packagers::autosar::AutosarAdaptive),
     ]
 }
 
