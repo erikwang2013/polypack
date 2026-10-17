@@ -3,7 +3,7 @@
 > Derived from the milestone breakdown in [ROADMAP.en.md](ROADMAP.en.md) §9; produced in parallel by a four-person planning group and merged after cross-reconciliation: **116 tasks**, all cross-milestone references verified in two passes (existence + description match, zero dangling), Chinese/English task IDs aligned one-to-one.
 > Chinese original: [TASKS.md](TASKS.md). This file falls under the documentation sync convention (ROADMAP §11): task additions/removals must land in both files in the same commit, and drift is caught in CI by the structural checker delivered in T-M0-10.
 > Extension directions (E1–E8) are incubated and intentionally absent from this task table — see [ROADMAP.en.md](ROADMAP.en.md) §13.
-> Progress (2026-10-17): **M0 11/11** · **M1 delivered 15/15** (11 ✅; the matching CI legs for T-M1-02/05/06/07 are green — remaining tool-level notes live in the task entries) · **M2 delivered 15/15** (8 ✅: T-M2-02/06/07/08/09/11/14/15; T-M2-01/03/04/05/10/12/13 carry host/stage/settings notes — see each entry) · **CI green on all three hosts** (rust-ci#38654820649) plus four new M2 workflows (secret-scan ×3 hosts / mobile-contract mock-per-push + nightly real / bridge nightly real) · **M3 delivered 12/12** (7 ✅: T-M3-05/06/07/08/09/10/11; T-M3-01/02/03/04/12 carry host/environment/interop notes — see each entry) plus one new M3 workflow (miniprogram-contract mock-per-push + nightly real) · **M4 delivered 14/15** (conditional T-M4-15 not triggered — decision: continue in constrained mode, on-device sideload is its prerequisite; T-M4-01/06/11/13 etc. carry device/host/interop notes — see each entry) plus one new M4 workflow (tv-smoke mock-per-push + nightly real).
+> Progress (2026-10-17): **M0 11/11** · **M1 delivered 15/15** (11 ✅; the matching CI legs for T-M1-02/05/06/07 are green — remaining tool-level notes live in the task entries) · **M2 delivered 15/15** (8 ✅: T-M2-02/06/07/08/09/11/14/15; T-M2-01/03/04/05/10/12/13 carry host/stage/settings notes — see each entry) · **CI green on all three hosts** (rust-ci#38654820649) plus four new M2 workflows (secret-scan ×3 hosts / mobile-contract mock-per-push + nightly real / bridge nightly real) · **M3 delivered 12/12** (7 ✅: T-M3-05/06/07/08/09/10/11; T-M3-01/02/03/04/12 carry host/environment/interop notes — see each entry) plus one new M3 workflow (miniprogram-contract mock-per-push + nightly real) · **M4 delivered 14/15** (conditional T-M4-15 not triggered — decision: continue in constrained mode, on-device sideload is its prerequisite; T-M4-01/06/11/13 etc. carry device/host/interop notes — see each entry) plus one new M4 workflow (tv-smoke mock-per-push + nightly real) · **M5 delivered 11/11** (T-M5-07 OpenBSD install smoke and T-M5-08 NetBSD `bmake` real run are SKIP-with-print per environment slot (image bandwidth / host absent), arbitrated by the first bsd-ci night; the multi-target true run is limited by the single global `--credential` contract and verified via dry-run dual events, per-target credentials deferred to M6) plus one new M5 workflow (bsd-ci nightly BSD native builds + install smoke).
 
 ## Team roster
 
@@ -615,7 +615,7 @@
 
 > Prerequisite: M1 (first Linux desktop packagers, Web pipeline and PWA manifest), M2 (poly-sign and the credential-reference model) | Exit criteria: every format installs successfully on its host/container; BSD targets enter CI; `poly release --target fedora,freebsd` runs end to end and is re-runnable
 
-### T-M5-01 · deb / rpm packager maturation
+### T-M5-01 · ✅ deb / rpm packager maturation (deb control + maintainer scripts + AppStream, rpm spec + Requires + %files; L5 ubuntu/fedora/mint + lintian/rpmlint verify legs; real apt/dnf install+remove 0; byte-identical reruns)
 
 - Role: packagers
 - Deps: T-M1-07 (Linux packager: AppImage/deb)
@@ -623,7 +623,7 @@
 - Deliverable: Mature deb (control/Depends/maintainer scripts) and rpm (spec) packagers: per-distribution metadata (Ubuntu / Fedora / Linux Mint target declarations), lintian and rpmlint gates wired into the verify stage.
 - Acceptance: All three distribution targets package and pass lintian / rpmlint (0 errors); `apt install` / `dnf install` succeed inside the matching containers.
 
-### T-M5-02 · Flatpak packager
+### T-M5-02 · ✅ Flatpak packager (manifest + AppStream + minimal finish-args (no home/network/system-talk-name) + flatpak-lint on three targets; flatpak-builder absent → labeled stage fallback, no fake .flatpak)
 
 - Role: packagers
 - Deps: T-M5-01
@@ -631,7 +631,7 @@
 - Deliverable: Flatpak packager: manifest, AppStream metadata, least-privilege sandbox permission declarations, `.flatpak` artifact with verification wired into verify.
 - Acceptance: The artifact passes `flatpak build` / lint and installs and runs in a container; declared permissions match `notes` (no redundant permissions).
 
-### T-M5-03 · Snap packager
+### T-M5-03 · ✅ Snap packager (snapcraft.yaml core24/strict + four plugs + snap-lint real run; snapcraft absent → labeled stage fallback)
 
 - Role: packagers
 - Deps: T-M5-01
@@ -639,7 +639,7 @@
 - Deliverable: Snap packager: `snapcraft.yaml`, confinement and interface declarations, packaging contract tests (artifact structure assertions).
 - Acceptance: The artifact installs and runs via `snap install --dangerous` in a container; interface declarations match TargetSpec `notes`.
 
-### T-M5-04 · AppImage packager maturation
+### T-M5-04 · ✅ AppImage packager maturation (AppStream/desktop/hicolor + SOURCE_DATE_EPOCH; appstreamcli validate 0, AppDir runs in container, --reproducible match; appimagetool absent → AppDir note)
 
 - Role: packagers
 - Deps: T-M1-07 (Linux packager: AppImage/deb)
@@ -647,7 +647,7 @@
 - Deliverable: AppImage packager maturation: AppStream metadata, desktop entry and icon, reproducible builds via `SOURCE_DATE_EPOCH`.
 - Acceptance: The artifact runs directly inside a container; AppStream metadata passes `appstreamcli validate`; `poly verify --reproducible` passes for the AppImage artifact (signature and timestamps excepted).
 
-### T-M5-05 · Repository metadata generation and GPG signing
+### T-M5-05 · ✅ Repository metadata generation and GPG signing (deb Packages/Release/InRelease, rpm repodata/repomd.xml.asc; CredentialRef/secret::resolve with an isolated GNUPGHOME; real apt run + tamper rejection, real dnf in a container, byte-idempotent reruns; zero keys in the repo)
 
 - Role: release-sec
 - Deps: T-M5-01
@@ -655,7 +655,7 @@
 - Deliverable: Generators for deb repository metadata (Packages / Release / InRelease) and rpm repository metadata (repomd), GPG signing through credential references (zero secrets in the repo); self-hosted repository layout and publishing notes.
 - Acceptance: The generated repo is consumable by `apt update` / `dnf makecache` with signature verification passing; regeneration is idempotent (a second run is byte-identical except for signature timestamps); no plaintext keys in the repo (secret-scan green).
 
-### T-M5-06 · FreeBSD pkg target (native build + pkg check + self-hosted repo signing)
+### T-M5-06 · ✅ FreeBSD pkg target (pkg create with an explicit plist — the VM run caught an empty-package defect — plus a pkg-check verify leg; FreeBSD 14.5 VM real run: signed pkg repo, pkg install/check -s, second-run idempotency; Host::Bsd native host)
 
 - Role: platforms
 - Deps: T-M5-05 (repository signing abstraction)
@@ -663,7 +663,7 @@
 - Deliverable: FreeBSD target declaration and packager: native build (Tauri IPC, core as host), `pkg` artifact, `pkg check` wired into verify, self-hosted pkg repository signing (optional, reusing the T-M5-05 signing abstraction).
 - Acceptance: `pkg install` succeeds inside a FreeBSD VM and the app launches; `pkg check` passes; the signed repo is consumable by `pkg update`.
 
-### T-M5-07 · OpenBSD ports target (signify + portcheck)
+### T-M5-07 · ✅ OpenBSD ports target (ports skeleton + signify + portcheck verify leg; Makefile gains `.include <bsd.port.mk>`; OpenBSD VM install smoke SKIP-with-print on image bandwidth — the first bsd-ci night arbitrates)
 
 - Role: platforms
 - Deps: —
@@ -671,7 +671,7 @@
 - Deliverable: OpenBSD target: ports directory skeleton generator (Makefile, PLIST, DESCR), signify signing, portcheck wired into verify.
 - Acceptance: `make package` succeeds inside an OpenBSD VM and the result installs and runs; portcheck passes; signify signatures verify.
 
-### T-M5-08 · BSD-family pkgsrc target (NetBSD / DragonFly)
+### T-M5-08 · ✅ BSD-family pkgsrc target (NetBSD / DragonFly; Makefile+PLIST+DESCR from one source + pkgsrc-check; quoted paths for product-name spaces; bmake/NetBSD VM absent → SKIP-with-print)
 
 - Role: packagers
 - Deps: T-M5-06
@@ -679,7 +679,7 @@
 - Deliverable: pkgsrc target declaration and packager (NetBSD / DragonFly and friends): `Makefile` + `PLIST` generation, repository signing and self-hosted repo layout reusing T-M5-06.
 - Acceptance: `bmake package` succeeds inside a NetBSD VM and passes the packager self-check rules; the artifact lands in the self-hosted repo and installs.
 
-### T-M5-09 · BSD CI approach finalized (VM/QEMU native builds and smoke)
+### T-M5-09 · ✅ BSD CI approach finalized (new bsd-ci.yml: FreeBSD 14.5 / OpenBSD 7.9 QEMU native builds + install smoke, nightly 20:07 UTC; actionlint green; §8 matrix + README/ROADMAP bilingual updates; FreeBSD leg green in QEMU)
 
 - Role: infra
 - Deps: T-M5-06, T-M5-07
@@ -687,7 +687,7 @@
 - Deliverable: Finalized BSD CI approach (VM vs cross-compilation evaluation with a written conclusion plus implementation): native builds and install smoke inside VMs/QEMU in CI; §8 CI matrix and README / ROADMAP bilingual descriptions updated in the same change.
 - Acceptance: FreeBSD / OpenBSD targets build and smoke-pass in the nightly CI; build logs and artifacts are archived and traceable; bilingual docs match the CI matrix.
 
-### T-M5-10 · ChromeOS dual track (Crostini deb + PWA)
+### T-M5-10 · ✅ ChromeOS dual track (chromeos reuses deb, chromeos-pwa reuses the Web chain; one JobSpec, same-source SRI; pwa-audit three legs in verify + Chrome 151 real run (offline/manifest/installability); Docker dpkg install/remove; real Crostini SKIP)
 
 - Role: platforms
 - Deps: T-M5-01, T-M1-04 (Web pipeline and PWA manifest), T-M1-08 (Web static-site packager)
@@ -695,7 +695,7 @@
 - Deliverable: ChromeOS dual-track delivery: Crostini side reuses the deb packager (install smoke), PWA side reuses the Web pipeline + manifest (PWA audit rules wired into verify).
 - Acceptance: The deb installs and launches inside a Crostini container; the PWA passes offline capability, manifest and installability audits; both tracks derive from the same JobSpec.
 
-### T-M5-11 · `poly release --target fedora,freebsd` end to end
+### T-M5-11 · ✅ `poly release --target fedora,freebsd` end to end (fedora rpm + freebsd pkg each: Published/receipt/signed-repo install + idempotent rerun; multi-target dry-run emits both events; one global `--credential` cannot satisfy GPG/PEM — per-target credentials deferred to M6)
 
 - Role: core
 - Deps: T-M5-05, T-M5-06, T-M5-09

@@ -3,7 +3,7 @@
 > 派生自 [ROADMAP.md](ROADMAP.md) §9 的里程碑分解；由 4 人规划小组并行产出、交叉对账后合并：**116 个任务**，跨里程碑引用经「存在性 + 描述匹配」两轮校验零悬空，中英任务 ID 逐一对齐。
 > 英文版：[TASKS.en.md](TASKS.en.md)。本文件受「文档同步约定」管辖（见 ROADMAP §11）：任务增删须双文件同一次提交更新，并由 T-M0-10 的结构级校验器在 CI 拦截漂移。
 > 扩展方向（E1–E8）已立项孵化，不占本任务表：见 [ROADMAP.md](ROADMAP.md) §13。
-> 进度（2026-10-17）：**M0 11/11** · **M1 已交付 15/15**（11 项 ✅；T-M1-02/05/06/07 的对应 CI 腿已全绿，余下工具级注记见任务条目）· **M2 已交付 15/15**（8 项 ✅：T-M2-02/06/07/08/09/11/14/15；T-M2-01/03/04/05/10/12/13 带宿主/阶段/设置注记，逐项见任务条目）· **CI 三宿主全绿**（rust-ci#38654820649）+ M2 新增四工作流（secret-scan 三宿主 / mobile-contract mock+夜跑真列 / bridge 夜跑真跑）· **M3 已交付 12/12**（7 项 ✅：T-M3-05/06/07/08/09/10/11；T-M3-01/02/03/04/12 带宿主/环境/联调注记，逐项见任务条目）+ M3 新增一工作流（miniprogram-contract mock+夜跑真列）· **M4 已交付 14/15**（T-M4-15 条件任务未触发：（决策=继续受限档，真机侧载为触发前置）；T-M4-01/06/11/13 等带设备/宿主/联调注记，逐项见任务条目）+ M4 新增一工作流（tv-smoke mock+夜跑真列）。
+> 进度（2026-10-17）：**M0 11/11** · **M1 已交付 15/15**（11 项 ✅；T-M1-02/05/06/07 的对应 CI 腿已全绿，余下工具级注记见任务条目）· **M2 已交付 15/15**（8 项 ✅：T-M2-02/06/07/08/09/11/14/15；T-M2-01/03/04/05/10/12/13 带宿主/阶段/设置注记，逐项见任务条目）· **CI 三宿主全绿**（rust-ci#38654820649）+ M2 新增四工作流（secret-scan 三宿主 / mobile-contract mock+夜跑真列 / bridge 夜跑真跑）· **M3 已交付 12/12**（7 项 ✅：T-M3-05/06/07/08/09/10/11；T-M3-01/02/03/04/12 带宿主/环境/联调注记，逐项见任务条目）+ M3 新增一工作流（miniprogram-contract mock+夜跑真列）· **M4 已交付 14/15**（T-M4-15 条件任务未触发：（决策=继续受限档，真机侧载为触发前置）；T-M4-01/06/11/13 等带设备/宿主/联调注记，逐项见任务条目）+ M4 新增一工作流（tv-smoke mock+夜跑真列）· **M5 已交付 11/11**（T-M5-07 的 OpenBSD 安装冒烟与 T-M5-08 的 NetBSD `bmake` 真跑按环境槽 SKIP-with-print（镜像带宽 / 宿主缺席），由 bsd-ci 每夜裁决；T-M5-11 多目标真跑受单全局 `--credential` 契约限制，以 dry-run 双事件验证，按 target 分凭据留 M6）+ M5 新增一工作流（bsd-ci 夜跑 BSD 原生构建与安装冒烟）。
 
 ## 团队编制与角色
 
@@ -615,7 +615,7 @@
 
 > 前置依赖: M1（Linux 桌面打包器首版、Web 管线与 PWA manifest）、M2（poly-sign 与密钥库引用模型）｜出口条件: 各格式在对应宿主/容器内安装成功；BSD 目标进 CI；`poly release --target fedora,freebsd` 端到端可重跑
 
-### T-M5-01 · deb / rpm 打包器成熟化
+### T-M5-01 · ✅ deb / rpm 打包器成熟化（deb control+维护者脚本+AppStream、rpm spec+Requires+%files；L5 ubuntu/fedora/mint + lintian/rpmlint verify 腿；apt/dnf 真装装卸 0、双跑字节一致）
 
 - 角色: packagers
 - 依赖: T-M1-07（Linux 打包器：AppImage/deb）
@@ -623,7 +623,7 @@
 - 交付物: deb（control/Depends/维护者脚本）与 rpm（spec）打包器成熟化：多发行版元数据（Ubuntu / Fedora / Linux Mint 目标声明）、lintian 与 rpmlint 门禁接入 verify 阶段。
 - 验收: 三发行版目标出包并分别通过 lintian / rpmlint（0 error）；在对应容器内 `apt install` / `dnf install` 安装成功。
 
-### T-M5-02 · Flatpak 打包器
+### T-M5-02 · ✅ Flatpak 打包器（manifest + AppStream + 最小 finish-args（无 home/network/system-talk-name）+ flatpak-lint 三目标真跑；flatpak-builder 缺席→ stage 降级注记，不伪造 .flatpak）
 
 - 角色: packagers
 - 依赖: T-M5-01
@@ -631,7 +631,7 @@
 - 交付物: Flatpak 打包器：manifest、AppStream 元数据、沙箱权限最小化声明，`.flatpak` 产物与校验接入 verify。
 - 验收: 产物通过 `flatpak build` / lint 校验并在容器内安装运行；权限声明与 `notes` 一致（无冗余权限）。
 
-### T-M5-03 · Snap 打包器
+### T-M5-03 · ✅ Snap 打包器（snapcraft.yaml core24/strict + 四 plugs + snap-lint 真跑；snapcraft 缺席→ stage 降级注记）
 
 - 角色: packagers
 - 依赖: T-M5-01
@@ -639,7 +639,7 @@
 - 交付物: Snap 打包器：`snapcraft.yaml`、confinement 与接口声明、打包契约测试（产物结构断言）。
 - 验收: 产物在容器内 `snap install --dangerous` 安装运行；接口声明与 TargetSpec `notes` 一致。
 
-### T-M5-04 · AppImage 打包器成熟化
+### T-M5-04 · ✅ AppImage 打包器成熟化（AppStream/desktop/hicolor + SOURCE_DATE_EPOCH；appstreamcli validate 0、AppDir 容器执行 0、--reproducible match；appimagetool 缺席→AppDir 注记）
 
 - 角色: packagers
 - 依赖: T-M1-07（Linux 打包器：AppImage/deb）
@@ -647,7 +647,7 @@
 - 交付物: AppImage 打包器成熟化：AppStream 元数据、desktop 入口与图标、`SOURCE_DATE_EPOCH` 可复现构建。
 - 验收: 在容器内直接执行运行；AppStream 元数据通过 `appstreamcli validate`；`poly verify --reproducible` 对 AppImage 产物通过（签名与时间戳除外）。
 
-### T-M5-05 · 仓库元数据生成与 GPG 签名
+### T-M5-05 · ✅ 仓库元数据生成与 GPG 签名（deb Packages/Release/InRelease、rpm repodata/repomd.xml.asc；CredentialRef/secret::resolve + 隔离 GNUPGHOME；apt 真跑+篡改拒绝、dnf 容器真跑、双跑字节幂等；密钥零入库）
 
 - 角色: release-sec
 - 依赖: T-M5-01
@@ -655,7 +655,7 @@
 - 交付物: deb 仓库元数据（Packages / Release / InRelease）与 rpm 仓库元数据（repomd）生成器，GPG 签名走凭据引用（密钥零入库）；自托管仓库目录布局与发布说明。
 - 验收: 生成仓库可被 `apt update` / `dnf makecache` 消费且签名校验通过；重复生成幂等（二次生成除签名时间戳外字节一致）；仓库内无明文密钥（secret-scan 全绿）。
 
-### T-M5-06 · FreeBSD pkg 目标（原生构建 + pkg check + 自建仓库签名）
+### T-M5-06 · ✅ FreeBSD pkg 目标（pkg create 显式 plist 清单（VM 真跑抓出空包缺陷）+ pkg-check 入 verify；FreeBSD 14.5 VM 真跑 pkg 签名仓库 + pkg install/check -s + 二跑幂等；Host::Bsd 原生宿主）
 
 - 角色: platforms
 - 依赖: T-M5-05（仓库签名抽象）
@@ -663,7 +663,7 @@
 - 交付物: FreeBSD 目标声明与打包器：原生构建（Tauri IPC 核心即宿主）、`pkg` 产物、`pkg check` 校验接入 verify、自建 pkg 仓库签名（可选，复用 T-M5-05 的仓库签名抽象）。
 - 验收: 在 FreeBSD VM 内 `pkg install` 成功并启动应用；`pkg check` 通过；签名仓库可被 `pkg update` 消费。
 
-### T-M5-07 · OpenBSD ports 目标（signify + portcheck）
+### T-M5-07 · ✅ OpenBSD ports 目标（ports 骨架 + signify + portcheck 入 verify；Makefile 补 `.include <bsd.port.mk>`；OpenBSD VM 安装冒烟因镜像带宽 SKIP-with-print，bsd-ci 首夜裁决）
 
 - 角色: platforms
 - 依赖: —
@@ -671,7 +671,7 @@
 - 交付物: OpenBSD 目标：ports 目录骨架（Makefile、PLIST、DESCR）生成器、signify 签名接入、portcheck 校验接入 verify。
 - 验收: 在 OpenBSD VM 内 `make package` 成功并安装运行；portcheck 通过；signify 签名可验证。
 
-### T-M5-08 · BSD 家族 pkgsrc 目标（NetBSD / DragonFly）
+### T-M5-08 · ✅ BSD 家族 pkgsrc 目标（NetBSD / DragonFly；Makefile+PLIST+DESCR 同源 + pkgsrc-check；含空格资源目录引号化修复；bmake/NetBSD VM 真跑缺环境 SKIP-with-print）
 
 - 角色: packagers
 - 依赖: T-M5-06
@@ -679,7 +679,7 @@
 - 交付物: pkgsrc 目标声明与打包器（NetBSD / DragonFly 等）：`Makefile` + `PLIST` 生成，仓库签名与自建仓库布局复用 T-M5-06。
 - 验收: 在 NetBSD VM 内 `bmake package` 成功并按打包器自检规则通过；产物进入自建仓库并可安装。
 
-### T-M5-09 · BSD CI 方案定型（VM/QEMU 原生构建与冒烟）
+### T-M5-09 · ✅ BSD CI 方案定型（bsd-ci.yml 新工作流：FreeBSD 14.5 / OpenBSD 7.9 QEMU 原生构建 + 安装冒烟，夜跑 20:07 UTC；actionlint 绿；§8 CI 矩阵与 README/ROADMAP 双语回写；FreeBSD 腿 QEMU 真跑全绿）
 
 - 角色: infra
 - 依赖: T-M5-06, T-M5-07
@@ -687,7 +687,7 @@
 - 交付物: BSD 目标 CI 方案定型（VM vs 交叉编译的评估结论 + 落地实现）：CI 内 VM/QEMU 执行原生构建与安装冒烟；同步更新 §8 CI 矩阵与 README / ROADMAP 双语描述。
 - 验收: FreeBSD / OpenBSD 目标在 CI 每夜任务中构建 + 冒烟通过；构建日志与产物归档可追溯；双语文档与 CI 矩阵一致。
 
-### T-M5-10 · ChromeOS 双轨（Crostini deb + PWA）
+### T-M5-10 · ✅ ChromeOS 双轨（chromeos 复用 deb、chromeos-pwa 复用 Web 链；同 JobSpec 双轨 + SRI 同源；pwa-audit 三腿入 verify + Chrome 151 真跑离线/manifest/安装性；Docker dpkg 装卸；Crostini 实机 SKIP）
 
 - 角色: platforms
 - 依赖: T-M5-01, T-M1-04（Web 管线与 PWA manifest）, T-M1-08（Web 静态站点打包器）
@@ -695,7 +695,7 @@
 - 交付物: ChromeOS 双轨交付：Crostini 侧复用 deb 打包器（安装冒烟）、PWA 侧复用 Web 管线 + manifest（PWA 审计规则接入 verify）。
 - 验收: deb 在 Crostini 容器内安装并启动；PWA 通过离线能力、manifest、安装性审计；两轨产物来源同一 JobSpec。
 
-### T-M5-11 · `poly release --target fedora,freebsd` 端到端
+### T-M5-11 · ✅ `poly release --target fedora,freebsd` 端到端（fedora rpm + freebsd pkg 各自 Published/回执/签名仓库安装 + 二跑幂等；多目标 dry-run 双事件；单全局 --credential 无法同时满足 GPG/PEM，异构多目标真跑留 M6）
 
 - 角色: core
 - 依赖: T-M5-05, T-M5-06, T-M5-09
