@@ -35,6 +35,11 @@ pub use packager::{
     for_spec,
 };
 pub use packagers::harmony::{HapStructure, check_hap_structure};
+pub use packagers::linux::{
+    AppdirStructure, DebStructure, FlatpakStructure, RpmStructure, SnapStructure,
+    check_appdir_structure, check_deb_structure, check_flatpak_structure, check_rpm_structure,
+    check_snap_structure,
+};
 pub use packagers::miniapp::quickapp_hap_root;
 pub use packagers::openbsd::{PortsStructure, check_ports_structure};
 pub use packagers::roku::{RokuStructure, check_roku_structure};

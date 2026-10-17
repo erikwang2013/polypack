@@ -98,10 +98,11 @@ fn builtin_has_seven_valid_targets() {
     );
     assert_eq!(
         registry.all().count(),
-        20,
+        23,
         "M5 起内建 = L1 七 + L2 小程序族四（wechat / alipay / douyin / quickapp）+ \
          L3 电视族八（tvos + android-tv / fire-tv + tizen-tv / webos-tv / vidaa-tv / smartcast-tv \
-         + roku※实验，T-M4-04/07/08/09/10/12）+ L5 OpenBSD（T-M5-07）"
+         + roku※实验，T-M4-04/07/08/09/10/12）+ L5 OpenBSD（T-M5-07）+ 发行版三\
+         （ubuntu / fedora / mint，T-M5-01）"
     );
     for spec in registry.all() {
         spec.validate()
@@ -172,8 +173,13 @@ fn builtin_ids_are_the_l1_set() {
         .collect();
     assert_eq!(
         l5,
-        BTreeSet::from(["openbsd".to_string()]),
-        "L5 从 OpenBSD ports 目标起步（T-M5-07）"
+        BTreeSet::from([
+            "openbsd".to_string(),
+            "ubuntu".to_string(),
+            "fedora".to_string(),
+            "mint".to_string(),
+        ]),
+        "L5 = OpenBSD ports（T-M5-07）+ 发行版三（ubuntu / fedora / mint，T-M5-01）"
     );
 }
 
@@ -264,14 +270,18 @@ fn linux_host_resolves_four_l1_targets_from_all() {
         ]),
         "电视两目标 + web 系 TV 四目标 + roku（三宿主声明）应全部入选"
     );
-    // L5：openbsd 声明 Linux 宿主（交叉发起面）→ 同样入选
+    // L5：openbsd 与发行版三（ubuntu / fedora / mint）均声明 Linux 宿主（交叉发起面）→ 同样入选
     let l5: BTreeSet<&str> = resolved
         .selected
         .iter()
         .filter(|s| s.tier == 5)
         .map(|s| s.id.as_str())
         .collect();
-    assert_eq!(l5, BTreeSet::from(["openbsd"]), "L5 openbsd 应入选");
+    assert_eq!(
+        l5,
+        BTreeSet::from(["openbsd", "ubuntu", "fedora", "mint"]),
+        "L5 OpenBSD + 发行版三（Linux 宿主）应全部入选"
+    );
     assert_eq!(selected.len(), l1.len() + l2.len() + l3.len() + l5.len());
 
     let excluded: BTreeSet<&str> = resolved.excluded.iter().map(|e| e.id.as_str()).collect();
@@ -284,7 +294,7 @@ fn linux_host_resolves_four_l1_targets_from_all() {
         assert!(!target.reason.trim().is_empty(), "{} 缺排除原因", target.id);
     }
 
-    // 内建目标均为 L1 / L2 / L3，不涉及厂商授权分支。
+    // 内建目标为 L1 / L2 / L3 / L5，不涉及厂商授权分支。
     assert!(resolved.excluded.iter().all(|e| !e.reason.contains("L7")));
 }
 
