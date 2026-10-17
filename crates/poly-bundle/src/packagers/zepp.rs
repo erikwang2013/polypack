@@ -165,12 +165,10 @@ fn project_root(inputs: &BundleInputs) -> Result<PathBuf, BundleError> {
     } else if is_project(host) {
         host.to_path_buf()
     } else {
-        return Err(BundleError::InvalidInput {
+        // 工程本身缺席 = 输入缺失（环境槽 SKIP-with-print）；`--target all` 不应硬失败。
+        return Err(BundleError::MissingInput {
             packager: ID,
             field: "zepp.project",
-            value: host.display().to_string(),
-            reason: "缺 Zepp OS 工程（app.json + app.js）；放 <工程根>/zepp 或直接放工程根"
-                .to_string(),
         });
     };
     Ok(root)
