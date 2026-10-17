@@ -165,7 +165,8 @@ pub fn desktop_file(product: &ProductInfo, bin: &str) -> String {
     out.push_str("Categories=Utility;\n");
     out.push_str(&format!("StartupWMClass={}\n", product.kebab_name()));
     if let Some(home) = &product.homepage {
-        out.push_str(&format!("Homepage={home}\n"));
+        // 非标准键须带 X- 前缀，否则 desktop-file-validate 判 unknown key。
+        out.push_str(&format!("X-Homepage={home}\n"));
     }
     out
 }

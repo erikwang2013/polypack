@@ -242,7 +242,7 @@ pub fn check_ipk_structure(ipk: &Path) -> Result<IpkStructure, BundleError> {
     let control_text = control_tar
         .text(CONTROL)
         .ok_or_else(|| bad(format!("control.tar.gz 内缺 {CONTROL}")))?;
-    let fields = control_fields(&control_text);
+    let fields = arwrite::control_fields(&control_text);
     for required in [
         "Package",
         "Version",
@@ -321,28 +321,6 @@ pub fn check_ipk_structure(ipk: &Path) -> Result<IpkStructure, BundleError> {
 }
 
 /// Debian 控制文件字段解析（`Key: Value`；续行以空白开头，并入上一字段）。
-fn control_fields(text: &str) -> std::collections::BTreeMap<String, String> {
-    let mut fields: std::collections::BTreeMap<String, String> = std::collections::BTreeMap::new();
-    let mut last: Option<String> = None;
-    for line in text.lines() {
-        if line.starts_with(' ') {
-            if let Some(key) = &last
-                && let Some(value) = fields.get_mut(key)
-            {
-                value.push(' ');
-                value.push_str(line.trim());
-            }
-            continue;
-        }
-        if let Some((key, value)) = line.split_once(':') {
-            let key = key.trim().to_string();
-            fields.insert(key.clone(), value.trim().to_string());
-            last = Some(key);
-        }
-    }
-    fields
-}
-
 /// Debian 控制文件（元数据经产品白名单校验：无控制字符，单行安全）。
 fn control_text(product: &ProductInfo) -> String {
     format!(

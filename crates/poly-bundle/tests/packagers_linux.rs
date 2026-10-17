@@ -1,7 +1,10 @@
-//! T-M1-07 契约测试：deb 与 AppImage 打包器（Linux 宿主**真跑**）。
+//! Linux 打包器契约测试：T-M1-07 首版（deb / AppImage）+ T-M5-01..04 成熟化
+//! （rpm / Flatpak / Snap、AppStream、L5 发行版目标分派）。
 //!
-//! 真跑范围：dpkg-deb 组装 + `--info`/`--contents` 校验 + `dpkg-deb -x` 解包安装冒烟
-//! + AppDir 直接执行冒烟 + desktop-file-validate。
+//! 真跑范围：dpkg-deb 组装、`--info`/`--contents` 校验、`dpkg-deb -x` 解包安装冒烟、
+//! AppDir 直接执行冒烟、desktop-file-validate；rpmbuild 在场时真产 `.rpm` 并解析
+//! 头部（PATH 或 `~/.cache/polypack/tools/rpm`）。Flatpak / Snap 运行时缺席时如实
+//! 降级为 `*-stage` 目录，结构自检仍真跑。
 //!
 //! 工具无关性：图标取仓库内提交的夹具（`tests/fixtures/`，由 T-M1-14 派生管线生成一次
 //! 入库），不再依赖宿主 rsvg-convert / magick；dpkg-deb / desktop-file-validate / sh
@@ -11,13 +14,17 @@
 
 mod common;
 
+use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use poly_bundle::error::{BundleError, codes};
 use poly_bundle::inputs::{BundleInputs, Icon, IconKind, ProductInfo};
 use poly_bundle::packager::{Packager, builtin, find};
-use poly_bundle::packagers::linux::{AppImage, Deb, deb_arch};
+use poly_bundle::packagers::linux::{
+    AppImage, Deb, FLATPAK_FINISH_ARGS, Flatpak, Rpm, SNAP_PLUGS, Snap, deb_arch, rpm_arch,
+};
+use poly_bundle::packagers::linux::deb::DEB_RUNTIME_DEPENDS;
 use poly_targets::{Host, PackageSpec, TargetSpec};
 
 const FAKE_CORE: &str = r#"#!/bin/sh
@@ -38,7 +45,8 @@ fn product() -> ProductInfo {
         identifier: "com.polypack.paxnotes".to_string(),
         manufacturer: "PolyPack".to_string(),
         description: "Pax 示例笔记应用".to_string(),
-        homepage: None,
+        // AppStream 的 url-homepage 校验项：验收跑 appstreamcli validate 需要主页。
+        homepage: Some("https://example.com/pax-notes".to_string()),
     }
 }
 
@@ -140,13 +148,29 @@ fn deb_package_builds_and_verifies_with_dpkg_deb() {
         "Section: utils\n",
         "Priority: optional\n",
         "Description: Pax 示例笔记应用\n",
+        &format!("Depends: {DEB_RUNTIME_DEPENDS}\n"),
     ] {
         assert!(control.contents.contains(field), "control 缺 {field:?}");
+    }
+    // 维护者脚本：postinst/postrm 必须随包（dpkg-deb 要求可执行位，组装侧已置）。
+    for (name, marker) in [
+        ("DEBIAN/postinst", "[ \"$1\" = \"configure\" ]"),
+        ("DEBIAN/postrm", "[ \"$1\" = \"remove\" ]"),
+    ] {
+        let script = plan
+            .scripts
+            .iter()
+            .find(|s| s.path.ends_with(name))
+            .unwrap_or_else(|| panic!("缺维护者脚本 {name}"));
+        assert!(
+            script.contents.contains(marker),
+            "{name} 缺分支标记 {marker:?}"
+        );
     }
     let lines: Vec<String> = plan.commands.iter().map(|c| c.line()).collect();
     assert_eq!(lines.len(), 3, "命令序列：{lines:?}");
     assert!(
-        lines[0].starts_with("dpkg-deb --build --root-owner-group "),
+        lines[0].starts_with("dpkg-deb --build -Zgzip --root-owner-group "),
         "{}",
         lines[0]
     );
@@ -194,6 +218,7 @@ fn deb_package_builds_and_verifies_with_dpkg_deb() {
         "./usr/lib/Pax Notes/index.html",
         "./usr/share/applications/pax-notes.desktop",
         "./usr/share/icons/hicolor/256x256/apps/pax-notes.png",
+        "./usr/share/metainfo/com.polypack.paxnotes.metainfo.xml",
         "./usr/share/doc/pax-notes/RUNTIME-DEPENDENCIES.txt",
         "./usr/share/doc/pax-notes/copyright",
     ] {
@@ -213,6 +238,20 @@ fn deb_package_builds_and_verifies_with_dpkg_deb() {
     assert!(
         listing.contains("-rwxr-xr-x root/root") && listing.contains("./usr/bin/pax-notes"),
         "可执行位丢失：\n{listing}"
+    );
+    // 纯 Rust 结构面（verify 腿 lintian 的本地兜底）与真实 listing 同源。
+    let structure = poly_bundle::check_deb_structure(&artifact.path).expect("deb 结构检查");
+    assert_eq!(structure.package, "pax-notes");
+    assert_eq!(structure.version, "1.2.3");
+    assert_eq!(structure.architecture, arch);
+    assert_eq!(structure.depends, DEB_RUNTIME_DEPENDS);
+    assert!(
+        structure
+            .entries
+            .iter()
+            .any(|entry| entry.contains("com.polypack.paxnotes.metainfo.xml")),
+        "结构面缺 metainfo：{:?}",
+        structure.entries
     );
 
     // 安装冒烟（免 root 形态）：dpkg-deb -x 解包 → 运行解包后的可执行。
@@ -255,10 +294,13 @@ fn appimage_without_tool_yields_labeled_appdir_that_runs() {
     let inputs = inputs(&base);
     let plan = AppImage.plan(&inputs, &spec("appimage")).expect("计划");
     assert!(
-        plan.commands[0]
-            .line()
-            .starts_with("appimagetool --no-appstream "),
+        plan.commands[0].line().starts_with("appimagetool "),
         "命令组装：{}",
+        plan.commands[0].line()
+    );
+    assert!(
+        !plan.commands[0].line().contains("--no-appstream"),
+        "AppStream 元数据须交给 appimagetool 校验：{}",
         plan.commands[0].line()
     );
     assert!(
@@ -292,6 +334,13 @@ fn appimage_without_tool_yields_labeled_appdir_that_runs() {
             .is_symlink()
     );
     assert!(appdir.join("usr/bin/pax-notes").is_file());
+    // T-M5-04：AppStream 元数据随 AppDir 分发，且生成器与结构检查同源。
+    let metainfo = appdir.join("usr/share/metainfo/com.polypack.paxnotes.metainfo.xml");
+    assert!(metainfo.is_file(), "AppDir 缺 AppStream 元数据");
+    let structure = poly_bundle::check_appdir_structure(appdir).expect("AppDir 结构检查");
+    assert_eq!(structure.desktop, "pax-notes.desktop");
+    assert!(structure.metainfo.ends_with(".metainfo.xml"));
+    assert!(structure.icons >= 1, "hicolor 图标缺失");
 
     // 真跑：直接执行 AppDir 的 AppRun（符号链接 → usr/bin，资源按 ../lib 解析）。
     let smoke = run(&appdir.join("AppRun"));
@@ -300,6 +349,293 @@ fn appimage_without_tool_yields_labeled_appdir_that_runs() {
         "AppRun 冒烟失败：{}",
         String::from_utf8_lossy(&smoke.stderr)
     );
+}
+
+#[test]
+fn rpm_plan_declares_requires_and_package_builds_or_degrades_honestly() {
+    let base = scratch("rpm");
+    let inputs = inputs(&base);
+    let plan = Rpm.plan(&inputs, &spec("rpm")).expect("rpm 计划");
+
+    // spec 契约：Fedora 运行时依赖、预布置载荷、desktop / AppStream 入 %files。
+    let spec_script = plan
+        .scripts
+        .iter()
+        .find(|s| s.path.ends_with("SPECS/pax-notes.spec"))
+        .expect("rpm spec 脚本");
+    for want in [
+        "Name: pax-notes\n",
+        "Version: 1.2.3\n",
+        "Requires: webkit2gtk4.1, gtk3, libsoup3\n",
+        "cp -a \"%{_sourcedir}/payload/.\" \"%{buildroot}/\"\n",
+        "/usr/bin/pax-notes\n",
+        "/usr/lib/Pax\\ Notes\n",
+        "/usr/share/applications/pax-notes.desktop\n",
+        "/usr/share/metainfo/com.polypack.paxnotes.metainfo.xml\n",
+        "%changelog\n* Mon Jan 01 2024",
+    ] {
+        assert!(spec_script.contents.contains(want), "spec 缺 {want:?}");
+    }
+
+    let artifact = Rpm.package(&inputs, &spec("rpm")).expect("rpm 组装");
+    assert_eq!(artifact.target, "linux");
+    match artifact.format.as_str() {
+        // PATH 或无缓存工具链时走真构建。
+        "rpm" => {
+            let expected = base
+                .join("out")
+                .join(format!("pax-notes-1.2.3-1.{}.rpm", rpm_arch()));
+            assert_eq!(artifact.path, expected, "产物名须与打包器同口径推导");
+            let structure =
+                poly_bundle::check_rpm_structure(&artifact.path).expect("rpm 头部解析");
+            assert_eq!(structure.name, "pax-notes");
+            assert_eq!(structure.version, "1.2.3");
+            assert_eq!(structure.release, "1");
+            assert_eq!(structure.arch, rpm_arch());
+            assert_eq!(structure.license, "Apache-2.0");
+            for suffix in [
+                "/bin/pax-notes",
+                "/share/applications/pax-notes.desktop",
+                "/share/metainfo/com.polypack.paxnotes.metainfo.xml",
+            ] {
+                assert!(
+                    structure.files.iter().any(|path| path.ends_with(suffix)),
+                    "头部文件列表缺 {suffix}：{:?}",
+                    structure.files
+                );
+            }
+            assert!(
+                structure
+                    .files
+                    .iter()
+                    .any(|path| path.starts_with("/usr/lib/")),
+                "头部文件列表缺 /usr/lib/：{:?}",
+                structure.files
+            );
+            assert!(artifact.notes.iter().any(|n| n.contains("结构检查")));
+        }
+        // 工具链缺席：如实降级为载荷目录，不伪造 .rpm。
+        "rpm-payload" => {
+            assert_eq!(artifact.kind, poly_bundle::ArtifactKind::Directory);
+            assert!(artifact.notes.iter().any(|n| n.contains("未打包：rpmbuild")));
+            assert!(
+                artifact
+                    .path
+                    .join("share/metainfo/com.polypack.paxnotes.metainfo.xml")
+                    .is_file()
+            );
+            assert!(artifact.path.join("bin/pax-notes").is_file());
+        }
+        other => panic!("意外的 rpm 降级格式：{other}"),
+    }
+}
+
+#[test]
+fn flatpak_declares_minimal_sandbox_and_stage_structure_holds() {
+    let base = scratch("flatpak");
+    let inputs = inputs(&base);
+    let plan = Flatpak
+        .plan(&inputs, &spec("flatpak"))
+        .expect("Flatpak 计划");
+    let manifest_script = plan
+        .scripts
+        .iter()
+        .find(|s| s.path.ends_with("com.polypack.paxnotes.json"))
+        .expect("Flatpak manifest");
+    for want in [
+        "\"app-id\": \"com.polypack.paxnotes\"",
+        "\"runtime\": \"org.gnome.Platform\"",
+        "\"runtime-version\": \"47\"",
+        "\"command\": \"pax-notes\"",
+        "\"buildsystem\": \"simple\"",
+        "\"type\": \"dir\"",
+    ] {
+        assert!(
+            manifest_script.contents.contains(want),
+            "manifest 缺 {want:?}"
+        );
+    }
+    for arg in FLATPAK_FINISH_ARGS {
+        assert!(
+            manifest_script.contents.contains(&format!("\"{arg}\"")),
+            "manifest 缺权限 {arg}"
+        );
+    }
+    // 最小沙箱：不申请 home / 网络 / 系统总线。
+    assert!(!manifest_script.contents.contains("--filesystem=home"));
+    assert!(!manifest_script.contents.contains("--share=network"));
+    assert!(!manifest_script.contents.contains("--system-talk-name"));
+
+    let artifact = Flatpak
+        .package(&inputs, &spec("flatpak"))
+        .expect("Flatpak 组装");
+    assert_eq!(artifact.target, "linux");
+    if artifact.format == "flatpak" {
+        assert!(artifact.path.extension().is_some_and(|ext| ext == "flatpak"));
+        assert!(artifact.notes.iter().any(|n| n.contains("结构检查")));
+    } else {
+        assert_eq!(artifact.format, "flatpak-stage", "未打包必须如实标注格式");
+        assert_eq!(artifact.kind, poly_bundle::ArtifactKind::Directory);
+        assert!(
+            artifact
+                .notes
+                .iter()
+                .any(|n| n.contains("未打包") && n.contains("flatpak-builder"))
+        );
+        let structure =
+            poly_bundle::check_flatpak_structure(&artifact.path).expect("Flatpak 结构检查");
+        assert_eq!(structure.app_id, "com.polypack.paxnotes");
+        assert_eq!(structure.runtime, "org.gnome.Platform//47");
+        assert_eq!(structure.command, "pax-notes");
+        assert_eq!(
+            structure.finish_args.into_iter().collect::<BTreeSet<_>>(),
+            FLATPAK_FINISH_ARGS
+                .iter()
+                .map(|arg| arg.to_string())
+                .collect::<BTreeSet<_>>(),
+            "权限集合必须恰为打包器常量"
+        );
+        for suffix in [
+            "files/bin/pax-notes",
+            "files/share/applications/pax-notes.desktop",
+            "files/share/metainfo/com.polypack.paxnotes.metainfo.xml",
+        ] {
+            assert!(
+                structure.files.iter().any(|path| path.ends_with(suffix)),
+                "载荷缺 {suffix}：{:?}",
+                structure.files
+            );
+        }
+    }
+}
+
+#[test]
+fn snap_declares_strict_confinement_and_stage_structure_holds() {
+    let base = scratch("snap");
+    let inputs = inputs(&base);
+    let plan = Snap.plan(&inputs, &spec("snap")).expect("Snap 计划");
+    let yaml_script = plan
+        .scripts
+        .iter()
+        .find(|s| s.path.ends_with("snapcraft.yaml"))
+        .expect("snapcraft.yaml");
+    for want in [
+        "name: pax-notes\n",
+        "base: core24\n",
+        "version: '1.2.3'\n",
+        "confinement: strict\n",
+        "grade: stable\n",
+        "plugin: dump\n",
+        "source: files\n",
+        "command: bin/pax-notes\n",
+        "      - gnome\n",
+    ] {
+        assert!(yaml_script.contents.contains(want), "YAML 缺 {want:?}");
+    }
+    for plug in SNAP_PLUGS {
+        assert!(
+            yaml_script.contents.contains(&format!("      - {plug}\n")),
+            "YAML 缺 plug {plug}"
+        );
+    }
+    assert!(!yaml_script.contents.contains("confinement: classic"));
+    assert!(!yaml_script.contents.contains("confinement: devmode"));
+
+    let artifact = Snap.package(&inputs, &spec("snap")).expect("Snap 组装");
+    assert_eq!(artifact.target, "linux");
+    if artifact.format == "snap" {
+        assert!(artifact.path.extension().is_some_and(|ext| ext == "snap"));
+        assert!(artifact.notes.iter().any(|n| n.contains("结构检查")));
+    } else {
+        assert_eq!(artifact.format, "snap-stage", "未打包必须如实标注格式");
+        assert_eq!(artifact.kind, poly_bundle::ArtifactKind::Directory);
+        assert!(
+            artifact
+                .notes
+                .iter()
+                .any(|n| n.contains("未打包") && n.contains("snapcraft"))
+        );
+        let structure = poly_bundle::check_snap_structure(&artifact.path).expect("Snap 结构检查");
+        assert_eq!(structure.name, "pax-notes");
+        assert_eq!(structure.base, "core24");
+        assert_eq!(structure.confinement, "strict");
+        assert_eq!(
+            structure.plugs.into_iter().collect::<BTreeSet<_>>(),
+            SNAP_PLUGS
+                .iter()
+                .map(|plug| plug.to_string())
+                .collect::<BTreeSet<_>>(),
+            "plug 集合必须恰为打包器常量"
+        );
+        for suffix in [
+            "files/bin/pax-notes",
+            "files/share/applications/pax-notes.desktop",
+            "files/share/metainfo/com.polypack.paxnotes.metainfo.xml",
+        ] {
+            assert!(
+                structure.files.iter().any(|path| path.ends_with(suffix)),
+                "载荷缺 {suffix}：{:?}",
+                structure.files
+            );
+        }
+        // 店端元数据：snapcraft.yaml 同级、以 snap 名命名。
+        assert!(artifact.path.join("pax-notes.metainfo.xml").is_file());
+    }
+}
+
+/// L5 发行版目标共用四个 Linux 打包器；notes 的权限清单必须与打包器常量同源。
+#[test]
+fn l5_targets_share_linux_packagers_and_notes_match_permissions() {
+    let registry = poly_targets::builtin::builtin();
+    let target = |id: &str| {
+        registry
+            .iter()
+            .find(|spec| spec.id == id)
+            .unwrap_or_else(|| panic!("内建目标缺 {id}"))
+    };
+    for (id, format) in [
+        ("ubuntu", "deb"),
+        ("fedora", "rpm"),
+        ("mint", "deb"),
+    ] {
+        let spec = target(id);
+        assert_eq!(spec.package.format, format, "{id} 主档格式");
+        let packager =
+            poly_bundle::packager::for_spec(spec).unwrap_or_else(|| panic!("{id} 无打包器"));
+        assert_eq!(packager.id(), "linux", "{id} 应复用 Linux 打包器");
+        assert_eq!(packager.format(), format);
+        assert!(packager.serves(id), "{id} 分发目标应被 serves 接受");
+    }
+
+    // serves 边界：deb 系不吃 fedora；rpm 系不吃 ubuntu/mint；Snap 只在 Ubuntu 目标声明。
+    assert!(Deb.serves("ubuntu") && Deb.serves("mint") && !Deb.serves("fedora"));
+    assert!(Rpm.serves("fedora") && !Rpm.serves("ubuntu") && !Rpm.serves("mint"));
+    for id in ["linux", "ubuntu", "fedora", "mint"] {
+        assert!(Flatpak.serves(id), "Flatpak 应服务 {id}");
+    }
+    assert!(Snap.serves("linux") && Snap.serves("ubuntu") && !Snap.serves("fedora"));
+
+    let flatpak_args = format!("[{}]", FLATPAK_FINISH_ARGS.join(", "));
+    let snap_plugs = format!("[{}]", SNAP_PLUGS.join(", "));
+    for id in ["ubuntu", "fedora", "mint"] {
+        let notes = target(id).notes.as_deref().unwrap_or("");
+        assert!(
+            notes.contains(&flatpak_args),
+            "{id} notes 的 Flatpak 权限与常量不同源：{notes}"
+        );
+    }
+    let ubuntu_notes = target("ubuntu").notes.as_deref().unwrap_or("");
+    assert!(
+        ubuntu_notes.contains(&snap_plugs),
+        "ubuntu notes 的 Snap plugs 与常量不同源：{ubuntu_notes}"
+    );
+    for id in ["fedora", "mint"] {
+        let notes = target(id).notes.as_deref().unwrap_or("");
+        assert!(
+            !notes.contains(&snap_plugs),
+            "{id} 未声明 Snap 发布面，notes 不应给出 plugs"
+        );
+    }
 }
 
 #[test]
@@ -324,12 +660,20 @@ fn missing_png_icon_blocks_appimage() {
 fn format_mismatch_is_rejected() {
     let base = scratch("guard");
     let inputs = inputs(&base);
-    let deb_on_appimage = Deb.package(&inputs, &spec("appimage")).unwrap_err();
-    let appimage_on_deb = AppImage.package(&inputs, &spec("deb")).unwrap_err();
-    for (packager, err) in [
-        (Deb.id(), deb_on_appimage),
-        (AppImage.id(), appimage_on_deb),
-    ] {
+    let cases = [
+        (Deb.id(), Deb.package(&inputs, &spec("appimage")).unwrap_err()),
+        (
+            AppImage.id(),
+            AppImage.package(&inputs, &spec("deb")).unwrap_err(),
+        ),
+        (Rpm.id(), Rpm.package(&inputs, &spec("deb")).unwrap_err()),
+        (
+            Flatpak.id(),
+            Flatpak.package(&inputs, &spec("rpm")).unwrap_err(),
+        ),
+        (Snap.id(), Snap.package(&inputs, &spec("deb")).unwrap_err()),
+    ];
+    for (packager, err) in cases {
         assert_eq!(err.code(), codes::E_BND_0003, "{packager}");
         assert!(matches!(
             err,
@@ -342,7 +686,7 @@ fn format_mismatch_is_rejected() {
 }
 
 #[test]
-fn registry_exposes_all_m1_packagers() {
+fn registry_exposes_all_linux_packagers() {
     let all: Vec<(String, String)> = builtin()
         .iter()
         .map(|p| (p.id().to_string(), p.format().to_string()))
@@ -353,6 +697,9 @@ fn registry_exposes_all_m1_packagers() {
         ("macos", "dmg"),
         ("linux", "deb"),
         ("linux", "appimage"),
+        ("linux", "rpm"),
+        ("linux", "flatpak"),
+        ("linux", "snap"),
         ("web", "static-site"),
     ] {
         assert!(
@@ -361,6 +708,11 @@ fn registry_exposes_all_m1_packagers() {
         );
     }
     assert!(find("linux", "deb").is_some());
+    assert!(find("ubuntu", "deb").is_some(), "L5 ubuntu 目标应分派 Deb");
+    assert!(find("fedora", "rpm").is_some(), "L5 fedora 目标应分派 Rpm");
+    assert!(find("mint", "flatpak").is_some(), "L5 mint 目标应可产 Flatpak");
+    assert!(find("ubuntu", "snap").is_some(), "L5 ubuntu 目标应可产 Snap");
+    assert!(find("fedora", "snap").is_none(), "Fedora 目标未声明 Snap");
     assert!(find("linux", "msi").is_none());
     assert!(find("nope", "deb").is_none());
 }
@@ -373,6 +725,11 @@ fn missing_bare_product_is_reported() {
     for err in [
         Deb.package(&inputs, &spec("deb")).unwrap_err(),
         AppImage.package(&inputs, &spec("appimage")).unwrap_err(),
+        Rpm.package(&inputs, &spec("rpm")).unwrap_err(),
+        Flatpak
+            .package(&inputs, &spec("flatpak"))
+            .unwrap_err(),
+        Snap.package(&inputs, &spec("snap")).unwrap_err(),
     ] {
         assert!(matches!(
             err,

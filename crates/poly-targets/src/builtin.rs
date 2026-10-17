@@ -140,7 +140,12 @@ pub fn builtin() -> Vec<TargetSpec> {
                 builder: "linux-appimage".to_string(),
             },
             signing: Some("linux-repo-gpg".to_string()),
-            verify: vec!["lintian".to_string(), "rpmlint".to_string()],
+            verify: vec![
+                "lintian".to_string(),
+                "rpmlint".to_string(),
+                "appimage-structure".to_string(),
+                "appstream-validate".to_string(),
+            ],
             publish: vec![
                 "flathub".to_string(),
                 "snapcraft".to_string(),
@@ -148,6 +153,89 @@ pub fn builtin() -> Vec<TargetSpec> {
             ],
             experimental: false,
             notes: None,
+        },
+        // ---- L5 发行版目标（T-M5-01..03）：deb / rpm 主档 + Flatpak / Snap 共用打包器 ----
+        TargetSpec {
+            id: "ubuntu".to_string(),
+            tier: 5,
+            hosts: vec![Host::Linux],
+            runtime: Runtime::Native,
+            bridge: Bridge::TauriIpc,
+            ui: vec!["react-dom".to_string()],
+            package: PackageSpec {
+                format: "deb".to_string(),
+                builder: "linux-deb".to_string(),
+            },
+            signing: Some("linux-repo-gpg".to_string()),
+            verify: vec![
+                "lintian".to_string(),
+                "appstream-validate".to_string(),
+                "flatpak-lint".to_string(),
+                "snap-lint".to_string(),
+            ],
+            publish: vec![
+                "flathub".to_string(),
+                "snapcraft".to_string(),
+                "self-hosted".to_string(),
+            ],
+            experimental: false,
+            notes: Some(
+                "L5 发行版：deb 主档；Flatpak 权限恰为 [--share=ipc, --socket=wayland, \
+                 --socket=fallback-x11, --device=dri]，Snap plugs 恰为 [desktop, wayland, x11, \
+                 opengl]（与打包器常量同源，T-M5-02/03）"
+                    .to_string(),
+            ),
+        },
+        TargetSpec {
+            id: "fedora".to_string(),
+            tier: 5,
+            hosts: vec![Host::Linux],
+            runtime: Runtime::Native,
+            bridge: Bridge::TauriIpc,
+            ui: vec!["react-dom".to_string()],
+            package: PackageSpec {
+                format: "rpm".to_string(),
+                builder: "linux-rpm".to_string(),
+            },
+            signing: Some("linux-repo-gpg".to_string()),
+            verify: vec![
+                "rpmlint".to_string(),
+                "appstream-validate".to_string(),
+                "flatpak-lint".to_string(),
+            ],
+            publish: vec!["flathub".to_string(), "self-hosted".to_string()],
+            experimental: false,
+            notes: Some(
+                "L5 发行版：rpm 主档；Flatpak 权限恰为 [--share=ipc, --socket=wayland, \
+                 --socket=fallback-x11, --device=dri]（与打包器常量同源，T-M5-02）"
+                    .to_string(),
+            ),
+        },
+        TargetSpec {
+            id: "mint".to_string(),
+            tier: 5,
+            hosts: vec![Host::Linux],
+            runtime: Runtime::Native,
+            bridge: Bridge::TauriIpc,
+            ui: vec!["react-dom".to_string()],
+            package: PackageSpec {
+                format: "deb".to_string(),
+                builder: "linux-deb".to_string(),
+            },
+            signing: Some("linux-repo-gpg".to_string()),
+            verify: vec![
+                "lintian".to_string(),
+                "appstream-validate".to_string(),
+                "flatpak-lint".to_string(),
+            ],
+            publish: vec!["flathub".to_string(), "self-hosted".to_string()],
+            experimental: false,
+            notes: Some(
+                "L5 发行版：deb 主档（Linux Mint 兼容 Ubuntu 仓库）；Flatpak 权限恰为 \
+                 [--share=ipc, --socket=wayland, --socket=fallback-x11, --device=dri]\
+                 （与打包器常量同源，T-M5-02）"
+                    .to_string(),
+            ),
         },
         TargetSpec {
             id: "web".to_string(),

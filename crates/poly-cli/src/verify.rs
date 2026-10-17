@@ -177,6 +177,18 @@ enum Verifier {
     /// VIDAA / Vizio 应用包的沙箱自检（[`poly_bundle::check_web_app_structure`] 三条规则：
     /// 入口文件 / 清单字段 / 体积，T-M4-10；体积上限走 `[budget].size` 同一门禁）。
     SandboxSelfcheck,
+    /// deb 结构检查 + 在场时的官方 lintian（`--fail-on error`），T-M5-01。
+    DebLint,
+    /// rpm 结构检查 + 在场时的官方 rpmlint，T-M5-01。
+    RpmLint,
+    /// AppImage / AppDir 结构检查（[`poly_bundle::check_appdir_structure`]），T-M5-04。
+    AppimageStructure,
+    /// Flatpak manifest + 载荷 + 最小权限集检查，T-M5-02。
+    FlatpakLint,
+    /// Snap snapcraft.yaml + 接口声明 + 载荷检查，T-M5-03。
+    SnapLint,
+    /// AppStream 元数据（内建结构检查 + 在场时的 appstreamcli），T-M5-01/04。
+    AppstreamValidate,
 }
 
 /// 校验器 id → 已接入实现（`None` = 未接入，归属查 [`verifier_owner`]）。
@@ -189,6 +201,12 @@ fn verifier_for(id: &str) -> Option<Verifier> {
         "wgt-lint" => Some(Verifier::WgtLint),
         "ares-package" => Some(Verifier::AresPackage),
         "sandbox-selfcheck" => Some(Verifier::SandboxSelfcheck),
+        "lintian" => Some(Verifier::DebLint),
+        "rpmlint" => Some(Verifier::RpmLint),
+        "appimage-structure" => Some(Verifier::AppimageStructure),
+        "flatpak-lint" => Some(Verifier::FlatpakLint),
+        "snap-lint" => Some(Verifier::SnapLint),
+        "appstream-validate" => Some(Verifier::AppstreamValidate),
         _ => None,
     }
 }
@@ -207,7 +225,6 @@ fn verifier_owner(id: &str) -> Option<&'static str> {
             Some("poly-sign 有 `plan_staple` 的 validate 半步（T-M2-10）；独立校验器未接线")
         }
         "signtool-verify" => Some("Windows 链（M2 之后）"),
-        "lintian" | "rpmlint" => Some("Linux 仓库检查（M3 之后）"),
         "html-validate" | "sri-check" => Some("Web 链（M2 之后；SRI 清单已由打包器产出）"),
         "wechat-devtools-cli" | "alipay-devtools-cli" | "douyin-devtools-cli" => {
             Some("小程序开发者工具 CLI 校验（T-M3-11；本机无 devtools 时 SKIP-with-print）")
@@ -302,6 +319,12 @@ fn verify_target(
     let mut wgt_lint_ids: Vec<String> = Vec::new();
     let mut ares_ids: Vec<String> = Vec::new();
     let mut sandbox_ids: Vec<String> = Vec::new();
+    let mut deb_ids: Vec<String> = Vec::new();
+    let mut rpm_ids: Vec<String> = Vec::new();
+    let mut appimage_ids: Vec<String> = Vec::new();
+    let mut flatpak_ids: Vec<String> = Vec::new();
+    let mut snap_ids: Vec<String> = Vec::new();
+    let mut appstream_ids: Vec<String> = Vec::new();
     for id in &spec.verify {
         match verifier_for(id) {
             Some(Verifier::IosCodesign) => ios_ids.push(id.clone()),
@@ -311,6 +334,12 @@ fn verify_target(
             Some(Verifier::WgtLint) => wgt_lint_ids.push(id.clone()),
             Some(Verifier::AresPackage) => ares_ids.push(id.clone()),
             Some(Verifier::SandboxSelfcheck) => sandbox_ids.push(id.clone()),
+            Some(Verifier::DebLint) => deb_ids.push(id.clone()),
+            Some(Verifier::RpmLint) => rpm_ids.push(id.clone()),
+            Some(Verifier::AppimageStructure) => appimage_ids.push(id.clone()),
+            Some(Verifier::FlatpakLint) => flatpak_ids.push(id.clone()),
+            Some(Verifier::SnapLint) => snap_ids.push(id.clone()),
+            Some(Verifier::AppstreamValidate) => appstream_ids.push(id.clone()),
             None => unserved.push(match verifier_owner(id) {
                 Some(owner) => format!("{id}（{owner}）"),
                 // 注册表有 id 但没人认领：如实点名到具体 id，测试保证这里在 M2 的注册表上是死路
@@ -350,6 +379,24 @@ fn verify_target(
     }
     if !sandbox_ids.is_empty() {
         checked |= verify_sandbox_selfcheck(project, spec, &sandbox_ids, events)?;
+    }
+    if !deb_ids.is_empty() {
+        checked |= verify_deb_lint(project, spec, &deb_ids, events)?;
+    }
+    if !rpm_ids.is_empty() {
+        checked |= verify_rpm_lint(project, spec, &rpm_ids, events)?;
+    }
+    if !appimage_ids.is_empty() {
+        checked |= verify_appimage_structure(project, spec, &appimage_ids, events)?;
+    }
+    if !flatpak_ids.is_empty() {
+        checked |= verify_flatpak_lint(project, spec, &flatpak_ids, events)?;
+    }
+    if !snap_ids.is_empty() {
+        checked |= verify_snap_lint(project, spec, &snap_ids, events)?;
+    }
+    if !appstream_ids.is_empty() {
+        checked |= verify_appstream_validate(project, spec, &appstream_ids, events)?;
     }
     Ok(checked)
 }
@@ -1129,6 +1176,494 @@ fn verify_sandbox_selfcheck(
         });
     }
     Ok(true)
+}
+
+/// 打包暂存目录里的目录产物定位（`<staged>/*<suffix>`，排序取最新一份）；返回 `(路径, 份数)`。
+fn staged_dir(staged: &Path, suffix: &str) -> Option<(PathBuf, usize)> {
+    let mut candidates: Vec<PathBuf> = std::fs::read_dir(staged)
+        .ok()?
+        .flatten()
+        .map(|entry| entry.path())
+        .filter(|path| {
+            path.is_dir() && path.file_name().is_some_and(|name| name.to_string_lossy().ends_with(suffix))
+        })
+        .collect();
+    candidates.sort();
+    let count = candidates.len();
+    candidates.pop().map(|path| (path, count))
+}
+
+/// 官方 lint 工具输出里的 error 行（`E:` 前缀 / ` E: ` 中缀；warning 不计）。
+fn lint_error_lines(stdout: &[u8], stderr: &[u8]) -> Vec<String> {
+    let mut text = String::from_utf8_lossy(stdout).into_owned();
+    text.push_str(&String::from_utf8_lossy(stderr));
+    text.lines()
+        .map(str::trim)
+        .filter(|line| line.starts_with("E:") || line.contains(" E: "))
+        .take(5)
+        .map(str::to_string)
+        .collect()
+}
+
+/// deb 腿（`lintian`）：与打包器同一份结构检查 + 在场时官方 lintian 的真跑判决。
+fn verify_deb_lint(
+    project: &Project,
+    spec: &TargetSpec,
+    ids: &[String],
+    events: &mut dyn EventSink,
+) -> Result<bool, StageError> {
+    let staged = project::packages_root(&project.root).join(&spec.id);
+    let Some((deb, count)) = staged_file(&staged, "deb") else {
+        warning(
+            events,
+            &format!(
+                "目标 {} 未校验：{} 下没有 *.deb（先跑 poly build 把产物流到打包暂存目录）",
+                spec.id,
+                staged.display()
+            ),
+        );
+        return Ok(false);
+    };
+    if count > 1 {
+        warning(events, &format!("目标 {} 的产物有 {count} 份 .deb（取最新一份 {}）", spec.id, deb.display()));
+    }
+    let structure = match poly_bundle::check_deb_structure(&deb) {
+        Ok(structure) => structure,
+        Err(err) => return Err(bundle_diagnostic(spec, &err).into()),
+    };
+    warning(
+        events,
+        &format!(
+            "目标 {} 的 .deb 结构检查：{}-{} {}，Depends={}，{} 个数据段条目",
+            spec.id,
+            structure.package,
+            structure.version,
+            structure.architecture,
+            if structure.depends.is_empty() { "(无)" } else { &structure.depends },
+            structure.entries.len()
+        ),
+    );
+    if poly_bundle::exec::tool_present("lintian") {
+        let command = poly_bundle::Command::new(
+            "lintian",
+            [
+                "--fail-on".to_string(),
+                "error".to_string(),
+                deb.display().to_string(),
+            ],
+        );
+        match poly_bundle::exec::run(&command) {
+            Ok(output) => {
+                let errors = lint_error_lines(&output.stdout, &output.stderr);
+                if !errors.is_empty() {
+                    return Err(webtv_defect(
+                        spec,
+                        format!("lintian 判出 error：{}", errors.join("；")),
+                        "修 control / 维护者脚本 / 数据段后重跑 poly build --target ubuntu",
+                    )
+                    .into());
+                }
+                warning(events, &format!("目标 {} 的 lintian 真跑通过（--fail-on error）", spec.id));
+            }
+            Err(err @ BundleError::ToolMissing { .. }) => {
+                warning(events, &format!("目标 {} 的 lintian 未跑：{err}", spec.id));
+            }
+            Err(err) => {
+                return Err(webtv_defect(
+                    spec,
+                    format!("lintian 判决不通过：{err}"),
+                    "修产物后重跑 poly build --target ubuntu",
+                )
+                .into());
+            }
+        }
+    } else {
+        warning(
+            events,
+            &format!("目标 {} 的 lintian 未跑：本机无 lintian（内建结构断言已过）", spec.id),
+        );
+    }
+    for id in ids {
+        events.emit(&BuildEvent::Verified {
+            checker: id.clone(),
+            ok: true,
+        });
+    }
+    Ok(true)
+}
+
+/// rpm 腿（`rpmlint`）：纯 Rust 头部结构检查 + 在场时官方 rpmlint 的真跑判决。
+fn verify_rpm_lint(
+    project: &Project,
+    spec: &TargetSpec,
+    ids: &[String],
+    events: &mut dyn EventSink,
+) -> Result<bool, StageError> {
+    let staged = project::packages_root(&project.root).join(&spec.id);
+    let Some((rpm, count)) = staged_file(&staged, "rpm") else {
+        warning(
+            events,
+            &format!(
+                "目标 {} 未校验：{} 下没有 *.rpm（先跑 poly build 把产物流到打包暂存目录）",
+                spec.id,
+                staged.display()
+            ),
+        );
+        return Ok(false);
+    };
+    if count > 1 {
+        warning(events, &format!("目标 {} 的产物有 {count} 份 .rpm（取最新一份 {}）", spec.id, rpm.display()));
+    }
+    let structure = match poly_bundle::check_rpm_structure(&rpm) {
+        Ok(structure) => structure,
+        Err(err) => return Err(bundle_diagnostic(spec, &err).into()),
+    };
+    warning(
+        events,
+        &format!(
+            "目标 {} 的 .rpm 头部检查：{}-{}-{}.{}，License={}，{} 个文件",
+            spec.id,
+            structure.name,
+            structure.version,
+            structure.release,
+            structure.arch,
+            structure.license,
+            structure.files.len()
+        ),
+    );
+    if poly_bundle::exec::tool_present("rpmlint") {
+        let command =
+            poly_bundle::Command::new("rpmlint", [rpm.display().to_string()]);
+        match poly_bundle::exec::run(&command) {
+            Ok(output) => {
+                let errors = lint_error_lines(&output.stdout, &output.stderr);
+                if !errors.is_empty() {
+                    return Err(webtv_defect(
+                        spec,
+                        format!("rpmlint 判出 error：{}", errors.join("；")),
+                        "修 spec / 载荷后重跑 poly build --target fedora",
+                    )
+                    .into());
+                }
+                warning(events, &format!("目标 {} 的 rpmlint 真跑通过", spec.id));
+            }
+            Err(err @ BundleError::ToolMissing { .. }) => {
+                warning(events, &format!("目标 {} 的 rpmlint 未跑：{err}", spec.id));
+            }
+            Err(err) => {
+                return Err(webtv_defect(
+                    spec,
+                    format!("rpmlint 判决不通过：{err}"),
+                    "修产物后重跑 poly build --target fedora",
+                )
+                .into());
+            }
+        }
+    } else {
+        warning(
+            events,
+            &format!("目标 {} 的 rpmlint 未跑：本机无 rpmlint（内建头部断言已过）", spec.id),
+        );
+    }
+    for id in ids {
+        events.emit(&BuildEvent::Verified {
+            checker: id.clone(),
+            ok: true,
+        });
+    }
+    Ok(true)
+}
+
+/// AppImage 腿（`appimage-structure`）：AppDir 结构（打包器同一实现）+ 单文件 ELF 头。
+fn verify_appimage_structure(
+    project: &Project,
+    spec: &TargetSpec,
+    ids: &[String],
+    events: &mut dyn EventSink,
+) -> Result<bool, StageError> {
+    let staged = project::packages_root(&project.root).join(&spec.id);
+    let appdir = staged_dir(&staged, ".AppDir");
+    let image = staged_file(&staged, "AppImage");
+    if appdir.is_none() && image.is_none() {
+        warning(
+            events,
+            &format!(
+                "目标 {} 未校验：{} 下没有 *.AppDir / *.AppImage（先跑 poly build 把产物流到打包暂存目录）",
+                spec.id,
+                staged.display()
+            ),
+        );
+        return Ok(false);
+    }
+    if let Some((dir, count)) = &appdir {
+        if *count > 1 {
+            warning(events, &format!("目标 {} 的产物有 {count} 份 AppDir（取最新一份 {}）", spec.id, dir.display()));
+        }
+        let structure = match poly_bundle::check_appdir_structure(dir) {
+            Ok(structure) => structure,
+            Err(err) => return Err(bundle_diagnostic(spec, &err).into()),
+        };
+        warning(
+            events,
+            &format!(
+                "目标 {} 的 AppDir 结构检查：{} 条目，desktop={}，metainfo={}，图标 {} 枚",
+                spec.id, structure.entries, structure.desktop, structure.metainfo, structure.icons
+            ),
+        );
+    }
+    if let Some((path, _)) = &image {
+        let bytes = match std::fs::read(path) {
+            Ok(bytes) => bytes,
+            Err(err) => {
+                return Err(webtv_defect(
+                    spec,
+                    format!("AppImage 读取失败（{}）：{err}", path.display()),
+                    "重跑 poly build --target linux",
+                )
+                .into());
+            }
+        };
+        if !bytes.starts_with(b"\x7fELF") {
+            return Err(webtv_defect(
+                spec,
+                format!("{} 不是 ELF AppImage", path.display()),
+                "重跑 poly build --target linux（appimagetool 产物应为 ELF）",
+            )
+            .into());
+        }
+        warning(events, &format!("目标 {} 的 AppImage 文件头检查：ELF，{} 字节", spec.id, bytes.len()));
+    }
+    for id in ids {
+        events.emit(&BuildEvent::Verified {
+            checker: id.clone(),
+            ok: true,
+        });
+    }
+    Ok(true)
+}
+
+/// Flatpak 腿（`flatpak-lint`）：manifest + 载荷 + 最小 finish-args 集。
+fn verify_flatpak_lint(
+    project: &Project,
+    spec: &TargetSpec,
+    ids: &[String],
+    events: &mut dyn EventSink,
+) -> Result<bool, StageError> {
+    let staged = project::packages_root(&project.root).join(&spec.id);
+    let Some((dir, _)) = staged_dir(&staged, "-flatpak.stage") else {
+        warning(
+            events,
+            &format!(
+                "目标 {} 未校验：{} 下没有 *-flatpak.stage（Flatpak 产物须先把 [targets.{}].format \
+                 设为 flatpak 再跑 poly build）",
+                spec.id,
+                staged.display(),
+                spec.id
+            ),
+        );
+        return Ok(false);
+    };
+    let structure = match poly_bundle::check_flatpak_structure(&dir) {
+        Ok(structure) => structure,
+        Err(err) => return Err(bundle_diagnostic(spec, &err).into()),
+    };
+    warning(
+        events,
+        &format!(
+            "目标 {} 的 Flatpak 结构检查：app-id={}，{}，command={}，权限 {:?}，{} 个载荷文件",
+            spec.id,
+            structure.app_id,
+            structure.runtime,
+            structure.command,
+            structure.finish_args,
+            structure.files.len()
+        ),
+    );
+    for id in ids {
+        events.emit(&BuildEvent::Verified {
+            checker: id.clone(),
+            ok: true,
+        });
+    }
+    Ok(true)
+}
+
+/// Snap 腿（`snap-lint`）：snapcraft.yaml + 接口声明 + 载荷。
+fn verify_snap_lint(
+    project: &Project,
+    spec: &TargetSpec,
+    ids: &[String],
+    events: &mut dyn EventSink,
+) -> Result<bool, StageError> {
+    let staged = project::packages_root(&project.root).join(&spec.id);
+    let Some((dir, _)) = staged_dir(&staged, "-snap.stage") else {
+        warning(
+            events,
+            &format!(
+                "目标 {} 未校验：{} 下没有 *-snap.stage（Snap 产物须先把 [targets.{}].format 设为 \
+                 snap 再跑 poly build）",
+                spec.id,
+                staged.display(),
+                spec.id
+            ),
+        );
+        return Ok(false);
+    };
+    let structure = match poly_bundle::check_snap_structure(&dir) {
+        Ok(structure) => structure,
+        Err(err) => return Err(bundle_diagnostic(spec, &err).into()),
+    };
+    warning(
+        events,
+        &format!(
+            "目标 {} 的 Snap 结构检查：name={}，{}，confinement={}，plugs={:?}，{} 个载荷文件",
+            spec.id,
+            structure.name,
+            structure.base,
+            structure.confinement,
+            structure.plugs,
+            structure.files.len()
+        ),
+    );
+    for id in ids {
+        events.emit(&BuildEvent::Verified {
+            checker: id.clone(),
+            ok: true,
+        });
+    }
+    Ok(true)
+}
+
+/// AppStream 腿（`appstream-validate`）：暂存树里的 `<id>.metainfo.xml` 结构检查 +
+/// 在场时官方 `appstreamcli validate`（warning 不计，`E:` 行硬失败）。
+fn verify_appstream_validate(
+    project: &Project,
+    spec: &TargetSpec,
+    ids: &[String],
+    events: &mut dyn EventSink,
+) -> Result<bool, StageError> {
+    let staged = project::packages_root(&project.root).join(&spec.id);
+    // 暂存树形态：deb / rpm 原生文件（元数据需解包，见告警）；AppDir =
+    // `<名>.AppDir/usr/share/metainfo/`、Flatpak = `<名>-flatpak.stage/files/share/metainfo/`、
+    // Snap 同形 → 最多 5 层目录，留一层余量。
+    let Some(metainfo) = find_metainfo(&staged, 6) else {
+        warning(
+            events,
+            &format!(
+                "目标 {} 未校验：{} 下没有 *.metainfo.xml（先跑 poly build；deb / rpm 内嵌元数据 \
+                 须解包后校验）",
+                spec.id,
+                staged.display()
+            ),
+        );
+        return Ok(false);
+    };
+    let internal = match poly_bundle::packagers::linux::check_appstream_metainfo(&metainfo) {
+        Ok(meta) => meta,
+        Err(err) => return Err(bundle_diagnostic(spec, &err).into()),
+    };
+    if poly_bundle::exec::tool_present("appstreamcli") {
+        let command = poly_bundle::Command::new(
+            "appstreamcli",
+            [
+                "validate".to_string(),
+                "--no-net".to_string(),
+                metainfo.display().to_string(),
+            ],
+        );
+        match poly_bundle::exec::run(&command) {
+            Ok(output) => {
+                let errors = lint_error_lines(&output.stdout, &output.stderr);
+                if !errors.is_empty() {
+                    return Err(webtv_defect(
+                        spec,
+                        format!("appstreamcli 判出 error：{}", errors.join("；")),
+                        "修 AppStream 元数据（id / license / release date）后重跑 poly build",
+                    )
+                    .into());
+                }
+                warning(
+                    events,
+                    &format!("目标 {} 的 appstreamcli validate 真跑通过（warning 不计）", spec.id),
+                );
+            }
+            // appstreamcli 1.0.5 对 warning 也以 3 退出（error 为 1）：只有 `E:` 行是硬失败。
+            Err(BundleError::ToolFailed {
+                status,
+                stderr,
+                ..
+            }) if status == "3" && lint_error_lines(b"", stderr.as_bytes()).is_empty() => {
+                warning(
+                    events,
+                    &format!(
+                        "目标 {} 的 appstreamcli validate 通过（退出码 3 = warning/info，不计；{}）",
+                        spec.id,
+                        stderr.lines().next().unwrap_or("").trim()
+                    ),
+                );
+            }
+            Err(err @ BundleError::ToolMissing { .. }) => {
+                warning(events, &format!("目标 {} 的 appstreamcli 未跑：{err}", spec.id));
+            }
+            Err(err) => {
+                return Err(webtv_defect(
+                    spec,
+                    format!("appstreamcli 判决不通过：{err}"),
+                    "修 AppStream 元数据后重跑 poly build",
+                )
+                .into());
+            }
+        }
+    } else {
+        warning(
+            events,
+            &format!("目标 {} 的 appstreamcli 未跑：本机无 appstreamcli（内建结构断言已过）", spec.id),
+        );
+    }
+    warning(
+        events,
+        &format!(
+            "目标 {} 的 AppStream 结构检查：id={}，name={}，summary={}",
+            spec.id, internal.id, internal.name, internal.summary
+        ),
+    );
+    for id in ids {
+        events.emit(&BuildEvent::Verified {
+            checker: id.clone(),
+            ok: true,
+        });
+    }
+    Ok(true)
+}
+
+/// 暂存树内首个 `*.metainfo.xml`（限深，目录按名排序保证确定性）。
+fn find_metainfo(dir: &Path, depth: usize) -> Option<PathBuf> {
+    if depth == 0 {
+        return None;
+    }
+    let mut entries: Vec<PathBuf> = std::fs::read_dir(dir)
+        .ok()?
+        .flatten()
+        .map(|entry| entry.path())
+        .collect();
+    entries.sort();
+    for path in &entries {
+        if path.is_file()
+            && path
+                .file_name()
+                .is_some_and(|name| name.to_string_lossy().ends_with(".metainfo.xml"))
+        {
+            return Some(path.clone());
+        }
+    }
+    for path in entries {
+        if path.is_dir()
+            && let Some(found) = find_metainfo(&path, depth - 1)
+        {
+            return Some(found);
+        }
+    }
+    None
 }
 
 /// 对单个目标做二跑比对；返回是否真的比对了（`false` = 告警跳过并已说明原因）。

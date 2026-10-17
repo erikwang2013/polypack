@@ -35,6 +35,11 @@ pub use packager::{
     for_spec,
 };
 pub use packagers::harmony::{HapStructure, check_hap_structure};
+pub use packagers::linux::{
+    AppdirStructure, DebStructure, FlatpakStructure, RpmStructure, SnapStructure,
+    check_appdir_structure, check_deb_structure, check_flatpak_structure, check_rpm_structure,
+    check_snap_structure,
+};
 pub use packagers::miniapp::quickapp_hap_root;
 pub use packagers::tizen::{WgtStructure, check_wgt_structure, wgt_lint_tool};
 pub use packagers::webos::{IpkStructure, ares_package_tool, check_ipk_structure};

@@ -2,7 +2,7 @@
   "target": "linux",
   "builder": "linux-appimage",
   "signing": "linux-repo-gpg",
-  "verifiers": ["lintian", "rpmlint"],
+  "verifiers": ["lintian", "rpmlint", "appimage-structure", "appstream-validate"],
   "artifacts": [
     {
       "format": "appimage",
