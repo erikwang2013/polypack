@@ -9,8 +9,8 @@
 //! 引擎静态库由应用侧 wrapper crate 产出（poly-core 只出 rlib，见 T-M6-02 契约）。
 //!
 //! 两个架构都走 nightly `-Z build-std=core,alloc`：`qemu_cortex_m3` 用
-//! `thumbv7m-none-eabi`；`qemu_x86` 用 `i686-unknown-linux-gnu` 并加
-//! `relocation-model=static`（预置 i686 core 为 PIC，Zephyr 的 x86 链接器脚本会丢弃
+//! `thumbv7m-none-eabi`；`qemu_x86` 用 `i586-unknown-linux-gnu`（无 SSE2 ABI，
+//! qemu32 无 SSE2；i686 会 Invalid opcode）并加 `relocation-model=static`（预置 core 为 PIC，Zephyr 的 x86 链接器脚本会丢弃
 //! `.got.plt`）。预编译 alloc 里烙着 `/rustc/<hash>` 绝对路径，build-std + sysroot
 //! remap 是 §5.3 的必要条件。真跑 `west build` 由 verify 腿 `zephyr-west-build`
 //! 在 west + Zephyr SDK 在场时执行，缺席按环境槽 SKIP-with-print。
@@ -68,12 +68,14 @@ const TEMPLATE_MANIFEST: &str = "poly-template.json";
 const BOARD_CONF_CONTENT: &str = include_str!("zephyr_template/boards/qemu_cortex_m3.conf");
 
 /// 架构键 → Rust triple（`x86` / `arm` 也是模块 CMake 的分支键）。
-const ARCHES: [(&str, &str, bool, bool); 2] = [
-    // arch, triple, nightly, static-reloc。
+const ARCHES: [(&str, &str, bool, bool, &[&str]); 2] = [
+    // arch, triple, nightly, static-reloc, target-feature 覆盖。
     // ARM 也走 build-std：预编译 alloc 里烙着 `/rustc/<hash>/library/...` 绝对路径，
     // 只有从 rust-src 重编 + remap sysroot 才能满足 §5.3；x86 另需 static reloc。
-    ("x86", "i686-unknown-linux-gnu", true, true),
-    ("arm", "thumbv7m-none-eabi", true, false),
+    // qemu_x86 以 `-cpu qemu32` 运行（无 SSE2）；i686 ABI 强制 SSE2（-sse2 被 rustc
+    // 拒绝，运行即 Invalid opcode——本机容器 QEMU 实证），改用 i586（无 SSE2 ABI）。
+    ("x86", "i586-unknown-linux-gnu", true, true, &[]),
+    ("arm", "thumbv7m-none-eabi", true, false, &[]),
 ];
 
 /// Zephyr west 模板打包器。
@@ -117,8 +119,16 @@ impl Packager for ZephyrWest {
         for script in &plan.scripts {
             fsutil::write_text(&root.join(&script.path), &script.contents)?;
         }
-        for (arch, triple, nightly, static_reloc) in ARCHES {
-            let lib = engine_lib(inputs, embedded, arch, triple, nightly, static_reloc)?;
+        for (arch, triple, nightly, static_reloc, target_features) in ARCHES {
+            let lib = engine_lib(
+                inputs,
+                embedded,
+                arch,
+                triple,
+                nightly,
+                static_reloc,
+                target_features,
+            )?;
             fsutil::copy_file(
                 &lib,
                 &root
@@ -316,6 +326,7 @@ fn engine_lib(
     triple: &str,
     nightly: bool,
     static_reloc: bool,
+    target_features: &[&str],
 ) -> Result<PathBuf, BundleError> {
     if let Some(lib) = embedded::prebuilt_lib(embedded, arch) {
         return Ok(lib.to_path_buf());
@@ -330,6 +341,7 @@ fn engine_lib(
         wrapper_rs: &wrapper_rs(),
         nightly,
         static_reloc,
+        target_features,
     })
 }
 

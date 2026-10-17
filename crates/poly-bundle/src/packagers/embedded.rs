@@ -250,6 +250,9 @@ pub struct EngineBuild<'a> {
     pub nightly: bool,
     /// 附加 `-C relocation-model=static`（i686 预置 core 为 PIC；Zephyr 丢弃 `.got.plt`）。
     pub static_reloc: bool,
+    /// 目标特性覆盖（如 `-sse2`：Zephyr qemu_x86 的 `-cpu qemu32` 无 SSE2，
+    /// 而 i686 目标默认开 SSE2，运行即 Invalid opcode——本机容器实证）。
+    pub target_features: &'a [&'a str],
 }
 
 /// 构建前工具链预检：nightly build-std 缺 `rust-src`、稳定链缺目标 std 时返回
@@ -316,7 +319,9 @@ crate-type = ["staticlib"]
 poly-core = {{ path = {core}, default-features = false }}
 # x86（i686 / VxWorks）不能让 blake3 走 C/汇编实现：cc -m32 需要宿主 32 位 libc 头，
 # CI 容器常见缺席；`pure` 经特性统一作用到 poly-cache 的同一 blake3 条目，零新版本。
-blake3 = {{ version = "1", default-features = false, features = ["pure"] }}
+# `pure` 只关汇编；x86 运行时 SIMD 分派在无 SSE2 的 qemu32 上会 Invalid opcode
+# （本机容器 QEMU 实证），嵌入式一律关掉全部 x86 SIMD 路径，走可移植实现。
+blake3 = {{ version = "1", default-features = false, features = ["pure", "no_sse2", "no_sse41", "no_avx2", "no_avx512"] }}
 
 [profile.release]
 panic = "abort"
@@ -344,6 +349,13 @@ strip = "debuginfo"
     }
     for (from, to) in remaps(&core_crate, build.staging, Path::new(&sysroot)) {
         flags.push(format!("--remap-path-prefix={from}={to}"));
+    }
+    if !build.target_features.is_empty() {
+        flags.push("-C".to_string());
+        flags.push(format!(
+            "target-feature={}",
+            build.target_features.join(",")
+        ));
     }
     let mut cargo = Command::new("cargo", build_args(build.target, build.nightly));
     cargo = cargo
