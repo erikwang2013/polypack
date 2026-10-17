@@ -254,6 +254,7 @@ fn engine_lib(
     let core_crate = embedded.engine_crate.as_path();
     let staging = inputs.out_dir.join("engine").join("vxworks");
     embedded::build_staticlib(&EngineBuild {
+        packager: ID,
         core_crate,
         staging: &staging,
         target: triple,

@@ -236,6 +236,8 @@ pub fn prebuilt_lib<'a>(inputs: &'a EmbeddedInputs, arch: &str) -> Option<&'a Pa
 
 /// 引擎静态库构建参数。
 pub struct EngineBuild<'a> {
+    /// 打包器 id（预检失败时进 ToolMissing → 环境槽 SKIP）。
+    pub packager: &'static str,
     /// poly-core crate 源目录。
     pub core_crate: &'a Path,
     /// 暂存目录（wrapper crate 与 CARGO_TARGET_DIR 落点）。
@@ -250,11 +252,55 @@ pub struct EngineBuild<'a> {
     pub static_reloc: bool,
 }
 
+/// 构建前工具链预检：nightly build-std 缺 `rust-src`、稳定链缺目标 std 时返回
+/// [`BundleError::ToolMissing`]——构建阶段按环境槽 SKIP-with-print，绝不让
+/// `--target all` 因本机工具链缺口整体硬失败（CI 三宿主实证 2026-10-17）。
+fn require_toolchain(build: &EngineBuild<'_>) -> Result<(), BundleError> {
+    if build.nightly {
+        let command = Command::new(
+            "rustup",
+            [
+                "component",
+                "list",
+                "--installed",
+                "--toolchain",
+                "nightly",
+            ],
+        );
+        let installed = match exec::run(&command) {
+            Ok(output) => String::from_utf8_lossy(&output.stdout).into_owned(),
+            // 没有 nightly 工具链 / rustup 本身：按环境槽跳过，不伪装成构建失败。
+            Err(_) => String::new(),
+        };
+        if !installed.lines().any(|line| line.trim() == "rust-src") {
+            return Err(BundleError::ToolMissing {
+                packager: build.packager,
+                tool: "rust-src (nightly)".to_string(),
+                hint: "rustup toolchain install nightly && rustup component add rust-src \
+                       --toolchain nightly（nightly build-std 需要 rust-src）"
+                    .to_string(),
+            });
+        }
+    } else if let Ok(output) = exec::run(&Command::new("rustup", ["target", "list", "--installed"]))
+    {
+        let installed = String::from_utf8_lossy(&output.stdout);
+        if !installed.lines().any(|line| line.trim() == build.target) {
+            return Err(BundleError::ToolMissing {
+                packager: build.packager,
+                tool: format!("rust target {}", build.target),
+                hint: format!("rustup target add {}", build.target),
+            });
+        }
+    }
+    Ok(())
+}
+
 /// 构建应用侧 wrapper staticlib；返回 `.a` 路径。
 ///
 /// 只在 `prebuilt` 缺省时调用。路径重映射在这里统一注入——产物无绝对路径不是事后清洗，
 /// 而是编译期就映射掉（§5.3）。
 pub fn build_staticlib(build: &EngineBuild<'_>) -> Result<PathBuf, BundleError> {
+    require_toolchain(build)?;
     // cargo / rustc 会把路径依赖解析成规范路径；remap 必须用同一形态，否则
     // `poly-cli/../poly-core` 之类的写法只能映射到字面量，产物里仍留绝对路径。
     let core_crate =
