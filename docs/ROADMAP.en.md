@@ -126,9 +126,9 @@
 | `android-automotive` | `native` | `uniffi` | `apk` · `android-aapt2` | `android-keystore` | `apksigner-verify`, `bundletool-validate` | `oem-channel` | `false` | AAOS 清单（android.hardware.type.automotive）；车厂渠道，无统一公开 API——发布需 OEM 凭据引用（占位 Publisher，不伪造提交） |
 | `autosar` | `staticlib` | `cffi` | `arxml` · `autosar-adaptive` | none | `arxml-schema`, `c-abi-symbols` | `self-hosted` | `false` | 无 UI、自部署；AUTOSAR Adaptive 清单（ARXML）由 poly_engine_* C ABI 单一来源派生（服务 / 端口与导出符号一一对应）；no_std 可选（引擎层 --no-default-features，应用提供 global_allocator / panic_handler） |
 | `freertos` | `staticlib` | `cffi` | `board` · `freertos-qemu` | none | `c-abi-symbols`, `freertos-qemu-smoke` | `self-hosted` | `false` | 无 UI、cffi、no_std；FreeRTOS 示例板包（mps2-an385 / Cortex-M3，静态库 + 启动 / 中断 / UART / FreeRTOSConfig / Makefile 工程模板）；内核 V11.1.0 按 tag + sha256 现拉不入库；`make smoke` 在 QEMU 中调用 poly_engine_* 并以 semihosting 退出码 0 结束；arm-none-eabi-gcc / qemu-system-arm / 网络缺席时按环境槽 SKIP-with-print |
-| `qnx` | `staticlib` | `cffi` | `image` · `qnx-sdp` | none | `qnx-image-structure`, `c-abi-symbols` | `self-hosted` | `false` | headless 核心（可选 HMI 归平台侧）；静态库 + 部署镜像（附 mkifs buildfile，可引导 .ifs / QEMU 归 T-M6-09）；交叉编译需 QNX SDP（$QNX_HOST / $QNX_TARGET）与 Rust QNX target，无 SDP 时按环境槽 SKIP-with-print，不伪造二进制；自部署 |
+| `qnx` | `staticlib` | `cffi` | `image` · `qnx-sdp` | none | `qnx-image-structure`, `c-abi-symbols`, `qnx-qemu-smoke` | `self-hosted` | `false` | headless 核心（可选 HMI 归平台侧）；静态库 + 部署镜像（附 mkifs buildfile，可引导 .ifs / QEMU 归 T-M6-09）；交叉编译需 QNX SDP（$QNX_HOST / $QNX_TARGET）与 Rust QNX target，无 SDP 时按环境槽 SKIP-with-print，不伪造二进制；自部署 |
 | `vxworks` | `staticlib` | `cffi` | `library` · `vxworks-wr` | none | `c-abi-symbols`, `vxworks-ld-check` | `self-hosted` | `false` | 无 UI、cffi、no_std；format = `library`（默认，静态库）或 `image`（部署 kit zip，配置 [targets.vxworks].format 覆盖）；wr-cc / wr-ld 缺席时产物用 nm 符号闭包 + 结构断言校验并 SKIP-with-print，绝不伪造可加载镜像 |
-| `zephyr` | `staticlib` | `cffi` | `west` · `zephyr-west` | none | `c-abi-symbols`, `zephyr-west-build` | `self-hosted` | `false` | 无 UI、cffi、no_std；west 工程模板（zephyr module + 引擎静态库模块链入），qemu_x86 / qemu_cortex_m3 两板 `west build` 验收；最小 CONFIG_* 集随模板版本化；west / Zephyr SDK 缺席时按环境槽 SKIP-with-print |
+| `zephyr` | `staticlib` | `cffi` | `west` · `zephyr-west` | none | `c-abi-symbols`, `zephyr-west-build`, `zephyr-qemu-smoke` | `self-hosted` | `false` | 无 UI、cffi、no_std；west 工程模板（zephyr module + 引擎静态库模块链入），qemu_x86 / qemu_cortex_m3 两板 `west build` 验收；最小 CONFIG_* 集随模板版本化；west / Zephyr SDK 缺席时按环境槽 SKIP-with-print |
 <!-- END GENERATED: l6-embedded-status -->
 
 **Planned L6 platforms not yet in TargetSpec** (companion templates / JS runtimes that do not produce a core TargetSpec):
@@ -262,7 +262,7 @@ plan → probe → compile → bundle(ui) → package → sign → verify → pu
 - **plan**: parse polypack.toml into a JobSpec; unknown targets, dependency cycles, and missing credential references fail here (fail fast, before any compilation);
 - **probe**: toolchain probing and installation; Apple targets decide "local or remote farm" at this point;
 - **compile / bundle(ui)**: two parallel branches (Rust cross-compile ↔ React bundling) meeting at package;
-- **package → sign → verify**: independently re-runnable (`poly retry --from sign`); the signing stage re-fetches credentials;
+- **package → sign → verify**: independently re-runnable (`poly retry --from sign|verify`); the signing stage re-fetches credentials;
 - **publish**: only with `--publish`; after submission, review status is polled and receipts archived.
 
 ### 5.2 Cache keys and invalidation
@@ -346,7 +346,7 @@ CI host × target-tier matrix:
 | ubuntu-latest | Web/Linux full | toolchain mocks full | web family full | cross-compile full | interface mocks |
 | macos-14 | macOS/iOS full | mocks | tvOS full | cross-compile | interface mocks |
 | windows-2022 | Windows full | mocks | — | cross-compile | interface mocks |
-| nightly extension | — | real devtools CLIs | emulator smoke | QEMU smoke (BSD native build + install) | — |
+| nightly extension | — | real devtools CLIs | emulator smoke | QEMU smoke (BSD native build + install; QNX / Zephyr / FreeRTOS) | — |
 
 > The BSD native-build leg runs in [`bsd-ci`](../.github/workflows/bsd-ci.yml) (nightly 20:07 UTC +
 > manual dispatch): inside FreeBSD 14.5 / OpenBSD 7.9 QEMU VMs it runs a native `poly build` plus an
@@ -355,9 +355,16 @@ CI host × target-tier matrix:
 > `poly release --target freebsd` and asserts second-run idempotency. The OpenBSD leg is
 > best-effort: hosted runners have no KVM, so when the image cannot boot under TCG it records
 > SKIP-with-print (missing logs are archived as a warning) until the image or boot path is fixed.
-> Build logs, the signed repo, receipts, and packages are retained with the job for 14 days. Eight CI workflows total: `rust-ci` /
+> Build logs, the signed repo, receipts, and packages are retained with the job for 14 days.
+>
+> `embedded-ci` (nightly 19:27 UTC + manual dispatch) derives its matrix from
+> `poly targets --tier 6 --headless --json` (a new tier-6 target joins automatically), then runs
+> QNX / AUTOSAR / VxWorks / Zephyr / FreeRTOS cross-compiles and QEMU smokes on ubuntu-latest;
+> toolchains are cached under pinned versions, missing SDP / wr-cc and friends record
+> SKIP-with-print with a REAL/SKIP job summary; logs, serial output, and result.json are retained
+> for 14 days. Nine CI workflows total: `rust-ci` /
 > `docs-check` / `secret-scan` / `mobile-contract` / `miniprogram-contract` / `tv-smoke` / `bridge` /
-> `bsd-ci`.
+> `bsd-ci` / `embedded-ci`.
 
 ## 9. Milestones and task breakdown
 
