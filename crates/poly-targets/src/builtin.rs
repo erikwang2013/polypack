@@ -14,6 +14,10 @@
 //! signify / portcheck；Linux 宿主可发起的交叉面，真构建归 OpenBSD VM / T-M5-09）与
 //! ChromeOS 双轨（T-M5-10：Crostini deb + PWA 两目标，分别复用 Linux deb / Web 链）。
 
+use alloc::string::ToString;
+use alloc::vec;
+use alloc::vec::Vec;
+
 use crate::spec::{Bridge, Host, PackageSpec, Runtime, TargetSpec};
 
 /// 全部内建目标（L1 七 + L2 小程序族四 + L3 电视族八 + L5 发行版三 / OpenBSD / ChromeOS 双轨）。

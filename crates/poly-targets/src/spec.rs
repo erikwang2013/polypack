@@ -1,9 +1,13 @@
 //! `TargetSpec`：一个目标平台的完整能力声明（ROADMAP §4.3）。
 
+use alloc::string::{String, ToString};
+use alloc::vec::Vec;
+
 use serde::{Deserialize, Serialize};
 
 /// 可发起构建的宿主平台。
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "std", derive(schemars::JsonSchema))]
 #[serde(rename_all = "kebab-case")]
 pub enum Host {
     /// Windows。
@@ -17,7 +21,8 @@ pub enum Host {
 }
 
 /// 核心运行方式。
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "std", derive(schemars::JsonSchema))]
 #[serde(rename_all = "lowercase")]
 pub enum Runtime {
     /// 编译为原生库（.so / .a / .dylib）。
@@ -31,7 +36,8 @@ pub enum Runtime {
 }
 
 /// Rust 核心与宿主语言之间的绑定桥。
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "std", derive(schemars::JsonSchema))]
 #[serde(rename_all = "kebab-case")]
 pub enum Bridge {
     /// uniffi（Kotlin / Swift）。
@@ -49,7 +55,8 @@ pub enum Bridge {
 }
 
 /// 打包器与产物格式。
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "std", derive(schemars::JsonSchema))]
 pub struct PackageSpec {
     /// 产物格式（如 `apk` / `ipa` / `hap` / `wgt`）。
     pub format: String,
@@ -58,7 +65,8 @@ pub struct PackageSpec {
 }
 
 /// 一个目标平台的完整声明。
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "std", derive(schemars::JsonSchema))]
 pub struct TargetSpec {
     /// 目标标识（= `[targets.*]` 表名）。
     pub id: String,
