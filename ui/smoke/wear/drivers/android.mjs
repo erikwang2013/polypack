@@ -1,6 +1,7 @@
-// T-M7-03 Wear 表单 Android 腿：adb 设备门 → 安装 → 逐 case/step 注入 + uiautomator 观测。
-// 任一环境槽缺席（adb / Wear 设备 / APK）→ status=skip + skipNote，打印后通过，绝不伪造真跑。
-// 失败定位到 case/step：记录期望锚点、实际锚点与现场 dump（截图另存）。
+// T-M7-03/04 Wear 表单 Android 腿：adb 设备门 → 安装 → 逐 case/step 注入 + uiautomator 观测
+// → 卸载（finally，失败也执行）。任一环境槽缺席（adb / Wear 设备 / APK）→ status=skip +
+// skipNote，打印后通过，绝不伪造真跑。失败定位到 case/step：记录期望锚点、实际锚点与现场
+// dump（截图另存）；logcat 与逐 case 截图归档到 logs（result.json 记录时间戳与构建摘要）。
 
 import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, statSync, writeFileSync } from "node:fs";
@@ -143,6 +144,16 @@ function screenshot(adb, serial, path) {
   writeFileSync(path, out.stdout);
 }
 
+/** logcat 全量归档（-d 快照；清缓冲失败不阻断，内容自证）。 */
+function captureLogcat(adb, serial, path) {
+  const out = spawnSync(adb, ["-s", serial, "logcat", "-d"], {
+    encoding: "utf8",
+    timeout: 60_000,
+    maxBuffer: 64 * 1024 * 1024,
+  });
+  writeFileSync(path, out.stdout ?? "");
+}
+
 /**
  * Android 腿。返回 record：{ target, leg, status, skipNote?, device, apk, package, cases, failure? }。
  * 环境门顺序：adb → 在线 Wear 设备 → 预构建 APK；任一缺席 SKIP-with-print。
@@ -157,6 +168,7 @@ export function runAndroidLeg({ logs, serial, apk, packageName = DEFAULT_PACKAGE
     package: packageName,
     cases: [],
     skipNote: null,
+    lifecycle: { install: { ok: null }, launch: { ok: null }, uninstall: null, logcat: null },
   };
   const adb = findAdb();
   if (adb === null) {
@@ -187,6 +199,7 @@ export function runAndroidLeg({ logs, serial, apk, packageName = DEFAULT_PACKAGE
 
   const install = adbRun(adb, device, ["install", "-r", apk], 180_000);
   if (install.status !== 0) {
+    record.lifecycle.install.ok = false;
     record.status = "fail";
     record.failure = {
       case: "install",
@@ -197,61 +210,87 @@ export function runAndroidLeg({ logs, serial, apk, packageName = DEFAULT_PACKAGE
     };
     return record;
   }
+  record.lifecycle.install.ok = true;
+  record.lifecycle.logcat = join(logs, "logcat.txt");
+  adbRun(adb, device, ["logcat", "-c"]);
 
-  const sizeOut = adbRun(adb, device, ["shell", "wm", "size"]).stdout;
-  const geometry = parseWmSize(sizeOut) ?? { width: 320, height: 320 };
-  record.status = "pass";
-  for (const wearCase of WEAR_FORM_CASES) {
-    const caseRecord = {
-      id: wearCase.id,
-      purpose: wearCase.purpose,
-      status: "pass",
-      steps: [],
-    };
-    for (const formStep of wearCase.steps) {
-      const stepRecord = {
-        id: formStep.id,
-        action: formStep.action.type,
-        expect: [...formStep.expect],
+  try {
+    const sizeOut = adbRun(adb, device, ["shell", "wm", "size"]).stdout;
+    const geometry = parseWmSize(sizeOut) ?? { width: 320, height: 320 };
+    record.status = "pass";
+    record.lifecycle.launch.ok = true;
+    for (const wearCase of WEAR_FORM_CASES) {
+      const caseRecord = {
+        id: wearCase.id,
+        purpose: wearCase.purpose,
         status: "pass",
-        observed: [],
-        dump: join(logs, `${wearCase.id}-${formStep.id}.xml`),
+        steps: [],
       };
-      let actionError = null;
-      if (formStep.action.type === "launch") {
-        if (!launch(adb, device, packageName)) actionError = "monkey 冷启动未注入事件";
-      } else {
-        for (const args of buildActionCommands(formStep.action, geometry)) {
-          const out = adbRun(adb, device, args);
-          if (out.status !== 0) actionError = (out.stderr ?? "").trim() || `adb exit ${out.status}`;
-        }
-      }
-      const seen = observe(adb, device, actionError === null ? formStep.expect : []);
-      writeFileSync(stepRecord.dump, seen.xml);
-      stepRecord.observed = seen.texts;
-      if (actionError !== null || seen.missing.length > 0) {
-        stepRecord.status = "fail";
-        caseRecord.status = "fail";
-        record.status = "fail";
-        caseRecord.failure = {
-          case: wearCase.id,
-          step: formStep.id,
+      for (const formStep of wearCase.steps) {
+        const stepRecord = {
+          id: formStep.id,
+          action: formStep.action.type,
           expect: [...formStep.expect],
-          observed:
-            actionError === null
-              ? seen.texts.filter((text) => formStep.expect.some((anchor) => text.includes(anchor)))
-              : [actionError],
-          dump: stepRecord.dump,
+          status: "pass",
+          observed: [],
+          dump: join(logs, `${wearCase.id}-${formStep.id}.xml`),
         };
-        const shot = join(logs, `${wearCase.id}-${formStep.id}.png`);
-        screenshot(adb, device, shot);
-        caseRecord.failure.screenshot = shot;
-        record.failure ??= caseRecord.failure;
+        let actionError = null;
+        if (formStep.action.type === "launch") {
+          if (!launch(adb, device, packageName)) actionError = "monkey 冷启动未注入事件";
+        } else {
+          for (const args of buildActionCommands(formStep.action, geometry)) {
+            const out = adbRun(adb, device, args);
+            if (out.status !== 0) actionError = (out.stderr ?? "").trim() || `adb exit ${out.status}`;
+          }
+        }
+        const seen = observe(adb, device, actionError === null ? formStep.expect : []);
+        writeFileSync(stepRecord.dump, seen.xml);
+        stepRecord.observed = seen.texts;
+        if (actionError !== null || seen.missing.length > 0) {
+          if (formStep.action.type === "launch") record.lifecycle.launch.ok = false;
+          stepRecord.status = "fail";
+          caseRecord.status = "fail";
+          record.status = "fail";
+          caseRecord.failure = {
+            case: wearCase.id,
+            step: formStep.id,
+            expect: [...formStep.expect],
+            observed:
+              actionError === null
+                ? seen.texts.filter((text) => formStep.expect.some((anchor) => text.includes(anchor)))
+                : [actionError],
+            dump: stepRecord.dump,
+          };
+          const shot = join(logs, `${wearCase.id}-${formStep.id}.png`);
+          screenshot(adb, device, shot);
+          caseRecord.failure.screenshot = shot;
+          record.failure ??= caseRecord.failure;
+        }
+        caseRecord.steps.push(stepRecord);
+        if (stepRecord.status === "fail") break;
       }
-      caseRecord.steps.push(stepRecord);
-      if (stepRecord.status === "fail") break;
+      // 逐 case 终态截图（通过与否都留证；失败步另有独立截图）。
+      caseRecord.screenshot = join(logs, `${wearCase.id}.png`);
+      screenshot(adb, device, caseRecord.screenshot);
+      record.cases.push(caseRecord);
     }
-    record.cases.push(caseRecord);
+  } finally {
+    // 生命周期收尾：logcat 快照 + 卸载（表单失败 / 异常也执行，设备不残留被测包）。
+    captureLogcat(adb, device, record.lifecycle.logcat);
+    const un = adbRun(adb, device, ["uninstall", packageName], 120_000);
+    const unNote = (un.stderr ?? "").trim() || `exit ${un.status}`;
+    record.lifecycle.uninstall = { ok: un.status === 0, note: un.status === 0 ? null : unNote };
+    if (un.status !== 0 && record.status === "pass") {
+      record.status = "fail";
+      record.failure = {
+        case: "uninstall",
+        step: "adb-uninstall",
+        expect: [`uninstall ${packageName} exit 0`],
+        observed: [unNote],
+        dump: null,
+      };
+    }
   }
   return record;
 }

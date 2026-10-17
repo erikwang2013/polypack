@@ -171,13 +171,11 @@ fn project_root(inputs: &BundleInputs) -> Result<PathBuf, BundleError> {
     } else if is_project(host) {
         host.to_path_buf()
     } else {
-        return Err(BundleError::InvalidInput {
+        // 工程本身缺席 = 输入缺失（环境槽 SKIP-with-print），不是非法输入：
+        // `poly build --target all` 在用户未提供该平台工程时不应硬失败（CI 实证）。
+        return Err(BundleError::MissingInput {
             packager: ID,
             field: "fitbit.project",
-            value: host.display().to_string(),
-            reason: "缺 Fitbit SDK 工程（package.json 的 config.fitbit + app/index.js）；\
-                     放 <工程根>/fitbit 或直接放工程根"
-                .to_string(),
         });
     };
     Ok(root)
