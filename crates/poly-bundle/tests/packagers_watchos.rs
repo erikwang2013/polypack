@@ -127,8 +127,11 @@ fn plan_assembles_archive_to_payload_chain() {
     );
 
     let ditto = &plan.commands[1];
+    // Windows 的 Path display 用反斜杠；断言按逻辑路径（/）归一后比较。
     assert!(
-        ditto.args[0].ends_with("Products/Applications/PolyPackWatch.app"),
+        ditto.args[0]
+            .replace('\\', "/")
+            .ends_with("Products/Applications/PolyPackWatch.app"),
         "来源应为归档 app：{}",
         ditto.args[0]
     );
