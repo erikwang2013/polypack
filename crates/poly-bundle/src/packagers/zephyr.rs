@@ -24,11 +24,17 @@ use crate::error::{BundleError, io_err};
 use crate::fsutil;
 use crate::inputs::BundleInputs;
 use crate::packager::{Artifact, ArtifactKind, BundlePlan, Packager};
-use crate::packagers::embedded::{self, EngineBuild, RETENTION_ANCHORS, TEMPLATE_VERSION};
+use crate::packagers::embedded::{self, EngineBuild, RETENTION_ANCHORS};
 
 /// 目标 id 与产物格式（与 `TargetSpec.package.{format,builder}` 一致）。
 pub const ID: &str = "zephyr";
 const FORMAT: &str = "west";
+
+/// Zephyr 应用模板版本（`prj.conf` / manifest 与模板同版）。
+///
+/// v2：自检输出具名步骤标记并按板级约定退出（T-M6-10）；v1 无标记、退出码不可判定。
+/// 与 VxWorks / FreeRTOS 的共享 `embedded::TEMPLATE_VERSION` 独立演进。
+pub const TEMPLATE_VERSION: &str = "2";
 
 /// 模板覆盖的两块 QEMU 板（验收面：两块均 `west build` 成功）。
 pub const BOARDS: [&str; 2] = ["qemu_x86", "qemu_cortex_m3"];
@@ -50,10 +56,14 @@ pub const CONFIGS: [(&str, &str); 5] = [
 const APP_CMAKE: &str = "CMakeLists.txt";
 const APP_MAIN: &str = "src/main.c";
 const APP_CONF: &str = "prj.conf";
+const BOARD_CONF: &str = "boards/qemu_cortex_m3.conf";
 const MODULE_YML: &str = "modules/poly_engine/zephyr/module.yml";
 const MODULE_CMAKE: &str = "modules/poly_engine/CMakeLists.txt";
 const MODULE_HEADER: &str = "modules/poly_engine/include/polypack_engine.h";
 const TEMPLATE_MANIFEST: &str = "poly-template.json";
+
+/// 板级覆盖：只有 ARM 板有 semihosting；x86 板走 isa-debug-exit（板级 board.cmake 已固定）。
+const BOARD_CONF_CONTENT: &str = include_str!("zephyr_template/boards/qemu_cortex_m3.conf");
 
 /// 架构键 → Rust triple（`x86` / `arm` 也是模块 CMake 的分支键）。
 const ARCHES: [(&str, &str, bool, bool); 2] = [
@@ -85,6 +95,7 @@ impl Packager for ZephyrWest {
             .with_script(APP_CMAKE, include_str!("zephyr_template/CMakeLists.txt"))
             .with_script(APP_MAIN, include_str!("zephyr_template/main.c"))
             .with_script(APP_CONF, prj_conf())
+            .with_script(BOARD_CONF, BOARD_CONF_CONTENT)
             .with_script(MODULE_YML, include_str!("zephyr_template/module.yml"))
             .with_script(
                 MODULE_CMAKE,
@@ -155,6 +166,7 @@ pub fn check_zephyr_structure(root: &Path) -> Result<ZephyrStructure, BundleErro
         ("CMakeLists.txt", APP_CMAKE),
         ("应用入口", APP_MAIN),
         ("prj.conf", APP_CONF),
+        ("qemu_cortex_m3 板级覆盖", BOARD_CONF),
         ("module.yml", MODULE_YML),
         ("module CMakeLists", MODULE_CMAKE),
         ("C 头文件", MODULE_HEADER),
@@ -172,6 +184,18 @@ pub fn check_zephyr_structure(root: &Path) -> Result<ZephyrStructure, BundleErro
         if !path.is_file() {
             return Err(bad(root, format!("缺{label}（{relative}）")));
         }
+    }
+
+    let board_conf =
+        std::fs::read_to_string(root.join(BOARD_CONF)).map_err(io_err(&root.join(BOARD_CONF)))?;
+    if board_conf != BOARD_CONF_CONTENT {
+        return Err(bad(
+            root,
+            format!(
+                "{BOARD_CONF} 内容与模板 v{TEMPLATE_VERSION} 不一致：{board_conf:?} ≠ \
+                 {BOARD_CONF_CONTENT:?}"
+            ),
+        ));
     }
 
     let conf =
@@ -384,10 +408,10 @@ mod tests {
 
     #[test]
     fn minimal_config_set_is_versioned() {
-        assert_eq!(TEMPLATE_VERSION, "1");
+        assert_eq!(TEMPLATE_VERSION, "2");
         assert_eq!(CONFIGS.len(), 5);
         let conf = prj_conf();
-        assert!(conf.contains("template v1"));
+        assert!(conf.contains("template v2"));
         for (key, value) in CONFIGS {
             assert!(conf.contains(&format!("{key}={value}")));
         }
@@ -400,8 +424,29 @@ mod tests {
     #[test]
     fn template_manifest_records_config() {
         let manifest: serde_json::Value = serde_json::from_str(&manifest()).expect("json");
-        assert_eq!(manifest["template_version"], "1");
+        assert_eq!(manifest["template_version"], "2");
         assert_eq!(manifest["boards"], serde_json::json!(BOARDS));
         assert_eq!(manifest["config"].as_object().map(|map| map.len()), Some(5));
+    }
+
+    #[test]
+    fn template_emits_named_steps_and_board_exit_contract() {
+        let source = include_str!("zephyr_template/main.c");
+        for step in ["version", "validate-target", "cache-key"] {
+            assert!(
+                source.contains(&format!("step(\"{step}\"")),
+                "模板须打印具名步骤 {step}"
+            );
+        }
+        assert!(source.contains("SMOKE PASS"));
+        assert!(source.contains("SMOKE FAIL"));
+        // ARM 板 semihosting；x86 板 isa-debug-exit（无覆盖即走此分支）。
+        assert!(source.contains("CONFIG_SEMIHOST"));
+        assert!(source.contains("0x20026"));
+        assert!(source.contains("outl"));
+        assert_eq!(
+            BOARD_CONF_CONTENT, "CONFIG_SEMIHOST=y\n",
+            "qemu_cortex_m3 覆盖须启用 semihosting"
+        );
     }
 }

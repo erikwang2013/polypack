@@ -59,6 +59,10 @@ pub struct Args {
     /// 目标 id（可重复；缺省 = 当前宿主可达的全部已声明目标）。
     #[arg(long = "target", value_name = "ID")]
     pub targets: Vec<String>,
+    /// 全部目标都按环境槽跳过时仍以 0 退出（CI 用；跳过原因照常逐条打印，
+    /// job summary 据告警如实列出；默认行为不变——全跳过是假绿，报 E_VERIFY_0002）。
+    #[arg(long)]
+    pub allow_skipped: bool,
 }
 
 /// 执行 `poly verify`；返回进程退出码。
@@ -87,6 +91,17 @@ pub fn run(args: &Args, json: bool) -> Result<i32, Diagnostic> {
         // 声明校验器通路（`poly build` 的 verify 阶段同源实现）
         let verified = verify_targets(&project, &job.targets, host, events.as_mut())?;
         if verified == 0 {
+            if args.allow_skipped {
+                warning(
+                    events.as_mut(),
+                    &format!(
+                        "{} 个入选目标都按环境槽 SKIP-with-print（--allow-skipped：不硬红，\
+                         跳过原因见上；CI 须在 job summary 如实列出 SKIP）",
+                        job.targets.len()
+                    ),
+                );
+                return Ok(0);
+            }
             return Err(Diagnostic::error(
                 codes::E_VERIFY_0002,
                 format!(
@@ -223,6 +238,12 @@ enum Verifier {
     /// FreeRTOS mps2-an385 板级包结构 + 在场时 QEMU 冒烟（T-M6-07；工具链 / 网络缺席
     /// SKIP-with-print）。
     FreeRtosQemuSmoke,
+    /// QNX 镜像 QEMU 冒烟（T-M6-09）：SDP / mkifs / QEMU 齐备时编译自检程序、出 `.ifs`
+    /// 并启动；缺席 SKIP-with-print。判定与日志归档与 Zephyr 腿共用 `smoke` 模块。
+    QnxQemuSmoke,
+    /// Zephyr `west build -t run` 冒烟（T-M6-10）：两板退出码断言 + 具名步骤；
+    /// west / ZEPHYR_BASE / SDK 缺席 SKIP-with-print。
+    ZephyrQemuSmoke,
 }
 
 /// 校验器 id → 已接入实现（`None` = 未接入，归属查 [`verifier_owner`]）。
@@ -252,6 +273,8 @@ fn verifier_for(id: &str) -> Option<Verifier> {
         "vxworks-ld-check" => Some(Verifier::VxWorksLd),
         "zephyr-west-build" => Some(Verifier::ZephyrWestBuild),
         "freertos-qemu-smoke" => Some(Verifier::FreeRtosQemuSmoke),
+        "qnx-qemu-smoke" => Some(Verifier::QnxQemuSmoke),
+        "zephyr-qemu-smoke" => Some(Verifier::ZephyrQemuSmoke),
         _ => None,
     }
 }
@@ -377,6 +400,8 @@ fn verify_target(
     let mut vxworks_ld_ids: Vec<String> = Vec::new();
     let mut zephyr_west_ids: Vec<String> = Vec::new();
     let mut freertos_qemu_ids: Vec<String> = Vec::new();
+    let mut qnx_qemu_ids: Vec<String> = Vec::new();
+    let mut zephyr_qemu_ids: Vec<String> = Vec::new();
     for id in &spec.verify {
         match verifier_for(id) {
             Some(Verifier::IosCodesign) => ios_ids.push(id.clone()),
@@ -403,6 +428,8 @@ fn verify_target(
             Some(Verifier::VxWorksLd) => vxworks_ld_ids.push(id.clone()),
             Some(Verifier::ZephyrWestBuild) => zephyr_west_ids.push(id.clone()),
             Some(Verifier::FreeRtosQemuSmoke) => freertos_qemu_ids.push(id.clone()),
+            Some(Verifier::QnxQemuSmoke) => qnx_qemu_ids.push(id.clone()),
+            Some(Verifier::ZephyrQemuSmoke) => zephyr_qemu_ids.push(id.clone()),
             None => unserved.push(match verifier_owner(id) {
                 Some(owner) => format!("{id}（{owner}）"),
                 // 注册表有 id 但没人认领：如实点名到具体 id，测试保证这里在 M2 的注册表上是死路
@@ -503,6 +530,13 @@ fn verify_target(
             &freertos_qemu_ids,
             events,
         )?;
+    }
+    if !qnx_qemu_ids.is_empty() {
+        checked |= crate::verify_smoke::verify_qnx_qemu(project, spec, &qnx_qemu_ids, events)?;
+    }
+    if !zephyr_qemu_ids.is_empty() {
+        checked |=
+            crate::verify_smoke::verify_zephyr_qemu(project, spec, &zephyr_qemu_ids, events)?;
     }
     Ok(checked)
 }
