@@ -1,0 +1,4 @@
+# 本包零 npm 依赖（纯 node:test）；忽略宿主侧安装残留
+node_modules/
+# lockfile 不入库：与 adapter-native / adapter-tv 同一口径
+package-lock.json
