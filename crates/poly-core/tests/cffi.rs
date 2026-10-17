@@ -65,7 +65,13 @@ fn collect_headers(dir: &Path, out: &mut Vec<PathBuf>) {
         };
         if file_type.is_dir() {
             collect_headers(&path, out);
-        } else if path.extension().is_some_and(|ext| ext == "h") {
+        } else if path.extension().is_some_and(|ext| ext == "h")
+            && std::fs::read_to_string(&path)
+                .is_ok_and(|text| text.contains("poly_engine_abi_version"))
+        {
+            // 只把「声明了引擎 ABI 入口」的头算作候选：RTOS 工程模板的
+            // FreeRTOSConfig.h 只声明应用侧 panic 辅助函数（poly_engine_rt_panic），
+            // 不是第二份 ABI 头。
             out.push(path);
         }
     }
