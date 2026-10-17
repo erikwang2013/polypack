@@ -55,7 +55,7 @@ jobs:
       - name: ui 适配层测试（node --test）
         shell: bash
         run: |
-          for dir in ui/adapters/native ui/adapters/taro ui/adapters/tv ui/adapters/roku; do
+          for dir in ui/adapters/native ui/adapters/taro ui/adapters/tv ui/adapters/roku ui/adapters/wear; do
             [ -d "$dir" ] || continue
             echo "== $dir =="
             (cd "$dir" && node --test)
