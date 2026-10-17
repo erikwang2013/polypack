@@ -126,9 +126,9 @@
 | `android-automotive` | `native` | `uniffi` | `apk` · `android-aapt2` | `android-keystore` | `apksigner-verify`, `bundletool-validate` | `oem-channel` | `false` | AAOS 清单（android.hardware.type.automotive）；车厂渠道，无统一公开 API——发布需 OEM 凭据引用（占位 Publisher，不伪造提交） |
 | `autosar` | `staticlib` | `cffi` | `arxml` · `autosar-adaptive` | — | `arxml-schema`, `c-abi-symbols` | `self-hosted` | `false` | 无 UI、自部署；AUTOSAR Adaptive 清单（ARXML）由 poly_engine_* C ABI 单一来源派生（服务 / 端口与导出符号一一对应）；no_std 可选（引擎层 --no-default-features，应用提供 global_allocator / panic_handler） |
 | `freertos` | `staticlib` | `cffi` | `board` · `freertos-qemu` | — | `c-abi-symbols`, `freertos-qemu-smoke` | `self-hosted` | `false` | 无 UI、cffi、no_std；FreeRTOS 示例板包（mps2-an385 / Cortex-M3，静态库 + 启动 / 中断 / UART / FreeRTOSConfig / Makefile 工程模板）；内核 V11.1.0 按 tag + sha256 现拉不入库；`make smoke` 在 QEMU 中调用 poly_engine_* 并以 semihosting 退出码 0 结束；arm-none-eabi-gcc / qemu-system-arm / 网络缺席时按环境槽 SKIP-with-print |
-| `qnx` | `staticlib` | `cffi` | `image` · `qnx-sdp` | — | `qnx-image-structure`, `c-abi-symbols` | `self-hosted` | `false` | headless 核心（可选 HMI 归平台侧）；静态库 + 部署镜像（附 mkifs buildfile，可引导 .ifs / QEMU 归 T-M6-09）；交叉编译需 QNX SDP（$QNX_HOST / $QNX_TARGET）与 Rust QNX target，无 SDP 时按环境槽 SKIP-with-print，不伪造二进制；自部署 |
+| `qnx` | `staticlib` | `cffi` | `image` · `qnx-sdp` | — | `qnx-image-structure`, `c-abi-symbols`, `qnx-qemu-smoke` | `self-hosted` | `false` | headless 核心（可选 HMI 归平台侧）；静态库 + 部署镜像（附 mkifs buildfile，可引导 .ifs / QEMU 归 T-M6-09）；交叉编译需 QNX SDP（$QNX_HOST / $QNX_TARGET）与 Rust QNX target，无 SDP 时按环境槽 SKIP-with-print，不伪造二进制；自部署 |
 | `vxworks` | `staticlib` | `cffi` | `library` · `vxworks-wr` | — | `c-abi-symbols`, `vxworks-ld-check` | `self-hosted` | `false` | 无 UI、cffi、no_std；format = `library`（默认，静态库）或 `image`（部署 kit zip，配置 [targets.vxworks].format 覆盖）；wr-cc / wr-ld 缺席时产物用 nm 符号闭包 + 结构断言校验并 SKIP-with-print，绝不伪造可加载镜像 |
-| `zephyr` | `staticlib` | `cffi` | `west` · `zephyr-west` | — | `c-abi-symbols`, `zephyr-west-build` | `self-hosted` | `false` | 无 UI、cffi、no_std；west 工程模板（zephyr module + 引擎静态库模块链入），qemu_x86 / qemu_cortex_m3 两板 `west build` 验收；最小 CONFIG_* 集随模板版本化；west / Zephyr SDK 缺席时按环境槽 SKIP-with-print |
+| `zephyr` | `staticlib` | `cffi` | `west` · `zephyr-west` | — | `c-abi-symbols`, `zephyr-west-build`, `zephyr-qemu-smoke` | `self-hosted` | `false` | 无 UI、cffi、no_std；west 工程模板（zephyr module + 引擎静态库模块链入），qemu_x86 / qemu_cortex_m3 两板 `west build` 验收；最小 CONFIG_* 集随模板版本化；west / Zephyr SDK 缺席时按环境槽 SKIP-with-print |
 <!-- END GENERATED: l6-embedded-status -->
 
 **规划中、尚未入 TargetSpec 的 L6 平台**（伴生模板 / JS 运行时，不产生核心 TargetSpec）：
@@ -262,7 +262,7 @@ plan → probe → compile → bundle(ui) → package → sign → verify → pu
 - **plan**：解析 polypack.toml → JobSpec；未知目标、循环依赖、缺凭据引用在此阶段失败（快速失败，不浪费编译）；
 - **probe**：工具链探测与安装；Apple 目标此时决定「本地 or 远程农场」；
 - **compile / bundle(ui)**：两条并行支线（Rust 交叉编译 ↔ React 打包），汇聚于 package；
-- **package → sign → verify**：可独立重跑（`poly retry --from sign`），签名阶段重新拉取凭据；
+- **package → sign → verify**：可独立重跑（`poly retry --from sign|verify`），签名阶段重新拉取凭据；
 - **publish**：仅 `--publish` 时执行；提审后轮询审核状态并归档回执。
 
 ### 5.2 缓存键与失效
@@ -346,7 +346,7 @@ CI 宿主 × 目标层矩阵：
 | ubuntu-latest | Web/Linux 全跑 | 工具链 mock 全跑 | web 系全跑 | 交叉编译全跑 | 接口 mock |
 | macos-14 | macOS/iOS 全跑 | mock | tvOS 全跑 | 交叉编译 | 接口 mock |
 | windows-2022 | Windows 全跑 | mock | — | 交叉编译 | 接口 mock |
-| 每晚扩展 | — | 真实开发者工具 CLI | 模拟器冒烟 | QEMU 冒烟（BSD 原生构建 + 安装） | — |
+| 每晚扩展 | — | 真实开发者工具 CLI | 模拟器冒烟 | QEMU 冒烟（BSD 原生构建 + 安装；QNX / Zephyr / FreeRTOS） | — |
 
 > BSD 原生构建腿由 [`bsd-ci`](../.github/workflows/bsd-ci.yml)（每夜 20:07 UTC + 手动）执行：
 > FreeBSD 14.5 / OpenBSD 7.9 QEMU VM 内 `poly build` 原生出包并做安装冒烟（FreeBSD 走
@@ -354,8 +354,15 @@ CI 宿主 × 目标层矩阵：
 > FreeBSD 腿同时真跑自托管 pkg 仓库签名（`poly release --target freebsd`）与二跑幂等断言。
 > OpenBSD 腿为尽力真跑：托管 runner 无 KVM，镜像在 TCG 下无法启动时按 SKIP-with-print 留痕
 > （日志缺失以 warn 归档），待镜像或启动方式修复后转真跑。构建日志、签名仓库、回执与包随
-> 作业归档 14 天。CI 工作流共八个：`rust-ci` / `docs-check` /
-> `secret-scan` / `mobile-contract` / `miniprogram-contract` / `tv-smoke` / `bridge` / `bsd-ci`。
+> 作业归档 14 天。
+>
+> `embedded-ci`（每夜 19:27 UTC + 手动）以 `poly targets --tier 6 --headless --json` 生成矩阵
+> （新增 tier-6 目标自动进矩阵），在 ubuntu-latest 上跑 QNX / AUTOSAR / VxWorks / Zephyr /
+> FreeRTOS 交叉编译与 QEMU 冒烟；工具链按钉扎版本缓存，缺 SDP / wr-cc 等按 SKIP-with-print
+> 并在 job summary 列 REAL/SKIP；日志、串口与 result.json 归档 14 天。
+> CI 工作流共九个：`rust-ci` / `docs-check` /
+> `secret-scan` / `mobile-contract` / `miniprogram-contract` / `tv-smoke` / `bridge` / `bsd-ci` /
+> `embedded-ci`。
 
 ## 9. 里程碑与任务分解
 
