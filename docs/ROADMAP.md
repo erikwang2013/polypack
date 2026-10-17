@@ -336,7 +336,14 @@ CI 宿主 × 目标层矩阵：
 | ubuntu-latest | Web/Linux 全跑 | 工具链 mock 全跑 | web 系全跑 | 交叉编译全跑 | 接口 mock |
 | macos-14 | macOS/iOS 全跑 | mock | tvOS 全跑 | 交叉编译 | 接口 mock |
 | windows-2022 | Windows 全跑 | mock | — | 交叉编译 | 接口 mock |
-| 每晚扩展 | — | 真实开发者工具 CLI | 模拟器冒烟 | QEMU 冒烟 | — |
+| 每晚扩展 | — | 真实开发者工具 CLI | 模拟器冒烟 | QEMU 冒烟（BSD 原生构建 + 安装） | — |
+
+> BSD 原生构建腿由 [`bsd-ci`](../.github/workflows/bsd-ci.yml)（每夜 20:07 UTC + 手动）执行：
+> FreeBSD 14.5 / OpenBSD 7.9 QEMU VM 内 `poly build` 原生出包并做安装冒烟（FreeBSD 走
+> `pkg install` + `pkg check -s`，OpenBSD 走 `make package` + `pkg_add` / `pkg_check`）；
+> FreeBSD 腿同时真跑自托管 pkg 仓库签名（`poly release --target freebsd`）与二跑幂等断言。
+> 构建日志、签名仓库、回执与包随作业归档 14 天。CI 工作流共八个：`rust-ci` / `docs-check` /
+> `secret-scan` / `mobile-contract` / `miniprogram-contract` / `tv-smoke` / `bridge` / `bsd-ci`。
 
 ## 9. 里程碑与任务分解
 

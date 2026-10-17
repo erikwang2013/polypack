@@ -336,7 +336,16 @@ CI host × target-tier matrix:
 | ubuntu-latest | Web/Linux full | toolchain mocks full | web family full | cross-compile full | interface mocks |
 | macos-14 | macOS/iOS full | mocks | tvOS full | cross-compile | interface mocks |
 | windows-2022 | Windows full | mocks | — | cross-compile | interface mocks |
-| nightly extension | — | real devtools CLIs | emulator smoke | QEMU smoke | — |
+| nightly extension | — | real devtools CLIs | emulator smoke | QEMU smoke (BSD native build + install) | — |
+
+> The BSD native-build leg runs in [`bsd-ci`](../.github/workflows/bsd-ci.yml) (nightly 20:07 UTC +
+> manual dispatch): inside FreeBSD 14.5 / OpenBSD 7.9 QEMU VMs it runs a native `poly build` plus an
+> install smoke (`pkg install` + `pkg check -s` on FreeBSD; `make package` + `pkg_add` / `pkg_check`
+> on OpenBSD). The FreeBSD leg also exercises self-hosted pkg-repo signing via
+> `poly release --target freebsd` and asserts second-run idempotency. Build logs, the signed repo,
+> receipts, and packages are retained with the job for 14 days. Eight CI workflows total: `rust-ci` /
+> `docs-check` / `secret-scan` / `mobile-contract` / `miniprogram-contract` / `tv-smoke` / `bridge` /
+> `bsd-ci`.
 
 ## 9. Milestones and task breakdown
 

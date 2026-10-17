@@ -346,9 +346,7 @@ fn manifest_path(inputs: &BundleInputs) -> PathBuf {
 
 /// 载荷清单（legacy plist）：`<out_dir>/<name>-<version>.plist`（`pkg create -p` 输入）。
 fn plist_path(inputs: &BundleInputs) -> PathBuf {
-    inputs
-        .out_dir
-        .join(format!("{}.plist", distname(inputs)))
+    inputs.out_dir.join(format!("{}.plist", distname(inputs)))
 }
 
 /// 目标 .pkg：`<out_dir>/<name>-<version>.pkg`。
