@@ -191,7 +191,8 @@ pub trait Packager: Send + Sync {
 
 /// 内建打包器集合（M1：msi / nsis / dmg / deb / appimage / static-site；M2：aab / ipa
 /// （Apple 链 ios / tvos 共用一条实现，T-M4-07）；M3：小程序族 weapp / alipay / tt / rpk + hap；
-/// M4：TV 家族 wgt / ipk / web-app + TV 变体 android-tv / fire-tv（复用 aab 链））。
+/// M4：TV 家族 wgt / ipk / web-app + TV 变体 android-tv / fire-tv（复用 aab 链）；
+/// Roku 频道 zip（T-M4-15））。
 pub fn builtin() -> Vec<Box<dyn Packager>> {
     vec![
         Box::new(crate::packagers::windows::WixMsi),
@@ -213,6 +214,7 @@ pub fn builtin() -> Vec<Box<dyn Packager>> {
         Box::new(crate::packagers::webos::WebOsIpk),
         Box::new(crate::packagers::webtv::VidaaApp),
         Box::new(crate::packagers::webtv::SmartcastApp),
+        Box::new(crate::packagers::roku::Roku),
     ]
 }
 

@@ -245,6 +245,18 @@ pub struct BareProduct {
     pub host: Host,
 }
 
+/// Roku 打包输入（T-M4-15）：SceneGraph 子集渲染器适配器根（含 `channel/` 骨架与
+/// `scripts/emit.mjs` 发射入口）。字段缺省由打包器按工程根候选链解析。
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct RokuInputs {
+    /// 工程根（适配器候选链的基准）。
+    pub project_root: PathBuf,
+    /// 显式适配器根（覆盖候选链；测试与非常规布局用）。
+    pub adapter: Option<PathBuf>,
+    /// 显式频道骨架目录（缺省 `<adapter>/channel`）。
+    pub channel: Option<PathBuf>,
+}
+
 /// 一次打包的全部输入。
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BundleInputs {
@@ -271,6 +283,8 @@ pub struct BundleInputs {
     pub miniapp_bridge: Option<PathBuf>,
     /// HarmonyOS 打包输入（T-M3-03；`None` → 按产品元数据在其宿主根下落骨架工程）。
     pub harmony: Option<HarmonyInputs>,
+    /// Roku 打包输入（T-M4-15；`None` → 缺适配器，目标按环境性缺失跳过）。
+    pub roku: Option<RokuInputs>,
     /// 输出目录。
     pub out_dir: PathBuf,
 }
@@ -290,6 +304,7 @@ impl BundleInputs {
             miniapp_host: None,
             miniapp_bridge: None,
             harmony: None,
+            roku: None,
             out_dir: out_dir.into(),
         }
     }
