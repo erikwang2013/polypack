@@ -1,12 +1,20 @@
 //! 缓存层错误类型。
 
-use std::fmt;
+#[cfg(feature = "std")]
+use core::fmt;
+
+#[cfg(feature = "std")]
 use std::path::{Path, PathBuf};
+
+use alloc::string::String;
+#[cfg(feature = "std")]
+use alloc::string::ToString;
 
 /// 缓存操作错误。
 #[derive(Debug, thiserror::Error)]
 pub enum CacheError {
     /// 文件系统 IO 失败（带路径上下文）。
+    #[cfg(feature = "std")]
     #[error("缓存 IO 失败（{path}）: {source}")]
     Io {
         /// 出错路径。
@@ -30,6 +38,7 @@ pub enum CacheError {
 
 impl CacheError {
     /// IO 错误（统一补路径上下文）。
+    #[cfg(feature = "std")]
     pub(crate) fn io(path: impl AsRef<Path>, source: std::io::Error) -> Self {
         Self::Io {
             path: path.as_ref().to_path_buf(),
@@ -38,6 +47,7 @@ impl CacheError {
     }
 
     /// 损坏错误（带键与原因）。
+    #[cfg(feature = "std")]
     pub(crate) fn corrupt(key: impl fmt::Display, detail: impl fmt::Display) -> Self {
         Self::Corrupt {
             key: key.to_string(),
