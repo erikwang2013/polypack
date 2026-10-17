@@ -25,13 +25,15 @@ const SPEC_FILE = 'crates/poly-targets/src/builtin.rs';
 export const BEGIN = '<!-- BEGIN GENERATED: l6-embedded-status -->';
 export const END = '<!-- END GENERATED: l6-embedded-status -->';
 
-/** 本表覆盖的六个 L6 嵌入式 / 车机目标（防解析静默漏项；新增 tier-6 目标时同步扩展）。 */
+/** 本表覆盖的八个 L6 嵌入式 / 车机 / 穿戴目标（防解析静默漏项；新增 tier-6 目标时同步扩展）。 */
 const EXPECTED_IDS = [
   'android-automotive',
   'autosar',
   'freertos',
+  'garmin',
   'qnx',
   'vxworks',
+  'watchos',
   'zephyr',
 ];
 
@@ -253,7 +255,7 @@ export function parseTargetSpecs(source = fs.readFileSync(path.join(ROOT, SPEC_F
   return specs.sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
 }
 
-/** tier 6 目标（排序确定；并守卫任务约定的六个 id 均在册）。 */
+/** tier 6 目标（排序确定；并守卫任务约定 id 均在册）。 */
 export function embeddedTargets(specs = parseTargetSpecs()) {
   const tier6 = specs.filter((spec) => spec.tier === 6);
   const ids = tier6.map((spec) => spec.id);

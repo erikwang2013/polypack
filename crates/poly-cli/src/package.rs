@@ -295,6 +295,16 @@ pub(crate) fn assemble_inputs(
                 }
             }
         }
+        // watchOS 伴生包（T-M7-06）：模板工程（`poly init --target watchos`）即宿主工程，
+        // 手表端 runtime = none（核心经 iOS 伴生 App 代理），故**不**建核心 XCFramework；
+        // 宿主门控（xcodebuild → macOS / 远程农场 macOS worker）在打包器内如实报 ToolMissing。
+        "watch" => {
+            no_ui_warning(events, spec, &dist, &inputs);
+            inputs.ios = Some(IosInputs {
+                host_project: Some(project.root.clone()),
+                ..IosInputs::default()
+            });
+        }
         // 小程序族（T-M3-06；快应用 T-M3-12 起 format = `rpk`）：宿主工程根交打包器走候选链解析
         // （<root>/ui → <root> → 包内 host/），Taro 编译与代码包组装（快应用含 hap build）都在
         // 打包器内（编译腿缺席由 environment_slot 按环境性缺失跳过）；wasm 沙箱出口（T-M3-07）

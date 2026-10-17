@@ -20,6 +20,8 @@
 //! M7 增补 Garmin Connect IQ 目标（T-M7-09，tier 6，experimental）：构建期 Monkey C 子集
 //! 转译（复用 adapter-wear 紧凑 tokens / 安全区 / 共享焦点序），产物 `.iq`；本机无
 //! Connect IQ SDK 时编译器腿 SKIP-with-print，结构 / 子集断言真跑。
+//! M7 增补 watchOS 伴生模板（T-M7-05/06，tier 6，experimental）：SwiftUI 模板 +
+//! xcodebuild archive + codesign，核心不直接运行（runtime = none，经 iOS 伴生 App 代理）。
 
 use alloc::string::ToString;
 use alloc::vec;
@@ -28,7 +30,7 @@ use alloc::vec::Vec;
 use crate::spec::{Bridge, Host, PackageSpec, Runtime, TargetSpec};
 
 /// 全部内建目标（L1 七 + L2 小程序族四 + L3 电视族八 + L5 发行版三 / OpenBSD / ChromeOS 双轨
-/// + L6 车机 / 嵌入式六 + Garmin Connect IQ 实验目标）。
+/// + L6 车机 / 嵌入式 / 穿戴八，其中 Garmin / watchOS 为实验目标）。
 pub fn builtin() -> Vec<TargetSpec> {
     vec![
         TargetSpec {
@@ -822,6 +824,34 @@ pub fn builtin() -> Vec<TargetSpec> {
                 "实验：Monkey C 子集受限转译——仅 UI 子集 + 原生逻辑（Monkey C 重写，无 JS \
                  运行时）；工程结构自检可用，Connect IQ 编译与真机实证待补（T-M7-10 触发前置；\
                  能力边界见 ui/adapters/garmin/CAPABILITY-BOUNDARY-DRAFT.md）"
+                    .to_string(),
+            ),
+        },
+        // ---- L6 穿戴（T-M7-05/06，ROADMAP §3.7 规划行）：watchOS 伴生模板（※实验） ----
+        // 手表端不跑核心（runtime = none）：SwiftUI 模板只含核心 API 调用桩 + WatchConnectivity
+        // 说明，真实调用经 iOS 伴生 App 代理。打包 / 签名复用 M2 Apple 链（xcodebuild archive →
+        // codesign），产物是 `export/Payload/<产品>.app`；宿主 = macOS，Linux / Windows 发起走
+        // 远程农场 macOS worker（R3，T-M2-13 协议）。凭据只以 `apple-codesign` 引用出现。
+        TargetSpec {
+            id: "watchos".to_string(),
+            tier: 6,
+            hosts: vec![Host::Macos],
+            runtime: Runtime::None,
+            bridge: Bridge::None,
+            ui: vec!["swiftui".to_string()],
+            package: PackageSpec {
+                format: "watch".to_string(),
+                builder: "watchos-xcodebuild".to_string(),
+            },
+            signing: Some("apple-codesign".to_string()),
+            verify: vec!["codesign-verify".to_string()],
+            publish: vec!["app-store".to_string()],
+            experimental: true,
+            notes: Some(
+                "实验：SwiftUI 伴生模板（核心 API 调用桩 + WatchConnectivity 说明），核心不直接\
+                 运行（runtime = none）；模板经 `poly init --target watchos` 生成，macOS 宿主 \
+                 `xcodebuild` 构建；Linux / Windows 发起走远程农场 macOS worker（R3）；签名复用 \
+                 M2 Apple 链（codesign，凭据只以 apple-codesign 引用出现）"
                     .to_string(),
             ),
         },

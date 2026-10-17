@@ -6,7 +6,7 @@ use poly_targets::spec::id_is_valid;
 use poly_targets::{Host, Registry, SpecError, TargetRegistry, TargetRequest, TargetSpec};
 
 /// 内建目标（L1 七 + L2 小程序族四 + L3 电视族八 + L5 发行版三 / OpenBSD / FreeBSD /
-/// NetBSD / ChromeOS 双轨 + L6 六）+ 一个 L7 占位目标（用于覆盖厂商授权排除分支）。
+/// NetBSD / ChromeOS 双轨 + L6 七）+ 一个 L7 占位目标（用于覆盖厂商授权排除分支）。
 fn registry_with_l7() -> Registry {
     let mut specs = poly_targets::builtin::builtin();
     specs.push(TargetSpec::new_stub("vendor-console", 7, &[Host::Linux]));
@@ -75,14 +75,21 @@ fn all_on_linux_excludes_windows_only_and_l7_with_reasons() {
     let excluded: BTreeSet<&str> = resolved.excluded.iter().map(|e| e.id.as_str()).collect();
     assert_eq!(
         excluded,
-        BTreeSet::from(["ios", "macos", "tvos", "windows", "vendor-console"])
+        BTreeSet::from([
+            "ios",
+            "macos",
+            "tvos",
+            "watchos",
+            "windows",
+            "vendor-console",
+        ])
     );
 
     for target in &resolved.excluded {
         assert!(!target.reason.trim().is_empty(), "{} 缺排除原因", target.id);
         match target.id.as_str() {
             // 宿主不可达：原因须点明宿主
-            "ios" | "macos" | "tvos" | "windows" => {
+            "ios" | "macos" | "tvos" | "watchos" | "windows" => {
                 assert!(
                     target.reason.contains("宿主"),
                     "{}: {}",
@@ -163,7 +170,7 @@ fn allow_unreachable_keeps_all_targets() {
     let selected = selected_ids(&registry_with_l7(), &[Host::Linux], true);
     assert_eq!(
         selected.len(),
-        35, // L1 七 + L2 四 + L3 电视族八 + L5 八 + L6 七（含 garmin）+ L7 一
+        36, // L1 七 + L2 四 + L3 电视族八 + L5 八 + L6 八（含 garmin / watchos）+ L7 一
         "allow_unreachable 下 All 应全选: {selected:?}"
     );
 
@@ -172,7 +179,7 @@ fn allow_unreachable_keeps_all_targets() {
         selected_ids(&registry_with_l7(), &[Host::Linux], false).len(),
         30 // L1 四（Linux 可达）+ L2 四 + L3 电视族七（两 + web 系四 + roku）+ L5 八
            // + L6 七（AAOS + QNX + AUTOSAR + VxWorks + Zephyr + FreeRTOS + garmin）——
-           // tvos 为 macOS 专宿主；chromeos deb 与 chromeos-pwa 均 Linux 可达
+           // tvos / watchos 为 macOS 专宿主；chromeos deb 与 chromeos-pwa 均 Linux 可达
     );
 }
 

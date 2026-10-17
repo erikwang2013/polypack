@@ -7,8 +7,8 @@
 //! - **凭据引用非法**（`E_SIG_0002`）与**外部命令失败**（`E_SIG_0003` / IO `E_SIG_0004`）
 //!   → 硬失败——没签成却报绿是假绿。
 //!
-//! 目标覆盖（M2/M3）：**android**（apksigner 重签打包暂存目录里的未签名 APK）、**ios**
-//! （`codesign` 硬化运行时 + 安全时间戳签 `export/Payload/<产品>.app`）与 **harmonyos**
+//! 目标覆盖（M2/M3）：**android**（apksigner 重签打包暂存目录里的未签名 APK）、**ios** /
+//! **watchos**（`codesign` 硬化运行时 + 安全时间戳签 `export/Payload/<产品>.app`）与 **harmonyos**
 //! （hap-sign-tool `sign-app` + `verify-app` 签未签名 HAP，T-M3-04）。三腿都是 poly-sign 的
 //! 「计划 → 执行」两段式：计划先 fail-fast（缺工具 / 输入非法 / 引用不可用都在碰密钥之前报错），
 //! 凭据只以引用出现（值零入库；apksigner 口令经环境变量注入、hap-sign-tool 只能经 argv 且展示
@@ -105,6 +105,9 @@ fn sign_target(
     match spec.package.format.as_str() {
         "aab" | "apk" => sign_android(project, spec, &profile, ctx),
         "ipa" => sign_ios(project, spec, &profile, ctx),
+        // watchOS（T-M7-06）：产物同为 `export/Payload/<产品>.app`，复用 Apple codesign 链
+        // （签名材料只经 apple-codesign 的 CredentialRef；非 macOS 宿主如实跳过）。
+        "watch" => sign_ios(project, spec, &profile, ctx),
         "hap" => sign_harmony(project, spec, &profile, ctx),
         other => {
             // 该签却没签成必须发声：`Skipped` 不是事件，逐目标告警是唯一可见通道
@@ -623,7 +626,8 @@ mod tests {
             declared += 1;
             let format = spec.package.format.as_str();
             assert!(
-                matches!(format, "aab" | "apk" | "ipa" | "hap") || signing_owner(format).is_some(),
+                matches!(format, "aab" | "apk" | "ipa" | "watch" | "hap")
+                    || signing_owner(format).is_some(),
                 "目标 {} 声明了签名档案但格式 {format} 既未接入也没有归属登记",
                 spec.id
             );

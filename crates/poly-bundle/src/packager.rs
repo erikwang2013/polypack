@@ -196,7 +196,8 @@ pub trait Packager: Send + Sync {
 /// BSD 家族 ports / pkg / pkgsrc（openbsd T-M5-07 / freebsd T-M5-06 / netbsd T-M5-08）+
 /// Roku 频道 zip（T-M4-15）；M6：AAOS 变体 android-automotive（复用 aab 链，T-M6-11）+
 /// VxWorks 库 / 镜像（T-M6-05，两 format 共用同一 kit 构建）+ Zephyr west 模板（T-M6-06）+
-/// FreeRTOS QEMU 示例板（T-M6-07））。
+/// FreeRTOS QEMU 示例板（T-M6-07）；M7：watchOS 伴生包（T-M7-06，xcodebuild archive → 可签 `.app`，
+/// 复用 M2 Apple 宿主门控 / 远程农场 R3；签名 / 校验复用 ios 链）。
 pub fn builtin() -> Vec<Box<dyn Packager>> {
     vec![
         Box::new(crate::packagers::windows::WixMsi),
@@ -233,6 +234,7 @@ pub fn builtin() -> Vec<Box<dyn Packager>> {
         Box::new(crate::packagers::vxworks::VxWorksImage),
         Box::new(crate::packagers::zephyr::ZephyrWest),
         Box::new(crate::packagers::freertos::FreeRtosBoard),
+        Box::new(crate::packagers::watchos::Watchos),
     ]
 }
 

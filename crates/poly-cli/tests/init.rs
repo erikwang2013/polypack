@@ -69,7 +69,14 @@ fn poly(args: &[&str], cwd: &Path) -> Output {
 
 /// 模板目录（`include_str!` 的磁盘源；内容比对的事实来源）。
 fn templates_dir() -> PathBuf {
-    Path::new(env!("CARGO_MANIFEST_DIR")).join("templates/app")
+    templates_dir_for("app")
+}
+
+/// 指定形态的模板目录。
+fn templates_dir_for(kind: &str) -> PathBuf {
+    Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("templates")
+        .join(kind)
 }
 
 /// 目录下全部文件的（相对路径 → 内容）快照；用于「未被触碰」整树比对。
@@ -225,5 +232,130 @@ fn init_json_prints_single_line_report() {
             |root| root.ends_with(project.path().file_name().unwrap().to_str().unwrap())
         ),
         "root 指向生成目录：{report}"
+    );
+    assert_eq!(report["target"], "app", "缺省模板形态为 app");
+}
+
+/// T-M7-05 验收：`poly init --target watchos` 生成 SwiftUI 伴生模板。
+///
+/// 本机 Linux 无 xcodebuild，模板能否构建由结构断言覆盖（工程 / scheme / Swift 源码 /
+/// Info.plist 的最小要素），macOS 复跑命令见模板 README；模板资产同时过 `poly scan`。
+#[test]
+fn init_target_watchos_writes_swiftui_companion_template() {
+    let project = TempDir::new("init-watchos");
+    let out = poly(&["init", "--target", "watchos", "--json"], project.path());
+    assert!(
+        out.status.success(),
+        "poly init --target watchos 失败（{}）：{}",
+        out.status,
+        String::from_utf8_lossy(&out.stderr)
+    );
+
+    // 报告：单行 JSON，target 字段与文件清单齐全
+    let lines = stdout_lines(&out);
+    assert_eq!(lines.len(), 1, "JSON 模式 stdout 恰好一行：{lines:?}");
+    let report: serde_json::Value =
+        serde_json::from_str(&lines[0]).expect("init 报告是合法 JSON 行");
+    assert_eq!(report["event"], "init");
+    assert_eq!(report["target"], "watchos");
+    let mut files: Vec<&str> = report["files"]
+        .as_array()
+        .expect("报告含 files 数组")
+        .iter()
+        .map(|item| item.as_str().expect("files 元素为字符串"))
+        .collect();
+    files.sort_unstable();
+
+    // 落盘内容与模板目录逐字节一致（单一来源，无生成期改写）
+    let template_root = templates_dir_for("watchos");
+    let expected: Vec<String> = files_under(&template_root).keys().cloned().collect();
+    assert_eq!(files, expected, "报告文件清单与模板目录不一致");
+    assert!(
+        files_under(project.path()) == files_under(&template_root),
+        "init 产物应与 templates/watchos 逐字节一致"
+    );
+
+    // Xcode 工程要素：xcodebuild archive 的最小可构建面
+    let pbxproj = std::fs::read_to_string(
+        project
+            .path()
+            .join("PolyPackWatch.xcodeproj/project.pbxproj"),
+    )
+    .expect("读 project.pbxproj");
+    for needle in [
+        "SDKROOT = watchos",
+        "WATCHOS_DEPLOYMENT_TARGET = 10.0",
+        "TARGETED_DEVICE_FAMILY = 4",
+        "PRODUCT_BUNDLE_IDENTIFIER = com.polypack.watch",
+        "PBXNativeTarget",
+        "PBXSourcesBuildPhase",
+    ] {
+        assert!(pbxproj.contains(needle), "project.pbxproj 缺 {needle}");
+    }
+    assert!(
+        project
+            .path()
+            .join("PolyPackWatch.xcodeproj/xcshareddata/xcschemes/PolyPackWatch.xcscheme")
+            .is_file(),
+        "共享 scheme 必须随模板落盘（xcodebuild -scheme 依赖）"
+    );
+
+    // Swift 源码：核心 API 调用桩 + WatchConnectivity 说明
+    let bridge = std::fs::read_to_string(project.path().join("WatchApp/CoreBridge.swift"))
+        .expect("读 CoreBridge.swift");
+    for needle in ["核心 API 调用桩", "fetchStatus", "TODO(T-M7-05)"] {
+        assert!(bridge.contains(needle), "CoreBridge.swift 缺 {needle}");
+    }
+    let connectivity =
+        std::fs::read_to_string(project.path().join("WatchApp/WatchConnectivity.swift"))
+            .expect("读 WatchConnectivity.swift");
+    for needle in [
+        "WCSession",
+        "sendMessage",
+        "transferUserInfo",
+        "updateApplicationContext",
+    ] {
+        assert!(
+            connectivity.contains(needle),
+            "WatchConnectivity.swift 缺 {needle}"
+        );
+    }
+    let content = std::fs::read_to_string(project.path().join("WatchApp/ContentView.swift"))
+        .expect("读 ContentView.swift");
+    assert!(
+        content.contains("CoreBridge.fetchStatus"),
+        "ContentView 应调用核心 API 调用桩"
+    );
+    let plist =
+        std::fs::read_to_string(project.path().join("WatchApp/Info.plist")).expect("读 Info.plist");
+    for needle in [
+        "<key>WKApplication</key>",
+        "<key>WKRunsIndependentlyOfCompanionApp</key>",
+    ] {
+        assert!(plist.contains(needle), "Info.plist 缺 {needle}");
+    }
+    let config =
+        std::fs::read_to_string(project.path().join("polypack.toml")).expect("读 polypack.toml");
+    for needle in [
+        "[targets.watchos]",
+        "format = \"watch\"",
+        "framework = \"swiftui\"",
+    ] {
+        assert!(config.contains(needle), "polypack.toml 缺 {needle}");
+    }
+
+    // 模板内无明文凭据（与 CI secret-scan 同一实现）
+    let scan = poly(&["scan", "--dir", ".", "--json"], project.path());
+    assert!(
+        scan.status.success(),
+        "模板 secret-scan 失败：{}",
+        String::from_utf8_lossy(&scan.stderr)
+    );
+    let scan_report: serde_json::Value =
+        serde_json::from_str(&stdout_lines(&scan)[0]).expect("scan 报告是合法 JSON");
+    assert_eq!(
+        scan_report["hits"].as_array().map(Vec::len),
+        Some(0),
+        "模板不得含密钥材料：{scan_report}"
     );
 }

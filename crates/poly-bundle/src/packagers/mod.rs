@@ -21,6 +21,7 @@
 //! - [`vxworks`]：VxWorks 库 / 镜像 kit（T-M6-05，wr-cc 链接腿 + nm 符号断言）
 //! - [`zephyr`]：Zephyr west 工程模板（T-M6-06，module 链入 no_std 引擎 + 两板构建）
 //! - [`freertos`]：FreeRTOS QEMU 示例板（T-M6-07，mps2-an385 + 内核按 tag/sha256 现拉）
+//! - [`watchos`]：watchOS 伴生包（T-M7-06，SwiftUI 模板工程 xcodebuild archive → 可签 `.app`）
 
 pub mod android;
 pub mod autosar;
@@ -38,6 +39,7 @@ pub mod qnx;
 pub mod roku;
 pub mod tizen;
 pub mod vxworks;
+pub mod watchos;
 pub mod web;
 pub mod webos;
 pub mod webtv;

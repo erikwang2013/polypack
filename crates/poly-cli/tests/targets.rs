@@ -116,10 +116,18 @@ fn headless_filter_only_drops_ui_targets() {
         !headless.iter().any(|row| row["id"] == "garmin"),
         "garmin 有 UI（monkey-c-subset），不应进无 UI 编译矩阵"
     );
+    assert!(
+        with_ui.iter().any(|row| row["id"] == "watchos"),
+        "未加 --headless 时 watchOS 实验目标应在清单里"
+    );
+    assert!(
+        !headless.iter().any(|row| row["id"] == "watchos"),
+        "watchos 有 UI（swiftui），不应进无 UI 编译矩阵"
+    );
     assert_eq!(
         with_ui.len(),
-        headless.len() + 2,
-        "tier 6 两个 UI 目标：android-automotive / garmin"
+        headless.len() + 3,
+        "tier 6 三个 UI 目标：android-automotive / garmin / watchos"
     );
     assert_eq!(
         expected_ids(false).len(),

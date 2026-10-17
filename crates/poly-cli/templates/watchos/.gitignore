@@ -1,0 +1,8 @@
+# Xcode 构建产物
+build/
+DerivedData/
+*.xcarchive
+
+# PolyPack 构建产物
+.polypack/
+dist/
