@@ -126,7 +126,9 @@ fn sign_target(
 fn signing_owner(format: &str) -> Option<&'static str> {
     match format {
         "dmg" | "msi" => Some("桌面签名链（codesign / signtool）归 M2 之后"),
-        "deb" | "appimage" => Some("Linux 仓库 GPG 签名归 M3"),
+        "deb" | "appimage" | "rpm" | "flatpak" | "snap" => {
+            Some("Linux 仓库 GPG 签名归 T-M5-05（仓库元数据签名）")
+        }
         "static-site" => Some("静态站点无内建签名（SRI 清单已由打包器产出）"),
         // Tizen 作者证书签名（凭据引用 `tizen-author`）归三星签名工具链；webOS 明文声明
         // 无签名档案（发布签名在平台侧，见 TargetSpec.notes），不落到这里

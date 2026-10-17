@@ -201,6 +201,29 @@ impl TarArchive {
     }
 }
 
+/// Debian 控制文件解析（`Key: value` + 以空格开头的续行）；`.ipk` / `.deb` 共用。
+pub fn control_fields(text: &str) -> std::collections::BTreeMap<String, String> {
+    let mut fields: std::collections::BTreeMap<String, String> = std::collections::BTreeMap::new();
+    let mut last: Option<String> = None;
+    for line in text.lines() {
+        if line.starts_with(' ') {
+            if let Some(key) = &last
+                && let Some(value) = fields.get_mut(key)
+            {
+                value.push(' ');
+                value.push_str(line.trim());
+            }
+            continue;
+        }
+        if let Some((key, value)) = line.split_once(':') {
+            let key = key.trim().to_string();
+            fields.insert(key.clone(), value.trim().to_string());
+            last = Some(key);
+        }
+    }
+    fields
+}
+
 /// 固定字段写入：文本左对齐、余位补空格（ar 头字段形态）。
 fn field(target: &mut [u8], text: &[u8]) {
     let len = text.len().min(target.len());
