@@ -1,8 +1,23 @@
 {
+  "target": "fitbit",
+  "tier": 6,
+  "runtime": "none",
   "format": "fba",
-  "entries": ["device-atlas.zip", "device-vulcan.zip", "manifest.json"],
-  "appManifestVersion": 6,
-  "deviceApi": "8.2.0",
-  "families": ["atlas", "vulcan"],
-  "deviceEntries": ["app/index.js", "manifest.json", "resources/icon.png"]
+  "builder": "fitbit-build",
+  "verifiers": ["fitbit-structure-check"],
+  "experimental": false,
+  "extension": "fba",
+  "artifactName": "pax-notes-1.2.3.fba",
+  "requiredEntries": ["manifest.json", "device-*.zip"],
+  "structure": {
+    "appId": "12345678-9abc-def0-1234-56789abcdef0",
+    "buildIdShape": "0x0+15hex",
+    "families": ["atlas", "vulcan"],
+    "companion": false,
+    "deviceMain": "app/index.js",
+    "entries": ["device-atlas.zip", "device-vulcan.zip", "manifest.json"],
+    "manifestVersion": 6,
+    "deviceApi": "8.2.0",
+    "deviceEntries": ["app/index.js", "manifest.json", "resources/icon.png"]
+  }
 }
