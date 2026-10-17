@@ -4,9 +4,10 @@
 //! 回执 schema 与固定落点（`<root>/.polypack/release/<target>/<version>-<digest16>.json`）、
 //! 幂等判定（同清单摘要 + 同仓库 = no-op，`runs+1`）与 `E_RELEASE_*` 稳定错误码。
 //!
-//! 仓库元数据刷新与签名由 [`RepoBackend`] 承接——真实后端等 T-M5-05/06 入 main 后接线；
-//! 当前 [`PendingBackend`] 如实报 `E_RELEASE_0004`，绝不假装发布过。`--dry-run` 不受
-//! 后端缺席影响：完整解析产物、清单摘要、回执锚点与命中预测。
+//! 仓库元数据刷新与签名由 [`RepoBackend`] 承接：deb / rpm 走 [`repo::LocalBackend`]
+//! （T-M5-05，自托管目录 + GPG 签名）；pkg 后端待 T-M5-06 接线，当前 [`PendingBackend`]
+//! 如实报 `E_RELEASE_0004`，绝不假装发布过。`--dry-run` 不受后端缺席影响：完整解析
+//! 产物、清单摘要、回执锚点与命中预测。
 //!
 //! shortcut: 回执按「目标 + 清单摘要」单键，同键并发按单写者假设（后写赢）——发布按
 //! 单脚本串行跑（同 poly-publish 归档口径）。
@@ -24,6 +25,7 @@ use serde::{Deserialize, Serialize};
 use crate::project;
 
 mod artifacts;
+mod repo;
 mod report;
 mod targets;
 
@@ -71,10 +73,15 @@ pub fn run(args: &Args, json: bool) -> Result<i32, Diagnostic> {
             report_dry_run(&prepared, cache_hit, args.credential.is_some(), json);
             continue;
         }
+        let backend: Box<dyn RepoBackend> = match prepared.kind {
+            // pkg 后端由 T-M5-06 接线；deb/rpm 走本地自托管仓库。
+            RepoKind::Pkg => Box::new(PendingBackend),
+            RepoKind::Deb | RepoKind::Rpm => Box::new(repo::LocalBackend),
+        };
         let outcome = release_target(
             &prepared,
             args.credential.as_deref(),
-            &PendingBackend,
+            backend.as_ref(),
             unix_now(),
         )?;
         report_published(&prepared, &outcome, json);
@@ -86,6 +93,8 @@ pub fn run(args: &Args, json: bool) -> Result<i32, Diagnostic> {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 enum RepoKind {
+    /// Debian / Ubuntu 系（`.deb` + Packages / Release / InRelease）。
+    Deb,
     /// Fedora / RHEL 系（`.rpm` + repodata）。
     Rpm,
     /// FreeBSD pkg 仓库（`.pkg` + `packagesite`）。
@@ -96,6 +105,7 @@ impl RepoKind {
     /// 目标声明的产物格式 → 仓库格式；其它格式不归本命令。
     fn from_format(format: &str) -> Option<Self> {
         match format {
+            "deb" => Some(Self::Deb),
             "rpm" => Some(Self::Rpm),
             "pkg" => Some(Self::Pkg),
             _ => None,
@@ -105,6 +115,7 @@ impl RepoKind {
     /// 产物文件扩展名（也是回执里的稳定文本）。
     fn extension(self) -> &'static str {
         match self {
+            Self::Deb => "deb",
             Self::Rpm => "rpm",
             Self::Pkg => "pkg",
         }
@@ -161,6 +172,8 @@ struct Prepared {
     repo: PathBuf,
     /// 仓库格式。
     kind: RepoKind,
+    /// 目标声明的签名凭据档案（`TargetSpec.signing`；T-M5-05 仓库签名用）。
+    signing: Option<String>,
     /// 产物集合（按名排序）。
     artifacts: Vec<Artifact>,
     /// 清单摘要（blake3 hex）。
@@ -194,6 +207,8 @@ struct RepoRequest<'a> {
     repo: &'a Path,
     /// 仓库格式。
     kind: RepoKind,
+    /// 目标声明的签名凭据档案。
+    signing: Option<&'a str>,
     /// 产物集合。
     artifacts: &'a [Artifact],
     /// 签名凭据引用（未给 = 后端按目标声明解析）。
@@ -239,12 +254,12 @@ fn prepare(project: &Project, spec: &TargetSpec, repo: &Path) -> Result<Prepared
         Diagnostic::error(
             codes::E_RELEASE_0002,
             format!(
-                "目标 {} 的产物格式 {} 不是仓库格式（rpm / pkg）",
+                "目标 {} 的产物格式 {} 不是仓库格式（deb / rpm / pkg）",
                 spec.id, spec.package.format
             ),
         )
         .with_hint(
-            "poly release 只编排 rpm / pkg 仓库目标（fedora / freebsd）；\
+            "poly release 只编排 deb / rpm / pkg 仓库目标（ubuntu / mint / fedora / freebsd）；\
              其它格式走 poly publish，或先补该格式的仓库打包器",
         )
     })?;
@@ -311,6 +326,7 @@ fn prepare(project: &Project, spec: &TargetSpec, repo: &Path) -> Result<Prepared
         version,
         repo: repo.to_path_buf(),
         kind,
+        signing: spec.signing.clone(),
         artifacts,
         manifest_digest,
         receipt,
@@ -440,6 +456,7 @@ fn release_target(
         version: &prepared.version,
         repo: &prepared.repo,
         kind: prepared.kind,
+        signing: prepared.signing.as_deref(),
         artifacts: &prepared.artifacts,
         credential,
     };
