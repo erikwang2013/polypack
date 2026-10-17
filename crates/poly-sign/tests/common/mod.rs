@@ -21,9 +21,17 @@ pub struct Scratch(PathBuf);
 
 impl Scratch {
     /// 在系统临时目录下建工作目录（同名残留先清）。
+    ///
+    /// macOS 的 `env::temp_dir()` 是 `/var/folders/<长随机>/T`，其下的 GNUPGHOME 再加上
+    /// `/S.gpg-agent` 会超过 unix socket 的 104 字节上限（gpg-agent 报 File name too long）；
+    /// 测试工作目录在 unix 上改落短路径 `/tmp`。
     pub fn new(name: &str) -> Self {
-        let dir =
-            std::env::temp_dir().join(format!("polypack-sign-it-{}-{name}", std::process::id()));
+        let base = if cfg!(unix) && Path::new("/tmp").is_dir() {
+            PathBuf::from("/tmp")
+        } else {
+            std::env::temp_dir()
+        };
+        let dir = base.join(format!("polypack-sign-it-{}-{name}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).expect("测试工作目录可创建");
         Self(dir)

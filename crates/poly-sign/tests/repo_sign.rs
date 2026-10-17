@@ -51,6 +51,12 @@ fn gpg_ok(home: &Path, args: &[&str]) -> Output {
 
 /// 生成一次性受口令保护的签名密钥，返回（私钥导出字节，公钥导出字节）。
 fn key_fixture(scratch: &Path) -> Option<(Vec<u8>, Vec<u8>)> {
+    // Git for Windows 的 gpg 是 MSYS 程序：`--homedir C:\...` 会被当 POSIX 相对路径拼接
+    // （CI windows-2022 实证），Windows 真跑腿按环境槽 SKIP-with-print，不伪造。
+    if cfg!(windows) {
+        eprintln!("SKIP：Windows 的 MSYS gpg 不认 Windows 路径参数，跳过仓库签名真跑");
+        return None;
+    }
     if !common::has_tool("gpg") {
         eprintln!("SKIP：宿主没有 gpg，跳过仓库签名真跑");
         return None;
