@@ -27,7 +27,7 @@ use poly_bundle::inputs::{AndroidInputs, BundleInputs, Icon, IconKind, NativeLib
 use poly_bundle::packager::Artifact;
 use poly_bundle::{tools, zipwrite};
 use poly_targets::TargetSpec;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 use common::wear_contract::{self, Contract};
 
@@ -202,7 +202,7 @@ fn wearos_contract() {
 /// 清单校验器的无 SDK 单测兜底：watch 特性必须 required=true，minSdk 必须 ≥ 26。
 #[test]
 fn wear_manifest_validator_requires_watch_feature_and_min_sdk() {
-    use poly_bundle::packagers::android::{validate_wear_manifest, WEAR_MIN_API};
+    use poly_bundle::packagers::android::{WEAR_MIN_API, validate_wear_manifest};
 
     let ok = format!(
         "<manifest><uses-sdk android:minSdkVersion=\"26\" />\n  {WATCH_FEATURE}\n</manifest>"

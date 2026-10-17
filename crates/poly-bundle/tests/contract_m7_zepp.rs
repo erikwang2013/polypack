@@ -23,7 +23,7 @@ use poly_bundle::inputs::{BundleInputs, ProductInfo};
 use poly_bundle::packager::Artifact;
 use poly_bundle::{check_zepp_structure, zipwrite};
 use poly_targets::{Runtime, TargetSpec};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 use common::wear_contract::{self, Contract};
 
