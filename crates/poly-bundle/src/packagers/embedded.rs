@@ -436,13 +436,14 @@ fn remaps(core_crate: &Path, staging: &Path, sysroot: &Path) -> Vec<(String, Str
     if let Some(parent) = core_crate.parent() {
         pairs.push((parent.display().to_string(), "crates".to_string()));
     }
+    // 无条件登记 CARGO_HOME 的映射：CI 的 CARGO_HOME 可能是本轮才创建的空目录，
+    // registry 在 wrapper 首次下载依赖前并不存在——用 is_dir() 预检会漏映射，静态库里
+    // 就会留下 `/home/runner/.cargo/registry/...` 绝对路径（三宿主 CI 实证）。
     let cargo_home = std::env::var_os("CARGO_HOME")
         .map(PathBuf::from)
         .or_else(|| std::env::var_os("HOME").map(|home| PathBuf::from(home).join(".cargo")));
-    if let Some(registry) = cargo_home.map(|home| home.join("registry"))
-        && registry.is_dir()
-    {
-        pairs.push((registry.display().to_string(), "registry".to_string()));
+    if let Some(home) = cargo_home {
+        pairs.push((home.display().to_string(), "cargo-home".to_string()));
     }
     pairs
 }
