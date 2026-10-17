@@ -1,9 +1,23 @@
 {
+  "target": "zepp",
+  "tier": 6,
+  "runtime": "none",
   "format": "zab",
-  "configVersion": "v2",
-  "appName": "pax-notes",
-  "appId": 1001,
-  "versionCode": 12,
-  "versionName": "1.2.3",
-  "deviceEntries": ["app.js", "app.json"]
+  "builder": "zeus",
+  "verifiers": ["zepp-structure-check"],
+  "experimental": false,
+  "extension": "zab",
+  "artifactName": "pax-notes-1.2.3.zab",
+  "requiredEntries": ["manifest.json", "*.zpk"],
+  "structure": {
+    "configVersion": "v2",
+    "appName": "pax-notes",
+    "appId": 1001,
+    "versionCode": 12,
+    "versionName": "1.2.3",
+    "zpkNameShape": "<md5>.zpk",
+    "md5Length": 32,
+    "hasAppSide": false,
+    "deviceEntries": ["app.js", "app.json"]
+  }
 }

@@ -1,0 +1,23 @@
+{
+  "target": "wearos",
+  "tier": 6,
+  "runtime": "native",
+  "format": "apk",
+  "builder": "android-aapt2",
+  "verifiers": ["apksigner-verify", "bundletool-validate"],
+  "experimental": false,
+  "extension": "apk",
+  "artifactName": "wear-notes-1.2.3-unsigned.apk",
+  "requiredEntries": [
+    "AndroidManifest.xml",
+    "resources.arsc",
+    "lib/arm64-v8a/libwearcore.so",
+    "assets/*"
+  ],
+  "structure": {
+    "watchFeature": true,
+    "minSdk": 26,
+    "hasNativeLib": true,
+    "aapt2Commands": 3
+  }
+}

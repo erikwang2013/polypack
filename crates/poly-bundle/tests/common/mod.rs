@@ -5,6 +5,8 @@
 //! 的宿主（CI ubuntu 腿）装齐工具后自然走真跑分支。
 #![allow(dead_code)]
 
+pub mod wear_contract;
+
 use std::path::{Path, PathBuf};
 
 /// 工具是否在 PATH（复用 crate 自身探测，避免第二份 PATH 逻辑）。
