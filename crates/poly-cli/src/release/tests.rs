@@ -243,3 +243,25 @@ fn pkg_backend_requires_pkg_tool_and_leaves_no_receipt() {
     assert!(!prepared.receipt.exists(), "失败不落回执");
     let _ = std::fs::remove_dir_all(&root);
 }
+
+/// T-M5-08：pkgsrc 已接本地后端；本机缺 pkg_info / pkg_admin 时如实报 E_RELEASE_0005
+/// 且不落回执。有 pkg_install 的宿主（NetBSD）跳过该分支断言——真跑归 T-M5-09 VM。
+#[test]
+fn pkgsrc_backend_requires_netbsd_tools_and_leaves_no_receipt() {
+    if ["pkg_info", "pkg_admin"]
+        .iter()
+        .all(|tool| poly_bundle::exec::tool_present(tool))
+    {
+        eprintln!("SKIP：本机有 pkg_install，缺工具分支不可复现（NetBSD 真跑归 T-M5-09）");
+        return;
+    }
+    let (root, project) = fixture("pkgsrc-backend");
+    seed(&root, "netbsd", "app-0.1.0.tgz", b"tgz-bytes");
+    let prepared = prepared(&root, &project, "netbsd", "pkgsrc");
+    let err =
+        release_target(&prepared, None, &repo::LocalBackend, 1).expect_err("缺 pkg_install 须失败");
+    assert_eq!(err.code.to_string(), "poly::E_RELEASE_0005");
+    assert!(err.message.contains("NetBSD"), "{}", err.message);
+    assert!(!prepared.receipt.exists(), "失败不落回执");
+    let _ = std::fs::remove_dir_all(&root);
+}

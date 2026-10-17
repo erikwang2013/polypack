@@ -98,11 +98,12 @@ fn builtin_has_seven_valid_targets() {
     );
     assert_eq!(
         registry.all().count(),
-        26,
+        27,
         "M5 起内建 = L1 七 + L2 小程序族四（wechat / alipay / douyin / quickapp）+ \
          L3 电视族八（tvos + android-tv / fire-tv + tizen-tv / webos-tv / vidaa-tv / smartcast-tv \
-         + roku※实验，T-M4-04/07/08/09/10/12）+ L5 OpenBSD / FreeBSD（T-M5-07/06）+ 发行版三\
-         （ubuntu / fedora / mint，T-M5-01）+ ChromeOS 双轨（chromeos / chromeos-pwa，T-M5-10）"
+         + roku※实验，T-M4-04/07/08/09/10/12）+ L5 OpenBSD / FreeBSD / NetBSD（T-M5-07/06/08）+\
+         发行版三（ubuntu / fedora / mint，T-M5-01）+ ChromeOS 双轨（chromeos / chromeos-pwa，\
+         T-M5-10）"
     );
     for spec in registry.all() {
         spec.validate()
@@ -176,13 +177,15 @@ fn builtin_ids_are_the_l1_set() {
         BTreeSet::from([
             "openbsd".to_string(),
             "freebsd".to_string(),
+            "netbsd".to_string(),
             "ubuntu".to_string(),
             "fedora".to_string(),
             "mint".to_string(),
             "chromeos".to_string(),
             "chromeos-pwa".to_string(),
         ]),
-        "L5 = OpenBSD ports / FreeBSD pkg（T-M5-07/06）+ 发行版三（T-M5-01）+ ChromeOS 双轨（T-M5-10）"
+        "L5 = OpenBSD ports / FreeBSD pkg / NetBSD pkgsrc（T-M5-07/06/08）+ 发行版三（T-M5-01）\
+         + ChromeOS 双轨（T-M5-10）"
     );
 }
 
@@ -273,8 +276,8 @@ fn linux_host_resolves_four_l1_targets_from_all() {
         ]),
         "电视两目标 + web 系 TV 四目标 + roku（三宿主声明）应全部入选"
     );
-    // L5：openbsd / freebsd、发行版三与 ChromeOS deb 轨声明 Linux 宿主；chromeos-pwa
-    // 声明三宿主（web 运行时）→ 全部入选
+    // L5：openbsd / freebsd / netbsd、发行版三与 ChromeOS deb 轨声明 Linux 宿主；
+    // chromeos-pwa 声明三宿主（web 运行时）→ 全部入选
     let l5: BTreeSet<&str> = resolved
         .selected
         .iter()
@@ -286,13 +289,14 @@ fn linux_host_resolves_four_l1_targets_from_all() {
         BTreeSet::from([
             "openbsd",
             "freebsd",
+            "netbsd",
             "ubuntu",
             "fedora",
             "mint",
             "chromeos",
             "chromeos-pwa"
         ]),
-        "L5 OpenBSD / FreeBSD + 发行版三 + ChromeOS 双轨应全部入选"
+        "L5 OpenBSD / FreeBSD / NetBSD + 发行版三 + ChromeOS 双轨应全部入选"
     );
     assert_eq!(selected.len(), l1.len() + l2.len() + l3.len() + l5.len());
 

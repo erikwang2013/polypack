@@ -6,9 +6,10 @@
 //!
 //! 仓库元数据刷新与签名由 [`RepoBackend`] 承接：deb / rpm 走 [`repo::LocalBackend`]
 //! （T-M5-05，自托管目录 + GPG 签名）；pkg 同走本地后端（T-M5-06，`pkg repo` catalogue
-//! 原生 rsa/ecdsa/eddsa 签名，需 FreeBSD 用户态）。本机无 pkg(8) 时如实报
-//! `E_RELEASE_0005`，绝不假装发布过。`--dry-run` 不触仓库：完整解析产物、清单摘要、回执
-//! 锚点与命中预测。
+//! 原生 rsa/ecdsa/eddsa 签名，需 FreeBSD 用户态）；pkgsrc 同走本地后端（T-M5-08，扁平
+//! `.tgz` + `pkg_summary.gz` + `pkg_admin gpg-sign-package` 逐包 GPG，需 NetBSD 用户态）。
+//! 本机缺对应包工具时如实报 `E_RELEASE_0005`，绝不假装发布过。`--dry-run` 不触仓库：完整
+//! 解析产物、清单摘要、回执锚点与命中预测。
 //!
 //! shortcut: 回执按「目标 + 清单摘要」单键，同键并发按单写者假设（后写赢）——发布按
 //! 单脚本串行跑（同 poly-publish 归档口径）。
@@ -74,7 +75,8 @@ pub fn run(args: &Args, json: bool) -> Result<i32, Diagnostic> {
             report_dry_run(&prepared, cache_hit, args.credential.is_some(), json);
             continue;
         }
-        // deb / rpm / pkg 都是本地自托管仓库后端（pkg 的 `pkg repo` 真跑需 FreeBSD 用户态）。
+        // deb / rpm / pkg / pkgsrc 都是本地自托管仓库后端（pkg(8) / pkgsrc 工具真跑需
+        // FreeBSD / NetBSD 用户态）。
         let backend: Box<dyn RepoBackend> = Box::new(repo::LocalBackend);
         let outcome = release_target(
             &prepared,
@@ -97,6 +99,8 @@ enum RepoKind {
     Rpm,
     /// FreeBSD pkg 仓库（`.pkg` + `packagesite`）。
     Pkg,
+    /// NetBSD / DragonFly pkgsrc 仓库（`.tgz` + `pkg_summary.gz` + 逐包 GPG 签名）。
+    Pkgsrc,
 }
 
 impl RepoKind {
@@ -106,6 +110,7 @@ impl RepoKind {
             "deb" => Some(Self::Deb),
             "rpm" => Some(Self::Rpm),
             "pkg" => Some(Self::Pkg),
+            "pkgsrc" => Some(Self::Pkgsrc),
             _ => None,
         }
     }
@@ -116,6 +121,7 @@ impl RepoKind {
             Self::Deb => "deb",
             Self::Rpm => "rpm",
             Self::Pkg => "pkg",
+            Self::Pkgsrc => "tgz",
         }
     }
 }
@@ -217,13 +223,14 @@ fn prepare(project: &Project, spec: &TargetSpec, repo: &Path) -> Result<Prepared
         Diagnostic::error(
             codes::E_RELEASE_0002,
             format!(
-                "目标 {} 的产物格式 {} 不是仓库格式（deb / rpm / pkg）",
+                "目标 {} 的产物格式 {} 不是仓库格式（deb / rpm / pkg / pkgsrc）",
                 spec.id, spec.package.format
             ),
         )
         .with_hint(
-            "poly release 只编排 deb / rpm / pkg 仓库目标（ubuntu / mint / fedora / freebsd）；\
-             其它格式走 poly publish，或先补该格式的仓库打包器",
+            "poly release 只编排 deb / rpm / pkg / pkgsrc 仓库目标\
+             （ubuntu / mint / fedora / freebsd / netbsd）；其它格式走 poly publish，\
+             或先补该格式的仓库打包器",
         )
     })?;
 

@@ -16,19 +16,25 @@
 //!   *.pkg                        # pkg 产物扁平入库
 //!   {meta.conf,data.pkg,packagesite.pkg}   # pkg catalogue（meta.conf 内含签名）
 //!   polypack-repo.pub            # pkg 公钥（客户端 PUBKEY；PEM）
+//!   *.tgz                        # pkgsrc 产物扁平入库（逐包 GPG 签名）
+//!   pkg_summary.gz               # pkgsrc 仓库摘要（pkg_info -X 汇总）
+//!   polypack-repo.asc            # pkgsrc 客户端 GPG_KEYRING_VERIFY 公钥
 //! ```
 //!
 //! 客户端：apt 源 `deb [signed-by=<repo>/polypack-repo.gpg] file:<repo> <suite> main`；
 //! dnf 源 `baseurl=file://<repo>` + `repo_gpgcheck=1` + `gpgkey=file://<repo>/polypack-repo.asc`；
-//! pkg 源 `url: "file://<repo>"` + `signature_type: "pubkey"` + `pubkey: "<repo>/polypack-repo.pub"`。
+//! pkg 源 `url: "file://<repo>"` + `signature_type: "pubkey"` + `pubkey: "<repo>/polypack-repo.pub"`；
+//! pkgsrc 源 `PKG_PATH=file://<repo>` + `GPG_KEYRING_VERIFY=<repo>/polypack-repo.asc`。
 //!
 //! 确定性：deb/rpm 元数据只由产物内容 / mtime 与 `SOURCE_DATE_EPOCH` 决定（排序、gzip
 //! mtime=0）；二次生成除 GPG 签名包时间戳外字节一致（签名走 [`poly_sign::RepoSigner`]）。
 //! pkg catalogue 由 `pkg repo` 生成（catalogue 排序稳定；签名时间戳可变），签名是 pkg(8)
-//! 原生 rsa/ecdsa/eddsa，不是 GPG。
+//! 原生 rsa/ecdsa/eddsa，不是 GPG。pkgsrc 的 `pkg_summary.gz` 由 `pkg_info -X` 逐包生成
+//! （gzip mtime=0），逐包签名走 `pkg_admin gpg-sign-package`（临时 GNUPGHOME，签名时间戳可变）。
 
 mod deb;
 mod pkg;
+mod pkgsrc;
 mod rpm;
 
 #[cfg(test)]
@@ -52,6 +58,7 @@ impl RepoBackend for LocalBackend {
     fn publish(&self, request: &RepoRequest<'_>) -> Result<(), Diagnostic> {
         match request.kind {
             RepoKind::Pkg => pkg::generate(request),
+            RepoKind::Pkgsrc => pkgsrc::generate(request),
             RepoKind::Deb => deb::generate(request, &gpg_signer(request)?),
             RepoKind::Rpm => rpm::generate(request, &gpg_signer(request)?),
         }
@@ -116,7 +123,7 @@ fn gzip(xml: &str) -> Result<Vec<u8>, Diagnostic> {
     encoder
         .write_all(xml.as_bytes())
         .and_then(|()| encoder.finish())
-        .map_err(|err| repo_error(format!("repodata gzip 失败：{err}")))
+        .map_err(|err| repo_error(format!("元数据 gzip 失败：{err}")))
 }
 
 /// 元数据时刻：`SOURCE_DATE_EPOCH` 优先，否则取本批产物 mtime 的最大值。

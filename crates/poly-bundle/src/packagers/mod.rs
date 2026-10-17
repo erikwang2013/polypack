@@ -13,6 +13,7 @@
 //! - [`webtv`]：VIDAA / Vizio SmartCast 应用包（T-M4-10，两目标 + 沙箱自检）
 //! - [`openbsd`]：OpenBSD ports 骨架（T-M5-07，Makefile / PLIST / DESCR + signify / portcheck）
 //! - [`freebsd`]：FreeBSD pkg（T-M5-06，`pkg create` + pkg 暂存树 / manifest 结构自检）
+//! - [`pkgsrc`]：NetBSD / DragonFly pkgsrc 骨架（T-M5-08，Makefile / PLIST / DESCR + 结构自检）
 //! - [`roku`]：Roku 频道 `.zip`（T-M4-15，复用 SceneGraph 发射器 + 侧载结构自检）
 
 pub mod android;
@@ -23,6 +24,7 @@ pub mod ios;
 pub mod linux;
 pub mod miniapp;
 pub mod openbsd;
+pub mod pkgsrc;
 pub mod roku;
 pub mod tizen;
 pub mod web;
