@@ -261,6 +261,7 @@ fn engine_lib(
         wrapper_rs: &wrapper_rs(),
         nightly: true,
         static_reloc: true,
+        target_features: &[],
     })
 }
 

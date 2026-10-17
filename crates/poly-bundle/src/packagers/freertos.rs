@@ -257,6 +257,7 @@ fn engine_lib(inputs: &BundleInputs, embedded: &EmbeddedInputs) -> Result<PathBu
         wrapper_rs: &wrapper_rs(),
         nightly: true,
         static_reloc: false,
+        target_features: &[],
     })
 }
 
