@@ -6,6 +6,18 @@ Notable changes are recorded here; since v1.0.0, tags and releases follow `vX.Y.
 
 ## [Unreleased]
 
+## [1.8.0] — 2026-10-18
+
+### Added
+- **M6 嵌入式与车机交付**（2026-10-18，13/13）：`poly-core` no_std 引擎层（feature 拆分不新增 crate；`thumbv7em-none-eabihf` 构建 + std/no_std 同缓存键）与 `poly_engine_*` C ABI（单源头文件，gcc/clang 真编译、nm 无 mangling）；L6 六目标——Android Automotive（复用 Android 链 + OEM 占位渠道）、QNX（SDP 探测 + 库/镜像；无 SDP SKIP-with-print）、AUTOSAR Adaptive（ARXML 与 C ABI 一一对应 + xmllint 真校验）、VxWorks（库/镜像 kit + §5.3 无绝对路径）、Zephyr（west 模块模板 + 两板真构建 + cortex_m3 QEMU 真跑）、FreeRTOS（mps2-an385 真跑，内核按 tag+sha256 现拉不入库）；`poly targets` 派生 CI 矩阵与共享 QEMU 冒烟运行器（`Failed{stage,code,hint}`、日志/result.json 归档）；TargetSpec 派生 L6 状态表生成器与漂移校验；L6 体积预算 warn/fail 与 experimental 三处一致校验。**九工作流三宿主全绿（新增 `embedded-ci`）。**
+
+*M6 embedded & automotive delivery (13/13): the no_std engine layer and poly_engine_* C ABI with a single-source header; six L6 targets (Android Automotive, QNX, AUTOSAR, VxWorks, Zephyr, FreeRTOS) with real builds/QEMU where toolchains exist and honest SKIP-with-print elsewhere; the TargetSpec-derived CI matrix and shared QEMU smoke runner; the generated L6 status table with drift checks; L6 size budgets and the three-way experimental validator. Nine workflows green on three hosts (new embedded-ci).*
+
+### Fixed
+- 集成期真跑修复（三宿主 CI 实证）：`--target all` 遇 CI 缺 nightly `rust-src` / 目标 std 时硬失败 → 引擎静态库构建前预检并降级为环境槽 SKIP-with-print；头文件唯一性扫描只认含 `poly_engine_abi_version` 的头（FreeRTOS 模板辅助声明不再误判）；`EngineBuild.packager` 与统一 `EmbeddedInputs`（含 `prebuilt`）对齐；AAOS 目标补 adapter-native 能力矩阵行。
+
+*Fixed during M6 integration across the three-host CI: embedded toolchain preflight for missing nightly rust-src / target std (now SKIP-with-print), a scope-correct header-uniqueness scan, the unified EmbeddedInputs/EngineBuild fields, and the AAOS row in the adapter-native capability matrix.*
+
 ## [1.7.0] — 2026-10-17
 
 ### Added

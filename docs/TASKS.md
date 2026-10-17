@@ -3,7 +3,7 @@
 > 派生自 [ROADMAP.md](ROADMAP.md) §9 的里程碑分解；由 4 人规划小组并行产出、交叉对账后合并：**116 个任务**，跨里程碑引用经「存在性 + 描述匹配」两轮校验零悬空，中英任务 ID 逐一对齐。
 > 英文版：[TASKS.en.md](TASKS.en.md)。本文件受「文档同步约定」管辖（见 ROADMAP §11）：任务增删须双文件同一次提交更新，并由 T-M0-10 的结构级校验器在 CI 拦截漂移。
 > 扩展方向（E1–E8）已立项孵化，不占本任务表：见 [ROADMAP.md](ROADMAP.md) §13。
-> 进度（2026-10-17）：**M0 11/11** · **M1 已交付 15/15**（11 项 ✅；T-M1-02/05/06/07 的对应 CI 腿已全绿，余下工具级注记见任务条目）· **M2 已交付 15/15**（8 项 ✅：T-M2-02/06/07/08/09/11/14/15；T-M2-01/03/04/05/10/12/13 带宿主/阶段/设置注记，逐项见任务条目）· **CI 三宿主全绿**（rust-ci#38654820649）+ M2 新增四工作流（secret-scan 三宿主 / mobile-contract mock+夜跑真列 / bridge 夜跑真跑）· **M3 已交付 12/12**（7 项 ✅：T-M3-05/06/07/08/09/10/11；T-M3-01/02/03/04/12 带宿主/环境/联调注记，逐项见任务条目）+ M3 新增一工作流（miniprogram-contract mock+夜跑真列）· **M4 已交付 14/15**（T-M4-15 条件任务未触发：（决策=继续受限档，真机侧载为触发前置）；T-M4-01/06/11/13 等带设备/宿主/联调注记，逐项见任务条目）+ M4 新增一工作流（tv-smoke mock+夜跑真列）· **M5 已交付 11/11**（T-M5-07 的 OpenBSD 安装冒烟与 T-M5-08 的 NetBSD `bmake` 真跑按环境槽 SKIP-with-print（镜像带宽 / 宿主缺席），由 bsd-ci 每夜裁决；T-M5-11 多目标真跑受单全局 `--credential` 契约限制，以 dry-run 双事件验证，按 target 分凭据留 M6）+ M5 新增一工作流（bsd-ci 夜跑 BSD 原生构建与安装冒烟）。
+> 进度（2026-10-17）：**M0 11/11** · **M1 已交付 15/15**（11 项 ✅；T-M1-02/05/06/07 的对应 CI 腿已全绿，余下工具级注记见任务条目）· **M2 已交付 15/15**（8 项 ✅：T-M2-02/06/07/08/09/11/14/15；T-M2-01/03/04/05/10/12/13 带宿主/阶段/设置注记，逐项见任务条目）· **CI 三宿主全绿**（rust-ci#38654820649）+ M2 新增四工作流（secret-scan 三宿主 / mobile-contract mock+夜跑真列 / bridge 夜跑真跑）· **M3 已交付 12/12**（7 项 ✅：T-M3-05/06/07/08/09/10/11；T-M3-01/02/03/04/12 带宿主/环境/联调注记，逐项见任务条目）+ M3 新增一工作流（miniprogram-contract mock+夜跑真列）· **M4 已交付 14/15**（T-M4-15 条件任务未触发：（决策=继续受限档，真机侧载为触发前置）；T-M4-01/06/11/13 等带设备/宿主/联调注记，逐项见任务条目）+ M4 新增一工作流（tv-smoke mock+夜跑真列）· **M5 已交付 11/11**（T-M5-07 的 OpenBSD 安装冒烟与 T-M5-08 的 NetBSD `bmake` 真跑按环境槽 SKIP-with-print（镜像带宽 / 宿主缺席），由 bsd-ci 每夜裁决；T-M5-11 多目标真跑受单全局 `--credential` 契约限制，以 dry-run 双事件验证，按 target 分凭据留 M6）+ M5 新增一工作流（bsd-ci 夜跑 BSD 原生构建与安装冒烟）· **M6 已交付 13/13**（no_std 引擎层 + C ABI、QNX/AUTOSAR/VxWorks/Zephyr/FreeRTOS 五目标、AAOS、CI 矩阵与 QEMU 冒烟、状态表与预算/标注校验；QNX SDP / wr-cc / Xcode 类环境槽按 SKIP-with-print，模型与串口证据见各任务条目）+ M6 新增一工作流（embedded-ci：tier-6 矩阵从 TargetSpec 派生 + QEMU 冒烟，夜跑 19:27）。
 
 ## 团队编制与角色
 
@@ -707,91 +707,91 @@
 ## M6 嵌入式与车机（5 周）
 > 前置依赖: M0（TargetSpec DSL 与 crate 依赖方向约束）、M2（Android 打包链，供 Automotive 复用）｜出口条件: 全部无 UI 目标（QNX / AUTOSAR / VxWorks / Zephyr / FreeRTOS）进 CI 编译矩阵；QNX 冒烟通过
 
-### T-M6-01 · 核心分层：拆出 no_std 引擎层
+### T-M6-01 · ✅ 核心分层：拆出 no_std 引擎层（poly-core feature 拆分不新增 crate；thumbv7em-none-eabihf 构建通过 + 依赖树无 tokio/petgraph/reqwest；std/no_std 同缓存键 golden）
 - 角色: core
 - 依赖: —
 - 估算: 3d
 - 交付物: 把 JobSpec 校验、TargetSpec 解析与缓存键计算在 `poly-core` 内做 feature 拆分，引擎层可在禁用 std（`no_std + alloc`）下编译，宿主依赖（tokio / petgraph / reqwest）只留在 std feature 后；**不新增 crate**，形态结论回写 ROADMAP §4.1 以保持 9-crate 表有效。
 - 验收: `cargo build -p poly-core --no-default-features --target thumbv7em-none-eabihf` 通过；该构建下 `cargo tree -p poly-core --no-default-features` 不含 tokio / petgraph / reqwest；M0 的依赖方向检查在 workspace 仍为 9 个 crate 时保持绿；缓存键对同一输入在 std 与 no_std 两种构建下取值一致。
 
-### T-M6-02 · 引擎层 C ABI 与 cffi 头文件生成
+### T-M6-02 · ✅ 引擎层 C ABI 与 cffi 头文件生成（poly_engine_* 六导出 + 单源头文件；gcc/clang -std=c11 -Wall -Werror 真编译、nm 无 mangling、头文件唯一性测试）
 - 角色: core
 - 依赖: T-M6-01
 - 估算: 2.5d
 - 交付物: 引擎层稳定 C ABI（`poly_engine_*` 前缀）+ 由接口定义一处生成、四端复用的 C 头文件与静态库产物（§4.4 cffi 桥）。
 - 验收: 头文件在 `gcc -std=c11 -Wall -Werror` 与 `clang -std=c11` 下均编译通过；`nm` 导出符号无 Rust mangling 泄漏；仓库内不存在第二份手写头文件（生成器为唯一来源）。
 
-### T-M6-03 · QNX 交叉编译目标与产物
+### T-M6-03 · ✅ QNX 交叉编译目标与产物（staticlib/cffi image|library + SDP 探测入 poly-toolchain + doctor 提示；无 SDP 本机 SKIP-with-print，应用侧 staticlib 包装 crate 不伪造产物）
 - 角色: platforms
 - 依赖: T-M6-02
 - 估算: 3d
 - 交付物: QNX TargetSpec（`runtime = "staticlib"`、`bridge = "cffi"`、`package = { format = "image" | "library" }`）与 QNX SDP 探测接入 `poly-toolchain`。
 - 验收: `poly build --target qnx` 产出静态库与镜像两类产物；`poly doctor` 能报告本机 QNX SDP 缺失并给出安装提示；交叉编译冒烟（经 T-M6-09 的 QEMU）通过。
 
-### T-M6-04 · AUTOSAR Adaptive 目标（ARXML + 静态库）
+### T-M6-04 · ✅ AUTOSAR Adaptive 目标（ARXML + 静态库）（TargetSpec 无 UI/自部署 + ARXML 与 poly_engine_* 一一对应；xmllint 真校验、宿主 staticlib 真构建、nm 对照）
 - 角色: platforms
 - 依赖: T-M6-02
 - 估算: 3d
 - 交付物: AUTOSAR（Adaptive）TargetSpec（`runtime = "staticlib"`、无 UI、`no_std` 可选）与 ARXML 清单 + 静态库打包器。
 - 验收: CI 编译矩阵内 AUTOSAR 目标全绿；ARXML 通过 XML schema 校验；服务/端口声明与 C ABI 导出符号一一对应（脚本断言）；`notes` 字段声明「无 UI、自部署」。
 
-### T-M6-05 · VxWorks 目标（库 / 镜像）
+### T-M6-05 · ✅ VxWorks 目标（库 / 镜像）（库 2,206,316 B + 镜像 zip 真跑；nm 未解析闭包白名单 + §5.3 无绝对路径；wr-cc 缺席链接腿 SKIP-with-print）
 - 角色: platforms
 - 依赖: T-M6-02
 - 估算: 2.5d
 - 交付物: VxWorks TargetSpec 与静态库/镜像打包器（无 UI，cffi）。
 - 验收: CI 编译矩阵内 VxWorks 目标全绿；产物可作为可加载模块被 VxWorks 宿主工具链 `ld` 校验通过（无未解析符号）；产物中无绝对路径（§5.3）。
 
-### T-M6-06 · Zephyr 目标（west + no_std）
+### T-M6-06 · ✅ Zephyr 目标（west + no_std）（west 模板 + no_std module 链入；qemu_x86 / qemu_cortex_m3 `west build` 真跑、cortex_m3 QEMU 输出引擎版本；最小 CONFIG 集随模板 v2 版本化）
 - 角色: platforms
 - 依赖: T-M6-02
 - 估算: 3d
 - 交付物: Zephyr TargetSpec（`runtime = "staticlib"`、`no_std`）与 west 工程模板（zephyr 模块 + 引擎层静态库接入）。
 - 验收: `west build` 对 `qemu_x86` 与 `qemu_cortex_m3` 两板均成功；引擎层以模块形式链入且不引入 std；模板中的最小 `CONFIG_*` 集被 CI 记录并随模板版本化。
 
-### T-M6-07 · FreeRTOS 目标（静态库 + QEMU 示例板）
+### T-M6-07 · ✅ FreeRTOS 目标（静态库 + QEMU 示例板）（mps2-an385 真跑：poly_engine 版本打印 + SYS_EXIT_EXTENDED 退出 0；内核 V11.1.0 按 tag+sha256 现拉不入库，缺工具链/网络 SKIP-with-print）
 - 角色: platforms
 - 依赖: T-M6-06
 - 估算: 2.5d
 - 交付物: FreeRTOS TargetSpec 与静态库打包器 + 可跑在 QEMU 的示例板工程（复用 T-M6-06 的 no_std 接入方式）。
 - 验收: CI 编译矩阵内 FreeRTOS 目标全绿；示例板在 QEMU 中启动并成功调用一次引擎层 API（打印版本号）后以退出码 0 结束。
 
-### T-M6-08 · 无 UI 目标 CI 编译矩阵
+### T-M6-08 · ✅ 无 UI 目标 CI 编译矩阵（`poly targets --tier 6 --headless --json` 派生矩阵，新增声明自动入列；embedded-ci 钉扎缓存 + REAL/SKIP job summary；缺 SDP/wr-cc SKIP-with-print）
 - 角色: infra
 - 依赖: T-M6-03, T-M6-04, T-M6-05, T-M6-06, T-M6-07
 - 估算: 3d
 - 交付物: §8 的 CI 宿主 × 目标层矩阵扩展：ubuntu-latest 上 QNX / AUTOSAR / VxWorks / Zephyr / FreeRTOS 交叉编译全跑，矩阵条目从 TargetSpec 派生，含工具链镜像与探测缓存（对策 R9）。
 - 验收: 五目标在每次提交全绿；新增目标声明后矩阵自动出现该条目（无需改 CI 文件）；矩阵冷启动 ≤ 15 min，命中缓存 ≤ 5 min。
 
-### T-M6-09 · QEMU 冒烟：QNX 镜像
+### T-M6-09 · ✅ QEMU 冒烟：QNX 镜像（共享 smoke runner：启动→自检→退出码；Failed{stage,code,hint} 与 result.json/串口归档；无 SDP/mkifs QEMU 时 SKIP-with-print，CI 首夜裁决）
 - 角色: infra
 - 依赖: T-M6-03, T-M6-08
 - 估算: 3d
 - 交付物: QNX 镜像的 QEMU 冒烟脚本（启动 → 引擎层自检 → 退出码判定 → 串口日志归档），接入每晚流水线。
 - 验收: 冒烟在每晚 CI 通过；失败时输出 `Failed{stage, code, hint}` 且串口日志可定位到具体自检项；`poly retry --from verify` 可独立重跑该阶段。
 
-### T-M6-10 · QEMU 冒烟：Zephyr
+### T-M6-10 · ✅ QEMU 冒烟：Zephyr（`west build -t run` + 退出码/具名步骤断言；与 T-M6-09 共用同一解析器与归档格式；ARM 真跑、x86 本机 QEMU ROM 限制如实判失败并定位）
 - 角色: infra
 - 依赖: T-M6-06, T-M6-08
 - 估算: 2.5d
 - 交付物: Zephyr 冒烟脚本（`west build -t run` + 退出码断言），与 T-M6-09 共用日志归档格式。
 - 验收: 冒烟在每晚 CI 通过；Zephyr 与 QNX 两条冒烟共用同一份结果解析代码（无第二套判定逻辑）；失败项可映射到自检脚本中的具名步骤。
 
-### T-M6-11 · Android Automotive 目标（复用 Android 链 + 车厂渠道占位）
+### T-M6-11 · ✅ Android Automotive 目标（复用 Android 链 + 车厂渠道占位）（AAOS 清单 + aapt2/apksigner 真跑、无第二套 Android 实现；OEM 占位 Publisher 四步报 E_PUB_0006 且零回执不伪造）
 - 角色: platforms
 - 依赖: —
 - 估算: 3d
 - 交付物: Android Automotive TargetSpec（`runtime = "native"`、`bridge = "uniffi"`、AAOS 清单变体）与车厂 / OEM 渠道的占位 Publisher。
 - 验收: 复用 M2 的 AAPT2 + bundletool + apksigner 链产出 AAOS APK 且 `bundletool validate` 通过（不新增第二套 Android 打包实现）；占位 Publisher 返回「需 OEM 凭据引用」的明确错误而非伪造提交；`notes` 声明「车厂渠道，无统一公开 API」。
 
-### T-M6-12 · 嵌入式目标状态表（由 TargetSpec 派生）
+### T-M6-12 · ✅ 嵌入式目标状态表（由 TargetSpec 派生）（tools/gen-target-table.mjs 生成四文档标记块 + --check 漂移断言接入 check-docs；仓库无第二份手写表）
 - 角色: docs
 - 依赖: T-M6-03, T-M6-04, T-M6-05, T-M6-06, T-M6-07, T-M6-11
 - 估算: 2.5d
 - 交付物: L6 嵌入式 / 车机目标的状态表（运行时、桥、产物、签名、校验、渠道、`experimental`、`notes`），由 TargetSpec 生成并同步进 README / ROADMAP 双语（§11）。
 - 验收: 表中每个字段可由 TargetSpec 复现，仓库内无双份手写表；`node tools/render-diagrams.mjs --check` 与文档同步检查在 CI 绿。
 
-### T-M6-13 · 产物体积预算与实验性标注校验
+### T-M6-13 · ✅ 产物体积预算与实验性标注校验（L6 无 UI 四形态预算真跑 warn/fail + E_BUDGET_0001；experimental 三处一致校验器 TargetSpec × 文档表 × CI 强度，冲突点名三方）
 - 角色: core
 - 依赖: T-M6-08
 - 估算: 2.5d

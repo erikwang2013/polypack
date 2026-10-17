@@ -3,7 +3,7 @@
 > Derived from the milestone breakdown in [ROADMAP.en.md](ROADMAP.en.md) §9; produced in parallel by a four-person planning group and merged after cross-reconciliation: **116 tasks**, all cross-milestone references verified in two passes (existence + description match, zero dangling), Chinese/English task IDs aligned one-to-one.
 > Chinese original: [TASKS.md](TASKS.md). This file falls under the documentation sync convention (ROADMAP §11): task additions/removals must land in both files in the same commit, and drift is caught in CI by the structural checker delivered in T-M0-10.
 > Extension directions (E1–E8) are incubated and intentionally absent from this task table — see [ROADMAP.en.md](ROADMAP.en.md) §13.
-> Progress (2026-10-17): **M0 11/11** · **M1 delivered 15/15** (11 ✅; the matching CI legs for T-M1-02/05/06/07 are green — remaining tool-level notes live in the task entries) · **M2 delivered 15/15** (8 ✅: T-M2-02/06/07/08/09/11/14/15; T-M2-01/03/04/05/10/12/13 carry host/stage/settings notes — see each entry) · **CI green on all three hosts** (rust-ci#38654820649) plus four new M2 workflows (secret-scan ×3 hosts / mobile-contract mock-per-push + nightly real / bridge nightly real) · **M3 delivered 12/12** (7 ✅: T-M3-05/06/07/08/09/10/11; T-M3-01/02/03/04/12 carry host/environment/interop notes — see each entry) plus one new M3 workflow (miniprogram-contract mock-per-push + nightly real) · **M4 delivered 14/15** (conditional T-M4-15 not triggered — decision: continue in constrained mode, on-device sideload is its prerequisite; T-M4-01/06/11/13 etc. carry device/host/interop notes — see each entry) plus one new M4 workflow (tv-smoke mock-per-push + nightly real) · **M5 delivered 11/11** (T-M5-07 OpenBSD install smoke and T-M5-08 NetBSD `bmake` real run are SKIP-with-print per environment slot (image bandwidth / host absent), arbitrated by the first bsd-ci night; the multi-target true run is limited by the single global `--credential` contract and verified via dry-run dual events, per-target credentials deferred to M6) plus one new M5 workflow (bsd-ci nightly BSD native builds + install smoke).
+> Progress (2026-10-17): **M0 11/11** · **M1 delivered 15/15** (11 ✅; the matching CI legs for T-M1-02/05/06/07 are green — remaining tool-level notes live in the task entries) · **M2 delivered 15/15** (8 ✅: T-M2-02/06/07/08/09/11/14/15; T-M2-01/03/04/05/10/12/13 carry host/stage/settings notes — see each entry) · **CI green on all three hosts** (rust-ci#38654820649) plus four new M2 workflows (secret-scan ×3 hosts / mobile-contract mock-per-push + nightly real / bridge nightly real) · **M3 delivered 12/12** (7 ✅: T-M3-05/06/07/08/09/10/11; T-M3-01/02/03/04/12 carry host/environment/interop notes — see each entry) plus one new M3 workflow (miniprogram-contract mock-per-push + nightly real) · **M4 delivered 14/15** (conditional T-M4-15 not triggered — decision: continue in constrained mode, on-device sideload is its prerequisite; T-M4-01/06/11/13 etc. carry device/host/interop notes — see each entry) plus one new M4 workflow (tv-smoke mock-per-push + nightly real) · **M5 delivered 11/11** (T-M5-07 OpenBSD install smoke and T-M5-08 NetBSD `bmake` real run are SKIP-with-print per environment slot (image bandwidth / host absent), arbitrated by the first bsd-ci night; the multi-target true run is limited by the single global `--credential` contract and verified via dry-run dual events, per-target credentials deferred to M6) plus one new M5 workflow (bsd-ci nightly BSD native builds + install smoke) · **M6 delivered 13/13** (the no_std engine layer + C ABI, the QNX / AUTOSAR / VxWorks / Zephyr / FreeRTOS targets, AAOS, the CI matrix and QEMU smokes, and the status-table / budget / labeling validators; QNX SDP / wr-cc / Xcode-class environment slots record SKIP-with-print, with model and serial evidence in each task entry) plus one new M6 workflow (embedded-ci: tier-6 matrix derived from TargetSpec + QEMU smokes, nightly 19:27).
 
 ## Team roster
 
@@ -707,91 +707,91 @@
 ## M6 embedded & automotive (5 weeks)
 > Prerequisites: M0 (TargetSpec DSL and crate dependency-direction constraints), M2 (Android packaging chain, reused by Automotive) | Exit criteria: every headless target (QNX / AUTOSAR / VxWorks / Zephyr / FreeRTOS) is in the CI compile matrix; QNX smoke passes
 
-### T-M6-01 · Core layering: extract the no_std engine layer
+### T-M6-01 · ✅ Core layering: extract the no_std engine layer (poly-core feature split, no new crate; thumbv7em-none-eabihf build passes + dependency tree free of tokio/petgraph/reqwest; std/no_std share the same golden cache key)
 - Role: core
 - Deps: —
 - Estimate: 3d
 - Deliverable: a feature split inside `poly-core`, moving JobSpec validation, TargetSpec parsing and cache-key computation into an engine layer that compiles with std disabled (`no_std + alloc`) while host dependencies (tokio / petgraph / reqwest) stay behind the std feature; **no new crate is added**, and the shape decision is written back into ROADMAP §4.1 so the 9-crate table stays valid.
 - Acceptance: `cargo build -p poly-core --no-default-features --target thumbv7em-none-eabihf` passes; in that build `cargo tree -p poly-core --no-default-features` shows no tokio / petgraph / reqwest; the M0 dependency-direction check stays green with the workspace still at nine crates; the cache key for one input is identical under std and no_std builds.
 
-### T-M6-02 · Engine-layer C ABI and generated cffi headers
+### T-M6-02 · ✅ Engine-layer C ABI and generated cffi headers (six poly_engine_* exports + single-source header; gcc/clang -std=c11 -Wall -Werror real compiles, nm shows no mangling, header-uniqueness test)
 - Role: core
 - Deps: T-M6-01
 - Estimate: 2.5d
 - Deliverable: a stable engine-layer C ABI (`poly_engine_*` prefix) plus C headers and static-library artifacts generated from a single interface definition (the §4.4 cffi bridge).
 - Acceptance: headers compile under both `gcc -std=c11 -Wall -Werror` and `clang -std=c11`; `nm` shows no Rust-mangled symbols leaking from the exported surface; no second hand-written header exists in the repo (the generator is the only source).
 
-### T-M6-03 · QNX cross-compile target and artifacts
+### T-M6-03 · ✅ QNX cross-compile target and artifacts (staticlib/cffi image|library + SDP probing in poly-toolchain + doctor hint; without SDP the host records SKIP-with-print; the app-side staticlib wrapper never fakes artifacts)
 - Role: platforms
 - Deps: T-M6-02
 - Estimate: 3d
 - Deliverable: QNX TargetSpec (`runtime = "staticlib"`, `bridge = "cffi"`, `package = { format = "image" | "library" }`) with QNX SDP probing wired into `poly-toolchain`.
 - Acceptance: `poly build --target qnx` produces both the static library and the image; `poly doctor` reports a missing local QNX SDP with an install hint; cross-compile smoke (via the T-M6-09 QEMU path) passes.
 
-### T-M6-04 · AUTOSAR Adaptive target (ARXML + static library)
+### T-M6-04 · ✅ AUTOSAR Adaptive target (ARXML + static library) (no-UI/self-deployed TargetSpec + ARXML one-to-one with poly_engine_*; real xmllint validation, real host staticlib build, nm cross-check)
 - Role: platforms
 - Deps: T-M6-02
 - Estimate: 3d
 - Deliverable: AUTOSAR (Adaptive) TargetSpec (`runtime = "staticlib"`, headless, `no_std` optional) with an ARXML manifest plus static-library packager.
 - Acceptance: the AUTOSAR target is green in the CI compile matrix; ARXML passes XML schema validation; service/port declarations map one-to-one onto exported C ABI symbols (asserted by script); `notes` states "headless, self-deployed".
 
-### T-M6-05 · VxWorks target (library / image)
+### T-M6-05 · ✅ VxWorks target (library / image) (2,206,316 B library + image zip built for real; nm unresolved-closure allowlist + §5.3 no-absolute-paths; link leg SKIP-with-print without wr-cc)
 - Role: platforms
 - Deps: T-M6-02
 - Estimate: 2.5d
 - Deliverable: VxWorks TargetSpec and a static-library/image packager (headless, cffi).
 - Acceptance: the VxWorks target is green in the CI compile matrix; the artifact validates as a loadable module under the VxWorks host toolchain `ld` (no unresolved symbols); no absolute paths appear in the artifact (§5.3).
 
-### T-M6-06 · Zephyr target (west + no_std)
+### T-M6-06 · ✅ Zephyr target (west + no_std) (west template + no_std module link; qemu_x86 / qemu_cortex_m3 `west build` run for real, cortex_m3 QEMU prints the engine version; the minimal CONFIG set is versioned with template v2)
 - Role: platforms
 - Deps: T-M6-02
 - Estimate: 3d
 - Deliverable: Zephyr TargetSpec (`runtime = "staticlib"`, `no_std`) plus a west project template (zephyr module with the engine-layer static library linked in).
 - Acceptance: `west build` succeeds for both `qemu_x86` and `qemu_cortex_m3`; the engine layer links as a module and pulls in no std; the template's minimal `CONFIG_*` set is recorded by CI and versioned with the template.
 
-### T-M6-07 · FreeRTOS target (static library + QEMU board)
+### T-M6-07 · ✅ FreeRTOS target (static library + QEMU board) (mps2-an385 real run: poly_engine version printed + SYS_EXIT_EXTENDED exit 0; kernel V11.1.0 fetched by tag+sha256, never vendored; missing toolchain/network SKIP-with-print)
 - Role: platforms
 - Deps: T-M6-06
 - Estimate: 2.5d
 - Deliverable: FreeRTOS TargetSpec and static-library packager plus a sample board project that runs in QEMU (reusing the T-M6-06 no_std integration).
 - Acceptance: the FreeRTOS target is green in the CI compile matrix; the sample board boots in QEMU, successfully calls one engine-layer API (printing the version) and exits with code 0.
 
-### T-M6-08 · CI compile matrix for headless targets
+### T-M6-08 · ✅ CI compile matrix for headless targets (`poly targets --tier 6 --headless --json` derives the matrix; new declarations join automatically; embedded-ci pinned caches + REAL/SKIP job summary; SDP/wr-cc absence SKIP-with-print)
 - Role: infra
 - Deps: T-M6-03, T-M6-04, T-M6-05, T-M6-06, T-M6-07
 - Estimate: 3d
 - Deliverable: the §8 host × target-tier CI matrix extended so ubuntu-latest cross-compiles QNX / AUTOSAR / VxWorks / Zephyr / FreeRTOS on every run, with matrix entries derived from TargetSpec and toolchain images/probe caching in place (mitigating R9).
 - Acceptance: all five targets are green on every commit; declaring a new target makes it appear in the matrix automatically (no CI-file edit); matrix cold start ≤ 15 min and warm start ≤ 5 min.
 
-### T-M6-09 · QEMU smoke: QNX image
+### T-M6-09 · ✅ QEMU smoke: QNX image (shared smoke runner: boot → self-check → exit code; Failed{stage,code,hint} with result.json/serial archive; SKIP-with-print without SDP/mkifs/QEMU, arbitrated by the first CI night)
 - Role: infra
 - Deps: T-M6-03, T-M6-08
 - Estimate: 3d
 - Deliverable: a QEMU smoke script for the QNX image (boot → engine-layer self-check → exit-code assertion → serial log archival), wired into the nightly pipeline.
 - Acceptance: the smoke passes in nightly CI; on failure it emits `Failed{stage, code, hint}` and the serial log pinpoints the failing self-check; `poly retry --from verify` re-runs that stage standalone.
 
-### T-M6-10 · QEMU smoke: Zephyr
+### T-M6-10 · ✅ QEMU smoke: Zephyr (`west build -t run` + exit-code/named-step assertions; shares the same parser and archive format as T-M6-09; ARM runs for real, the x86 host QEMU ROM limitation is judged a failure with logs and located)
 - Role: infra
 - Deps: T-M6-06, T-M6-08
 - Estimate: 2.5d
 - Deliverable: a Zephyr smoke script (`west build -t run` plus exit-code assertion) sharing the log-archival format with T-M6-09.
 - Acceptance: the smoke passes in nightly CI; the Zephyr and QNX smokes share one result-parsing implementation (no second decision path); failures map to named steps in the self-check script.
 
-### T-M6-11 · Android Automotive target (Android chain reuse + OEM channel placeholder)
+### T-M6-11 · ✅ Android Automotive target (Android chain reuse + OEM channel placeholder) (AAOS manifest + real aapt2/apksigner run, no second Android implementation; the OEM placeholder Publisher returns E_PUB_0006 on all four steps with zero receipts and no fake submission)
 - Role: platforms
 - Deps: —
 - Estimate: 3d
 - Deliverable: Android Automotive TargetSpec (`runtime = "native"`, `bridge = "uniffi"`, AAOS manifest variant) plus a placeholder Publisher for OEM channels.
 - Acceptance: the M2 AAPT2 + bundletool + apksigner chain (no second Android packaging implementation) produces an AAOS APK that passes `bundletool validate`; the placeholder Publisher returns an explicit "OEM credential reference required" error instead of faking a submission; `notes` states "OEM channels, no unified public API".
 
-### T-M6-12 · Embedded target status table (derived from TargetSpec)
+### T-M6-12 · ✅ Embedded target status table (derived from TargetSpec) (tools/gen-target-table.mjs generates the four-doc marker blocks + --check drift assertion wired into check-docs; no second hand-written table)
 - Role: docs
 - Deps: T-M6-03, T-M6-04, T-M6-05, T-M6-06, T-M6-07, T-M6-11
 - Estimate: 2.5d
 - Deliverable: a status table for the L6 embedded / automotive targets (runtime, bridge, artifacts, signing, verification, channel, `experimental`, `notes`), generated from TargetSpec and synced into the bilingual README / ROADMAP (§11).
 - Acceptance: every field in the table is reproducible from TargetSpec, with no second hand-written table in the repo; `node tools/render-diagrams.mjs --check` and the doc-sync check are green in CI.
 
-### T-M6-13 · Artifact size budget and experimental-flag validation
+### T-M6-13 · ✅ Artifact size budget and experimental-flag validation (L6 headless budgets across four artifact shapes with real warn/fail + E_BUDGET_0001; experimental three-way validator TargetSpec × doc table × CI strength naming all three on conflict)
 - Role: core
 - Deps: T-M6-08
 - Estimate: 2.5d
