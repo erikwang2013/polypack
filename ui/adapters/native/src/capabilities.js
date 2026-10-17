@@ -19,6 +19,9 @@ export const CAPABILITY_MATRIX = Object.freeze({
   // T-M6-11 Android Automotive：车机形态（触摸屏常态 → 手势开；航向/旋钮输入经 host 提示
   // 或 pointer=none 降级驱动 focusNav）。声明 react-native 承载，须在矩阵内。
   "android-automotive": Object.freeze({ focusNav: false, safeArea: true, gestures: true }),
+  // T-M7-02 Wear OS：触摸 + 滑动手势常态 → 手势开；小屏安全区必开（圆 / 方形差异在
+  // adapter-wear 的 layout 处理）。声明 react-native 承载，须在矩阵内（哨兵要求）。
+  wearos: Object.freeze({ focusNav: false, safeArea: true, gestures: true }),
 });
 
 /** 契约三键（输出顺序即此顺序）。 */

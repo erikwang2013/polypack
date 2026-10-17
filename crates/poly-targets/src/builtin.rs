@@ -17,6 +17,8 @@
 //! QNX（T-M6-03，staticlib + cffi + 镜像 / 库）、AUTOSAR Adaptive（T-M6-04，staticlib +
 //! cffi + ARXML 清单；无 UI、自部署）、VxWorks（T-M6-05，库 / 镜像 kit）与 Zephyr
 //! （T-M6-06，west 工程模板 + no_std 引擎模块）。
+//! M7 增补 Wear OS（tier 6，ROADMAP §3.7 穿戴行，T-M7-02）：native · uniffi，复用 Android
+//! 打包链出 Wear APK（差异只有 `android.hardware.type.watch` 清单变体与 minSdk 下限）。
 
 use alloc::string::ToString;
 use alloc::vec;
@@ -740,6 +742,35 @@ pub fn builtin() -> Vec<TargetSpec> {
             notes: Some(
                 "AAOS 清单（android.hardware.type.automotive）；车厂渠道，无统一公开 API——\
                  发布需 OEM 凭据引用（占位 Publisher，不伪造提交）"
+                    .to_string(),
+            ),
+        },
+        // ---- L6 穿戴（T-M7-02，ROADMAP §3.7 穿戴行）：Wear OS ----
+        // 复用 Android 链（format = `apk`、builder = `android-aapt2`；AAPT2 + bundletool +
+        // apksigner 不另起第二套实现），差异只有清单变体（`android.hardware.type.watch`）与
+        // minSdk 下限（26 = Wear OS 2.0）；发布走 Google Play（穿戴轨道）。`experimental =
+        // false`：正式打包链；RN on Wear 的 UI 运行时仍为 beta，如实入 notes。
+        TargetSpec {
+            id: "wearos".to_string(),
+            tier: 6,
+            hosts: vec![Host::Win, Host::Linux, Host::Macos],
+            runtime: Runtime::Native,
+            bridge: Bridge::Uniffi,
+            ui: vec!["react-native".to_string()],
+            package: PackageSpec {
+                format: "apk".to_string(),
+                builder: "android-aapt2".to_string(),
+            },
+            signing: Some("android-keystore".to_string()),
+            verify: vec![
+                "apksigner-verify".to_string(),
+                "bundletool-validate".to_string(),
+            ],
+            publish: vec!["google-play-wear".to_string()],
+            experimental: false,
+            notes: Some(
+                "Wear OS 清单（android.hardware.type.watch，minSdkVersion ≥ 26）；\
+                 UI 运行时（RN on Wear）为 beta，打包与签名走 Android 基座"
                     .to_string(),
             ),
         },

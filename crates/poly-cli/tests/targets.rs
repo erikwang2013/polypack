@@ -108,10 +108,18 @@ fn headless_filter_only_drops_ui_targets() {
         !headless.iter().any(|row| row["id"] == "android-automotive"),
         "android-automotive 有 UI，不应进无 UI 编译矩阵"
     );
+    assert!(
+        with_ui.iter().any(|row| row["id"] == "wearos"),
+        "未加 --headless 时 L6 穿戴目标应在清单里"
+    );
+    assert!(
+        !headless.iter().any(|row| row["id"] == "wearos"),
+        "wearos 有 UI（react-native），不应进无 UI 编译矩阵"
+    );
     assert_eq!(
         with_ui.len(),
-        headless.len() + 1,
-        "tier 6 只有 android-automotive 带 UI"
+        headless.len() + 2,
+        "tier 6 只有 android-automotive 与 wearos 带 UI"
     );
     assert_eq!(
         expected_ids(false).len(),

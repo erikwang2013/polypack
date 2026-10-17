@@ -196,7 +196,7 @@ pub trait Packager: Send + Sync {
 /// BSD 家族 ports / pkg / pkgsrc（openbsd T-M5-07 / freebsd T-M5-06 / netbsd T-M5-08）+
 /// Roku 频道 zip（T-M4-15）；M6：AAOS 变体 android-automotive（复用 aab 链，T-M6-11）+
 /// VxWorks 库 / 镜像（T-M6-05，两 format 共用同一 kit 构建）+ Zephyr west 模板（T-M6-06）+
-/// FreeRTOS QEMU 示例板（T-M6-07））。
+/// FreeRTOS QEMU 示例板（T-M6-07）；M7：Wear 变体 wearos（复用 aab 链，T-M7-02/03））。
 pub fn builtin() -> Vec<Box<dyn Packager>> {
     vec![
         Box::new(crate::packagers::windows::WixMsi),
@@ -213,6 +213,7 @@ pub fn builtin() -> Vec<Box<dyn Packager>> {
         Box::new(crate::packagers::android::AndroidTv("android-tv")),
         Box::new(crate::packagers::android::AndroidTv("fire-tv")),
         Box::new(crate::packagers::android::AndroidAutomotive),
+        Box::new(crate::packagers::android::AndroidWear),
         Box::new(crate::packagers::miniapp::WechatMini),
         Box::new(crate::packagers::miniapp::AlipayMini),
         Box::new(crate::packagers::miniapp::DouyinMini),

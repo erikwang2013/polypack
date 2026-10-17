@@ -25,13 +25,14 @@ const SPEC_FILE = 'crates/poly-targets/src/builtin.rs';
 export const BEGIN = '<!-- BEGIN GENERATED: l6-embedded-status -->';
 export const END = '<!-- END GENERATED: l6-embedded-status -->';
 
-/** 本表覆盖的六个 L6 嵌入式 / 车机目标（防解析静默漏项；新增 tier-6 目标时同步扩展）。 */
+/** 本表覆盖的七个 L6 嵌入式 / 车机 / 穿戴目标（防解析静默漏项；新增 tier-6 目标时同步扩展）。 */
 const EXPECTED_IDS = [
   'android-automotive',
   'autosar',
   'freertos',
   'qnx',
   'vxworks',
+  'wearos',
   'zephyr',
 ];
 

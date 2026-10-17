@@ -1,0 +1,14 @@
+{
+  "name": "@polypack/wear-smoke",
+  "version": "0.1.0",
+  "private": true,
+  "description": "T-M7-03 Wear 表单冒烟：input / swipe / back 三用例，adb + uiautomator，失败定位到具体步骤",
+  "license": "Apache-2.0",
+  "type": "module",
+  "scripts": {
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
