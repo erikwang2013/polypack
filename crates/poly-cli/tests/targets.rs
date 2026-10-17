@@ -140,10 +140,18 @@ fn headless_filter_only_drops_ui_targets() {
         !headless.iter().any(|row| row["id"] == "zepp"),
         "zepp 带 UI（adapter-wear），不应进无 UI 编译矩阵"
     );
+    assert!(
+        with_ui.iter().any(|row| row["id"] == "wearos"),
+        "未加 --headless 时 Wear OS 目标应在清单里"
+    );
+    assert!(
+        !headless.iter().any(|row| row["id"] == "wearos"),
+        "wearos 有 UI（react-native），不应进无 UI 编译矩阵"
+    );
     assert_eq!(
         with_ui.len(),
-        headless.len() + 5,
-        "tier 6 五个 UI 目标：android-automotive / garmin / watchos / fitbit / zepp"
+        headless.len() + 6,
+        "tier 6 六个 UI 目标：android-automotive / garmin / watchos / fitbit / zepp / wearos"
     );
     assert_eq!(
         expected_ids(false).len(),

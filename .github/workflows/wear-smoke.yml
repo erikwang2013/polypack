@@ -1,0 +1,121 @@
+# Wear 表单冒烟套件（T-M7-03）：input / swipe / back 三用例，adb + uiautomator 观测，
+# result.json 失败定位到具体表单步骤。
+#
+# - **mock 模式（每提交 / PR）**：零 npm install——用例集完备性、adb 动作映射（圆屏坐标派生）、
+#   期望匹配与定位格式。
+# - **真实模式（每夜 19:07 UTC + 手动触发）**：KVM + Wear x86_64 模拟器 + 预构建 RN Wear
+#   宿主 APK（仓库变量 vars.POLYPACK_WEAR_FORM_APK 指路；RN gradlew 不入库，托管 runner
+#   装不动整条 RN gradle 链）。KVM 与 APK 任一缺席 = SKIP-with-print 注记，run 步仍执行并
+#   写全 SKIP 的 result.json——绝不静默降级。证据留档 14 天。
+#
+# 本文件为 T-M7-03 新增（未改动既有 workflows）；与 tv-smoke.yml 同口径、仅 Wear 差异。
+
+name: wear-smoke
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    # 每夜真实模式：与 mobile-contract（18:37）/ miniprogram-contract（18:47）/
+    # tv-smoke（18:57）错峰
+    - cron: "7 19 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  mock:
+    name: mock / ubuntu-latest
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Wear 表单（mock：用例集 + adb 映射 + 定位格式）
+        run: node --test "ui/smoke/wear/test/*.test.js"
+
+  real:
+    name: real / ubuntu-latest
+    # 仅 schedule / 手动触发 = 真实模式（secrets 不进 push / PR 事件）
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    env:
+      # 预构建 Wear 表单 APK（同一纪律：外部预置，未设 = 空 = 设备腿 SKIP-with-print）。
+      POLYPACK_WEAR_FORM_APK: ${{ vars.POLYPACK_WEAR_FORM_APK }}
+      POLYPACK_WEAR_FORM_PACKAGE: ${{ vars.POLYPACK_WEAR_FORM_PACKAGE || 'com.polypack.weatform' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: 设备腿门（KVM + 预构建 Wear 表单 APK；任一缺席 → SKIP-with-print 注记）
+        id: gate
+        run: |
+          if [ ! -e /dev/kvm ]; then
+            echo "device=0" >> "$GITHUB_OUTPUT"
+            echo "SKIP：runner 无 /dev/kvm——Wear 设备腿未执行"
+            echo "::warning::无 /dev/kvm：Wear 表单设备腿跳过（如实注记，非静默降级）"
+          elif [ -z "$POLYPACK_WEAR_FORM_APK" ] || [ ! -f "$POLYPACK_WEAR_FORM_APK" ]; then
+            echo "device=0" >> "$GITHUB_OUTPUT"
+            echo "SKIP：无预构建 Wear 表单 APK（vars.POLYPACK_WEAR_FORM_APK 未设或缺文件）——AVD 与安装未跑；本机构建命令见 ui/smoke/wear/README.md"
+            echo "::warning::Wear 表单 APK 未预置：设备腿跳过（如实注记）"
+          else
+            echo "device=1" >> "$GITHUB_OUTPUT"
+            echo "设备腿门通过：/dev/kvm + APK（$POLYPACK_WEAR_FORM_APK）"
+          fi
+
+      - name: Android SDK（cmdline-tools；许可由 action 自带）
+        if: steps.gate.outputs.device == '1'
+        uses: android-actions/setup-android@v4
+        with:
+          log-accepted-android-sdk-licenses: "false"
+
+      - name: AVD（Wear OS 5 = API 34；Wear 镜像只有 x86_64 形态）
+        if: steps.gate.outputs.device == '1'
+        run: |
+          SDK="${ANDROID_SDK_ROOT:-$ANDROID_HOME}"
+          export PATH="$SDK/cmdline-tools/latest/bin:$SDK/emulator:$SDK/platform-tools:$PATH"
+          sdkmanager "platform-tools" "emulator" "platforms;android-34" \
+            "system-images;android-34;wear;x86_64"
+          echo no | avdmanager create avd -n polypack-wear-smoke \
+            -k "system-images;android-34;wear;x86_64" --force
+
+      - name: 启动模拟器（无窗口 + swiftshader；等 boot_completed）
+        if: steps.gate.outputs.device == '1'
+        run: |
+          SDK="${ANDROID_SDK_ROOT:-$ANDROID_HOME}"
+          export PATH="$SDK/emulator:$SDK/platform-tools:$PATH"
+          emulator -avd polypack-wear-smoke -no-window -no-audio -no-boot-anim -no-snapshot \
+            -gpu swiftshader_indirect -port 5554 &
+          adb wait-for-device
+          for i in $(seq 1 120); do
+            [ "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = "1" ] && break
+            sleep 5
+          done
+          adb devices
+          adb shell getprop ro.build.characteristics
+
+      - name: Wear 表单腿（门缺席时驱动自身 SKIP-with-print 并写 result.json）
+        # runner 上下文只许在步骤级 env（job 级会致工作流加载被拒）。
+        env:
+          POLYPACK_WEAR_SMOKE_LOGS: ${{ runner.temp }}/poly-wear-smoke-logs
+        run: node ui/smoke/wear/run.mjs --leg android --serial emulator-5554 --logs "$POLYPACK_WEAR_SMOKE_LOGS"
+
+      - name: 留证据（result.json + dump + 失败截图；失败也留）
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: wear-smoke-evidence
+          path: ${{ runner.temp }}/poly-wear-smoke-logs/**
+          # result.json 恒写（全 SKIP 也写）：空上传=真异常
+          if-no-files-found: error
+          retention-days: 14

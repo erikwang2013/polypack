@@ -5,7 +5,7 @@
 //! 自动出现该条目。`--json` 走全局 JSON Lines 约定（首行摘要，随后每目标一行）。
 //!
 //! `--headless` 是「无 UI 目标」口径（`spec.ui` 为空），与 ROADMAP §3.7 的
-//! 嵌入式编译矩阵一致；带 UI 的 L6 目标（如 android-automotive）不进该矩阵。
+//! 嵌入式编译矩阵一致；带 UI 的 L6 目标（如 android-automotive / wearos）不进该矩阵。
 
 use poly_core::Diagnostic;
 use poly_targets::{Registry, TargetSpec};

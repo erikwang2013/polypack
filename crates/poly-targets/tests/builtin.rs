@@ -98,14 +98,14 @@ fn builtin_has_seven_valid_targets() {
     );
     assert_eq!(
         registry.all().count(),
-        37,
+        38,
         "M7 起内建 = L1 七 + L2 小程序族四（wechat / alipay / douyin / quickapp）+ \
          L3 电视族八（tvos + android-tv / fire-tv + tizen-tv / webos-tv / vidaa-tv / smartcast-tv \
          + roku※实验，T-M4-04/07/08/09/10/12）+ L5 OpenBSD / FreeBSD / NetBSD（T-M5-07/06/08）+\
          发行版三（ubuntu / fedora / mint，T-M5-01）+ ChromeOS 双轨（chromeos / chromeos-pwa，\
-         T-M5-10）+ L6 车机 / 嵌入式 / 穿戴十目标（android-automotive，T-M6-11；qnx / autosar，\
+         T-M5-10）+ L6 车机 / 嵌入式 / 穿戴十一目标（android-automotive，T-M6-11；qnx / autosar，\
          T-M6-03/04；vxworks / zephyr，T-M6-05/06；freertos，T-M6-07；garmin※实验，T-M7-09；\
-         watchos※实验，T-M7-05/06；fitbit / zepp，T-M7-07/08）"
+         watchos※实验，T-M7-05/06；fitbit / zepp，T-M7-07/08；wearos，T-M7-02）"
     );
     for spec in registry.all() {
         spec.validate()
@@ -300,7 +300,7 @@ fn linux_host_resolves_four_l1_targets_from_all() {
         ]),
         "L5 OpenBSD / FreeBSD / NetBSD + 发行版三 + ChromeOS 双轨应全部入选"
     );
-    // L6 车机 / 嵌入式 / 穿戴：android-automotive / fitbit / zepp 声明三宿主；
+    // L6 车机 / 嵌入式 / 穿戴：android-automotive / fitbit / zepp / wearos 声明三宿主；
     // qnx / autosar / vxworks / zephyr / freertos / garmin（T-M7-09 实验）声明 Linux 宿主
     // → 在 Linux 宿主下全部入选；watchos 声明 macOS 专宿主 → 排除
     let l6: BTreeSet<&str> = resolved
@@ -313,6 +313,7 @@ fn linux_host_resolves_four_l1_targets_from_all() {
         l6,
         BTreeSet::from([
             "android-automotive",
+            "wearos",
             "qnx",
             "autosar",
             "vxworks",
@@ -322,7 +323,7 @@ fn linux_host_resolves_four_l1_targets_from_all() {
             "fitbit",
             "zepp"
         ]),
-        "L6 车机 + 嵌入式 + 穿戴九目标应入选（watchos 为 macOS 专宿主）"
+        "L6 车机 + 嵌入式 + 穿戴十目标应入选（watchos 为 macOS 专宿主）"
     );
     assert_eq!(
         selected.len(),
@@ -721,6 +722,63 @@ fn builtin_matches_roadmap_3_7_automotive() {
     assert!(
         notes.contains("android.hardware.type.automotive") && notes.contains("不伪造提交"),
         "AAOS 清单变体与占位发布边界须入 notes：{notes}"
+    );
+}
+
+/// T-M7-02 验收（声明侧）：Wear OS 按 ROADMAP §3.7 穿戴行逐列对齐。
+/// §3.7 行 = native · uniffi / APK（Wear）/ 签名同 Android / bundletool / Google Play 穿戴轨道；
+/// 打包链复用 M2（builder `android-aapt2`），清单变体 `android.hardware.type.watch`。
+#[test]
+fn builtin_matches_roadmap_3_7_wearos() {
+    let spec = Registry::builtin()
+        .get("wearos")
+        .expect("内建 wearos 目标")
+        .clone();
+    assert_eq!(spec.tier, 6, "Wear OS 属 L6（ROADMAP §3.7）");
+    assert_eq!(
+        spec.hosts,
+        vec![Host::Win, Host::Linux, Host::Macos],
+        "复用 Android 工具链（三宿主）"
+    );
+    assert_eq!(spec.runtime, Runtime::Native, "§3.7 核心运行时 = native");
+    assert_eq!(spec.bridge, Bridge::Uniffi, "§3.7 桥 = uniffi");
+    assert_eq!(
+        spec.ui.iter().map(String::as_str).collect::<Vec<_>>(),
+        vec!["react-native"],
+        "RN 承载 UI（同 Android）"
+    );
+    assert_eq!(spec.package.format, "apk", "§3.7 产物 = APK（Wear）");
+    assert_eq!(
+        spec.package.builder, "android-aapt2",
+        "复用 M2 Android 打包链（不新增第二套实现）"
+    );
+    assert_eq!(
+        spec.signing.as_deref(),
+        Some("android-keystore"),
+        "§3.7 签名 = 同 Android（凭据引用）"
+    );
+    assert_eq!(
+        spec.verify,
+        ["apksigner-verify", "bundletool-validate"].map(String::from),
+        "§3.7 产物校验 = bundletool（+ apksigner 取证）"
+    );
+    assert_eq!(
+        spec.publish,
+        vec!["google-play-wear".to_string()],
+        "§3.7 发布渠道 = Google Play 穿戴轨道"
+    );
+    assert!(
+        !spec.experimental,
+        "§3.7 未标 ※实验：打包链为正式 Android 链"
+    );
+    let notes = spec.notes.as_deref().unwrap_or("");
+    assert!(
+        notes.contains("android.hardware.type.watch") && notes.contains("minSdkVersion ≥ 26"),
+        "Wear 清单变体与最小 API 须入 notes：{notes}"
+    );
+    assert!(
+        notes.contains("RN on Wear）为 beta") && notes.contains("打包与签名走 Android 基座"),
+        "UI 运行时 beta 边界须如实入 notes：{notes}"
     );
 }
 

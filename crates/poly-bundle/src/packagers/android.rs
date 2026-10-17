@@ -12,6 +12,10 @@
 //! `android.hardware.type.automotive` 一行，产物落点同 TV（未签名 APK）——车厂渠道的占位
 //! 只发生在发布侧（poly-publish `oem-channel`），打包链保持与 Android 完全同源。
 //!
+//! Wear 变体（T-M7-02，`wearos`，format `apk`）同链复用：清单加
+//! `android.hardware.type.watch` required=true，并把 minSdkVersion 抬到 [`WEAR_MIN_API`]
+//! 下限；生成 / 输入清单都过 [`validate_wear_manifest`]（Wear 特性 + 最小 API 级别）。
+//!
 //! 签名不在本任务范围内（T-M2-09 接入），产物一律是**未签名**件；bundletool 缺席时如实降级
 //! （模块 zip + 未签名 APK，notes 写明未做 bundletool 步骤），绝不伪造 bundletool 结果。
 
@@ -42,7 +46,13 @@ pub struct AndroidTv(pub &'static str);
 /// `android.hardware.type.automotive` 行与产物落点（未签名 APK，同 TV）。
 pub struct AndroidAutomotive;
 
-/// 打包口径：AAB 目标与 TV / AAOS 变体共用全部内部步骤，差异集中在此。
+/// Wear 变体打包器（`wearos`；format `apk`，builder `android-aapt2`）。
+///
+/// 复用 [`AndroidAab`] 的整条内部链（T-M7-02）：差异只有生成清单的
+/// `android.hardware.type.watch` 行、minSdk 下限与产物落点（未签名 APK，同 TV）。
+pub struct AndroidWear;
+
+/// 打包口径：AAB 目标与 TV / AAOS / Wear 变体共用全部内部步骤，差异集中在此。
 #[derive(Clone, Copy)]
 struct Flavor {
     /// 事件 / 产物 / 错误归属（`Packager::id()`）。
@@ -53,6 +63,8 @@ struct Flavor {
     tv: bool,
     /// AAOS 清单（`android.hardware.type.automotive`）。
     automotive: bool,
+    /// Wear 清单（`android.hardware.type.watch` + minSdk 下限）。
+    wear: bool,
 }
 
 /// AAB 口径。
@@ -61,6 +73,7 @@ const AAB_FLAVOR: Flavor = Flavor {
     format: AAB,
     tv: false,
     automotive: false,
+    wear: false,
 };
 
 /// TV 口径（两目标的差异只有 id）。
@@ -70,6 +83,7 @@ const fn tv_flavor(id: &'static str) -> Flavor {
         format: APK,
         tv: true,
         automotive: false,
+        wear: false,
     }
 }
 
@@ -79,10 +93,25 @@ const AUTOMOTIVE_FLAVOR: Flavor = Flavor {
     format: APK,
     tv: false,
     automotive: true,
+    wear: false,
 };
+
+/// Wear 口径（T-M7-02）。
+const WEAR_FLAVOR: Flavor = Flavor {
+    id: WEAROS,
+    format: APK,
+    tv: false,
+    automotive: false,
+    wear: true,
+};
+
+/// Wear OS 应用的最低 API 级别（Wear OS 2.0 / Android 8.0；Google Play 另要求 targetSdk
+/// 按年抬升，那是 targetSdk 策略，不改变这里的 minSdk 下限）。
+pub const WEAR_MIN_API: u32 = 26;
 
 const ANDROID: &str = "android";
 const ANDROID_AUTOMOTIVE: &str = "android-automotive";
+const WEAROS: &str = "wearos";
 const AAB: &str = "aab";
 const APK: &str = "apk";
 /// AAB 模块 zip 里清单的落点（bundletool 契约：根级 `manifest/AndroidManifest.xml`）。
@@ -155,6 +184,24 @@ impl Packager for AndroidAutomotive {
     }
 }
 
+impl Packager for AndroidWear {
+    fn id(&self) -> &'static str {
+        WEAROS
+    }
+
+    fn format(&self) -> &'static str {
+        APK
+    }
+
+    fn plan(&self, inputs: &BundleInputs, spec: &TargetSpec) -> Result<BundlePlan, BundleError> {
+        AndroidAab::chain_plan(inputs, spec, WEAR_FLAVOR)
+    }
+
+    fn package(&self, inputs: &BundleInputs, spec: &TargetSpec) -> Result<Artifact, BundleError> {
+        AndroidAab::chain_package(inputs, spec, WEAR_FLAVOR)
+    }
+}
+
 impl AndroidAab {
     /// 口径参数化的计划体：`Packager::plan` 与 TV 变体（[`AndroidTv`]）共用同一实现。
     fn chain_plan(
@@ -165,7 +212,7 @@ impl AndroidAab {
         check_format(spec, flavor.format)?;
         // 生成的清单与 res 直接内插产品元数据：先过白名单校验（无 XML / 路径元字符）。
         inputs.product.validate(flavor.id)?;
-        let android = android_inputs(inputs);
+        let android = android_for(inputs, flavor);
         let tools = tools::resolve(&android)?;
         let stage = stage(inputs, &android, &tools);
         if requires_d8(&android) && tools.d8.is_none() {
@@ -173,17 +220,38 @@ impl AndroidAab {
         }
 
         let mut plan = BundlePlan::new();
-        if android.manifest.is_none() {
+        let generated = if android.manifest.is_none() {
             let has_icon = icon_mipmap(inputs, &android).is_some();
             let package = android_package(&inputs.product.identifier)?;
-            let manifest = generated_manifest(
+            Some(generated_manifest(
                 &inputs.product,
                 &package,
                 &android,
                 &stage,
                 has_icon,
                 flavor,
-            );
+            ))
+        } else {
+            None
+        };
+        if flavor.wear {
+            // 清单校验器（T-M7-02 验收）：生成件 / 输入件都必须声明 Wear 特性与最小 API。
+            let manifest = match (&generated, &android.manifest) {
+                (Some(text), _) => text.clone(),
+                (None, Some(path)) => std::fs::read_to_string(path).map_err(io_err(path))?,
+                (None, None) => unreachable!("清单必有生成件或输入件"),
+            };
+            validate_wear_manifest(&manifest).map_err(|reason| BundleError::InvalidInput {
+                packager: flavor.id,
+                field: "AndroidManifest.xml",
+                value: android.manifest.as_ref().map_or_else(
+                    || "<generated>".to_string(),
+                    |path| path.display().to_string(),
+                ),
+                reason,
+            })?;
+        }
+        if let Some(manifest) = generated {
             plan = plan.with_script(stage.manifest.clone(), manifest);
         }
         for script in generated_res(&inputs.product, &android, &stage) {
@@ -211,7 +279,7 @@ impl AndroidAab {
         flavor: Flavor,
     ) -> Result<Artifact, BundleError> {
         let plan = AndroidAab::chain_plan(inputs, spec, flavor)?;
-        let android = android_inputs(inputs);
+        let android = android_for(inputs, flavor);
         let tools = tools::resolve(&android)?;
         let stage = stage(inputs, &android, &tools);
 
@@ -236,6 +304,20 @@ impl AndroidAab {
                     "AAOS 清单：使用输入清单，未注入 android.hardware.type.automotive".to_string()
                 }
                 false => "AAOS 清单：android.hardware.type.automotive required=true".to_string(),
+            });
+        }
+        if flavor.wear {
+            notes.push(match android.manifest.is_some() {
+                true => format!(
+                    "Wear 清单：使用输入清单（校验通过：android.hardware.type.watch + \
+                     minSdkVersion={}）",
+                    android.min_sdk
+                ),
+                false => format!(
+                    "Wear 清单：android.hardware.type.watch required=true；\
+                     minSdkVersion={}（Wear 下限 {WEAR_MIN_API}）",
+                    android.min_sdk
+                ),
             });
         }
         if flavor.tv {
@@ -521,6 +603,8 @@ fn with_source_date(mut command: Command) -> Command {
 /// `android:banner`（仅在输入 res 确有 `drawable*/tv_banner.*` 时引用——缺则省去，不伪造资源）。
 /// AAOS 变体（`flavor.automotive`）只加 `android.hardware.type.automotive` required=true
 /// （T-M6-11 / ROADMAP §3.7）。
+/// Wear 变体（`flavor.wear`）只加 `android.hardware.type.watch` required=true
+/// （T-M7-02 / ROADMAP §3.7 穿戴行）；minSdk 由 [`android_for`] 抬到下限。
 fn generated_manifest(
     product: &ProductInfo,
     package: &str,
@@ -564,11 +648,46 @@ fn generated_manifest(
             "  <uses-feature android:name=\"android.hardware.type.automotive\" android:required=\"true\" />\n",
         );
     }
+    if flavor.wear {
+        out.push_str(
+            "  <uses-feature android:name=\"android.hardware.type.watch\" android:required=\"true\" />\n",
+        );
+    }
     out.push_str(&format!(
         "  <application android:label=\"@string/app_name\" android:hasCode=\"{has_code}\"{icon}{banner} />\n"
     ));
     out.push_str("</manifest>\n");
     out
+}
+
+/// Wear 清单校验器（T-M7-02 验收）：声明 `android.hardware.type.watch` required=true 且
+/// `minSdkVersion` ≥ [`WEAR_MIN_API`]。生成件与输入件都过此门；不满足即拒绝打包。
+pub fn validate_wear_manifest(manifest: &str) -> Result<(), String> {
+    let has_watch = manifest.split('<').any(|tag| {
+        tag.starts_with("uses-feature")
+            && tag.contains("android.hardware.type.watch")
+            && tag.contains("required=\"true\"")
+    });
+    if !has_watch {
+        return Err(
+            "清单缺 `android.hardware.type.watch` required=true（Wear 特性声明）".to_string(),
+        );
+    }
+    let marker = "android:minSdkVersion=\"";
+    let start = manifest
+        .find(marker)
+        .ok_or_else(|| "清单缺 android:minSdkVersion（Wear 最小 API 级别）".to_string())?
+        + marker.len();
+    let value = manifest[start..].split('"').next().unwrap_or("");
+    let min_sdk: u32 = value
+        .parse()
+        .map_err(|_| format!("minSdkVersion 非整数：{value:?}（须显式给出 API 级别）"))?;
+    if min_sdk < WEAR_MIN_API {
+        return Err(format!(
+            "Wear 清单 minSdkVersion={min_sdk} 低于下限 {WEAR_MIN_API}（Wear OS 2.0）"
+        ));
+    }
+    Ok(())
 }
 
 /// 输入 res 里是否存在 TV banner（`drawable*/tv_banner.*`——banner 是 Leanback 的显式资源，
@@ -936,6 +1055,15 @@ fn android_inputs(inputs: &BundleInputs) -> AndroidInputs {
     inputs.android.clone().unwrap_or_default()
 }
 
+/// 口径生效的 Android 输入：Wear 变体把 minSdkVersion 抬到 [`WEAR_MIN_API`] 下限。
+fn android_for(inputs: &BundleInputs, flavor: Flavor) -> AndroidInputs {
+    let mut android = android_inputs(inputs);
+    if flavor.wear {
+        android.min_sdk = android.min_sdk.max(WEAR_MIN_API);
+    }
+    android
+}
+
 /// 是否有 `.jar` 输入（d8 只在此时必需）。
 fn requires_d8(android: &AndroidInputs) -> bool {
     android.dex_inputs.iter().any(|input| !is_dex(input))
@@ -1195,5 +1323,42 @@ mod tests {
             AAB_FLAVOR,
         );
         assert!(!aab.contains("automotive"), "{aab}");
+    }
+
+    #[test]
+    fn wear_manifest_carries_the_watch_feature_only() {
+        // 结构断言不依赖 SDK：Wear 清单变体由同一 `generated_manifest` 生成（T-M7-02）。
+        let stage = tv_stage();
+        let product = tv_product();
+        let package = android_package(&product.identifier).expect("可映射");
+        let android = AndroidInputs {
+            min_sdk: WEAR_MIN_API,
+            ..AndroidInputs::default()
+        };
+        let manifest = generated_manifest(&product, &package, &android, &stage, false, WEAR_FLAVOR);
+        assert!(
+            manifest.contains(
+                "<uses-feature android:name=\"android.hardware.type.watch\" android:required=\"true\" />"
+            ),
+            "{manifest}"
+        );
+        assert!(
+            !manifest.contains("leanback")
+                && !manifest.contains("android.hardware.type.automotive"),
+            "Wear 不叠加 TV / 车机清单行：{manifest}"
+        );
+        assert_eq!(validate_wear_manifest(&manifest), Ok(()), "{manifest}");
+        // 默认 minSdk（24）低于 Wear 下限：校验器拒绝，打包侧由 `android_for` 抬到 26。
+        let low = generated_manifest(
+            &product,
+            &package,
+            &AndroidInputs::default(),
+            &stage,
+            false,
+            WEAR_FLAVOR,
+        );
+        assert!(validate_wear_manifest(&low).is_err());
+        let aab = generated_manifest(&product, &package, &android, &stage, false, AAB_FLAVOR);
+        assert!(!aab.contains("type.watch"), "{aab}");
     }
 }
