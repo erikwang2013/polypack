@@ -309,6 +309,9 @@ fn makefile(inputs: &BundleInputs, payload: &BTreeMap<String, bool>) -> String {
     if payload.contains_key(&bin) {
         out.push_str(&format!("\tchmod 755 ${{PREFIX}}/{bin}\n"));
     }
+    // ports(7)：Makefile 必须以 bsd.port.mk 收尾，否则 make package 缺 bsd.port.subdir.mk
+    // 的默认目标链（T-M5-09 交叉复核指出的缺口）。
+    out.push_str("\n.include <bsd.port.mk>\n");
     out
 }
 
@@ -410,6 +413,11 @@ pub fn check_ports_structure(port: &Path) -> Result<PortsStructure, BundleError>
     if !makefile.lines().any(|line| line.trim() == "do-install:") {
         return Err(bad(
             "Makefile 缺 do-install 目标（prebuilt 载荷无安装步骤）".to_string(),
+        ));
+    }
+    if !makefile.contains(".include <bsd.port.mk>") {
+        return Err(bad(
+            "Makefile 缺 `.include <bsd.port.mk>`（make package 无法走 ports 目标链）".to_string(),
         ));
     }
     if let Some(missing) = ["COMMENT", "DISTNAME", "MAINTAINER"]
@@ -548,6 +556,10 @@ mod tests {
         );
         assert!(makefile.contains("MAINTAINER =\tPolyPack <ports@polypack.com>"));
         assert!(makefile.contains("do-install:"));
+        assert!(
+            makefile.trim_end().ends_with(".include <bsd.port.mk>"),
+            "Makefile 须以 bsd.port.mk include 收尾：{makefile}"
+        );
 
         let plist = std::fs::read_to_string(port.join("pkg/PLIST")).unwrap();
         assert!(plist.contains("@bin bin/pax-notes"), "{plist}");
