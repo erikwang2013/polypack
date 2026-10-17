@@ -15,6 +15,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { checkGeneratedDocs } from './gen-target-table.mjs';
+import { checkExperimentalConsistency } from './check-experimental.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -55,5 +56,19 @@ const generated = checkGeneratedDocs();
 for (const line of generated.lines) (line.ok ? console.log : console.error)(line.text);
 failed += generated.failed;
 
-console.log(failed ? `\n${failed} 项漂移` : '\n四对文档结构一致（含 TargetSpec 状态表）');
+// T-M6-13：experimental 三处一致（TargetSpec / 生成文档表 / CI 强度）。
+try {
+  const experimental = checkExperimentalConsistency();
+  for (const line of experimental.lines) (line.ok ? console.log : console.error)(line.text);
+  failed += experimental.failed;
+} catch (err) {
+  failed += 1;
+  console.error(`DRIFT experimental 三处一致校验: ${err.message}`);
+}
+
+console.log(
+  failed
+    ? `\n${failed} 项漂移`
+    : '\n四对文档结构一致（含 TargetSpec 状态表与 experimental 三处一致）',
+);
 process.exit(failed ? 1 : 0);
