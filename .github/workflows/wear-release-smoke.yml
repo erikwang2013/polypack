@@ -1,0 +1,149 @@
+# Wear OS 发布冒烟门（T-M7-04）：安装 → 启动 → 表单用例 → 卸载，截图 / logcat 归档，
+# 失败定位到具体表单步骤并阻断发版。
+#
+# 与每夜 wear-smoke.yml 的区别（本文件为新增，未改动既有 workflows）：
+#   · **环境槽缺席 = 阻断发版**：无 /dev/kvm 或无预构建 APK 时打印 SKIP-with-print 原因后
+#     以 ::error:: + exit 1 结束——发版前必跑，SKIP 不能放行（夜跑式静默通过仅限 wear-smoke）；
+#   · **job 失败语义**：设备 job 的 run.mjs 任一表单步骤失败 → exit 1；驱动内部 SKIP（如设备
+#     非 Wear）由「发布门判定」步骤读 result.json 判为不过——两道都红，release-gate job 才红；
+#   · **release-gate job** 依赖设备 job（needs + if: always()），失败即整个 workflow 失败。
+#     发版流水线可直接 `uses: ./.github/workflows/wear-release-smoke.yml`（workflow_call），
+#     把 release-gate 作为发版前置 job 依赖；release published 另为已发布版本留证复核。
+#
+# 归档（artifact wear-release-smoke-evidence，90 天）：result.json（startedAt/finishedAt 时间戳 +
+# build.commit/dirty + APK SHA-256 构建摘要 + 失败 locate）、logcat.txt、逐 case 终态截图、
+# 失败步截图、逐 step uiautomator dump。blessed runner / 模拟器复跑命令见 ui/smoke/wear/README.md。
+
+name: wear-release-smoke
+
+on:
+  workflow_call:
+  workflow_dispatch:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+jobs:
+  wear-device-smoke:
+    name: wear-device-smoke / ubuntu-latest
+    runs-on: ubuntu-latest
+    env:
+      # 预构建 Wear 表单 APK（仓库外预置，同 wear-smoke 纪律）；未设 = 发布门阻断。
+      POLYPACK_WEAR_FORM_APK: ${{ vars.POLYPACK_WEAR_FORM_APK }}
+      POLYPACK_WEAR_FORM_PACKAGE: ${{ vars.POLYPACK_WEAR_FORM_PACKAGE || 'com.polypack.weatform' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: 发布门环境（缺 KVM / 预构建 APK = 阻断，而非夜跑式 SKIP）
+        run: |
+          if [ ! -e /dev/kvm ]; then
+            echo "SKIP-with-print：runner 无 /dev/kvm——Wear 真跑未执行"
+            echo "::error::无 /dev/kvm：Wear 发布冒烟不能真跑，发版门阻断（blessed runner 复跑命令见 ui/smoke/wear/README.md）"
+            exit 1
+          fi
+          if [ -z "$POLYPACK_WEAR_FORM_APK" ] || [ ! -f "$POLYPACK_WEAR_FORM_APK" ]; then
+            echo "SKIP-with-print：无预构建 Wear 表单 APK（vars.POLYPACK_WEAR_FORM_APK 未设或缺文件）"
+            echo "::error::Wear 表单 APK 未预置：发布冒烟不能真跑，发版门阻断（本机构建命令见 ui/smoke/wear/README.md）"
+            exit 1
+          fi
+          echo "发布门环境通过：/dev/kvm + APK（$POLYPACK_WEAR_FORM_APK）"
+
+      - name: Android SDK（cmdline-tools；许可由 action 自带）
+        uses: android-actions/setup-android@v4
+        with:
+          log-accepted-android-sdk-licenses: "false"
+
+      - name: AVD（Wear OS 5 = API 34；Wear 镜像只有 x86_64 形态）
+        run: |
+          SDK="${ANDROID_SDK_ROOT:-$ANDROID_HOME}"
+          export PATH="$SDK/cmdline-tools/latest/bin:$SDK/emulator:$SDK/platform-tools:$PATH"
+          sdkmanager "platform-tools" "emulator" "platforms;android-34" \
+            "system-images;android-34;wear;x86_64"
+          echo no | avdmanager create avd -n polypack-wear-release \
+            -k "system-images;android-34;wear;x86_64" --force
+
+      - name: 启动模拟器（无窗口 + swiftshader；等 boot_completed）
+        run: |
+          SDK="${ANDROID_SDK_ROOT:-$ANDROID_HOME}"
+          export PATH="$SDK/emulator:$SDK/platform-tools:$PATH"
+          emulator -avd polypack-wear-release -no-window -no-audio -no-boot-anim -no-snapshot \
+            -gpu swiftshader_indirect -port 5554 &
+          adb wait-for-device
+          for i in $(seq 1 120); do
+            [ "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = "1" ] && break
+            sleep 5
+          done
+          adb devices
+          adb shell getprop ro.build.characteristics
+
+      - name: Wear 表单冒烟（run.mjs 全生命周期：install → launch → 用例 → uninstall）
+        # runner 上下文只许在步骤级 env（job 级会致工作流加载被拒）。
+        env:
+          POLYPACK_WEAR_SMOKE_LOGS: ${{ runner.temp }}/poly-wear-release-logs
+        run: node ui/smoke/wear/run.mjs --leg android --serial emulator-5554
+
+      - name: 发布门判定（SKIP / 空跑 / 失败一律阻断；打印具体表单步骤定位）
+        if: always()
+        env:
+          POLYPACK_WEAR_SMOKE_LOGS: ${{ runner.temp }}/poly-wear-release-logs
+        run: |
+          file="$POLYPACK_WEAR_SMOKE_LOGS/result.json"
+          if [ ! -f "$file" ]; then
+            echo "::error::result.json 缺失——设备腿没有产出证据，发版门阻断"
+            exit 1
+          fi
+          node --input-type=module -e '
+            import { readFileSync } from "node:fs";
+            const result = JSON.parse(readFileSync(process.argv[1], "utf8"));
+            const target = result.targets?.[0];
+            if (
+              target === undefined ||
+              target.status !== "pass" ||
+              result.summary.pass !== 1 ||
+              result.summary.fail !== 0 ||
+              result.summary.skip !== 0
+            ) {
+              const locate = target?.failure?.locate ?? target?.skipNote ?? "无目标记录";
+              console.error(`::error::Wear 发布冒烟未通过（${target?.status ?? "missing"}）：${locate}`);
+              process.exit(1);
+            }
+            const build = result.build ?? {};
+            console.log(
+              `Wear 发布冒烟通过：${result.summary.cases} 表单用例 / ${result.summary.steps} 步骤；` +
+                `build ${build.commit ?? "?"}${build.dirty === true ? "（dirty）" : ""}；` +
+                `apk sha256 ${build.apk?.sha256 ?? "?"}`,
+            );
+          ' "$file"
+
+      - name: 留证据（result.json + logcat + 截图 + dump；失败也留）
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: wear-release-smoke-evidence
+          path: ${{ runner.temp }}/poly-wear-release-logs/**
+          # result.json 恒写（含失败 / SKIP 记录）：空上传=真异常
+          if-no-files-found: error
+          retention-days: 90
+
+  release-gate:
+    name: release-gate
+    needs: wear-device-smoke
+    # 设备 job 失败 / 取消也要进入判定并红——发版流水线依赖本 job 即被阻断。
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: 发版门（设备冒烟成功才放行）
+        run: |
+          result="${{ needs.wear-device-smoke.result }}"
+          if [ "$result" != "success" ]; then
+            echo "::error::Wear 设备冒烟结果 $result——发版门阻断；具体表单步骤定位见 wear-device-smoke 日志与 artifact wear-release-smoke-evidence"
+            exit 1
+          fi
+          echo "Wear 设备冒烟通过——发版门放行"

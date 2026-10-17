@@ -12,6 +12,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { collectBuildSummary } from "./build-summary.mjs";
 import { localizeFailure, runAndroidLeg } from "./drivers/android.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -45,6 +46,9 @@ function main() {
       summary.steps += wearCase.steps.length;
     }
   }
+  for (const target of records) {
+    if (target.failure !== undefined) target.failure.locate = localizeFailure(target.failure);
+  }
   const result = {
     schema: "polypack/wear-smoke/v1",
     startedAt,
@@ -52,6 +56,7 @@ function main() {
     node: process.version,
     leg,
     apk,
+    build: collectBuildSummary({ apk }),
     package: packageName,
     logs,
     targets: records,
