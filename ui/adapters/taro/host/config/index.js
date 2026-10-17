@@ -35,6 +35,11 @@ export default defineConfig(async (merge, { command, mode }) => {
       enable: true
     },
     mini: {
+      // 宿主以 `file:..` 软链 adapter：webpack 默认会解析到仓内真实路径，从那里向上找不到
+      // 宿主 node_modules 里的 react / @tarojs/taro（真跑件在 mac/linux 同错）。保留软链路径。
+      webpackChain: (chain) => {
+        chain.resolve.symlinks(false)
+      },
       postcss: {
         pxtransform: {
           enable: true,

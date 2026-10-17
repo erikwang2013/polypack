@@ -10,6 +10,8 @@
 //! 复用同一条 Android 打包链 `apk` / `android-aapt2`，差异在 Leanback 清单与发布渠道）；
 //! web 系 TV 四目标（tizen-tv / webos-tv / vidaa-tv / smartcast-tv，T-M4-08/09/10：
 //! wasm 核心 + react-dom UI，wgt / ipk / web-app 出包）。
+//! M5 增补 L5 BSD 家族目标（tier 5，ROADMAP §3.6）：OpenBSD ports（T-M5-07，ports 骨架 +
+//! signify / portcheck；Linux 宿主可发起的交叉面，真构建归 OpenBSD VM / T-M5-09）。
 
 use crate::spec::{Bridge, Host, PackageSpec, Runtime, TargetSpec};
 
@@ -397,6 +399,32 @@ pub fn builtin() -> Vec<TargetSpec> {
                 "实验：SceneGraph 子集受限渲染——仅 UI 子集 + 原生逻辑（BrightScript 重写，\
                  无 JS 运行时）；侧载结构自检可用，真机实证待补（T-M4-15 触发前置；T-M4-12 决策：\
                  继续受限档）"
+                    .to_string(),
+            ),
+        },
+        // ---- L5 BSD 家族（T-M5-07，ROADMAP §3.6）：OpenBSD ports ----
+        // hosts = Linux 是**交叉面**：Linux 宿主生成 ports 骨架（Makefile / PLIST / DESCR +
+        // 载荷）并做结构自检；`make package` / portcheck / pkg_sign 真跑需 OpenBSD VM
+        // （T-M5-09），缺 ports 基础设施时打包器逐项跳过并如实注记。
+        TargetSpec {
+            id: "openbsd".to_string(),
+            tier: 5,
+            hosts: vec![Host::Linux],
+            runtime: Runtime::Native,
+            bridge: Bridge::TauriIpc,
+            ui: vec!["react-dom".to_string()],
+            package: PackageSpec {
+                format: "ports".to_string(),
+                builder: "openbsd-ports".to_string(),
+            },
+            signing: Some("openbsd-signify".to_string()),
+            verify: vec!["portcheck".to_string()],
+            publish: vec!["openbsd-ports".to_string()],
+            experimental: false,
+            notes: Some(
+                "ports 目录骨架（Makefile / pkg/PLIST / pkg/DESCR + files 载荷，无 distfile）；\
+                 signify 包签名（pkg_sign，钥经 POLYPACK_OPENBSD_SIGNIFY_KEY）；make package 与 \
+                 portcheck 真跑归 OpenBSD VM（T-M5-09），Linux 宿主只生成骨架并做结构自检"
                     .to_string(),
             ),
         },

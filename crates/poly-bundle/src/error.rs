@@ -120,6 +120,17 @@ impl BundleError {
                     "macOS .app 需要 icns 图标：在 macOS 打包机用 iconutil 从 PNG 派生后作为输入\
                      （T-M1-14 图标派生管线）"
                 }
+                "roku.adapter" => {
+                    "把 Roku 适配器放到 <工程根>/ui/adapters/roku（与同级 tv/、native/ \
+                     共享焦点内核同布局），或在 BundleInputs.roku 显式给 adapter 根"
+                }
+                "roku.channel" => {
+                    "补 <适配器根>/channel 骨架（manifest 会按 polypack.toml 重建；\
+                     另需 source/main.brs 与 components/PolypackScene.brs）"
+                }
+                "roku.emitter" => {
+                    "补 <适配器根>/scripts/emit.mjs（T-M4-15 发射入口，复用 src/emit.js）"
+                }
                 _ => "核对 polypack.toml 与 JobSpec 的输入声明",
             }),
             Self::InvalidInput { .. } => {

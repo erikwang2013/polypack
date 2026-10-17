@@ -28,7 +28,7 @@ pub use error::{BundleError, codes};
 pub use icons::{IconSet, derive as derive_icons};
 pub use inputs::{
     AndroidInputs, BareProduct, BundleInputs, HarmonyInputs, Icon, IconKind, IosInputs, NativeLib,
-    ProductInfo,
+    ProductInfo, RokuInputs,
 };
 pub use packager::{
     Artifact, ArtifactKind, BundlePlan, Command, Packager, ScriptFile, Skipped, builtin, find,
@@ -36,6 +36,8 @@ pub use packager::{
 };
 pub use packagers::harmony::{HapStructure, check_hap_structure};
 pub use packagers::miniapp::quickapp_hap_root;
+pub use packagers::openbsd::{PortsStructure, check_ports_structure};
+pub use packagers::roku::{RokuStructure, check_roku_structure};
 pub use packagers::tizen::{WgtStructure, check_wgt_structure, wgt_lint_tool};
 pub use packagers::webos::{IpkStructure, ares_package_tool, check_ipk_structure};
 pub use packagers::webtv::{

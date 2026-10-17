@@ -16,6 +16,7 @@ use std::process::Command;
 use poly_bundle::error::BundleError;
 use poly_bundle::inputs::{
     AndroidInputs, BundleInputs, HarmonyInputs, Icon, IconKind, IosInputs, NativeLib, ProductInfo,
+    RokuInputs,
 };
 use poly_bundle::packagers::ios::{apple_platform, swift};
 use poly_core::bridge;
@@ -296,6 +297,14 @@ pub(crate) fn assemble_inputs(
         // wasm 沙箱出口（T-M3-07）走 `poly bridge wasm` 缺省落点，在场即随包分发
         "wgt" | "ipk" | "web-app" => {
             inputs.miniapp_bridge = Some(project.root.join("bridge").join("wasm-bindgen"));
+        }
+        // Roku 频道（T-M4-15）：适配器根按工程根候选链解析（<root>/ui/adapters/roku），
+        // 频道骨架 + 发射器由打包器落暂存后复用 spike 发射器
+        "zip" => {
+            inputs.roku = Some(RokuInputs {
+                project_root: project.root.clone(),
+                ..Default::default()
+            });
         }
         _ => {}
     }
