@@ -91,6 +91,14 @@ pub mod codes {
     pub const E_PUBLISH_0001: Code = Code::new("poly::E_PUBLISH_0001");
     /// 渠道客户端未落位（`poly-publish` 侧无该渠道的备位 / 内置实现）。
     pub const E_PUBLISH_0002: Code = Code::new("poly::E_PUBLISH_0002");
+    /// 发布产物未就绪（目标产物目录缺失 / 无可入库的 rpm / pkg）。
+    pub const E_RELEASE_0001: Code = Code::new("poly::E_RELEASE_0001");
+    /// 目标产物格式不是仓库格式（`poly release` 只编排 rpm / pkg）。
+    pub const E_RELEASE_0002: Code = Code::new("poly::E_RELEASE_0002");
+    /// 发布回执读写 / schema / 身份校验失败（回执永久保留，不静默重建）。
+    pub const E_RELEASE_0003: Code = Code::new("poly::E_RELEASE_0003");
+    /// 仓库后端未接线（T-M5-11 准备面；`--dry-run` 不受影响）。
+    pub const E_RELEASE_0004: Code = Code::new("poly::E_RELEASE_0004");
     /// 未找到可重签的未签名产物（`poly retry --from sign`）。
     pub const E_RETRY_0001: Code = Code::new("poly::E_RETRY_0001");
     /// IO 错误。

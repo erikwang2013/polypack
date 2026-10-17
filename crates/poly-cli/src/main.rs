@@ -11,6 +11,7 @@ mod mood;
 mod package;
 mod project;
 mod publish;
+mod release;
 mod retry;
 mod scan;
 mod sign;
@@ -56,6 +57,8 @@ enum Command {
     Verify(verify::Args),
     /// 商店提审（R4 止步提审）：产物定位 → 凭据引用解析 → 上传 / 提审 / 轮询（幂等重跑）。
     Publish(publish::Args),
+    /// 多目标仓库发布：产物集合 → 仓库元数据刷新与签名 → 回执归档（幂等重跑）。
+    Release(release::Args),
 }
 
 fn main() -> std::process::ExitCode {
@@ -76,6 +79,7 @@ fn main() -> std::process::ExitCode {
         Command::Retry(args) => retry::run(&args, cli.json),
         Command::Verify(args) => verify::run(&args, cli.json),
         Command::Publish(args) => publish::run(&args, cli.json),
+        Command::Release(args) => release::run(&args, cli.json),
     };
     if !cli.json {
         let (face, text) = match &result {
