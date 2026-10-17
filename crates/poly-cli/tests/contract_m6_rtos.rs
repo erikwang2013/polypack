@@ -95,7 +95,8 @@ fn qnx_and_autosar_targets_and_packagers_are_wired() {
         qnx.verify,
         vec![
             "qnx-image-structure".to_string(),
-            "c-abi-symbols".to_string()
+            "c-abi-symbols".to_string(),
+            "qnx-qemu-smoke".to_string()
         ]
     );
 
@@ -119,6 +120,28 @@ fn qnx_and_autosar_targets_and_packagers_are_wired() {
     unique.sort();
     unique.dedup();
     assert_eq!(pairs.len(), unique.len(), "打包器 (id, format) 不得重复");
+}
+
+/// T-M6-10 声明侧：Zephyr 冒烟腿挂在 TargetSpec.verify，`poly retry --from verify` 可独立重跑。
+#[test]
+fn zephyr_qemu_smoke_leg_is_declared() {
+    let zephyr = spec("zephyr");
+    assert_eq!(zephyr.tier, 6);
+    assert!(zephyr.ui.is_empty());
+    assert_eq!(zephyr.package.format, "west");
+    assert_eq!(zephyr.package.builder, "zephyr-west");
+    assert_eq!(
+        zephyr.verify,
+        vec![
+            "c-abi-symbols".to_string(),
+            "zephyr-west-build".to_string(),
+            "zephyr-qemu-smoke".to_string()
+        ]
+    );
+    assert_eq!(
+        find("zephyr", "west").map(|packager| packager.id()),
+        Some("zephyr")
+    );
 }
 
 /// T-M6-07 声明侧：目标 / 打包器 / verify id 全部接线。

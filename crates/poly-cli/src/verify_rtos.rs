@@ -350,6 +350,11 @@ pub(crate) fn verify_zephyr_west(
             ));
         }
         check_zephyr_build(spec, board, &build_dir)?;
+        // 供 zephyr-qemu-smoke 判断构建目录是否与当前模板同版（板级覆盖变化需重建）。
+        let _ = std::fs::write(
+            build_dir.join("polypack-template"),
+            zephyr::TEMPLATE_VERSION,
+        );
         warning(
             events,
             &format!(
@@ -363,7 +368,7 @@ pub(crate) fn verify_zephyr_west(
 }
 
 /// 从 `ZEPHYR_BASE` 向上找 `.west` 工作区；找不到返回 `None`（调用方退回项目根）。
-fn west_topdir(zephyr_base: &Path) -> Option<PathBuf> {
+pub(crate) fn west_topdir(zephyr_base: &Path) -> Option<PathBuf> {
     let mut current = Some(zephyr_base);
     for _ in 0..5 {
         let dir = current?;

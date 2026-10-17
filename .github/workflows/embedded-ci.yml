@@ -1,0 +1,333 @@
+# 无 UI 嵌入式编译矩阵（T-M6-08）：矩阵条目由 TargetSpec 派生，不在 workflow 手写目标。
+#
+# prepare 作业构建 `poly` 并跑 `poly targets --tier 6 --headless --json`，jq 取出
+# `{id,builder,format,probes}` 作为 matrix.include；新增一条 tier 6 / ui 为空的
+# TargetSpec 后，矩阵自动出现该目标，无需改本文件。android-automotive 带 UI，不进矩阵。
+#
+# 每个矩阵作业在临时工程里跑 `poly build --target <id>`（package + verify 同源流水线，
+# 含 QNX / Zephyr QEMU 冒烟腿），并把日志归档到 .polypack/logs/smoke/。
+# 环境槽缺失（QNX SDP / wr-cc / 网络）按 SKIP-with-print：作业不硬红，但 job summary
+# 逐条列出 REAL（verified 事件）与 SKIP/告警（warning 事件），不静默降级。
+#
+# R9 缓存：toolchain 镜像按钉扎版本做 key（Zephyr 工作区 + SDK、FreeRTOS 内核、
+# Cargo registry）；冷启动目标 ≤15 min，命中目标 ≤5 min。
+#
+# 证据：每个目标上传 build JSONL + 串口日志 + result.json（skipped 时无 smoke 日志，
+# 如实告警不伪造）。
+
+name: embedded-ci
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "crates/poly-bundle/**"
+      - "crates/poly-cli/**"
+      - "crates/poly-core/**"
+      - "crates/poly-targets/**"
+      - "crates/poly-toolchain/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - ".github/workflows/embedded-ci.yml"
+  pull_request:
+    paths:
+      - "crates/poly-bundle/**"
+      - "crates/poly-cli/**"
+      - "crates/poly-core/**"
+      - "crates/poly-targets/**"
+      - "crates/poly-toolchain/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - ".github/workflows/embedded-ci.yml"
+  schedule:
+    # 每夜 19:27 UTC：与 tv-smoke（18:57）/ mobile-contract（18:37）等错峰
+    - cron: "27 19 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: embedded-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # 工具链 / 内核版本是缓存 key 的唯一来源；升级即换 key，避免旧缓存冒充新工具链。
+  ZEPHYR_VERSION: v4.0.0
+  ZEPHYR_SDK_VERSION: "0.17.0"
+  WEST_VERSION: "1.5.0"
+  FREERTOS_KERNEL_TAG: V11.1.0
+  FREERTOS_KERNEL_SHA256: 0e21928b3bcc4f9bcaf7333fb1c8c0299d97e2ec9e13e3faa2c5a7ac8a3bc573
+
+jobs:
+  prepare:
+    name: matrix / 由 TargetSpec 派生
+    runs-on: ubuntu-latest
+    outputs:
+      # JSON 数组：[{id,builder,format,probes}, ...]；为空时下方守卫硬失败。
+      matrix: ${{ steps.matrix.outputs.include }}
+      count: ${{ steps.matrix.outputs.count }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Rust stable（构建 poly）
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: 构建缓存
+        uses: Swatinem/rust-cache@v2
+
+      - name: 构建 poly（矩阵作业只下载该二进制）
+        run: cargo build -j 2 -p poly-cli --bin poly
+
+      - name: 派生矩阵（tier 6 且 ui 为空）
+        id: matrix
+        run: |
+          set -euo pipefail
+          ./target/debug/poly targets --tier 6 --headless --json > matrix.jsonl
+          cat matrix.jsonl
+          count=$(head -n 1 matrix.jsonl | jq -r '.count')
+          include=$(jq -s -c '[.[] | select(.event == "target") |
+            {id, builder, format, probes: .required_probes}]' matrix.jsonl)
+          targets=$(jq -s -r '[.[] | select(.event == "target") | .id] | join(", ")' matrix.jsonl)
+          echo "include=$include" >> "$GITHUB_OUTPUT"
+          echo "count=$count" >> "$GITHUB_OUTPUT"
+          {
+            echo "## 嵌入式矩阵来源"
+            echo ""
+            echo "- \`poly targets --tier 6 --headless\` → ${count} 个目标：${targets}"
+            echo "- 声明面：TargetSpec（crates/poly-targets/src/builtin.rs）；新增 tier 6 无 UI 目标自动进矩阵"
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [ "$count" -lt 1 ]; then
+            echo "::error::TargetSpec 派生的 tier 6 无 UI 矩阵为空（预期至少 5 个嵌入式目标）"
+            exit 1
+          fi
+
+      - name: 上传 poly 二进制
+        uses: actions/upload-artifact@v4
+        with:
+          name: poly-cli-bin
+          path: target/debug/poly
+          retention-days: 1
+
+  embedded:
+    name: ${{ matrix.id }} / ubuntu-latest
+    needs: prepare
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.prepare.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 下载 poly 二进制
+        uses: actions/download-artifact@v4
+        with:
+          name: poly-cli-bin
+          path: ${{ runner.temp }}/poly-bin
+
+      - name: Rust stable（poly 运行时 / 宿主静态库）
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Rust nightly + rust-src（嵌入式 build-std：zephyr / freertos / vxworks）
+        if: matrix.id == 'zephyr' || matrix.id == 'freertos' || matrix.id == 'vxworks'
+        uses: dtolnay/rust-toolchain@nightly
+        with:
+          components: rust-src
+
+      - name: Cargo 缓存（wrapper crate 的 registry / 编译产物）
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: embedded-${{ matrix.id }}
+
+      - name: 系统工具（QEMU / ARM GCC / make / cmake / ninja / xmllint）
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq \
+            qemu-system-arm qemu-system-x86 gcc-arm-none-eabi binutils-arm-none-eabi \
+            make cmake ninja-build libxml2-utils python3-venv xz-utils
+
+      # ---------------------------------------------------------------- Zephyr
+      - name: Zephyr 工作区 / SDK 缓存（key 钉扎版本）
+        if: matrix.id == 'zephyr'
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{ runner.temp }}/zephyrproject
+            ${{ runner.temp }}/zephyr-sdk-${{ env.ZEPHYR_SDK_VERSION }}
+          key: zephyr-${{ runner.os }}-${{ env.ZEPHYR_VERSION }}-sdk-${{ env.ZEPHYR_SDK_VERSION }}-west-${{ env.WEST_VERSION }}
+
+      - name: pip 缓存（west / Zephyr requirements）
+        if: matrix.id == 'zephyr'
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: pip-${{ runner.os }}-west-${{ env.WEST_VERSION }}
+
+      - name: west venv（固定版本）
+        if: matrix.id == 'zephyr'
+        run: |
+          set -euo pipefail
+          python3 -m venv "$RUNNER_TEMP/zephyr-venv"
+          "$RUNNER_TEMP/zephyr-venv/bin/pip" install -q --upgrade pip
+          "$RUNNER_TEMP/zephyr-venv/bin/pip" install -q "west==${WEST_VERSION}"
+          echo "$RUNNER_TEMP/zephyr-venv/bin" >> "$GITHUB_PATH"
+
+      - name: Zephyr 工作区（cache 未命中时 west init/update；固定 tag）
+        if: matrix.id == 'zephyr'
+        run: |
+          set -euo pipefail
+          WS="$RUNNER_TEMP/zephyrproject"
+          if [ -d "$WS/.west" ] && [ -f "$WS/zephyr/VERSION" ]; then
+            echo "Zephyr 工作区缓存命中：$WS"
+          else
+            rm -rf "$WS"
+            mkdir -p "$WS"
+            cd "$WS"
+            west init -m https://github.com/zephyrproject-rtos/zephyr --mr "$ZEPHYR_VERSION"
+            west update --narrow -o=--depth=1
+          fi
+          echo "ZEPHYR_BASE=$WS/zephyr" >> "$GITHUB_ENV"
+
+      - name: Zephyr Python requirements（west build 的脚本面）
+        if: matrix.id == 'zephyr'
+        run: |
+          set -euo pipefail
+          "$RUNNER_TEMP/zephyr-venv/bin/pip" install -q \
+            -r "$RUNNER_TEMP/zephyrproject/zephyr/scripts/requirements.txt"
+
+      - name: Zephyr SDK（arm-zephyr-eabi + x86_64-zephyr-elf）
+        if: matrix.id == 'zephyr'
+        run: |
+          set -euo pipefail
+          SDK="$RUNNER_TEMP/zephyr-sdk-${ZEPHYR_SDK_VERSION}"
+          if [ ! -f "$SDK/sdk_version" ]; then
+            curl -fsSL --retry 3 -o "$RUNNER_TEMP/zephyr-sdk.tar.xz" \
+              "https://github.com/zephyrproject-rtos/sdk-ng/releases/download/v${ZEPHYR_SDK_VERSION}/zephyr-sdk-${ZEPHYR_SDK_VERSION}_linux-x86_64.tar.xz"
+            tar -xJf "$RUNNER_TEMP/zephyr-sdk.tar.xz" -C "$RUNNER_TEMP"
+          fi
+          if [ ! -f "$SDK/sdk_version" ] || [ ! -d "$SDK/arm-zephyr-eabi" ]; then
+            "$SDK/setup.sh" -h -c -t arm-zephyr-eabi -t x86_64-zephyr-elf
+          fi
+          echo "ZEPHYR_SDK_INSTALL_DIR=$SDK" >> "$GITHUB_ENV"
+
+      # ---------------------------------------------------------------- FreeRTOS
+      - name: FreeRTOS 内核缓存（tag + sha256 钉扎）
+        if: matrix.id == 'freertos'
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/freertos-kernel
+          key: freertos-${{ runner.os }}-${{ env.FREERTOS_KERNEL_TAG }}-${{ env.FREERTOS_KERNEL_SHA256 }}
+
+      - name: FreeRTOS 内核（cache 未命中时按钉扎 tag 现拉并校验 sha256）
+        if: matrix.id == 'freertos'
+        env:
+          KERNEL_DIR: ${{ runner.temp }}/freertos-kernel
+        run: |
+          set -euo pipefail
+          sh crates/poly-bundle/src/packagers/freertos_template/fetch_kernel.sh
+          echo "POLYPACK_FREERTOS_KERNEL_DIR=$KERNEL_DIR" >> "$GITHUB_ENV"
+
+      # ---------------------------------------------------------------- QNX（可选环境槽）
+      - name: QNX SDP 探测（repo variable 指路；缺席 = SKIP-with-print）
+        if: matrix.id == 'qnx'
+        env:
+          POLYPACK_QNX_SDP: ${{ vars.POLYPACK_QNX_SDP }}
+        run: |
+          if [ -n "${POLYPACK_QNX_SDP:-}" ] && [ -d "$POLYPACK_QNX_SDP" ]; then
+            echo "POLYPACK_QNX_SDP=$POLYPACK_QNX_SDP" >> "$GITHUB_ENV"
+            echo "QNX SDP 在场：$POLYPACK_QNX_SDP（镜像 / QEMU 冒烟腿可真跑）"
+          else
+            echo "SKIP-with-print：vars.POLYPACK_QNX_SDP 未设或目录不存在——QNX 镜像与 QEMU 冒烟腿按环境槽跳过（job summary 如实列出）"
+            echo "::warning::QNX SDP 未提供：qnx-qemu-smoke 将 SKIP-with-print（不伪造启动结果）"
+          fi
+
+      # ---------------------------------------------------------------- 构建 + 校验 + 冒烟
+      - name: poly 构建 / 校验 / QEMU 冒烟（${{ matrix.id }}）
+        env:
+          TARGET_ID: ${{ matrix.id }}
+          POLYPACK_ENGINE_CRATE: ${{ github.workspace }}/crates/poly-core
+        run: |
+          set -uo pipefail
+          LOGS="$RUNNER_TEMP/embedded-logs"
+          FIXTURE="$RUNNER_TEMP/fixture"
+          POLY="$RUNNER_TEMP/poly-bin/poly"
+          rm -rf "$LOGS" "$FIXTURE"
+          mkdir -p "$LOGS"
+          chmod +x "$POLY"
+          "$POLY" init "$FIXTURE" > "$LOGS/init.log" 2>&1
+          "$POLY" doctor --json > "$LOGS/doctor.jsonl" 2>&1 || true
+
+          start=$SECONDS
+          (
+            cd "$FIXTURE"
+            "$POLY" build --target "$TARGET_ID" --json
+          ) 2>&1 | tee "$LOGS/build.jsonl"
+          rc=${PIPESTATUS[0]}
+          echo "$rc" > "$LOGS/build.rc"
+          echo "$((SECONDS - start))" > "$LOGS/duration.txt"
+          test "$rc" -eq 0
+
+      - name: Job summary（REAL / SKIP 如实列出）
+        if: always()
+        env:
+          TARGET_ID: ${{ matrix.id }}
+        run: |
+          set -uo pipefail
+          LOGS="$RUNNER_TEMP/embedded-logs"
+          {
+            echo "## embedded-ci / ${TARGET_ID}"
+            echo ""
+            echo "- builder：\`${{ matrix.builder }}\`，format：\`${{ matrix.format }}\`"
+            echo "- 声明探测：\`${{ join(matrix.probes, ', ') }}\`"
+            if [ -f "$LOGS/duration.txt" ]; then
+              echo "- 构建 + 校验 + 冒烟耗时：$(cat "$LOGS/duration.txt")s"
+            fi
+            if [ -f "$LOGS/build.rc" ]; then
+              echo "- \`poly build\` 退出码：$(cat "$LOGS/build.rc")"
+            else
+              echo "- \`poly build\` 未执行完（无退出码）"
+            fi
+            echo ""
+            echo "### 实际执行（REAL：verified 事件）"
+            real=$(jq -Rr 'fromjson? // empty | select(.event == "verified" and .ok == true) |
+              "- `\(.checker)`"' "$LOGS/build.jsonl" 2>/dev/null | sort -u || true)
+            if [ -n "$real" ]; then
+              printf '%s\n' "$real"
+            else
+              echo "（无：全部校验腿按环境槽跳过，原因见下）"
+            fi
+            echo ""
+            echo "### 告警 / SKIP-with-print（如实列出）"
+            skip=$(jq -Rr 'fromjson? // empty | select(.event == "warning") |
+              "- [\(.stage)] \(.message)"' "$LOGS/build.jsonl" 2>/dev/null || true)
+            if [ -n "$skip" ]; then
+              printf '%s\n' "$skip"
+            else
+              echo "（无告警）"
+            fi
+            echo ""
+            echo "### 工具链探测（doctor）"
+            probes=$(jq -Rr --arg target "$TARGET_ID" 'fromjson? // empty |
+              select(.required_for != null) |
+              select(.required_for | index($target)) |
+              "- `\(.id)`：" + (if .found == null then "未找到（SKIP）" else "找到（\(.found.version)）" end)' \
+              "$LOGS/doctor.jsonl" 2>/dev/null || true)
+            if [ -n "$probes" ]; then
+              printf '%s\n' "$probes"
+            else
+              echo "（该目标无登记探测）"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: 留证据（build JSONL + QNX/Zephyr 串口日志与 result.json）
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: embedded-evidence-${{ matrix.id }}
+          path: |
+            ${{ runner.temp }}/embedded-logs/**
+            ${{ runner.temp }}/fixture/.polypack/logs/smoke/**
+          # 环境槽跳过的目标没有 smoke 日志：如实告警，不伪造空结果
+          if-no-files-found: warn
+          retention-days: 14

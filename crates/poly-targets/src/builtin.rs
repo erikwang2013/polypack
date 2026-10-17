@@ -673,7 +673,11 @@ pub fn builtin() -> Vec<TargetSpec> {
                 builder: "zephyr-west".to_string(),
             },
             signing: None,
-            verify: vec!["c-abi-symbols".to_string(), "zephyr-west-build".to_string()],
+            verify: vec![
+                "c-abi-symbols".to_string(),
+                "zephyr-west-build".to_string(),
+                "zephyr-qemu-smoke".to_string(),
+            ],
             publish: vec!["self-hosted".to_string()],
             experimental: false,
             notes: Some(
@@ -760,6 +764,7 @@ pub fn builtin() -> Vec<TargetSpec> {
             verify: vec![
                 "qnx-image-structure".to_string(),
                 "c-abi-symbols".to_string(),
+                "qnx-qemu-smoke".to_string(),
             ],
             publish: vec!["self-hosted".to_string()],
             experimental: false,

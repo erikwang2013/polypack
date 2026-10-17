@@ -268,6 +268,37 @@ fn base64(input: &[u8]) -> String {
     out
 }
 
+/// T-M6-09 验收：`poly retry --from verify` 独立重跑声明校验器（含 QEMU 冒烟腿），
+/// 不经 DAG、不碰签名凭据。空工程走「逐腿 SKIP → 全跳过防假绿」路径。
+#[test]
+fn retry_from_verify_reruns_declared_verifiers_without_signing() {
+    let temp = TempDir::new("verify");
+    fixture(temp.path());
+
+    let out = poly(
+        &["retry", "--from", "verify", "--target", "qnx", "--json"],
+        temp.path(),
+    );
+    assert_eq!(
+        out.status.code(),
+        Some(1),
+        "全部校验腿按环境槽跳过时默认必须报错（防假绿）"
+    );
+    let stderr = String::from_utf8_lossy(&out.stderr);
+    assert!(stderr.contains("poly::E_VERIFY_0002"), "{stderr}");
+    assert!(
+        !stderr.contains("poly::E_SIG_"),
+        "verify 重跑不得触碰签名链路：{stderr}"
+    );
+    let text = format!("{stderr}{}", String::from_utf8_lossy(&out.stdout));
+    assert!(text.contains("qnx"), "诊断/告警须点名被重跑的目标：{text}");
+    let lines = json_lines(&out);
+    assert!(
+        lines.iter().all(|line| line["event"] != "retry-signed"),
+        "verify 重跑不得产出签名事件：{lines:?}"
+    );
+}
+
 #[test]
 fn retry_sign_really_signs_and_reruns_independently() {
     let Some(tools) = discover() else {

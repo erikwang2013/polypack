@@ -87,6 +87,16 @@ pub mod codes {
     pub const E_VERIFY_0002: Code = Code::new("poly::E_VERIFY_0002");
     /// 校验器判定产物有缺陷（如快应用 `.rpk` 的 hap-toolkit lint / 结构检查命中）。
     pub const E_VERIFY_0003: Code = Code::new("poly::E_VERIFY_0003");
+    /// QEMU 冒烟命令无法启动 / 超时 / 日志归档失败（环境侧，不是产物缺陷）。
+    pub const E_SMOKE_0001: Code = Code::new("poly::E_SMOKE_0001");
+    /// QEMU 冒烟的自检步骤打印 `FAIL`（具名步骤，见串口日志）。
+    pub const E_SMOKE_0002: Code = Code::new("poly::E_SMOKE_0002");
+    /// QEMU 冒烟退出码与板级约定不符（semihosting / isa-debug-exit 编码）。
+    pub const E_SMOKE_0003: Code = Code::new("poly::E_SMOKE_0003");
+    /// QEMU 冒烟输出契约不完整（缺必需步骤标记 / 版本行 / `SMOKE PASS`）。
+    pub const E_SMOKE_0004: Code = Code::new("poly::E_SMOKE_0004");
+    /// QEMU 冒烟串口日志 / 结果 JSON 归档失败。
+    pub const E_SMOKE_0005: Code = Code::new("poly::E_SMOKE_0005");
     /// 提审输入未就绪（如未找到 `.rpk` 产物 / 缺必需参数）。
     pub const E_PUBLISH_0001: Code = Code::new("poly::E_PUBLISH_0001");
     /// 渠道客户端未落位（`poly-publish` 侧无该渠道的备位 / 内置实现）。

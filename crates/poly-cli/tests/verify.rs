@@ -119,6 +119,47 @@ fn verify_reproducible_without_build_inputs_reports_honestly() {
     );
 }
 
+/// T-M6-08：`--allow-skipped` 只让 CI 在全环境槽跳过时不硬红，跳过原因仍逐条打印。
+#[test]
+fn allow_skipped_keeps_ci_green_but_lists_every_skip() {
+    let temp = TempDir::new("allow-skipped");
+    fixture(temp.path(), false);
+
+    let out = poly(
+        &["verify", "--target", "qnx", "--allow-skipped", "--json"],
+        temp.path(),
+    );
+    assert_eq!(
+        out.status.code(),
+        Some(0),
+        "全跳过 + --allow-skipped 应以 0 退出（原因仍须打印）：{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    let stderr = String::from_utf8_lossy(&out.stderr);
+    assert!(
+        !stderr.contains("poly::E_VERIFY_0002"),
+        "--allow-skipped 不应再报全跳过失败：{stderr}"
+    );
+    let lines = json_lines(&out);
+    let warnings: Vec<&str> = lines
+        .iter()
+        .filter(|line| line["event"] == "warning")
+        .filter_map(|line| line["message"].as_str())
+        .collect();
+    assert!(
+        warnings
+            .iter()
+            .any(|message| message.contains("qnx") && message.contains("未校验")),
+        "逐腿跳过原因须如实出现在事件流：{warnings:?}"
+    );
+    assert!(
+        warnings
+            .iter()
+            .any(|message| message.contains("--allow-skipped")),
+        "全跳过注记须说明 CI 开关语义：{warnings:?}"
+    );
+}
+
 #[test]
 fn verify_reproducible_web_static_site_is_byte_identical() {
     let temp = TempDir::new("happy");

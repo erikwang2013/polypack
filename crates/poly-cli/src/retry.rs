@@ -1,15 +1,14 @@
-//! `poly retry --from sign`：从签名阶段独立重跑（T-M2-11 验收口径）。
+//! `poly retry`：从指定阶段独立重跑（T-M2-11 / T-M6-09 验收口径）。
 //!
-//! 「独立重跑」= 同一命令再跑一次即再拉一次凭据：凭据只以引用出现（`JobSpec.secrets`
-//! 或 `--credential` 覆盖），[`poly_sign::AndroidSigner::plan`] 先 fail-fast（缺工具 /
-//! 输入非法 / 引用不可用都在碰密钥之前报错），`sign` 每次重新解析后端载荷。
-//! 事件流与日志只出现档案名 / 后端 id / 路径，绝不出现凭据值（脱敏由 poly-sign 保证）。
-//!
-//! M2 只接入 Android 签名（apksigner）：`poly::E_SIG_*` 原样透传，绝不重新编号。
-//! 未签名 APK 优先取 `--input`，否则在上次构建的打包暂存目录
-//! （`<root>/.polypack/packages/<target>`）里找 `<名称>-<版本>-unsigned.apk`
-//! （T-M2-06 的产物命名约定），找不到即 `poly::E_RETRY_0001` 并提示先跑
-//! `poly build --target android`。
+//! - **`--from sign`**：同一命令再跑一次即再拉一次凭据：凭据只以引用出现
+//!   （`JobSpec.secrets` 或 `--credential` 覆盖），[`poly_sign::AndroidSigner::plan`]
+//!   先 fail-fast（缺工具 / 输入非法 / 引用不可用都在碰密钥之前报错），`sign` 每次
+//!   重新解析后端载荷。事件流与日志只出现档案名 / 后端 id / 路径，绝不出现凭据值
+//!   （脱敏由 poly-sign 保证）。未签名 APK 优先取 `--input`，否则在上次构建的打包暂存
+//!   目录（`<root>/.polypack/packages/<target>`）里找 `<名称>-<版本>-unsigned.apk`
+//!   （T-M2-06 的产物命名约定），找不到即 `poly::E_RETRY_0001`。
+//! - **`--from verify`**：不经 DAG，直接复用 [`crate::verify`] 的声明校验器通路
+//!   （同一套目标解析 / 腿分发 / SKIP 语义），供 QNX / Zephyr QEMU 冒烟失败后独立重跑。
 //!
 //! 与 `poly build` 的 `sign` 阶段（[`crate::sign`]）共用派生与错误翻译：未签名 APK 查找、
 //! 凭据引用、`SignError` → 诊断都在那边，本命令只保留「不经 DAG 的独立重跑」外壳。
@@ -28,15 +27,15 @@ use crate::sign::sign_error;
 /// `poly retry` 的参数。
 #[derive(Debug, clap::Args)]
 pub struct Args {
-    /// 重跑起点（M2 只接入 `sign`）。
+    /// 重跑起点。
     #[arg(long = "from", value_enum, default_value = "sign")]
     pub from: FromStage,
     /// 工程配置路径。
     #[arg(long, default_value = "polypack.toml")]
     pub config: PathBuf,
-    /// 目标 id（M2 只接入 android）。
-    #[arg(long = "target", value_name = "ID", default_value = "android")]
-    pub target: String,
+    /// 目标 id（`--from sign` 缺省 android；`--from verify` 缺省全部本机可达目标）。
+    #[arg(long = "target", value_name = "ID")]
+    pub target: Option<String>,
     /// 未签名 APK（缺省在打包暂存目录里按命名约定查找）。
     #[arg(long)]
     pub input: Option<PathBuf>,
@@ -53,19 +52,34 @@ pub struct Args {
 pub enum FromStage {
     /// 签名阶段：重新拉取凭据、重签未签名 APK 并校验。
     Sign,
+    /// 校验阶段：按 TargetSpec.verify 重跑声明校验器（含 QNX / Zephyr QEMU 冒烟）。
+    Verify,
 }
 
 /// 执行 `poly retry`；返回进程退出码。
 pub fn run(args: &Args, json: bool) -> Result<i32, Diagnostic> {
     match args.from {
         FromStage::Sign => sign(args, json),
+        FromStage::Verify => verify(args, json),
     }
+}
+
+/// `poly retry --from verify`：复用 `poly verify` 的声明校验器通路，独立重跑。
+fn verify(args: &Args, json: bool) -> Result<i32, Diagnostic> {
+    let verify = crate::verify::Args {
+        config: args.config.clone(),
+        reproducible: false,
+        targets: args.target.iter().cloned().collect(),
+        allow_skipped: false,
+    };
+    crate::verify::run(&verify, json)
 }
 
 /// `poly retry --from sign`。
 fn sign(args: &Args, json: bool) -> Result<i32, Diagnostic> {
     let project = project::load(&args.config)?;
-    let (job, spec) = resolve(&project, &args.target)?;
+    let target = args.target.as_deref().unwrap_or("android");
+    let (job, spec) = resolve(&project, target)?;
     if spec.id != "android" {
         return Err(Diagnostic::error(
             codes::E_RETRY_0001,

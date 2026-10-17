@@ -15,10 +15,13 @@ mod release;
 mod retry;
 mod scan;
 mod sign;
+mod smoke;
+mod targets;
 mod verify;
 mod verify_embedded;
 mod verify_freertos;
 mod verify_rtos;
+mod verify_smoke;
 
 use clap::{Parser, Subcommand};
 
@@ -58,6 +61,8 @@ enum Command {
     Retry(retry::Args),
     /// 产物校验：缺省跑目标声明的校验器（codesign / spctl），`--reproducible` 做二跑比对。
     Verify(verify::Args),
+    /// 内建目标清单（CI 矩阵派生：`poly targets --tier 6 --headless --json`）。
+    Targets(targets::Args),
     /// 商店提审（R4 止步提审）：产物定位 → 凭据引用解析 → 上传 / 提审 / 轮询（幂等重跑）。
     Publish(publish::Args),
     /// 多目标仓库发布：产物集合 → 仓库元数据刷新与签名 → 回执归档（幂等重跑）。
@@ -81,6 +86,7 @@ fn main() -> std::process::ExitCode {
         Command::Scan(args) => scan::run(&args, cli.json),
         Command::Retry(args) => retry::run(&args, cli.json),
         Command::Verify(args) => verify::run(&args, cli.json),
+        Command::Targets(args) => targets::run(&args, cli.json),
         Command::Publish(args) => publish::run(&args, cli.json),
         Command::Release(args) => release::run(&args, cli.json),
     };
