@@ -3369,7 +3369,7 @@ mod tests {
             "COMMENT =\tFixture app\nDISTNAME =\tfixture-app-0.0.1\nCATEGORIES =\tx11\n\
              HOMEPAGE =\thttps://example.com\nMAINTAINER =\tFixture <ports@example.com>\n\
              PERMIT_PACKAGE =\tYes\n\nNO_BUILD =\tYes\nNO_TEST =\tYes\n\ndo-install:\n\
-             \tcp -R ${FILESDIR}/payload/. ${PREFIX}/\n",
+             \tcp -R ${FILESDIR}/payload/. ${PREFIX}/\n\n.include <bsd.port.mk>\n",
         )
         .expect("写 Makefile");
         std::fs::write(port.join("pkg/DESCR"), "Fixture app.\n").expect("写 DESCR");
