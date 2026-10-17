@@ -155,6 +155,30 @@ M5 交付时补：`+ M5 新增一工作流（bsd-ci 每夜 QEMU 原生构建 + �
 - **CI 真跑**：workflow 落地后由 lead 合并到 main，等待首个 schedule / 手动 dispatch；日志链接与 artifacts 作为最终证据（本 agent 不能 push，无法自行触发远端）。
 - **追溯性**：workflow run URL + `bsd-<os>-evidence` artifact（日志 + 包）14 天。
 
+### 5.1 本地 QEMU 真跑实录（FreeBSD，2026-10-17）
+
+环境：qemu-system-x86_64 + KVM（`-cpu host -m 4096 -smp 4`），FreeBSD 14.5-RELEASE-p2
+cloud-init amd64 镜像（华为云镜像站，解压后 virtio 根盘扩至 13G）；VM 内 `rust-1.98.1`
+来自 FreeBSD quarterly pkg（与仓库声明 MSRV 完全一致），crates.io 走 rsproxy sparse。
+源码 = `git archive`（当时 `main@9595262`），构建目录 `/root/polypack-target`。
+
+| 检查 | 命令 | 结果 |
+|---|---|---|
+| 原生构建 | `cargo build -p poly-cli --locked` | 绿（6bba6c4 冷编译 1m20s；9595262 增量 14.29s） |
+| 单测 | `cargo test -p poly-cli --test release` | 7/7 绿（原生 FreeBSD） |
+| lint | `cargo clippy -p poly-cli --all-targets -- -D warnings` | 绿（原生 FreeBSD，clippy 0.1.98） |
+| 冒烟 | `poly init /tmp/bsd-app2` → `poly doctor --json` | rc=0；`fedora` 在目标矩阵，`freebsd` 缺（T-M5-06 未入 main，`poly build --target freebsd` 如实 `E_TGT_0001`） |
+
+日志与 machine 信息归档在本地 `/tmp/bsd-ci-evidence/freebsd-local/`（不入仓）。
+注意：`git archive` 保留提交 mtime，可能早于既有构建产物导致 cargo 误判 fresh；
+本地复跑前须 `find <src> -exec touch {} +`。CI 的 `actions/checkout` 会刷新 mtime，不复现。
+
+**OpenBSD 本地真跑：SKIP-with-print。** 官方安装介质不可直接当 SSH 可用镜像；
+vmactions 镜像资产 `openbsd-7.9.qcow2.zst`（595 MB）实测直连 GitHub 75 KB/s、
+gh-proxy 96 KB/s，需 ~1.7 小时且可能中断，按纪律不消耗该带宽。替代证据：草稿 workflow
+（actionlint 绿）+ T-M5-07 ports 单测/verify 已在 main 真跑；OpenBSD 侧安装冒烟待 CI
+首次 dispatch 取证。FreeBSD 的 `.pkg` 安装冒烟同样待 T-M5-06 落 main 后接线。
+
 ## 6. 风险与未决
 
 | 风险 | 缓解 |
