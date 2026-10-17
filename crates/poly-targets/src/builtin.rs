@@ -13,6 +13,9 @@
 //! M5 增补 L5 BSD 家族目标（tier 5，ROADMAP §3.6）：OpenBSD ports（T-M5-07，ports 骨架 +
 //! signify / portcheck；Linux 宿主可发起的交叉面，真构建归 OpenBSD VM / T-M5-09）与
 //! ChromeOS 双轨（T-M5-10：Crostini deb + PWA 两目标，分别复用 Linux deb / Web 链）。
+//! M6 增补 L6 嵌入式 / 车机目标（tier 6，ROADMAP §3.7）：Android Automotive（T-M6-11）、
+//! QNX（T-M6-03，staticlib + cffi + 镜像 / 库）与 AUTOSAR Adaptive（T-M6-04，staticlib +
+//! cffi + ARXML 清单；无 UI、自部署）。
 
 use alloc::string::ToString;
 use alloc::vec;
@@ -654,6 +657,60 @@ pub fn builtin() -> Vec<TargetSpec> {
             notes: Some(
                 "AAOS 清单（android.hardware.type.automotive）；车厂渠道，无统一公开 API——\
                  发布需 OEM 凭据引用（占位 Publisher，不伪造提交）"
+                    .to_string(),
+            ),
+        },
+        // ---- L6 嵌入式 / 车机（T-M6-03/04，ROADMAP §3.7）：QNX / AUTOSAR Adaptive ----
+        // 两目标共享 T-M6-02 的 `poly_engine_*` C ABI（头文件由 poly-core 生成器唯一产出）。
+        // QNX：`image` 主产物（部署镜像 tar；SDP 在场时另出 mkifs `.ifs` 与静态库），配置
+        // `[targets.qnx].format = "library"` 可把 `.a` 提为主产物；无 SDP 时交叉编译按环境槽
+        // SKIP-with-print，绝不伪造二进制。AUTOSAR：宿主静态库 + ARXML 清单，ARXML 的
+        // 服务 / 端口由同一 C ABI 清单派生（一一对应），无 UI、自部署。
+        TargetSpec {
+            id: "qnx".to_string(),
+            tier: 6,
+            hosts: vec![Host::Win, Host::Linux, Host::Macos],
+            runtime: Runtime::Staticlib,
+            bridge: Bridge::Cffi,
+            ui: Vec::new(),
+            package: PackageSpec {
+                format: "image".to_string(),
+                builder: "qnx-sdp".to_string(),
+            },
+            signing: None,
+            verify: vec![
+                "qnx-image-structure".to_string(),
+                "c-abi-symbols".to_string(),
+            ],
+            publish: vec!["self-hosted".to_string()],
+            experimental: false,
+            notes: Some(
+                "headless 核心（可选 HMI 归平台侧）；静态库 + 部署镜像（附 mkifs buildfile，\
+                 可引导 .ifs / QEMU 归 T-M6-09）；交叉编译需 QNX SDP（$QNX_HOST / \
+                 $QNX_TARGET）与 Rust QNX target，无 SDP 时按环境槽 SKIP-with-print，\
+                 不伪造二进制；自部署"
+                    .to_string(),
+            ),
+        },
+        TargetSpec {
+            id: "autosar".to_string(),
+            tier: 6,
+            hosts: vec![Host::Win, Host::Linux, Host::Macos],
+            runtime: Runtime::Staticlib,
+            bridge: Bridge::Cffi,
+            ui: Vec::new(),
+            package: PackageSpec {
+                format: "arxml".to_string(),
+                builder: "autosar-adaptive".to_string(),
+            },
+            signing: None,
+            verify: vec!["arxml-schema".to_string(), "c-abi-symbols".to_string()],
+            publish: vec!["self-hosted".to_string()],
+            experimental: false,
+            notes: Some(
+                "无 UI、自部署；AUTOSAR Adaptive 清单（ARXML）由 poly_engine_* C ABI 单一来源\
+                 派生（服务 / 端口与导出符号一一对应）；no_std 可选（引擎层 \
+                 --no-default-features，应用提供 global_allocator / panic_handler）"
                     .to_string(),
             ),
         },

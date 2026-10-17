@@ -15,8 +15,11 @@
 //! - [`freebsd`]：FreeBSD pkg（T-M5-06，`pkg create` + pkg 暂存树 / manifest 结构自检）
 //! - [`pkgsrc`]：NetBSD / DragonFly pkgsrc 骨架（T-M5-08，Makefile / PLIST / DESCR + 结构自检）
 //! - [`roku`]：Roku 频道 `.zip`（T-M4-15，复用 SceneGraph 发射器 + 侧载结构自检）
+//! - [`qnx`]：QNX 静态库 + 部署镜像（T-M6-03，QNX SDP 交叉；无 SDP 按环境槽 SKIP）
+//! - [`autosar`]：AUTOSAR Adaptive 静态库 + ARXML 服务清单（T-M6-04，C ABI 单一来源）
 
 pub mod android;
+pub mod autosar;
 pub mod dmg;
 pub mod freebsd;
 pub mod harmony;
@@ -25,6 +28,7 @@ pub mod linux;
 pub mod miniapp;
 pub mod openbsd;
 pub mod pkgsrc;
+pub mod qnx;
 pub mod roku;
 pub mod tizen;
 pub mod web;

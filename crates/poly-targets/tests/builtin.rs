@@ -98,12 +98,13 @@ fn builtin_has_seven_valid_targets() {
     );
     assert_eq!(
         registry.all().count(),
-        28,
+        30,
         "M6 起内建 = L1 七 + L2 小程序族四（wechat / alipay / douyin / quickapp）+ \
          L3 电视族八（tvos + android-tv / fire-tv + tizen-tv / webos-tv / vidaa-tv / smartcast-tv \
          + roku※实验，T-M4-04/07/08/09/10/12）+ L5 OpenBSD / FreeBSD / NetBSD（T-M5-07/06/08）+\
          发行版三（ubuntu / fedora / mint，T-M5-01）+ ChromeOS 双轨（chromeos / chromeos-pwa，\
-         T-M5-10）+ L6 Android Automotive（android-automotive，T-M6-11）"
+         T-M5-10）+ L6 Android Automotive（android-automotive，T-M6-11）+ QNX / AUTOSAR \
+         （qnx / autosar，T-M6-03/04）"
     );
     for spec in registry.all() {
         spec.validate()
@@ -298,7 +299,7 @@ fn linux_host_resolves_four_l1_targets_from_all() {
         ]),
         "L5 OpenBSD / FreeBSD / NetBSD + 发行版三 + ChromeOS 双轨应全部入选"
     );
-    // L6 车机：android-automotive 声明三宿主（复用 Android 工具链）→ Linux 宿主下入选
+    // L6 车机 / 嵌入式：android-automotive / qnx / autosar 均声明三宿主 → Linux 宿主下入选
     let l6: BTreeSet<&str> = resolved
         .selected
         .iter()
@@ -307,8 +308,8 @@ fn linux_host_resolves_four_l1_targets_from_all() {
         .collect();
     assert_eq!(
         l6,
-        BTreeSet::from(["android-automotive"]),
-        "L6 Android Automotive（三宿主声明）应入选"
+        BTreeSet::from(["android-automotive", "qnx", "autosar"]),
+        "L6 车机 + QNX / AUTOSAR（三宿主声明）应入选"
     );
     assert_eq!(
         selected.len(),
@@ -707,5 +708,59 @@ fn builtin_matches_roadmap_3_7_automotive() {
     assert!(
         notes.contains("android.hardware.type.automotive") && notes.contains("不伪造提交"),
         "AAOS 清单变体与占位发布边界须入 notes：{notes}"
+    );
+}
+
+/// T-M6-03/04 验收（声明侧）：QNX 与 AUTOSAR Adaptive 按 ROADMAP §3.7 逐列对齐。
+///
+/// §3.7：QNX = staticlib · cffi / 镜像 · 库 / 平台侧签名 / QNX 交叉编译冒烟 / 自部署；
+/// AUTOSAR = staticlib · cffi（no_std 可选）/ ARXML + 库 / 无签名 / CI 编译矩阵 / 自部署 / 无 UI。
+#[test]
+fn builtin_matches_roadmap_3_7_qnx_autosar() {
+    let registry = Registry::builtin();
+    let qnx = registry.get("qnx").expect("内建 qnx 目标").clone();
+    assert_eq!(qnx.tier, 6, "QNX 属 L6（ROADMAP §3.7）");
+    assert_eq!(qnx.hosts, vec![Host::Win, Host::Linux, Host::Macos]);
+    assert_eq!(qnx.runtime, Runtime::Staticlib, "§3.7 运行时 = staticlib");
+    assert_eq!(qnx.bridge, Bridge::Cffi, "§3.7 桥 = cffi");
+    assert!(qnx.ui.is_empty(), "headless 核心（UI 可选层归平台侧）");
+    assert_eq!(qnx.package.format, "image", "主产物格式 = image");
+    assert_eq!(qnx.package.builder, "qnx-sdp", "打包器 = QNX SDP");
+    assert!(qnx.signing.is_none(), "§3.7 签名 = 平台侧，本地无凭据引用");
+    assert!(
+        qnx.verify.iter().any(|id| id == "c-abi-symbols"),
+        "复用 T-M6-02 C ABI 的符号校验"
+    );
+    let notes = qnx.notes.as_deref().unwrap_or("");
+    assert!(
+        notes.contains("SKIP-with-print") && notes.contains("QNX SDP"),
+        "无 SDP 的 SKIP 口径须入 notes：{notes}"
+    );
+
+    let autosar = registry.get("autosar").expect("内建 autosar 目标").clone();
+    assert_eq!(autosar.tier, 6, "AUTOSAR 属 L6（ROADMAP §3.7）");
+    assert_eq!(autosar.hosts, vec![Host::Win, Host::Linux, Host::Macos]);
+    assert_eq!(
+        autosar.runtime,
+        Runtime::Staticlib,
+        "§3.7 运行时 = staticlib"
+    );
+    assert_eq!(autosar.bridge, Bridge::Cffi, "§3.7 桥 = cffi");
+    assert!(autosar.ui.is_empty(), "§3.7 无 UI");
+    assert_eq!(autosar.package.format, "arxml", "产物 = ARXML 清单 + 库");
+    assert_eq!(autosar.package.builder, "autosar-adaptive");
+    assert!(autosar.signing.is_none(), "§3.7 签名 = —");
+    assert!(
+        autosar.verify.iter().any(|id| id == "arxml-schema"),
+        "ARXML 需 schema 校验器"
+    );
+    let notes = autosar.notes.as_deref().unwrap_or("");
+    assert!(
+        notes.contains("无 UI、自部署"),
+        "验收字面要求 notes 声明「无 UI、自部署」：{notes}"
+    );
+    assert!(
+        notes.contains("no_std"),
+        "no_std 可选口径须入 notes：{notes}"
     );
 }

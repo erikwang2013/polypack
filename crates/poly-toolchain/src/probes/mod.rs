@@ -8,6 +8,7 @@ pub mod android_sdk;
 pub mod emsdk;
 pub mod harmonyos_sdk;
 pub mod msvc;
+pub mod qnx_sdp;
 pub mod rust;
 pub mod xcode;
 
