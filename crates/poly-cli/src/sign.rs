@@ -148,6 +148,12 @@ fn signing_owner(format: &str) -> Option<&'static str> {
             "FreeBSD 包仓库签名归 poly release（pkg repo ... rsa|ecdsa|eddsa:<keyfile>，\
              客户端 PUBKEY 校验）；包文件不逐包签，真跑需 FreeBSD VM（T-M5-09）",
         ),
+        // T-M5-08：pkgsrc 逐包 GPG 签名归 poly release（pkg_admin gpg-sign-package，
+        // GPG_SIGN_AS + 临时 GNUPGHOME），真跑需 NetBSD VM（T-M5-09）。
+        "pkgsrc" => Some(
+            "pkgsrc 仓库签名归 poly release（pkg_admin gpg-sign-package 逐包 GPG；仓库为扁平 \
+             .tgz + pkg_summary.gz，客户端 GPG_KEYRING_VERIFY），真跑需 NetBSD VM（T-M5-09）",
+        ),
         _ => None,
     }
 }

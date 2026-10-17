@@ -184,6 +184,9 @@ enum Verifier {
     /// FreeBSD pkg 校验（[`poly_bundle::check_pkg_structure`] 的内建结构断言 + 在场时的
     /// 官方 `pkg info -F` / 已安装时的 `pkg check`，T-M5-06）。
     PkgCheck,
+    /// NetBSD / DragonFly pkgsrc 骨架校验（[`poly_bundle::check_pkgsrc_structure`] 的内建
+    /// 结构断言 + 在场时的 `bmake package`，T-M5-08）。
+    PkgsrcCheck,
     /// Roku 频道 zip 的侧载结构自检（[`poly_bundle::check_roku_structure`]，与打包器同一实现；
     /// 真机侧载腿本机不可得，按 T-M4-12 决策 SKIP-with-print，T-M4-15）。
     RokuSideload,
@@ -217,6 +220,7 @@ fn verifier_for(id: &str) -> Option<Verifier> {
         "sandbox-selfcheck" => Some(Verifier::SandboxSelfcheck),
         "portcheck" => Some(Verifier::Portcheck),
         "pkg-check" => Some(Verifier::PkgCheck),
+        "pkgsrc-check" => Some(Verifier::PkgsrcCheck),
         "sideload-structure-check" => Some(Verifier::RokuSideload),
         "lintian" => Some(Verifier::DebLint),
         "rpmlint" => Some(Verifier::RpmLint),
@@ -335,6 +339,7 @@ fn verify_target(
     let mut sandbox_ids: Vec<String> = Vec::new();
     let mut portcheck_ids: Vec<String> = Vec::new();
     let mut pkg_check_ids: Vec<String> = Vec::new();
+    let mut pkgsrc_ids: Vec<String> = Vec::new();
     let mut roku_ids: Vec<String> = Vec::new();
     let mut deb_ids: Vec<String> = Vec::new();
     let mut rpm_ids: Vec<String> = Vec::new();
@@ -354,6 +359,7 @@ fn verify_target(
             Some(Verifier::SandboxSelfcheck) => sandbox_ids.push(id.clone()),
             Some(Verifier::Portcheck) => portcheck_ids.push(id.clone()),
             Some(Verifier::PkgCheck) => pkg_check_ids.push(id.clone()),
+            Some(Verifier::PkgsrcCheck) => pkgsrc_ids.push(id.clone()),
             Some(Verifier::RokuSideload) => roku_ids.push(id.clone()),
             Some(Verifier::DebLint) => deb_ids.push(id.clone()),
             Some(Verifier::RpmLint) => rpm_ids.push(id.clone()),
@@ -407,6 +413,9 @@ fn verify_target(
     }
     if !pkg_check_ids.is_empty() {
         checked |= verify_pkg(project, spec, &pkg_check_ids, events)?;
+    }
+    if !pkgsrc_ids.is_empty() {
+        checked |= verify_pkgsrc(project, spec, &pkgsrc_ids, events)?;
     }
     if !roku_ids.is_empty() {
         checked |= verify_roku_sideload(project, spec, &roku_ids, events)?;
@@ -1465,6 +1474,111 @@ fn verify_pkg(
     Ok(true)
 }
 
+/// NetBSD / DragonFly pkgsrc 校验腿（`pkgsrc-check`，T-M5-08）：先跑与打包器**同一份**结构
+/// 检查（[`poly_bundle::check_pkgsrc_structure`]：Makefile 必填项 / DESCR / PLIST 与载荷
+/// 双向一致，缺陷硬失败）；骨架位于 pkgsrc 树内且 `bmake` 在场时对包目录跑 `bmake package`
+/// （非零退出 = 包缺陷硬失败）。Linux 交叉发起只有树外骨架，`bmake` 缺席或基础设施不在时
+/// 按环境槽告警跳过并注记——内建结构断言是本机真跑面，VM 真跑归 NetBSD（T-M5-09）。
+fn verify_pkgsrc(
+    project: &Project,
+    spec: &TargetSpec,
+    ids: &[String],
+    events: &mut dyn EventSink,
+) -> Result<bool, StageError> {
+    let staged = project::packages_root(&project.root).join(&spec.id);
+    let Some((port, count)) = staged_pkgsrc_dir(&staged) else {
+        warning(
+            events,
+            &format!(
+                "目标 {} 未校验：{} 下没有 pkgsrc/<DISTNAME>/（先跑 poly build 把产物流到打包暂存目录）",
+                spec.id,
+                staged.display()
+            ),
+        );
+        return Ok(false);
+    };
+    if count > 1 {
+        warning(
+            events,
+            &format!(
+                "目标 {} 的产物有 {count} 个 pkgsrc 骨架（取 {}）",
+                spec.id,
+                port.display()
+            ),
+        );
+    }
+    let structure = match poly_bundle::check_pkgsrc_structure(&port) {
+        Ok(structure) => structure,
+        Err(err) => return Err(bundle_diagnostic(spec, &err).into()),
+    };
+    warning(
+        events,
+        &format!(
+            "目标 {} 的 pkgsrc 结构检查：{} 个 PLIST 条目，DISTNAME={}（name={} version={}）",
+            spec.id,
+            structure.entries.len(),
+            structure.distname,
+            structure.name,
+            structure.version
+        ),
+    );
+    let tree_mk = port.join("../../mk/bsd.pkg.mk");
+    if poly_bundle::exec::tool_present("bmake") && tree_mk.is_file() {
+        let command = poly_bundle::Command::new("bmake", ["package".to_string()]).in_dir(&port);
+        match poly_bundle::exec::run(&command) {
+            Ok(_) => warning(
+                events,
+                &format!(
+                    "目标 {} 的 bmake package 真跑通过：{}",
+                    spec.id,
+                    command.line()
+                ),
+            ),
+            Err(err @ BundleError::ToolMissing { .. }) => {
+                warning(
+                    events,
+                    &format!("目标 {} 的 bmake package 未跑：{err}", spec.id),
+                );
+            }
+            Err(err) => {
+                return Err(webtv_defect(
+                    spec,
+                    format!("bmake package 判决不通过：{err}"),
+                    "按 bmake 输出修 Makefile / PLIST / DESCR 后重跑；骨架须位于 pkgsrc 树 \
+                     misc/<DISTNAME>（NetBSD VM，T-M5-09）",
+                )
+                .into());
+            }
+        }
+    } else if poly_bundle::exec::tool_present("bmake") {
+        warning(
+            events,
+            &format!(
+                "目标 {} 的 bmake package 未跑：骨架在 pkgsrc 树外（缺 {}；内建结构断言已过，\
+                 bmake 真跑归 NetBSD VM（T-M5-09））",
+                spec.id,
+                tree_mk.display()
+            ),
+        );
+    } else {
+        warning(
+            events,
+            &format!(
+                "目标 {} 的 bmake package 未跑：PATH 无 bmake（内建结构断言已过；bmake package / \
+                 pkg_add 真跑归 NetBSD VM（T-M5-09））",
+                spec.id
+            ),
+        );
+    }
+    for id in ids {
+        events.emit(&BuildEvent::Verified {
+            checker: id.clone(),
+            ok: true,
+        });
+    }
+    Ok(true)
+}
+
 /// Roku 侧载结构自检腿（`sideload-structure-check`，T-M4-15）：与打包器**同一份**检查
 /// （[`poly_bundle::check_roku_structure`]：zip 根布局 + manifest 必填字段 + SceneGraph XML
 /// 良构 + 焦点表 + BRS 形态；缺陷 E_BND_0006 硬失败）。真机侧载腿（ECP 探测 / `plugin_install`）
@@ -1564,6 +1678,22 @@ fn staged_pkg(staged: &Path) -> Option<(PathBuf, PathBuf, usize)> {
         let manifest = stage.with_extension("manifest");
         (stage, manifest, count)
     })
+}
+
+/// 暂存目录下的 pkgsrc 骨架（`<staged>/pkgsrc/<DISTNAME>/`，须有 Makefile + PLIST；
+/// 多个取字典序最后一份）。
+fn staged_pkgsrc_dir(staged: &Path) -> Option<(PathBuf, usize)> {
+    let mut dirs: Vec<PathBuf> = std::fs::read_dir(staged.join("pkgsrc"))
+        .ok()?
+        .flatten()
+        .map(|entry| entry.path())
+        .filter(|path| {
+            path.is_dir() && path.join("Makefile").is_file() && path.join("PLIST").is_file()
+        })
+        .collect();
+    dirs.sort();
+    let count = dirs.len();
+    dirs.pop().map(|path| (path, count))
 }
 
 /// 打包暂存目录里的目录产物定位（`<staged>/*<suffix>`，排序取最新一份）；返回 `(路径, 份数)`。
@@ -3323,6 +3453,62 @@ mod tests {
         // 载荷缺 manifest name 对应的可执行 → 产物缺陷硬失败，不降级成跳过
         std::fs::remove_file(stage.join("usr/local/bin/fixture-app")).expect("移除载荷");
         let err = verify_target(&project, &spec, &mut sink).expect_err("载荷漂移必须硬失败");
+        assert_eq!(err.diagnostic.code.to_string(), "poly::E_BND_0006");
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    /// T-M5-08：pkgsrc-check 已接入；合成 pkgsrc 骨架过结构检查并发出 `Verified`，
+    /// PLIST 与载荷漂移的坏件硬失败（bmake 缺席或树外骨架时内建结构断言即真跑面）。
+    #[test]
+    fn pkgsrc_check_leg_verifies_synthetic_skeleton_and_fails_hard_on_defects() {
+        assert_eq!(verifier_for("pkgsrc-check"), Some(Verifier::PkgsrcCheck));
+        let (root, project) = fixture("pkgsrc-leg");
+        let spec = Registry::builtin()
+            .get("netbsd")
+            .expect("内建 netbsd 目标")
+            .clone();
+        let port = root.join(".polypack/packages/netbsd/pkgsrc/fixture-app-0.0.1");
+        std::fs::create_dir_all(port.join("files/payload/bin")).expect("建载荷目录");
+        std::fs::create_dir_all(port.join("files/payload/share/applications")).expect("建载荷目录");
+        std::fs::write(port.join("files/payload/bin/fixture-app"), "#!/bin/sh\n").expect("写载荷");
+        std::fs::write(
+            port.join("files/payload/share/applications/fixture-app.desktop"),
+            "[Desktop Entry]\n",
+        )
+        .expect("写 desktop");
+        std::fs::write(
+            port.join("Makefile"),
+            "DISTNAME=\tfixture-app-0.0.1\nCATEGORIES=\tmisc\n\
+             MAINTAINER=\tFixture <ports@example.com>\nCOMMENT=\tFixture app\n\
+             LICENSE=\tapache-2.0\nNO_CHECKSUM=\tyes\nNO_CONFIGURE=\tyes\nNO_BUILD=\tyes\n\n\
+             do-extract:\n\t${MKDIR} ${WRKSRC}\n\
+             \t${CP} -R ${FILESDIR}/payload/. ${WRKSRC}/\n\ndo-install:\n\
+             \t${INSTALL_PROGRAM} ${WRKSRC}/bin/fixture-app ${DESTDIR}${PREFIX}/bin/fixture-app\n\n\
+             .include \"../../mk/bsd.pkg.mk\"\n",
+        )
+        .expect("写 Makefile");
+        std::fs::write(port.join("DESCR"), "Fixture app.\n").expect("写 DESCR");
+        std::fs::write(
+            port.join("PLIST"),
+            "bin/fixture-app\nshare/applications/fixture-app.desktop\n",
+        )
+        .expect("写 PLIST");
+
+        let mut sink = poly_core::events::HumanSink {
+            out: Vec::<u8>::new(),
+        };
+        assert!(
+            verify_target(&project, &spec, &mut sink).expect("pkgsrc 结构检查应通过"),
+            "合成 pkgsrc 骨架应过检"
+        );
+        let text = String::from_utf8_lossy(&sink.out).into_owned();
+        assert!(text.contains("pkgsrc 结构检查"), "{text}");
+        assert!(text.contains("fixture-app-0.0.1"), "{text}");
+        assert!(text.contains("bmake"), "{text}");
+
+        // 载荷缺 PLIST 声明的文件 → 产物缺陷硬失败，不降级成跳过
+        std::fs::remove_file(port.join("files/payload/bin/fixture-app")).expect("移除载荷");
+        let err = verify_target(&project, &spec, &mut sink).expect_err("PLIST 漂移必须硬失败");
         assert_eq!(err.diagnostic.code.to_string(), "poly::E_BND_0006");
         let _ = std::fs::remove_dir_all(&root);
     }

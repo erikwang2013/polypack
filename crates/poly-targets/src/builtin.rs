@@ -595,5 +595,32 @@ pub fn builtin() -> Vec<TargetSpec> {
                     .to_string(),
             ),
         },
+        // ---- L5 BSD 家族（T-M5-08，ROADMAP §3.6）：NetBSD / DragonFly pkgsrc ----
+        // hosts = Linux 是**交叉发起面**：Linux 宿主生成 pkgsrc 骨架（Makefile / PLIST /
+        // DESCR + 载荷）并做结构自检；`bmake package` / `pkg_add` / pkg_admin 真跑需 pkgsrc
+        // 树与 NetBSD 用户态（T-M5-09 VM），骨架在树外时打包器如实跳过并注记。
+        TargetSpec {
+            id: "netbsd".to_string(),
+            tier: 5,
+            hosts: vec![Host::Linux],
+            runtime: Runtime::Native,
+            bridge: Bridge::TauriIpc,
+            ui: vec!["react-dom".to_string()],
+            package: PackageSpec {
+                format: "pkgsrc".to_string(),
+                builder: "pkgsrc".to_string(),
+            },
+            signing: Some("netbsd-repo-gpg".to_string()),
+            verify: vec!["pkgsrc-check".to_string()],
+            publish: vec!["netbsd-repo".to_string()],
+            experimental: false,
+            notes: Some(
+                "pkgsrc 骨架（Makefile / PLIST / DESCR + files 载荷，无 distfile；NetBSD / \
+                 DragonFly 等同源）；Linux 交叉发起只生成骨架并做结构自检，bmake package / \
+                 pkg_add 真跑归 NetBSD VM（T-M5-09）；仓库签名走 pkg_admin gpg-sign-package\
+                 （逐包 GPG，仓库为扁平 .tgz + pkg_summary.gz，客户端 GPG_KEYRING_VERIFY）"
+                    .to_string(),
+            ),
+        },
     ]
 }

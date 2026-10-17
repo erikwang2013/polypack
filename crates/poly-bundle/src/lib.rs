@@ -45,6 +45,7 @@ pub use packagers::linux::{
 };
 pub use packagers::miniapp::quickapp_hap_root;
 pub use packagers::openbsd::{PortsStructure, check_ports_structure};
+pub use packagers::pkgsrc::{PkgsrcStructure, check_pkgsrc_structure};
 pub use packagers::roku::{RokuStructure, check_roku_structure};
 pub use packagers::tizen::{WgtStructure, check_wgt_structure, wgt_lint_tool};
 pub use packagers::webos::{IpkStructure, ares_package_tool, check_ipk_structure};

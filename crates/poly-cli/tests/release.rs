@@ -194,6 +194,35 @@ fn pkg_backend_without_tool_reports_stable_code_and_leaves_no_receipt() {
     let _ = std::fs::remove_dir_all(&root);
 }
 
+/// pkgsrc 格式走 T-M5-08 本地后端；无 pkg_install 的宿主只验稳定错误码与不落回执。
+#[test]
+fn pkgsrc_backend_without_tools_reports_stable_code_and_leaves_no_receipt() {
+    if ["pkg_info", "pkg_admin"]
+        .iter()
+        .all(|tool| poly_bundle::exec::tool_present(tool))
+    {
+        eprintln!("SKIP：本机有 pkg_install，缺工具分支不可复现（NetBSD 真跑归 T-M5-09）");
+        return;
+    }
+    let root = fixture("pkgsrc-pending");
+    let dir = root.join(".polypack").join("packages").join("netbsd");
+    std::fs::create_dir_all(&dir).expect("产物目录可建");
+    std::fs::write(dir.join("fixture-app-0.1.0.tgz"), b"tgz-bytes").expect("写产物");
+    let out = poly(&root, &["release", "--target", "netbsd"]);
+    assert_eq!(out.status.code(), Some(1), "缺 pkg_install 须失败");
+    let stderr = String::from_utf8_lossy(&out.stderr);
+    assert!(stderr.contains("poly::E_RELEASE_0005"), "{stderr}");
+    assert!(
+        stderr.contains("NetBSD"),
+        "修复提示点名 NetBSD 用户态：{stderr}"
+    );
+    assert!(
+        !root.join(".polypack").join("release").exists(),
+        "失败不落回执"
+    );
+    let _ = std::fs::remove_dir_all(&root);
+}
+
 #[test]
 fn rerun_with_matching_receipt_is_published_noop() {
     let root = fixture_rpm("noop");
