@@ -36,7 +36,7 @@ const EXPECTED_IDS = [
 ];
 
 /** 生成目标文件（语言决定表头；标记块内容必须完全一致地可复现）。 */
-const DOCS = [
+export const DOCS = [
   { file: 'README.md', lang: 'zh' },
   { file: 'README.en.md', lang: 'en' },
   { file: 'docs/ROADMAP.md', lang: 'zh' },
@@ -239,6 +239,7 @@ export function parseTargetSpecs(source = fs.readFileSync(path.join(ROOT, SPEC_F
       tier: parseValue(fields.get('tier') ?? '', 'tier').value,
       runtime: asEnum(fields.get('runtime') ?? '', RUNTIME, 'runtime'),
       bridge: asEnum(fields.get('bridge') ?? '', BRIDGE, 'bridge'),
+      ui: expectStringList(parseValue(fields.get('ui') ?? 'Vec::new()', 'ui'), 'ui'),
       format: expectString(parseValue(pkg.value.get('format') ?? '', 'format'), 'format'),
       builder: expectString(parseValue(pkg.value.get('builder') ?? '', 'builder'), 'builder'),
       signing: expectOptionalString(parseValue(fields.get('signing') ?? 'None', 'signing'), 'signing'),
