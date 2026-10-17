@@ -51,6 +51,7 @@ fn fixture() -> (TempDir, BundleInputs) {
         qnx: None,
         qnx_triple: None,
         no_std: false,
+        prebuilt: Vec::new(),
     });
     (guard, inputs)
 }

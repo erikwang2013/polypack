@@ -17,10 +17,14 @@
 //! - [`roku`]：Roku 频道 `.zip`（T-M4-15，复用 SceneGraph 发射器 + 侧载结构自检）
 //! - [`qnx`]：QNX 静态库 + 部署镜像（T-M6-03，QNX SDP 交叉；无 SDP 按环境槽 SKIP）
 //! - [`autosar`]：AUTOSAR Adaptive 静态库 + ARXML 服务清单（T-M6-04，C ABI 单一来源）
+//! - [`embedded`]：嵌入式共享实现（T-M6-05/06，引擎静态库构建 / C ABI 断言 / §5.3 路径审计）
+//! - [`vxworks`]：VxWorks 库 / 镜像 kit（T-M6-05，wr-cc 链接腿 + nm 符号断言）
+//! - [`zephyr`]：Zephyr west 工程模板（T-M6-06，module 链入 no_std 引擎 + 两板构建）
 
 pub mod android;
 pub mod autosar;
 pub mod dmg;
+pub mod embedded;
 pub mod freebsd;
 pub mod harmony;
 pub mod ios;
@@ -31,7 +35,9 @@ pub mod pkgsrc;
 pub mod qnx;
 pub mod roku;
 pub mod tizen;
+pub mod vxworks;
 pub mod web;
 pub mod webos;
 pub mod webtv;
 pub mod windows;
+pub mod zephyr;

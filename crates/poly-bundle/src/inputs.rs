@@ -285,7 +285,7 @@ pub struct BundleInputs {
     pub harmony: Option<HarmonyInputs>,
     /// Roku 打包输入（T-M4-15；`None` → 缺适配器，目标按环境性缺失跳过）。
     pub roku: Option<RokuInputs>,
-    /// 嵌入式 / 车机输入（T-M6-03/04；`None` → 目标按缺输入跳过）。
+    /// 嵌入式 / 车机输入（T-M6-03/04/05/06；`None` → 目标按缺输入跳过）。
     pub embedded: Option<crate::embedded::EmbeddedInputs>,
     /// 输出目录。
     pub out_dir: PathBuf,

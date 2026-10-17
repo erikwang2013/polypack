@@ -28,7 +28,17 @@ pub struct QnxEnv {
     pub target: PathBuf,
 }
 
-/// 嵌入式打包输入（QNX / AUTOSAR）。
+/// 预置引擎静态库（测试 / CI 缓存）：`arch` 由目标打包器定义（VxWorks `vxworks`，
+/// Zephyr `x86` / `arm`）。
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct EmbeddedLib {
+    /// 架构键。
+    pub arch: String,
+    /// `.a` 路径。
+    pub path: PathBuf,
+}
+
+/// 嵌入式打包输入（QNX / AUTOSAR / VxWorks / Zephyr）。
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct EmbeddedInputs {
     /// 引擎 C 头文件（T-M6-02 生成器产出，唯一来源）。
@@ -45,6 +55,8 @@ pub struct EmbeddedInputs {
     pub qnx_triple: Option<String>,
     /// 引擎层 no_std（AUTOSAR 可选；QNX 恒为 no_std）。
     pub no_std: bool,
+    /// 预置引擎静态库（测试 / CI 缓存；非空时 RTOS 打包器不再起 cargo）。
+    pub prebuilt: Vec<EmbeddedLib>,
 }
 
 impl EmbeddedInputs {

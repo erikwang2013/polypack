@@ -98,13 +98,13 @@ fn builtin_has_seven_valid_targets() {
     );
     assert_eq!(
         registry.all().count(),
-        30,
+        32,
         "M6 起内建 = L1 七 + L2 小程序族四（wechat / alipay / douyin / quickapp）+ \
          L3 电视族八（tvos + android-tv / fire-tv + tizen-tv / webos-tv / vidaa-tv / smartcast-tv \
          + roku※实验，T-M4-04/07/08/09/10/12）+ L5 OpenBSD / FreeBSD / NetBSD（T-M5-07/06/08）+\
          发行版三（ubuntu / fedora / mint，T-M5-01）+ ChromeOS 双轨（chromeos / chromeos-pwa，\
-         T-M5-10）+ L6 Android Automotive（android-automotive，T-M6-11）+ QNX / AUTOSAR \
-         （qnx / autosar，T-M6-03/04）"
+         T-M5-10）+ L6 车机 / 嵌入式五目标（android-automotive，T-M6-11；qnx / autosar，\
+         T-M6-03/04；vxworks / zephyr，T-M6-05/06）"
     );
     for spec in registry.all() {
         spec.validate()
@@ -299,7 +299,8 @@ fn linux_host_resolves_four_l1_targets_from_all() {
         ]),
         "L5 OpenBSD / FreeBSD / NetBSD + 发行版三 + ChromeOS 双轨应全部入选"
     );
-    // L6 车机 / 嵌入式：android-automotive / qnx / autosar 均声明三宿主 → Linux 宿主下入选
+    // L6 车机 / 嵌入式：android-automotive 声明三宿主；qnx / autosar / vxworks / zephyr
+    // 声明 Linux 宿主 → 在 Linux 宿主下全部入选
     let l6: BTreeSet<&str> = resolved
         .selected
         .iter()
@@ -308,8 +309,8 @@ fn linux_host_resolves_four_l1_targets_from_all() {
         .collect();
     assert_eq!(
         l6,
-        BTreeSet::from(["android-automotive", "qnx", "autosar"]),
-        "L6 车机 + QNX / AUTOSAR（三宿主声明）应入选"
+        BTreeSet::from(["android-automotive", "qnx", "autosar", "vxworks", "zephyr"]),
+        "L6 车机 + 嵌入式五目标应入选"
     );
     assert_eq!(
         selected.len(),

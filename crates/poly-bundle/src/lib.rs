@@ -27,7 +27,7 @@ pub mod tools;
 pub mod webapp;
 pub mod zipwrite;
 
-pub use embedded::{EmbeddedInputs, QnxEnv};
+pub use embedded::{EmbeddedInputs, EmbeddedLib, QnxEnv};
 pub use error::{BundleError, codes};
 pub use icons::{IconSet, derive as derive_icons};
 pub use inputs::{
@@ -55,8 +55,10 @@ pub use packagers::pkgsrc::{PkgsrcStructure, check_pkgsrc_structure};
 pub use packagers::qnx::{QnxImage, QnxLibrary, QnxStructure, check_qnx_structure};
 pub use packagers::roku::{RokuStructure, check_roku_structure};
 pub use packagers::tizen::{WgtStructure, check_wgt_structure, wgt_lint_tool};
+pub use packagers::vxworks::{VxWorksStructure, check_vxworks_structure};
 pub use packagers::webos::{IpkStructure, ares_package_tool, check_ipk_structure};
 pub use packagers::webtv::{
     SMARTCAST, VIDAA, WebAppPlatform, WebAppStructure, check_web_app_structure,
 };
+pub use packagers::zephyr::{ZephyrStructure, check_zephyr_structure};
 pub use pwa::{PwaAudit, audit_pwa};

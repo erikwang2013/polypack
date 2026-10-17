@@ -69,6 +69,7 @@ fn embedded(out: &Path, qnx: Option<QnxEnv>, no_std: bool) -> EmbeddedInputs {
         qnx,
         qnx_triple: None,
         no_std,
+        prebuilt: Vec::new(),
     }
 }
 

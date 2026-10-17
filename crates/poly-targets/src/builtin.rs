@@ -14,8 +14,9 @@
 //! signify / portcheck；Linux 宿主可发起的交叉面，真构建归 OpenBSD VM / T-M5-09）与
 //! ChromeOS 双轨（T-M5-10：Crostini deb + PWA 两目标，分别复用 Linux deb / Web 链）。
 //! M6 增补 L6 嵌入式 / 车机目标（tier 6，ROADMAP §3.7）：Android Automotive（T-M6-11）、
-//! QNX（T-M6-03，staticlib + cffi + 镜像 / 库）与 AUTOSAR Adaptive（T-M6-04，staticlib +
-//! cffi + ARXML 清单；无 UI、自部署）。
+//! QNX（T-M6-03，staticlib + cffi + 镜像 / 库）、AUTOSAR Adaptive（T-M6-04，staticlib +
+//! cffi + ARXML 清单；无 UI、自部署）、VxWorks（T-M6-05，库 / 镜像 kit）与 Zephyr
+//! （T-M6-06，west 工程模板 + no_std 引擎模块）。
 
 use alloc::string::ToString;
 use alloc::vec;
@@ -628,6 +629,56 @@ pub fn builtin() -> Vec<TargetSpec> {
                  DragonFly 等同源）；Linux 交叉发起只生成骨架并做结构自检，bmake package / \
                  pkg_add 真跑归 NetBSD VM（T-M5-09）；仓库签名走 pkg_admin gpg-sign-package\
                  （逐包 GPG，仓库为扁平 .tgz + pkg_summary.gz，客户端 GPG_KEYRING_VERIFY）"
+                    .to_string(),
+            ),
+        },
+        // ---- L6 嵌入式（T-M6-05 / T-M6-06，ROADMAP §3.7）：VxWorks / Zephyr ----
+        // 两者都复用 T-M6-02 的 `poly_engine_*` C ABI（唯一生成头文件），无 UI；
+        // 引擎层以应用侧 wrapper staticlib 链入（poly-core 只出 rlib，应用提供 allocator /
+        // panic_handler）。VxWorks 默认出库（配置可覆盖为 `image` 部署 kit）；`wr-cc` 缺席时
+        // verify 用 nm 闭包 / 结构断言真跑并 SKIP-with-print。Zephyr 出 west 工程模板，
+        // `west build` 覆盖 qemu_x86 / qemu_cortex_m3 两板。
+        TargetSpec {
+            id: "vxworks".to_string(),
+            tier: 6,
+            hosts: vec![Host::Win, Host::Linux],
+            runtime: Runtime::Staticlib,
+            bridge: Bridge::Cffi,
+            ui: vec![],
+            package: PackageSpec {
+                format: "library".to_string(),
+                builder: "vxworks-wr".to_string(),
+            },
+            signing: None,
+            verify: vec!["c-abi-symbols".to_string(), "vxworks-ld-check".to_string()],
+            publish: vec!["self-hosted".to_string()],
+            experimental: false,
+            notes: Some(
+                "无 UI、cffi、no_std；format = `library`（默认，静态库）或 `image`（部署 kit zip，\
+                 配置 [targets.vxworks].format 覆盖）；wr-cc / wr-ld 缺席时产物用 nm 符号闭包 \
+                 + 结构断言校验并 SKIP-with-print，绝不伪造可加载镜像"
+                    .to_string(),
+            ),
+        },
+        TargetSpec {
+            id: "zephyr".to_string(),
+            tier: 6,
+            hosts: vec![Host::Win, Host::Linux, Host::Macos],
+            runtime: Runtime::Staticlib,
+            bridge: Bridge::Cffi,
+            ui: vec![],
+            package: PackageSpec {
+                format: "west".to_string(),
+                builder: "zephyr-west".to_string(),
+            },
+            signing: None,
+            verify: vec!["c-abi-symbols".to_string(), "zephyr-west-build".to_string()],
+            publish: vec!["self-hosted".to_string()],
+            experimental: false,
+            notes: Some(
+                "无 UI、cffi、no_std；west 工程模板（zephyr module + 引擎静态库模块链入），\
+                 qemu_x86 / qemu_cortex_m3 两板 `west build` 验收；最小 CONFIG_* 集随模板版本化；\
+                 west / Zephyr SDK 缺席时按环境槽 SKIP-with-print"
                     .to_string(),
             ),
         },

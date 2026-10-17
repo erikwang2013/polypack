@@ -51,6 +51,7 @@ fn inputs(with_sdp: bool) -> (TempDir, BundleInputs) {
         }),
         qnx_triple: Some("aarch64-unknown-nto-qnx710".to_string()),
         no_std: true,
+        prebuilt: Vec::new(),
     });
     (guard, inputs)
 }

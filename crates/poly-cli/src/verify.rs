@@ -212,9 +212,14 @@ enum Verifier {
     /// AUTOSAR ARXML 清单：结构断言 + 服务 / 端口与 C ABI 一一对应 + 在场时的
     /// `xmllint --schema` 真跑（缺席打印 SKIP），T-M6-04。
     ArxmlSchema,
-    /// 静态库归档的 `poly_engine_*` 导出符号与 C ABI 清单对照
-    /// （`nm -g --defined-only`；nm 缺席时退化为声明侧结构断言并打印 SKIP），T-M6-03/04。
+    /// 静态库归档的 `poly_engine_*` 导出符号与 C ABI 清单对照（`nm -g --defined-only`；
+    /// nm 缺席时退化为声明侧结构断言并打印 SKIP）。QNX/AUTOSAR 与 VxWorks/Zephyr 共用
+    /// 同一 id，按目标分发到对应实现，T-M6-03/04/05/06。
     CAbiSymbols,
+    /// VxWorks kit 结构断言 + 在场时 `wr-cc` 真链（T-M6-05；工具链缺席 SKIP-with-print）。
+    VxWorksLd,
+    /// Zephyr west 模板结构 + 在场时两板 `west build`（T-M6-06；环境缺席 SKIP-with-print）。
+    ZephyrWestBuild,
 }
 
 /// 校验器 id → 已接入实现（`None` = 未接入，归属查 [`verifier_owner`]）。
@@ -241,6 +246,8 @@ fn verifier_for(id: &str) -> Option<Verifier> {
         "qnx-image-structure" => Some(Verifier::QnxImageStructure),
         "arxml-schema" => Some(Verifier::ArxmlSchema),
         "c-abi-symbols" => Some(Verifier::CAbiSymbols),
+        "vxworks-ld-check" => Some(Verifier::VxWorksLd),
+        "zephyr-west-build" => Some(Verifier::ZephyrWestBuild),
         _ => None,
     }
 }
@@ -363,6 +370,8 @@ fn verify_target(
     let mut qnx_ids: Vec<String> = Vec::new();
     let mut arxml_ids: Vec<String> = Vec::new();
     let mut cabi_ids: Vec<String> = Vec::new();
+    let mut vxworks_ld_ids: Vec<String> = Vec::new();
+    let mut zephyr_west_ids: Vec<String> = Vec::new();
     for id in &spec.verify {
         match verifier_for(id) {
             Some(Verifier::IosCodesign) => ios_ids.push(id.clone()),
@@ -386,6 +395,8 @@ fn verify_target(
             Some(Verifier::QnxImageStructure) => qnx_ids.push(id.clone()),
             Some(Verifier::ArxmlSchema) => arxml_ids.push(id.clone()),
             Some(Verifier::CAbiSymbols) => cabi_ids.push(id.clone()),
+            Some(Verifier::VxWorksLd) => vxworks_ld_ids.push(id.clone()),
+            Some(Verifier::ZephyrWestBuild) => zephyr_west_ids.push(id.clone()),
             None => unserved.push(match verifier_owner(id) {
                 Some(owner) => format!("{id}（{owner}）"),
                 // 注册表有 id 但没人认领：如实点名到具体 id，测试保证这里在 M2 的注册表上是死路
@@ -466,7 +477,18 @@ fn verify_target(
         checked |= crate::verify_embedded::verify_arxml_schema(project, spec, &arxml_ids, events)?;
     }
     if !cabi_ids.is_empty() {
-        checked |= crate::verify_embedded::verify_c_abi_symbols(project, spec, &cabi_ids, events)?;
+        // 同一 verify id 覆盖四类嵌入式目标；两套实现按 staged 布局区分，按目标分发。
+        checked |= if matches!(spec.id.as_str(), "vxworks" | "zephyr") {
+            crate::verify_rtos::verify_c_abi_symbols(project, spec, &cabi_ids, events)?
+        } else {
+            crate::verify_embedded::verify_c_abi_symbols(project, spec, &cabi_ids, events)?
+        };
+    }
+    if !vxworks_ld_ids.is_empty() {
+        checked |= crate::verify_rtos::verify_vxworks_ld(project, spec, &vxworks_ld_ids, events)?;
+    }
+    if !zephyr_west_ids.is_empty() {
+        checked |= crate::verify_rtos::verify_zephyr_west(project, spec, &zephyr_west_ids, events)?;
     }
     Ok(checked)
 }

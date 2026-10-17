@@ -316,10 +316,13 @@ pub(crate) fn assemble_inputs(
                 ..Default::default()
             });
         }
-        // 嵌入式 / 车机（T-M6-03/04）：头文件由 poly-core 生成器现场产出（唯一来源），
-        // 符号清单直接取 FFI_FUNCTIONS；QNX SDP 只探测不安装，缺席时打包器返回
-        // ToolMissing → environment_slot 的 SKIP-with-print。
-        "image" | "library" | "arxml" => {
+        // 嵌入式 / 车机（T-M6-03/04/05/06）：头文件由 poly-core 生成器现场产出（唯一来源），
+        // 符号清单取 FFI_FUNCTIONS；按目标 id 收窄，避免 image / library / west 的 format
+        // 撞车（按 format 泛注入会把输入错派给别的打包器）。QNX SDP 只探测不安装，缺席时
+        // 打包器返回 ToolMissing → environment_slot 的 SKIP-with-print。
+        "image" | "library" | "west" | "arxml"
+            if matches!(spec.id.as_str(), "qnx" | "autosar" | "vxworks" | "zephyr") =>
+        {
             inputs.embedded = Some(embedded_inputs(spec, out_dir)?);
         }
         _ => {}
@@ -496,6 +499,7 @@ fn embedded_inputs(spec: &TargetSpec, out_dir: &Path) -> Result<EmbeddedInputs, 
             .ok()
             .filter(|value| !value.trim().is_empty()),
         no_std: std::env::var_os(ENGINE_NO_STD_ENV).is_some_and(|value| !value.is_empty()),
+        prebuilt: Vec::new(),
     })
 }
 
