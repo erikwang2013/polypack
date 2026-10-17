@@ -617,3 +617,19 @@ fn builtin_matches_roadmap_3_4_apple_tvos() {
         "需宿主边界说明"
     );
 }
+
+#[test]
+fn bsd_targets_are_reachable_on_bsd_hosts() {
+    let registry = Registry::builtin();
+    for id in ["freebsd", "openbsd"] {
+        let spec = registry.get(id).unwrap_or_else(|| panic!("{id} 应内建"));
+        assert!(
+            spec.hosts.contains(&Host::Bsd),
+            "{id}: BSD 原生宿主要可达（T-M5-09 VM 真跑）"
+        );
+        assert!(
+            spec.hosts.contains(&Host::Linux),
+            "{id}: Linux 交叉发起保留"
+        );
+    }
+}

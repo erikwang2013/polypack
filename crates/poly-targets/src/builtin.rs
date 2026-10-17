@@ -549,7 +549,8 @@ pub fn builtin() -> Vec<TargetSpec> {
         TargetSpec {
             id: "freebsd".to_string(),
             tier: 5,
-            hosts: vec![Host::Linux],
+            // Linux 交叉发起（无 pkg 时 package 降级）+ FreeBSD 原生（pkg create / pkg repo）。
+            hosts: vec![Host::Linux, Host::Bsd],
             runtime: Runtime::Native,
             bridge: Bridge::TauriIpc,
             ui: vec!["react-dom".to_string()],
@@ -576,7 +577,8 @@ pub fn builtin() -> Vec<TargetSpec> {
         TargetSpec {
             id: "openbsd".to_string(),
             tier: 5,
-            hosts: vec![Host::Linux],
+            // Linux 交叉发起（结构骨架）+ OpenBSD 原生（make package / pkg_sign）。
+            hosts: vec![Host::Linux, Host::Bsd],
             runtime: Runtime::Native,
             bridge: Bridge::TauriIpc,
             ui: vec!["react-dom".to_string()],
