@@ -1163,6 +1163,7 @@ dependencies = [
  "poly-sign",
  "poly-targets",
  "poly-toolchain",
+ "serde",
  "serde_json",
 ]
 
