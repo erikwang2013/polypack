@@ -36,6 +36,7 @@ pub use packager::{
 };
 pub use packagers::harmony::{HapStructure, check_hap_structure};
 pub use packagers::miniapp::quickapp_hap_root;
+pub use packagers::openbsd::{PortsStructure, check_ports_structure};
 pub use packagers::tizen::{WgtStructure, check_wgt_structure, wgt_lint_tool};
 pub use packagers::webos::{IpkStructure, ares_package_tool, check_ipk_structure};
 pub use packagers::webtv::{
