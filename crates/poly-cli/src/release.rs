@@ -5,9 +5,10 @@
 //! 幂等判定（同清单摘要 + 同仓库 = no-op，`runs+1`）与 `E_RELEASE_*` 稳定错误码。
 //!
 //! 仓库元数据刷新与签名由 [`RepoBackend`] 承接：deb / rpm 走 [`repo::LocalBackend`]
-//! （T-M5-05，自托管目录 + GPG 签名）；pkg 后端待 T-M5-06 接线，当前 [`PendingBackend`]
-//! 如实报 `E_RELEASE_0004`，绝不假装发布过。`--dry-run` 不受后端缺席影响：完整解析
-//! 产物、清单摘要、回执锚点与命中预测。
+//! （T-M5-05，自托管目录 + GPG 签名）；pkg 同走本地后端（T-M5-06，`pkg repo` catalogue
+//! 原生 rsa/ecdsa/eddsa 签名，需 FreeBSD 用户态）。本机无 pkg(8) 时如实报
+//! `E_RELEASE_0005`，绝不假装发布过。`--dry-run` 不触仓库：完整解析产物、清单摘要、回执
+//! 锚点与命中预测。
 //!
 //! shortcut: 回执按「目标 + 清单摘要」单键，同键并发按单写者假设（后写赢）——发布按
 //! 单脚本串行跑（同 poly-publish 归档口径）。
@@ -73,11 +74,8 @@ pub fn run(args: &Args, json: bool) -> Result<i32, Diagnostic> {
             report_dry_run(&prepared, cache_hit, args.credential.is_some(), json);
             continue;
         }
-        let backend: Box<dyn RepoBackend> = match prepared.kind {
-            // pkg 后端由 T-M5-06 接线；deb/rpm 走本地自托管仓库。
-            RepoKind::Pkg => Box::new(PendingBackend),
-            RepoKind::Deb | RepoKind::Rpm => Box::new(repo::LocalBackend),
-        };
+        // deb / rpm / pkg 都是本地自托管仓库后端（pkg 的 `pkg repo` 真跑需 FreeBSD 用户态）。
+        let backend: Box<dyn RepoBackend> = Box::new(repo::LocalBackend);
         let outcome = release_target(
             &prepared,
             args.credential.as_deref(),
@@ -201,8 +199,6 @@ trait RepoBackend {
 struct RepoRequest<'a> {
     /// 目标 id。
     target: &'a str,
-    /// 工程版本。
-    version: &'a str,
     /// 仓库根。
     repo: &'a Path,
     /// 仓库格式。
@@ -213,39 +209,6 @@ struct RepoRequest<'a> {
     artifacts: &'a [Artifact],
     /// 签名凭据引用（未给 = 后端按目标声明解析）。
     credential: Option<&'a str>,
-}
-
-/// 接线前占位：如实报缺口，绝不假装发布过（dry-run 不经过这里）。
-struct PendingBackend;
-
-impl RepoBackend for PendingBackend {
-    fn publish(&self, request: &RepoRequest<'_>) -> Result<(), Diagnostic> {
-        let sample = request
-            .artifacts
-            .first()
-            .map(|artifact| artifact.path.display().to_string())
-            .unwrap_or_else(|| "无".to_string());
-        Err(Diagnostic::error(
-            codes::E_RELEASE_0004,
-            format!(
-                "{} 仓库后端未接线（目标 {} 版本 {}，仓库 {}，产物 {} 件如 {}）：元数据刷新与签名待 T-M5-05/06 入 main",
-                request.kind.extension(),
-                request.target,
-                request.version,
-                request.repo.display(),
-                request.artifacts.len(),
-                sample,
-            ),
-        )
-        .with_hint(format!(
-            "凭据引用{}；先用 --dry-run 校验产物与回执锚点，后端落位后同命令零改动激活",
-            if request.credential.is_some() {
-                "已给出（值不落屏）"
-            } else {
-                "未给出"
-            }
-        )))
-    }
 }
 
 /// 解析一个目标：校验仓库格式、定位产物、算清单摘要与回执锚点。
@@ -453,7 +416,6 @@ fn release_target(
 
     let request = RepoRequest {
         target: &prepared.target,
-        version: &prepared.version,
         repo: &prepared.repo,
         kind: prepared.kind,
         signing: prepared.signing.as_deref(),

@@ -1,11 +1,11 @@
-//! 自托管仓库落地（T-M5-05）：deb / rpm 元数据刷新与 GPG 签名。
+//! 自托管仓库落地（T-M5-05 deb/rpm + T-M5-06 pkg）：元数据刷新与仓库签名。
 //!
-//! 目录布局（`--repo` 根；同一根可同时承载 deb 与 rpm）：
+//! 目录布局（`--repo` 根；同一根可同时承载 deb / rpm / pkg）：
 //!
 //! ```text
 //! <repo>/
-//!   polypack-repo.gpg            # 公钥（apt signed-by；二进制 keyring）
-//!   polypack-repo.asc            # 公钥（dnf gpgkey / 人读）
+//!   polypack-repo.gpg            # deb/rpm 公钥（apt signed-by；二进制 keyring）
+//!   polypack-repo.asc            # deb/rpm 公钥（dnf gpgkey / 人读）
 //!   pool/main/<prefix>/<pkg>/*.deb
 //!   dists/<suite>/main/binary-<arch>/Packages
 //!   dists/<suite>/{Release,InRelease,Release.gpg}
@@ -13,15 +13,22 @@
 //!   repodata/{primary,filelists,other}.xml.gz
 //!   repodata/repomd.xml
 //!   repodata/repomd.xml.asc
+//!   *.pkg                        # pkg 产物扁平入库
+//!   {meta.conf,data.pkg,packagesite.pkg}   # pkg catalogue（meta.conf 内含签名）
+//!   polypack-repo.pub            # pkg 公钥（客户端 PUBKEY；PEM）
 //! ```
 //!
 //! 客户端：apt 源 `deb [signed-by=<repo>/polypack-repo.gpg] file:<repo> <suite> main`；
-//! dnf 源 `baseurl=file://<repo>` + `repo_gpgcheck=1` + `gpgkey=file://<repo>/polypack-repo.asc`。
+//! dnf 源 `baseurl=file://<repo>` + `repo_gpgcheck=1` + `gpgkey=file://<repo>/polypack-repo.asc`；
+//! pkg 源 `url: "file://<repo>"` + `signature_type: "pubkey"` + `pubkey: "<repo>/polypack-repo.pub"`。
 //!
-//! 确定性：元数据只由产物内容 / mtime 与 `SOURCE_DATE_EPOCH` 决定（排序、gzip mtime=0）；
-//! 二次生成除 GPG 签名包时间戳外字节一致。签名走 [`poly_sign::RepoSigner`]（凭据引用）。
+//! 确定性：deb/rpm 元数据只由产物内容 / mtime 与 `SOURCE_DATE_EPOCH` 决定（排序、gzip
+//! mtime=0）；二次生成除 GPG 签名包时间戳外字节一致（签名走 [`poly_sign::RepoSigner`]）。
+//! pkg catalogue 由 `pkg repo` 生成（catalogue 排序稳定；签名时间戳可变），签名是 pkg(8)
+//! 原生 rsa/ecdsa/eddsa，不是 GPG。
 
 mod deb;
+mod pkg;
 mod rpm;
 
 #[cfg(test)]
@@ -43,21 +50,16 @@ pub(super) struct LocalBackend;
 
 impl RepoBackend for LocalBackend {
     fn publish(&self, request: &RepoRequest<'_>) -> Result<(), Diagnostic> {
-        let signer = gpg_signer(request)?;
         match request.kind {
-            RepoKind::Deb => deb::generate(request, &signer),
-            RepoKind::Rpm => rpm::generate(request, &signer),
-            // run() 只对 deb/rpm 选本后端；pkg 仍走 PendingBackend（T-M5-06）。
-            RepoKind::Pkg => Err(Diagnostic::error(
-                codes::E_RELEASE_0004,
-                "pkg 仓库后端未接线（T-M5-06）".to_string(),
-            )),
+            RepoKind::Pkg => pkg::generate(request),
+            RepoKind::Deb => deb::generate(request, &gpg_signer(request)?),
+            RepoKind::Rpm => rpm::generate(request, &gpg_signer(request)?),
         }
     }
 }
 
 /// 解析签名凭据引用：`--credential` 只覆盖来源；缺省用目标声明的档案。
-fn gpg_signer(request: &RepoRequest<'_>) -> Result<GpgSigner, Diagnostic> {
+fn credential_ref(request: &RepoRequest<'_>) -> Result<CredentialRef, Diagnostic> {
     let (source, alias) = match request.credential {
         Some(value) => parse_credential(value)?,
         None => (CredentialSource::Keyring, None),
@@ -65,8 +67,12 @@ fn gpg_signer(request: &RepoRequest<'_>) -> Result<GpgSigner, Diagnostic> {
     let name = alias
         .or_else(|| request.signing.map(str::to_string))
         .unwrap_or_else(|| request.target.to_string());
-    let reference = CredentialRef { name, source };
-    GpgSigner::with_default_backends(&reference).map_err(sign_error)
+    Ok(CredentialRef { name, source })
+}
+
+/// deb/rpm 的 GPG 签名器（凭据只传引用）。
+fn gpg_signer(request: &RepoRequest<'_>) -> Result<GpgSigner, Diagnostic> {
+    GpgSigner::with_default_backends(&credential_ref(request)?).map_err(sign_error)
 }
 
 /// 仓库元数据错误统一口径（签名域错误码由 `sign_error` 原样透传）。

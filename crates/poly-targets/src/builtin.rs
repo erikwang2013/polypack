@@ -542,6 +542,33 @@ pub fn builtin() -> Vec<TargetSpec> {
                     .to_string(),
             ),
         },
+        // ---- L5 BSD 家族（T-M5-06，ROADMAP §3.6）：FreeBSD pkg ----
+        // hosts = Linux 是**交叉发起面**：Linux 宿主生成 pkg 暂存树 + manifest 并做结构自检；
+        // `pkg create` / `pkg install` / `pkg check` 真跑需 FreeBSD 用户态（T-M5-09 VM），缺
+        // pkg(8) 时打包器跳过并如实注记。
+        TargetSpec {
+            id: "freebsd".to_string(),
+            tier: 5,
+            hosts: vec![Host::Linux],
+            runtime: Runtime::Native,
+            bridge: Bridge::TauriIpc,
+            ui: vec!["react-dom".to_string()],
+            package: PackageSpec {
+                format: "pkg".to_string(),
+                builder: "freebsd-pkg".to_string(),
+            },
+            signing: Some("freebsd-repo-pkg".to_string()),
+            verify: vec!["pkg-check".to_string()],
+            publish: vec!["freebsd-repo".to_string()],
+            experimental: false,
+            notes: Some(
+                "原生 pkg create 链（Tauri IPC 核心即宿主，FreeBSD 用户态）；Linux 只做交叉\
+                 发起 + 暂存树 / manifest 结构自检，pkg create / pkg check / pkg install 真跑归 \
+                 FreeBSD VM（T-M5-09）；仓库签名走 pkg repo rsa|ecdsa|eddsa:<keyfile>\
+                 （catalogue 内签名，客户端 PUBKEY）"
+                    .to_string(),
+            ),
+        },
         // ---- L5 BSD 家族（T-M5-07，ROADMAP §3.6）：OpenBSD ports ----
         // hosts = Linux 是**交叉面**：Linux 宿主生成 ports 骨架（Makefile / PLIST / DESCR +
         // 载荷）并做结构自检；`make package` / portcheck / pkg_sign 真跑需 OpenBSD VM

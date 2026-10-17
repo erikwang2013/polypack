@@ -98,7 +98,7 @@ pub fn run(args: &Args, json: bool) -> Result<i32, Diagnostic> {
                 "校验器按 TargetSpec.verify 声明注册：ios 的 codesign-verify / spctl、harmonyos 的 \
                  hap-sign-verify / hap-structure-check、quickapp 的 hap-toolkit-lint、web 系 TV 的 \
                  wgt-lint / ares-package / sandbox-selfcheck / sideload-structure-check、\
-                 OpenBSD 的 portcheck 已接入；\
+                 OpenBSD 的 portcheck、FreeBSD 的 pkg-check 已接入；\
                  其余 id 的归属见告警，可先用 poly verify --reproducible 做可复现比对",
             ));
         }
@@ -181,6 +181,9 @@ enum Verifier {
     /// OpenBSD ports 骨架校验（[`poly_bundle::check_ports_structure`] 的内建结构断言 +
     /// 在场时的官方 `portcheck -N`，T-M5-07）。
     Portcheck,
+    /// FreeBSD pkg 校验（[`poly_bundle::check_pkg_structure`] 的内建结构断言 + 在场时的
+    /// 官方 `pkg info -F` / 已安装时的 `pkg check`，T-M5-06）。
+    PkgCheck,
     /// Roku 频道 zip 的侧载结构自检（[`poly_bundle::check_roku_structure`]，与打包器同一实现；
     /// 真机侧载腿本机不可得，按 T-M4-12 决策 SKIP-with-print，T-M4-15）。
     RokuSideload,
@@ -213,6 +216,7 @@ fn verifier_for(id: &str) -> Option<Verifier> {
         "ares-package" => Some(Verifier::AresPackage),
         "sandbox-selfcheck" => Some(Verifier::SandboxSelfcheck),
         "portcheck" => Some(Verifier::Portcheck),
+        "pkg-check" => Some(Verifier::PkgCheck),
         "sideload-structure-check" => Some(Verifier::RokuSideload),
         "lintian" => Some(Verifier::DebLint),
         "rpmlint" => Some(Verifier::RpmLint),
@@ -330,6 +334,7 @@ fn verify_target(
     let mut ares_ids: Vec<String> = Vec::new();
     let mut sandbox_ids: Vec<String> = Vec::new();
     let mut portcheck_ids: Vec<String> = Vec::new();
+    let mut pkg_check_ids: Vec<String> = Vec::new();
     let mut roku_ids: Vec<String> = Vec::new();
     let mut deb_ids: Vec<String> = Vec::new();
     let mut rpm_ids: Vec<String> = Vec::new();
@@ -348,6 +353,7 @@ fn verify_target(
             Some(Verifier::AresPackage) => ares_ids.push(id.clone()),
             Some(Verifier::SandboxSelfcheck) => sandbox_ids.push(id.clone()),
             Some(Verifier::Portcheck) => portcheck_ids.push(id.clone()),
+            Some(Verifier::PkgCheck) => pkg_check_ids.push(id.clone()),
             Some(Verifier::RokuSideload) => roku_ids.push(id.clone()),
             Some(Verifier::DebLint) => deb_ids.push(id.clone()),
             Some(Verifier::RpmLint) => rpm_ids.push(id.clone()),
@@ -398,6 +404,9 @@ fn verify_target(
     }
     if !portcheck_ids.is_empty() {
         checked |= verify_ports(project, spec, &portcheck_ids, events)?;
+    }
+    if !pkg_check_ids.is_empty() {
+        checked |= verify_pkg(project, spec, &pkg_check_ids, events)?;
     }
     if !roku_ids.is_empty() {
         checked |= verify_roku_sideload(project, spec, &roku_ids, events)?;
@@ -1291,6 +1300,171 @@ fn verify_ports(
     Ok(true)
 }
 
+/// FreeBSD pkg 校验腿（`pkg-check`，T-M5-06）：先跑与打包器**同一份**结构检查
+/// （[`poly_bundle::check_pkg_structure`]：+MANIFEST 必填项 / prefix 安全 / 暂存树与
+/// manifest 同源，缺陷硬失败）；`pkg` 在场时对 `.pkg` 产物跑 `pkg info -F`，已安装时再跑
+/// `pkg check -s`（非零退出 = 包缺陷硬失败）。Linux 宿主通常无 pkg(8)，缺席按环境槽告警
+/// 跳过并注记——内建结构断言是本机真跑面，`pkg create` / 安装冒烟归 T-M5-09 FreeBSD VM。
+fn verify_pkg(
+    project: &Project,
+    spec: &TargetSpec,
+    ids: &[String],
+    events: &mut dyn EventSink,
+) -> Result<bool, StageError> {
+    let staged = project::packages_root(&project.root).join(&spec.id);
+    let Some((stage, manifest, count)) = staged_pkg(&staged) else {
+        warning(
+            events,
+            &format!(
+                "目标 {} 未校验：{} 下没有 *.pkgstage（先跑 poly build 把产物流到打包暂存目录）",
+                spec.id,
+                staged.display()
+            ),
+        );
+        return Ok(false);
+    };
+    if count > 1 {
+        warning(
+            events,
+            &format!(
+                "目标 {} 的产物有 {count} 份 pkgstage（取 {}）",
+                spec.id,
+                stage.display()
+            ),
+        );
+    }
+    let structure = match poly_bundle::check_pkg_structure(&stage, &manifest) {
+        Ok(structure) => structure,
+        Err(err) => return Err(bundle_diagnostic(spec, &err).into()),
+    };
+    warning(
+        events,
+        &format!(
+            "目标 {} 的 pkg 结构检查：{} 个文件，name={}-{}，origin={}，prefix={}",
+            spec.id,
+            structure.files.len(),
+            structure.name,
+            structure.version,
+            structure.origin,
+            structure.prefix
+        ),
+    );
+    let pkg = stage.with_extension("pkg");
+    if poly_bundle::exec::tool_present("pkg") {
+        if pkg.is_file() {
+            let command = poly_bundle::Command::new(
+                "pkg",
+                [
+                    "info".to_string(),
+                    "-F".to_string(),
+                    pkg.display().to_string(),
+                ],
+            );
+            match poly_bundle::exec::run(&command) {
+                Ok(_) => warning(
+                    events,
+                    &format!(
+                        "目标 {} 的 pkg info -F 真跑通过：{}",
+                        spec.id,
+                        command.line()
+                    ),
+                ),
+                Err(err @ BundleError::ToolMissing { .. }) => {
+                    warning(
+                        events,
+                        &format!("目标 {} 的 pkg info -F 未跑：{err}", spec.id),
+                    );
+                }
+                Err(err) => {
+                    return Err(webtv_defect(
+                        spec,
+                        format!("pkg info -F 判决不通过：{err}"),
+                        "在 FreeBSD VM 上重跑 poly build --target freebsd 生成 .pkg 后重试 poly verify",
+                    )
+                    .into());
+                }
+            }
+        } else {
+            warning(
+                events,
+                &format!(
+                    "目标 {} 的 pkg info -F 未跑：{} 下没有 .pkg（Linux 交叉发起只生成暂存树；\
+                     pkg create 与安装冒烟归 FreeBSD VM（T-M5-09））",
+                    spec.id,
+                    staged.display()
+                ),
+            );
+        }
+        let installed = poly_bundle::Command::new(
+            "pkg",
+            [
+                "info".to_string(),
+                "-e".to_string(),
+                format!("{}-{}", structure.name, structure.version),
+            ],
+        );
+        if poly_bundle::exec::run(&installed).is_ok() {
+            let command = poly_bundle::Command::new(
+                "pkg",
+                [
+                    "check".to_string(),
+                    "-s".to_string(),
+                    structure.name.clone(),
+                ],
+            );
+            match poly_bundle::exec::run(&command) {
+                Ok(_) => warning(
+                    events,
+                    &format!(
+                        "目标 {} 的 pkg check -s 真跑通过：{}",
+                        spec.id,
+                        command.line()
+                    ),
+                ),
+                Err(err @ BundleError::ToolMissing { .. }) => {
+                    warning(
+                        events,
+                        &format!("目标 {} 的 pkg check -s 未跑：{err}", spec.id),
+                    );
+                }
+                Err(err) => {
+                    return Err(webtv_defect(
+                        spec,
+                        format!("pkg check -s 判决不通过：{err}"),
+                        "重新 pkg install 后重试；持续失败按 pkg check 输出修包内容",
+                    )
+                    .into());
+                }
+            }
+        } else {
+            warning(
+                events,
+                &format!(
+                    "目标 {} 的 pkg check -s 未跑：本机未安装 {}-{}（安装冒烟 pkg install -y \
+                     归 FreeBSD VM（T-M5-09））",
+                    spec.id, structure.name, structure.version
+                ),
+            );
+        }
+    } else {
+        warning(
+            events,
+            &format!(
+                "目标 {} 的 pkg check 未跑：PATH 无 pkg（内建结构断言已过；pkg create / \
+                 pkg check / 安装冒烟归 FreeBSD VM（T-M5-09））",
+                spec.id
+            ),
+        );
+    }
+    for id in ids {
+        events.emit(&BuildEvent::Verified {
+            checker: id.clone(),
+            ok: true,
+        });
+    }
+    Ok(true)
+}
+
 /// Roku 侧载结构自检腿（`sideload-structure-check`，T-M4-15）：与打包器**同一份**检查
 /// （[`poly_bundle::check_roku_structure`]：zip 根布局 + manifest 必填字段 + SceneGraph XML
 /// 良构 + 焦点表 + BRS 形态；缺陷 E_BND_0006 硬失败）。真机侧载腿（ECP 探测 / `plugin_install`）
@@ -1370,6 +1544,26 @@ fn staged_ports_dir(staged: &Path) -> Option<(PathBuf, usize)> {
     dirs.sort();
     let count = dirs.len();
     dirs.pop().map(|path| (path, count))
+}
+
+/// 暂存目录下的 pkg 暂存树（`<staged>/*.pkgstage/`，须有同名 `.manifest`；多个取字典序最后一份）。
+fn staged_pkg(staged: &Path) -> Option<(PathBuf, PathBuf, usize)> {
+    let mut dirs: Vec<PathBuf> = std::fs::read_dir(staged)
+        .ok()?
+        .flatten()
+        .map(|entry| entry.path())
+        .filter(|path| {
+            path.is_dir()
+                && path.extension().is_some_and(|ext| ext == "pkgstage")
+                && path.with_extension("manifest").is_file()
+        })
+        .collect();
+    dirs.sort();
+    let count = dirs.len();
+    dirs.pop().map(|stage| {
+        let manifest = stage.with_extension("manifest");
+        (stage, manifest, count)
+    })
 }
 
 /// 打包暂存目录里的目录产物定位（`<staged>/*<suffix>`，排序取最新一份）；返回 `(路径, 份数)`。
@@ -3078,6 +3272,57 @@ mod tests {
         // 载荷缺 PLIST 声明的文件 → 产物缺陷硬失败，不降级成跳过
         std::fs::remove_file(port.join("files/payload/bin/fixture-app")).expect("移除载荷");
         let err = verify_target(&project, &spec, &mut sink).expect_err("PLIST 漂移必须硬失败");
+        assert_eq!(err.diagnostic.code.to_string(), "poly::E_BND_0006");
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    /// T-M5-06：pkg-check 已接入；合成 pkg 暂存树 + `+MANIFEST` 过结构检查并发出 `Verified`，
+    /// manifest 与载荷漂移的坏件硬失败（pkg(8) 缺席时内建结构断言即真跑面）。
+    #[test]
+    fn pkg_check_leg_verifies_synthetic_stage_and_fails_hard_on_defects() {
+        assert_eq!(verifier_for("pkg-check"), Some(Verifier::PkgCheck));
+        let (root, project) = fixture("pkg-leg");
+        let spec = Registry::builtin()
+            .get("freebsd")
+            .expect("内建 freebsd 目标")
+            .clone();
+        let staged = root.join(".polypack/packages/freebsd");
+        let stage = staged.join("fixture-app-0.0.1.pkgstage");
+        std::fs::create_dir_all(stage.join("usr/local/bin")).expect("建 pkg 前缀目录");
+        std::fs::create_dir_all(stage.join("usr/local/share/applications")).expect("建 pkg 目录");
+        std::fs::write(
+            stage.join("usr/local/bin/fixture-app"),
+            "#!/bin/sh\nexit 0\n",
+        )
+        .expect("写载荷");
+        std::fs::write(
+            stage.join("usr/local/share/applications/fixture-app.desktop"),
+            "[Desktop Entry]\nName=Fixture\n",
+        )
+        .expect("写 desktop");
+        std::fs::write(
+            staged.join("fixture-app-0.0.1.manifest"),
+            "name: \"fixture-app\"\nversion: \"0.0.1\"\norigin: \"misc/fixture-app\"\n\
+             comment: \"Fixture app\"\ndesc: \"Fixture app\"\nwww: \"https://example.com\"\n\
+             maintainer: \"Fixture <ports@example.com>\"\nprefix: \"/usr/local\"\n",
+        )
+        .expect("写 +MANIFEST");
+
+        let mut sink = poly_core::events::HumanSink {
+            out: Vec::<u8>::new(),
+        };
+        assert!(
+            verify_target(&project, &spec, &mut sink).expect("pkg 结构检查应通过"),
+            "合成 pkg 暂存树应过检"
+        );
+        let text = String::from_utf8_lossy(&sink.out).into_owned();
+        assert!(text.contains("pkg 结构检查"), "{text}");
+        assert!(text.contains("fixture-app-0.0.1"), "{text}");
+        assert!(text.contains("pkg check"), "{text}");
+
+        // 载荷缺 manifest name 对应的可执行 → 产物缺陷硬失败，不降级成跳过
+        std::fs::remove_file(stage.join("usr/local/bin/fixture-app")).expect("移除载荷");
+        let err = verify_target(&project, &spec, &mut sink).expect_err("载荷漂移必须硬失败");
         assert_eq!(err.diagnostic.code.to_string(), "poly::E_BND_0006");
         let _ = std::fs::remove_dir_all(&root);
     }
