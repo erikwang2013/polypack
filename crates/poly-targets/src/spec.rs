@@ -12,6 +12,8 @@ pub enum Host {
     Linux,
     /// macOS。
     Macos,
+    /// BSD（FreeBSD / OpenBSD / NetBSD / DragonFly）。
+    Bsd,
 }
 
 /// 核心运行方式。

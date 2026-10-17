@@ -39,7 +39,8 @@ pub fn runtime_dependencies(host: Host) -> Vec<&'static str> {
             "无外部运行时（WebKit 随系统提供，最低 macOS 10.15）",
             "构建前置：icns 图标须在 macOS 打包机以 iconutil 预生成（Contents/Resources/icon.icns）",
         ],
-        Host::Linux => vec![
+        // BSD 与 Linux 同为 Unix WebKitGTK 宿主：依赖名按发行版包管理器解释。
+        Host::Linux | Host::Bsd => vec![
             "webkit2gtk-4.1（Debian/Ubuntu 包名 libwebkit2gtk-4.1-0）",
             "GTK 3（libgtk-3-0）与 libsoup-3.0",
         ],
@@ -73,7 +74,7 @@ pub fn bare_product(inputs: &BundleInputs, host: Host) -> Result<BareProduct, Bu
     let _ = std::fs::remove_dir_all(&root);
 
     let (executable, deps_path) = match host {
-        Host::Linux => {
+        Host::Linux | Host::Bsd => {
             let exe = root.join("usr/bin").join(&bin);
             fsutil::copy_file(core, &exe, true)?;
             if let Some(dist) = &inputs.ui_dist {
@@ -229,6 +230,7 @@ fn host_slug(host: Host) -> &'static str {
         Host::Win => "windows",
         Host::Linux => "linux",
         Host::Macos => "macos",
+        Host::Bsd => "bsd",
     }
 }
 

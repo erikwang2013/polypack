@@ -8,8 +8,10 @@
 //! Linux 宿主通常没有 `pkg(8)`：`pkg create` 逐项跳过并如实注记，暂存树 + 内建结构断言
 //! 仍真跑；真 `pkg create` / 安装冒烟 / `pkg check` 需 FreeBSD 用户态（T-M5-09 VM）。
 //!
-//! shortcut: manifest 是 UCL 的最小子集（单行 `key: "value"`）；`pkg create` 从 `-r`
-//! 根目录自动扫文件与校验和，不需要逐文件 `files {}` 段。
+//! shortcut: manifest 是 UCL 的最小子集（单行 `key: "value"`）。`pkg create -M` **不会**
+//! 扫描 `-r` 根目录：没有 `files {}` 段或 `-p` plist 时产出空包（真跑回归）。因此打包器
+//! 从同一份载荷表生成 `<name>-<version>.plist`（相对 prefix 的路径），随 manifest 一起
+//! 落盘并以 `-p` 传给 `pkg create`；校验和由 pkg(8) 在读盘时计算。
 
 use std::path::{Path, PathBuf};
 
@@ -72,7 +74,12 @@ impl Packager for FreeBsdPkg {
             });
         }
 
-        let mut plan = BundlePlan::new().with_script(manifest.clone(), manifest_text(inputs)?);
+        // pkg create -M 只打包 plist 里列出的文件（不扫 -r 根目录）；plist 与 manifest
+        // 同源落盘，Linux 宿主无 pkg 时也可检查文件清单。
+        let plist = plist_path(inputs);
+        let mut plan = BundlePlan::new()
+            .with_script(manifest.clone(), manifest_text(inputs)?)
+            .with_script(plist.clone(), plist_text(&files));
         if exec::tool_present("pkg") {
             plan = plan
                 .with_command(Command::new(
@@ -83,6 +90,8 @@ impl Packager for FreeBsdPkg {
                         path_arg(&manifest),
                         "-r".to_string(),
                         path_arg(&stage),
+                        "-p".to_string(),
+                        path_arg(&plist),
                         "-o".to_string(),
                         path_arg(&inputs.out_dir),
                     ],
@@ -335,6 +344,13 @@ fn manifest_path(inputs: &BundleInputs) -> PathBuf {
         .join(format!("{}.manifest", distname(inputs)))
 }
 
+/// 载荷清单（legacy plist）：`<out_dir>/<name>-<version>.plist`（`pkg create -p` 输入）。
+fn plist_path(inputs: &BundleInputs) -> PathBuf {
+    inputs
+        .out_dir
+        .join(format!("{}.plist", distname(inputs)))
+}
+
 /// 目标 .pkg：`<out_dir>/<name>-<version>.pkg`。
 fn pkg_path(inputs: &BundleInputs) -> PathBuf {
     inputs.out_dir.join(format!("{}.pkg", distname(inputs)))
@@ -343,6 +359,18 @@ fn pkg_path(inputs: &BundleInputs) -> PathBuf {
 /// `<kebab>-<version>`（pkg 文件名 / 暂存树前缀）。
 fn distname(inputs: &BundleInputs) -> String {
     format!("{}-{}", inputs.product.kebab_name(), inputs.product.version)
+}
+
+/// legacy plist 文本：每行一个相对 prefix 的载荷路径（BTreeSet 已排序，字节稳定）。
+///
+/// `pkg create -p` 依赖此清单选择文件；空清单已在 [`FreeBsdPkg::plan`] 拒绝。
+fn plist_text(files: &std::collections::BTreeSet<String>) -> String {
+    let mut out = String::new();
+    for file in files {
+        out.push_str(file);
+        out.push('\n');
+    }
+    out
 }
 
 /// 载荷文件表（相对安装前缀；排序稳定，结构检查与 flatsize 同源）。

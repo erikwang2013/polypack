@@ -120,27 +120,39 @@ OpenBSD job 同构：`vmactions/openbsd-vm@v1`、`release: "7.9"`、`prepare` �
 
 ### docs/ROADMAP.md §8
 
-在「CI 宿主 × 目标层矩阵」表后补一行/一段：
+在「CI 宿主 × 目标层矩阵」表中把「每晚扩展」行的 QEMU 列改为「QEMU 冒烟（BSD 原生构建 + 安装）」，并在表后补一段：
 
 ```markdown
-| 每晚扩展 | — | 真实开发者工具 CLI | 模拟器冒烟 | QEMU 冒烟（FreeBSD pkg / OpenBSD ports 原生构建 + 安装） | — |
+| 每晚扩展 | — | 真实开发者工具 CLI | 模拟器冒烟 | QEMU 冒烟（BSD 原生构建 + 安装） | — |
 
-BSD 两目标由 [`.github/workflows/bsd-ci.yml`](../.github/workflows/bsd-ci.yml) 在 QEMU VM 内**原生构建 + 安装冒烟**（每夜 + 手动触发），不做交叉编译替代：`pkg` / ports 工具链只在 BSD 用户态存在；构建日志与产物随作业归档 14 天。
+BSD 原生构建腿由 [`bsd-ci`](../.github/workflows/bsd-ci.yml)（每夜 20:07 UTC + 手动）执行：
+FreeBSD 14.5 / OpenBSD 7.9 QEMU VM 内 `poly build` 原生出包并做安装冒烟（FreeBSD 走
+`pkg install` + `pkg check -s`，OpenBSD 走 `make package` + `pkg_add` / `pkg_check`）；
+FreeBSD 腿同时真跑自托管 pkg 仓库签名（`poly release --target freebsd`）与二跑幂等断言。
+构建日志、签名仓库、回执与包随作业归档 14 天。CI 工作流共八个：`rust-ci` / `docs-check` /
+`secret-scan` / `mobile-contract` / `miniprogram-contract` / `tv-smoke` / `bridge` / `bsd-ci`。
 ```
 
 ### docs/ROADMAP.en.md §8
 
 ```markdown
-| nightly extension | — | real devtools CLIs | emulator smoke | QEMU smoke (FreeBSD pkg / OpenBSD ports native build + install) | — |
+| nightly extension | — | real devtools CLIs | emulator smoke | QEMU smoke (BSD native build + install) | — |
 
-The two BSD targets run **native builds plus install smoke** in QEMU VMs via [`.github/workflows/bsd-ci.yml`](../.github/workflows/bsd-ci.yml) (nightly + manual dispatch); no cross-compilation substitute — the `pkg` and ports toolchains only exist in BSD userland. Build logs and artifacts are retained with the job for 14 days.
+The BSD native-build leg runs in [`bsd-ci`](../.github/workflows/bsd-ci.yml) (nightly 20:07 UTC +
+manual dispatch): inside FreeBSD 14.5 / OpenBSD 7.9 QEMU VMs it runs a native `poly build` plus an
+install smoke (`pkg install` + `pkg check -s` on FreeBSD; `make package` + `pkg_add` / `pkg_check`
+on OpenBSD). The FreeBSD leg also exercises self-hosted pkg-repo signing via
+`poly release --target freebsd` and asserts second-run idempotency. Build logs, the signed repo,
+receipts, and packages are retained with the job for 14 days. Eight CI workflows total: `rust-ci` /
+`docs-check` / `secret-scan` / `mobile-contract` / `miniprogram-contract` / `tv-smoke` / `bridge` /
+`bsd-ci`.
 ```
 
 ### README.md / README.en.md 状态行
 
-- 「七工作流三宿主全绿」→「八工作流三宿主全绿（新增 BSD 每夜 QEMU 构建 + 安装冒烟）」；
-- `poly release --target fedora,freebsd`（rpm/pkg 自建仓库：产物上传 + 元数据刷新与签名 + 回执归档）加入可用命令清单（T-M5-11 完成后）。
-- 英文对应：`Eight workflows green across three hosts (plus a nightly BSD QEMU build + install-smoke workflow)`；`poly release --target fedora,freebsd` (rpm/pkg self-hosted repos: artifact upload + metadata refresh/signing + receipt archival).
+- 「七工作流三宿主全绿」→「八工作流三宿主全绿（新增 `bsd-ci`：FreeBSD 14.5 / OpenBSD 7.9 QEMU 原生构建 + 安装冒烟，每夜）」；
+- 可用命令清单在 `poly clean` 后补：`` `poly release`（自托管 rpm/deb/pkg 仓库元数据 + 签名 + 回执归档，`--target fedora,freebsd`） ``。
+- 英文对应：`Eight workflows green across three hosts (new bsd-ci: native FreeBSD 14.5 / OpenBSD 7.9 QEMU builds + install smoke, nightly)`；`poly release` (self-hosted rpm/deb/pkg repo metadata + signing + receipt archival, `--target fedora,freebsd`).
 
 ### docs/TASKS.md 进度行（lead）
 
@@ -155,13 +167,67 @@ M5 交付时补：`+ M5 新增一工作流（bsd-ci 每夜 QEMU 原生构建 + �
 - **CI 真跑**：workflow 落地后由 lead 合并到 main，等待首个 schedule / 手动 dispatch；日志链接与 artifacts 作为最终证据（本 agent 不能 push，无法自行触发远端）。
 - **追溯性**：workflow run URL + `bsd-<os>-evidence` artifact（日志 + 包）14 天。
 
+### 5.1 本地 QEMU 真跑实录（FreeBSD，2026-10-17）
+
+环境：qemu-system-x86_64 + KVM（`-cpu host -m 4096 -smp 4`），FreeBSD 14.5-RELEASE-p2
+cloud-init amd64 镜像（华为云镜像站，解压后 virtio 根盘扩至 13G）；VM 内 `rust-1.98.1`
+来自 FreeBSD quarterly pkg（与仓库声明 MSRV 完全一致），crates.io 走 rsproxy sparse。
+源码 = `git archive`（当时 `main@9595262`），构建目录 `/root/polypack-target`。
+
+| 检查 | 命令 | 结果 |
+|---|---|---|
+| 原生构建 | `cargo build -p poly-cli --locked` | 绿（6bba6c4 冷编译 1m20s；9595262 增量 14.29s） |
+| 单测 | `cargo test -p poly-cli --test release` | 7/7 绿（原生 FreeBSD） |
+| lint | `cargo clippy -p poly-cli --all-targets -- -D warnings` | 绿（原生 FreeBSD，clippy 0.1.98） |
+| 冒烟 | `poly init /tmp/bsd-app2` → `poly doctor --json` | rc=0（首轮；`freebsd` 当时因 T-M5-06 未入 main 如实 `E_TGT_0001`，最终安装冒烟见 5.2） |
+
+日志与 machine 信息归档在本地 `/tmp/bsd-ci-evidence/freebsd-local/`（不入仓）。
+注意：`git archive` 保留提交 mtime，可能早于既有构建产物导致 cargo 误判 fresh；
+本地复跑前须 `find <src> -exec touch {} +`。CI 的 `actions/checkout` 会刷新 mtime，不复现。
+
+### 5.2 本地 QEMU 真跑实录（FreeBSD pkg 安装冒烟，T-M5-09 / T-M5-11 freebsd 腿）
+
+环境同 5.1；源码同步到 worktree HEAD（T-M5-05/06 已 merge，含 `Host::Bsd` 修复），
+VM 内 cargo 增量构建 `poly-cli`。凭据为一次性未加密 PEM RSA 私钥（CI/冒烟专用，
+`key_alias=rsa`，`store_password` 非空但不参与 pkg repo 签名）。
+
+| 检查 | 命令 | 结果 |
+|---|---|---|
+| 出包 | `poly build --target freebsd`（`poly init` 模板应用） | 绿；`.pkg` 207,802 B，15 个载荷文件；`pkg info -F` 列出全部 `/usr/local` 路径 |
+| 发布 | `poly release --target freebsd --credential env:POLYPACK_PKG_CRED --json` | 绿；`event=published`、`cache_hit=false`、`runs=1`、receipt `.polypack/release/freebsd/0.1.0-ee90c20b7c65ea97.json` |
+| 仓库 | `pkg repo` + `openssl pkey -pubout` | `meta.conf` / `data.pkg` / `packagesite.pkg` / `polypack-repo.pub` 齐全 |
+| 客户端 | `pkg update -f`；`pkg install -y polypack-app`；`pkg check -s` | 全绿；签名仓库 1 package processed，安装 15 文件，check rc=0 |
+| 负向验签 | 换成另一把 PUBKEY 后 `pkg update -f` | `signature verification failure` / `Invalid signature, removing repository`（pkg 仍返回 0，属 pkg(8) 行为） |
+| 二跑 | 再次 `poly release --target freebsd ... --json` | `cache_hit=true`、`runs=2`；仓库文件 sha256 与 mtime 完全不变，`first_unix` 保留 |
+
+**真跑发现并修复的 T-M5-06 缺陷**：`pkg create -M` 不会扫描 `-r` 根目录；无 `files{}` / `-p`
+plist 时产出 371 B 空包（`pkg info -F` 与打包器自检均假绿，安装 0 文件）。修复：打包器
+从同一载荷表生成 `<name>-<version>.plist` 并以 `pkg create -p` 传入（commit 5a191d3，
+poly-bundle 104 unit + 集成全绿，clippy 绿）。修复后 `pkg install` 真实落 15 个文件。
+
+证据归档：本地 `/tmp/bsd-ci-evidence/freebsd-pkg/`（ci-logs / repo / release / pkg /
+manifest / plist / 负向验签日志）；另有 `/tmp/bsd-ci-evidence/freebsd-local/`（5.1）。
+
+**多目标编排**：FreeBSD VM 内 `poly release --target fedora,freebsd --dry-run --json`
+一次调用输出两条 `release-dry-run` 事件（`repo_kind=rpm` / `pkg`，各自 receipt 锚点）；
+rpm/pkg 真腿证据分别在宿主 `/tmp/release-e2e/` 与 VM 上述归档。注意当前 CLI 的
+`--credential` 是单一全局引用，而 rpm 走 GPG、pkg 走未加密 PEM，异构目标同次真发布的
+凭据需分次给（或后续加 per-target 凭据语法）——已报 lead 作为待集成项。
+
+**OpenBSD 本地真跑：SKIP-with-print。** 官方安装介质不可直接当 SSH 可用镜像；
+vmactions 镜像资产 `openbsd-7.9.qcow2.zst`（595 MB）实测直连 GitHub 75 KB/s、
+gh-proxy 96 KB/s，需 ~1.7 小时且可能中断，按纪律不消耗该带宽。替代证据：落地 workflow
+（commit 6f6bb16，actionlint v1.7.12 绿）+ T-M5-07 ports 单测/verify 已在 main 真跑；
+OpenBSD 侧 `make package` / `pkg_add` 冒烟待 CI 首次 dispatch 取证（失败按 SKIP-with-print
+打 `::warning::`，不伪造安装）。
+
 ## 6. 风险与未决
 
 | 风险 | 缓解 |
 |---|---|
 | OpenBSD 7.9 的 rust 1.94.1 未来可能撑不住新代码 | `--ignore-rust-version` 下失败即红（真实可移植性信号）；升级 OpenBSD 8.0 / snapshot rust 后移除 flag |
-| 无 KVM 的 runner 上 TCG 超时 | `timeout-minutes: 60`；`cache-after-prepare` 缓存装好 rust 的镜像；必要时后续换 larger runner |
-| T-M5-06/07 的产物落点/包名/冒烟入口尚未定 | 执行期以它们的实际实现接线；本方案只固定「VM 内原生 + 安装后入口执行」口径 |
+| 无 KVM 的 runner 上 TCG 超时 | `timeout-minutes: 90`；`cache-after-prepare` 缓存装好 rust 的镜像；必要时后续换 larger runner |
+| T-M5-07 生成的 ports Makefile 未 `.include <bsd.port.mk>`（本地静态检查发现），`make package` 可能无 target | workflow 已按 SKIP-with-print 如实注记并归档 make 日志；待 T-M5-07 owner 补 include 后 OpenBSD 安装冒烟转真跑（本地无 OpenBSD 环境，未代改） |
 | ports 树下载 ~ 每夜固定成本 | 放进 `prepare` 并 `cache-after-prepare: true`，随 VM 镜像缓存 |
 | `poly build` 的 UI 支线缺 vite 时走内建静态打包（Warning） | 冒烟只验证包安装与入口执行，不把 UI 引擎降级当失败；日志保留 Warning |
 

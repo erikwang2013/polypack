@@ -51,6 +51,13 @@ pub fn current_host() -> Option<Host> {
         Some(Host::Win)
     } else if cfg!(target_os = "macos") {
         Some(Host::Macos)
+    } else if cfg!(any(
+        target_os = "freebsd",
+        target_os = "openbsd",
+        target_os = "netbsd",
+        target_os = "dragonfly"
+    )) {
+        Some(Host::Bsd)
     } else if cfg!(target_os = "linux") {
         Some(Host::Linux)
     } else {
