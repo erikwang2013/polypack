@@ -136,15 +136,11 @@
 | `zepp` | `none` | `none` | `zab` · `zeus` | none | `zepp-structure-check` | `zepp-store` | `false` | 核心不直接运行、能力由 Zepp JS API 侧实现（runtime = none）；Zepp 小程序 `.zab`（外层 manifest.json + <md5>.zpk，zpk 内含 device.zip / app-side.zip，结构同 zpm）；zeus / 模拟器缺席时安装与工具链校验 SKIP-with-print，结构断言真跑；签名 / 提审归 Zepp 商店平台侧 |
 <!-- END GENERATED: l6-embedded-status -->
 
-**Planned L6 platforms not yet in TargetSpec** (companion templates / JS runtimes that do not produce a core TargetSpec):
+**All five wearable targets are now in TargetSpec.** The platform matrix for watchOS / Wear / Fitbit / Garmin / Zepp is the table above and nothing else (generated from TargetSpec; there is no second hand-written copy); `watchos` / `garmin` have `experimental = true`, while Wear OS is platform-level (`experimental = false`) — its UI runtime (RN on Wear) is beta, and packaging and signing use the Android base.
 
-| Platform | Core runtime · bridge | Packager and artifacts | Signing | Artifact verification | Publishing channel | Notes |
-|---|---|---|---|---|---|---|
-| Apple watchOS | none (companion template) | watch bundle (Xcode) | codesign | codesign verify | App Store | ※experimental: SwiftUI companion template; macOS host |
-| Wear OS | native · uniffi | APK (Wear) | same as Android | bundletool | Google Play | |
-| Fitbit OS | — (JS runtime) | app package | platform-side | Fitbit CLI self-check | Fitbit Gallery | core does not run on-device |
-| Garmin (Connect IQ) | — (Monkey C transpile) | `.iq` | platform-side | Connect IQ compiler | Connect IQ Store | ※experimental |
-| Zepp OS | — (Zepp JS API) | Zepp mini app | platform-side | Zepp devtools | Zepp store | |
+### 3.7.1 Experimental targets: capability / gap / alternatives (watchOS / Garmin)
+
+`watchos` / `garmin` keep `experimental = true` (constrained tier, continue decision). The full three-part document is [EXPERIMENTAL-TARGETS.en.md](EXPERIMENTAL-TARGETS.en.md) (Chinese: [EXPERIMENTAL-TARGETS.md](EXPERIMENTAL-TARGETS.md)): every gap has an alternative or an explicit "no alternative"; the Wear OS beta boundary is recorded in the same chapter, and no ※experimental marker is added for it. Three-way consistency is checked by `node tools/check-experimental.mjs`.
 
 ### 3.8 L7 per-platform detail (3)
 
@@ -492,7 +488,8 @@ Any change affecting **architecture / features / flows / platform matrix** must,
 2. Sync `README.md` and `README.en.md` (bilingual mirrors);
 3. Sync `docs/ROADMAP.md` and `docs/ROADMAP.en.md`; the task plan follows the same rule (`docs/TASKS.md` / `docs/TASKS.en.md`), with additions/removals and estimate changes landing in both files in one commit;
 4. Platform matrix additions/removals = update together: the README tiered list (×2 languages) + this file's per-platform detail (×2 languages) + milestone acceptance + the TargetSpec;
-5. Pax is generated from a single source by `tools/build-pax.mjs` (five expressions, each with its own motion + the full-cycle animated version + the project icon `pax-mark.svg` + the expression contact sheet `pax-moods.svg` + the local playground `docs/pax.html`); re-run it after art or expression changes and sync both READMEs (CI verifies drift with `node tools/build-pax.mjs --check`).
+5. Pax is generated from a single source by `tools/build-pax.mjs` (five expressions, each with its own motion + the full-cycle animated version + the project icon `pax-mark.svg` + the expression contact sheet `pax-moods.svg` + the local playground `docs/pax.html`); re-run it after art or expression changes and sync both READMEs (CI verifies drift with `node tools/build-pax.mjs --check`);
+6. Keep `docs/EXPERIMENTAL-TARGETS.md` and `docs/EXPERIMENTAL-TARGETS.en.md` in sync for the experimental targets (`watchos` / `garmin`) capability / gap / alternatives (every gap keeps an alternative or explicitly says "no alternative"; `node tools/check-experimental.mjs` checks TargetSpec / documentation tables / CI three-way consistency).
 
 ## 12. Glossary
 

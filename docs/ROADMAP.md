@@ -136,15 +136,11 @@
 | `zepp` | `none` | `none` | `zab` · `zeus` | — | `zepp-structure-check` | `zepp-store` | `false` | 核心不直接运行、能力由 Zepp JS API 侧实现（runtime = none）；Zepp 小程序 `.zab`（外层 manifest.json + <md5>.zpk，zpk 内含 device.zip / app-side.zip，结构同 zpm）；zeus / 模拟器缺席时安装与工具链校验 SKIP-with-print，结构断言真跑；签名 / 提审归 Zepp 商店平台侧 |
 <!-- END GENERATED: l6-embedded-status -->
 
-**规划中、尚未入 TargetSpec 的 L6 平台**（伴生模板 / JS 运行时，不产生核心 TargetSpec）：
+**五个穿戴目标均已入 TargetSpec。** watchOS / Wear / Fitbit / Garmin / Zepp 的平台矩阵以上表为唯一事实源（由 TargetSpec 生成，不再维护手写第二份）；其中 `watchos` / `garmin` 为 `experimental = true`，Wear OS 为平台级目标（`experimental = false`）——UI 运行时（RN on Wear）为 beta，打包与签名走 Android 基座。
 
-| 平台 | 核心运行时 · 桥 | 打包器与产物 | 签名 | 产物校验 | 发布渠道 | 备注 |
-|---|---|---|---|---|---|---|
-| Apple watchOS | 无（伴生模板） | watch 包（Xcode） | codesign | codesign verify | App Store | ※实验：SwiftUI 伴生模板；macOS 宿主 |
-| Wear OS | native · uniffi | APK（Wear） | 同 Android | bundletool | Google Play | |
-| Fitbit OS | —（JS 运行时） | 应用包 | 平台侧 | Fitbit CLI 自检 | Fitbit Gallery | 核心不直接运行 |
-| Garmin（Connect IQ） | —（Monkey C 转译） | `.iq` | 平台侧 | Connect IQ 编译器 | Connect IQ Store | ※实验 |
-| Zepp OS | —（Zepp JS API） | Zepp 小程序 | 平台侧 | Zepp 开发者工具 | Zepp 商店 | |
+### 3.7.1 实验目标：能力 / 缺口 / 替代方案（watchOS / Garmin）
+
+`watchos` / `garmin` 维持 `experimental = true`（受限档，继续决策）。完整三段式文档见 [EXPERIMENTAL-TARGETS.md](EXPERIMENTAL-TARGETS.md)（英文：[EXPERIMENTAL-TARGETS.en.md](EXPERIMENTAL-TARGETS.en.md)）：每个缺口均给出替代方案或明示「无替代」；Wear OS 的 beta 边界同章记录，且文档不为其添加 ※实验 标注。三处一致性由 `node tools/check-experimental.mjs` 校验。
 
 ### 3.8 L7 逐平台明细（3）
 
@@ -490,7 +486,8 @@ CI 宿主 × 目标层矩阵：
 2. 同步 `README.md` 与 `README.en.md`（双语镜像）；
 3. 同步 `docs/ROADMAP.md` 与 `docs/ROADMAP.en.md`；任务计划同规矩（`docs/TASKS.md` / `docs/TASKS.en.md`），任务增删与估算调整须双文件同提交更新；
 4. 平台矩阵增删 = 同时更新：README 分级表（×2 语言）+ 本文件逐平台明细（×2 语言）+ 里程碑验收 + TargetSpec；
-5. Pax 由 `tools/build-pax.mjs` 单一源生成（五种表情·各自带专属动效 + 全表情循环动画版 + 项目图标 `pax-mark.svg` + 表情联系表 `pax-moods.svg` + 本地游乐场 `docs/pax.html`）；美术或表达变化时运行该脚本重新生成，并同步双 README（CI 以 `node tools/build-pax.mjs --check` 校验漂移）。
+5. Pax 由 `tools/build-pax.mjs` 单一源生成（五种表情·各自带专属动效 + 全表情循环动画版 + 项目图标 `pax-mark.svg` + 表情联系表 `pax-moods.svg` + 本地游乐场 `docs/pax.html`）；美术或表达变化时运行该脚本重新生成，并同步双 README（CI 以 `node tools/build-pax.mjs --check` 校验漂移）；
+6. 实验目标（`watchos` / `garmin`）的能力 / 缺口 / 替代方案同步 `docs/EXPERIMENTAL-TARGETS.md` 与 `docs/EXPERIMENTAL-TARGETS.en.md`（每个缺口保留替代方案或明示「无替代」；`node tools/check-experimental.mjs` 校验 TargetSpec / 文档表 / CI 三处一致）。
 
 ## 12. 术语表
 
