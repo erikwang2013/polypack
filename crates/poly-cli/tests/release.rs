@@ -118,7 +118,9 @@ fn only_json_line(stdout: &[u8]) -> serde_json::Value {
 
 #[test]
 fn dry_run_reports_manifest_and_receipt_anchor() {
-    let root = fixture_rpm("dry");
+    // 回执路径由 CLI canonicalize 产出（macOS /private/var、Windows \\?\ 长名 / 8.3 别名），
+    // 期望锚点按同一形态取，否则裸比较必假红。
+    let root = std::fs::canonicalize(fixture_rpm("dry")).expect("工程根可解析");
     let out = poly(
         &root,
         &["release", "--target", "linux", "--dry-run", "--json"],

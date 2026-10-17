@@ -201,7 +201,8 @@ fn layout(inputs: &BundleInputs) -> Result<Layout, BundleError> {
     if !channel.is_dir() {
         return Err(missing("roku.channel"));
     }
-    let emitter = adapter.join(EMITTER);
+    // node 不认 Windows `\\?\` verbatim 前缀（canonicalize 常产出），参数侧先剥掉。
+    let emitter = fsutil::strip_verbatim_prefix(adapter.join(EMITTER));
     if !emitter.is_file() {
         return Err(missing("roku.emitter"));
     }

@@ -5,6 +5,20 @@ use std::path::{Path, PathBuf};
 use crate::error::{BundleError, io_err};
 use crate::packager::{Artifact, ArtifactKind, BundlePlan};
 
+/// 去掉 Windows `canonicalize` 的 `\\?\` 扩展长度前缀（仅盘符形态）：该路径会经
+/// `node` 交给其模块加载器 / `createRequire`，而 Node 不认 verbatim 前缀（CI
+/// windows-2022 实证 2026-10-17：前缀路径 → 驱动非零退出 → 打包 / lint 腿误判）；
+/// 去前缀后仍是同一实路径（回到 Win32 常规形态）。UNC 等非盘符形态原样保留。
+pub(crate) fn strip_verbatim_prefix(path: PathBuf) -> PathBuf {
+    #[cfg(windows)]
+    if let Some(rest) = path.to_string_lossy().strip_prefix(r"\\?\")
+        && rest.as_bytes().get(1) == Some(&b':')
+    {
+        return PathBuf::from(rest);
+    }
+    path
+}
+
 /// 写文本文件（自动建父目录，权限 0644）。
 pub fn write_text(path: &Path, contents: &str) -> Result<(), BundleError> {
     if let Some(parent) = path.parent() {
