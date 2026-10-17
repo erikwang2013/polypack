@@ -1156,6 +1156,7 @@ version = "0.0.0"
 dependencies = [
  "base64 0.22.1",
  "clap",
+ "flate2",
  "poly-bundle",
  "poly-cache",
  "poly-core",
@@ -1165,6 +1166,7 @@ dependencies = [
  "poly-toolchain",
  "serde",
  "serde_json",
+ "sha2",
 ]
 
 [[package]]

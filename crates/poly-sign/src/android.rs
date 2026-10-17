@@ -11,12 +11,12 @@
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
-use std::sync::atomic::{AtomicU64, Ordering};
 
 use poly_core::CredentialRef;
 
 use crate::error::{SignError, io_err};
 use crate::secret::{self, SecretBackend, SigningMaterial};
+use crate::temp::{TempDir, write_private};
 
 /// 密钥库口令的注入变量名（`--ks-pass env:…`）。
 pub const STORE_PASS_VAR: &str = "POLYPACK_KS_PASS";
@@ -29,9 +29,6 @@ const KEYSTORE_FILE: &str = "keystore.ks";
 /// apksigner 缺失时的安装建议。
 const INSTALL_HINT: &str = "安装 Android SDK build-tools（sdkmanager \"build-tools;36.0.0\"）并\
      把 apksigner 放入 PATH，或设置 POLYPACK_APKSIGNER / ANDROID_HOME";
-
-/// 临时目录序号（同一进程内多次签名不重名）。
-static TEMP_SEQ: AtomicU64 = AtomicU64::new(0);
 
 /// 签名请求。
 #[derive(Debug, Clone)]
@@ -112,7 +109,7 @@ impl AndroidSigner {
     /// 签名并自动校验；凭据每次调用重新拉取，临时材料用后即清。
     pub fn sign(&self, request: &SignRequest) -> Result<SignedArtifact, SignError> {
         let (plan, material) = self.assemble(request)?;
-        let temp = TempDir::create()?;
+        let temp = TempDir::create("polypack-sign-")?;
         let keystore = temp.path().join(KEYSTORE_FILE);
         write_private(&keystore, &material.keystore)?;
 
@@ -381,73 +378,6 @@ pub(crate) fn tail(text: &str, limit: usize) -> String {
     trimmed.chars().skip(skip).collect()
 }
 
-/// 写 0600 私有文件（Windows 无等价 API，忽略权限：临时目录整体随 [`TempDir`] 删除）。
-fn write_private(path: &Path, bytes: &[u8]) -> Result<(), SignError> {
-    use std::io::Write;
-    let mut options = std::fs::OpenOptions::new();
-    options.write(true).create_new(true);
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::OpenOptionsExt;
-        options.mode(0o600);
-    }
-    let mut file = options.open(path).map_err(io_err(path))?;
-    file.write_all(bytes).map_err(io_err(path))
-}
-
-/// 一次性临时目录：`Drop` 兜底删除，签名成功 / 失败都不留密钥材料。
-struct TempDir(PathBuf);
-
-impl TempDir {
-    /// 在系统临时目录下建 `polypack-sign-<pid>-<序号>`（0700）。
-    fn create() -> Result<Self, SignError> {
-        let base = std::env::temp_dir();
-        for _ in 0..16 {
-            let candidate = base.join(format!(
-                "polypack-sign-{}-{}",
-                std::process::id(),
-                TEMP_SEQ.fetch_add(1, Ordering::Relaxed)
-            ));
-            match create_private_dir(&candidate) {
-                Ok(()) => return Ok(Self(candidate)),
-                Err(err) if err.kind() == std::io::ErrorKind::AlreadyExists => continue,
-                Err(err) => return Err(io_err(&candidate)(err)),
-            }
-        }
-        Err(SignError::Io {
-            path: base,
-            source: std::io::Error::new(
-                std::io::ErrorKind::AlreadyExists,
-                "临时目录名连续 16 次冲突（polypack-sign-<pid>-<序号>）",
-            ),
-        })
-    }
-
-    /// 临时目录路径。
-    fn path(&self) -> &Path {
-        &self.0
-    }
-}
-
-impl Drop for TempDir {
-    fn drop(&mut self) {
-        let _ = std::fs::remove_dir_all(&self.0);
-    }
-}
-
-/// 建 0700 目录（Windows 无等价 API，忽略权限）。
-fn create_private_dir(path: &Path) -> std::io::Result<()> {
-    // `mut` 只在 unix 的 `.mode(0o700)` 分支用到：Windows 上 `-D warnings` 会把 unused_mut
-    // 判红，故按平台静音（安全语义不降级——Windows 靠临时目录随 `TempDir` 整体删除）。
-    #[cfg_attr(not(unix), allow(unused_mut))]
-    let mut builder = std::fs::DirBuilder::new();
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::DirBuilderExt;
-        builder.mode(0o700);
-    }
-    builder.create(path)
-}
 
 #[cfg(test)]
 mod tests {
@@ -547,7 +477,7 @@ mod tests {
 
     #[test]
     fn keystore_file_is_private_and_temp_dir_is_removed() {
-        let temp = TempDir::create().expect("临时目录可建");
+        let temp = TempDir::create("polypack-sign-").expect("临时目录可建");
         let path = temp.path().join(KEYSTORE_FILE);
         write_private(&path, b"not-a-real-keystore").expect("0600 写入");
         assert!(path.is_file());
