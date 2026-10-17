@@ -1,0 +1,8 @@
+{
+  "format": "fba",
+  "entries": ["device-atlas.zip", "device-vulcan.zip", "manifest.json"],
+  "appManifestVersion": 6,
+  "deviceApi": "8.2.0",
+  "families": ["atlas", "vulcan"],
+  "deviceEntries": ["app/index.js", "manifest.json", "resources/icon.png"]
+}

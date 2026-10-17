@@ -9,7 +9,7 @@
 //! 且固定值比环境变量更可复现；`SOURCE_DATE_EPOCH` 只注入 aapt2 / java（见 android.rs）。
 
 use std::fs::File;
-use std::io::{BufReader, BufWriter, Read, Write};
+use std::io::{BufReader, BufWriter, Cursor, Read, Write};
 use std::path::{Path, PathBuf};
 
 use zip::write::SimpleFileOptions;
@@ -71,6 +71,51 @@ pub fn entry_text(path: &Path, name: &str) -> Result<Option<String>, BundleError
     let mut text = String::new();
     entry.read_to_string(&mut text).map_err(io_err(path))?;
     Ok(Some(text))
+}
+
+/// 读 zip 内单个条目的原始字节（`None` = 条目不存在；嵌套归档用）。
+pub fn entry_bytes(path: &Path, name: &str) -> Result<Option<Vec<u8>>, BundleError> {
+    let file = File::open(path).map_err(io_err(path))?;
+    let mut archive = ZipArchive::new(BufReader::new(file)).map_err(|err| zip_err(path, err))?;
+    let mut entry = match archive.by_name(name) {
+        Ok(entry) => entry,
+        Err(zip::result::ZipError::FileNotFound) => return Ok(None),
+        Err(err) => return Err(zip_err(path, err)),
+    };
+    let mut bytes = Vec::new();
+    entry.read_to_end(&mut bytes).map_err(io_err(path))?;
+    Ok(Some(bytes))
+}
+
+/// 读内存中的 zip 条目名（嵌套归档：`.fba` 的 device zip、`.zab` 的 zpk / device.zip）。
+pub fn bytes_entry_names(bytes: &[u8], label: &Path) -> Result<Vec<String>, BundleError> {
+    let mut archive = ZipArchive::new(Cursor::new(bytes)).map_err(|err| zip_err(label, err))?;
+    let mut names = Vec::with_capacity(archive.len());
+    for index in 0..archive.len() {
+        let entry = archive.by_index(index).map_err(|err| zip_err(label, err))?;
+        if !entry.is_dir() {
+            names.push(
+                entry
+                    .name()
+                    .map_err(|err| zip_err(label, err))?
+                    .into_owned(),
+            );
+        }
+    }
+    Ok(names)
+}
+
+/// 读内存中的 zip 单条目字节（`None` = 条目不存在）。
+pub fn bytes_entry(bytes: &[u8], name: &str, label: &Path) -> Result<Option<Vec<u8>>, BundleError> {
+    let mut archive = ZipArchive::new(Cursor::new(bytes)).map_err(|err| zip_err(label, err))?;
+    let mut entry = match archive.by_name(name) {
+        Ok(entry) => entry,
+        Err(zip::result::ZipError::FileNotFound) => return Ok(None),
+        Err(err) => return Err(zip_err(label, err)),
+    };
+    let mut out = Vec::new();
+    entry.read_to_end(&mut out).map_err(io_err(label))?;
+    Ok(Some(out))
 }
 
 /// 建产物文件与 zip 写入器（父目录自动建）。
@@ -213,6 +258,27 @@ mod tests {
             let entry = archive.by_index(index).expect("条目");
             assert_eq!(entry.last_modified(), Some(FIXED_TIME), "时间戳须固定");
         }
+        let _ = std::fs::remove_dir_all(&base);
+    }
+
+    #[test]
+    fn in_memory_readers_match_file_readers() {
+        let base = scratch("bytes");
+        let out = base.join("out.zip");
+        write_zip(&entries(&base), &out).expect("写 zip");
+        let bytes = std::fs::read(&out).expect("读 zip");
+        assert_eq!(
+            bytes_entry_names(&bytes, &out).expect("内存条目名"),
+            entry_names(&out).expect("文件条目名")
+        );
+        assert_eq!(
+            bytes_entry(&bytes, "a.bin", &out).expect("内存条目"),
+            entry_bytes(&out, "a.bin").expect("文件条目")
+        );
+        assert_eq!(
+            bytes_entry(&bytes, "nope", &out).expect("缺条目不算错误"),
+            None
+        );
         let _ = std::fs::remove_dir_all(&base);
     }
 

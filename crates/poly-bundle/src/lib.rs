@@ -42,6 +42,7 @@ pub use packagers::autosar::{
     ArxmlStructure, AutosarAdaptive, SCHEMA_FILE as AUTOSAR_SCHEMA_FILE, check_arxml,
     xmllint_command, xmllint_tool,
 };
+pub use packagers::fitbit::{FitbitStructure, check_fitbit_structure};
 pub use packagers::freebsd::{PkgStructure, check_pkg_structure};
 pub use packagers::freertos::{FreeRtosStructure, check_freertos_structure};
 pub use packagers::harmony::{HapStructure, check_hap_structure};
@@ -62,4 +63,5 @@ pub use packagers::webtv::{
     SMARTCAST, VIDAA, WebAppPlatform, WebAppStructure, check_web_app_structure,
 };
 pub use packagers::zephyr::{ZephyrStructure, check_zephyr_structure};
+pub use packagers::zepp::{ZeppStructure, check_zepp_structure};
 pub use pwa::{PwaAudit, audit_pwa};

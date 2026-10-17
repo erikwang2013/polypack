@@ -110,8 +110,8 @@ fn headless_filter_only_drops_ui_targets() {
     );
     assert_eq!(
         with_ui.len(),
-        headless.len() + 1,
-        "tier 6 只有 android-automotive 带 UI"
+        headless.len() + 3,
+        "tier 6 有 3 个带 UI 目标：android-automotive / fitbit / zepp"
     );
     assert_eq!(
         expected_ids(false).len(),

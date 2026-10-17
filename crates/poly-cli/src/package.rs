@@ -308,6 +308,11 @@ pub(crate) fn assemble_inputs(
         "wgt" | "ipk" | "web-app" => {
             inputs.miniapp_bridge = Some(project.root.join("bridge").join("wasm-bindgen"));
         }
+        // 穿戴 JS 运行时（T-M7-07/08）：工程根下 `fitbit/` / `zepp/`（或根自身）由打包器
+        // 按候选链解析；官方 CLI 只作 verify 腿自检，不参与产物组装
+        "fba" | "zab" => {
+            inputs.miniapp_host = Some(project.root.clone());
+        }
         // Roku 频道（T-M4-15）：适配器根按工程根候选链解析（<root>/ui/adapters/roku），
         // 频道骨架 + 发射器由打包器落暂存后复用 spike 发射器
         "zip" => {

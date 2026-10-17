@@ -21,11 +21,14 @@
 //! - [`vxworks`]：VxWorks 库 / 镜像 kit（T-M6-05，wr-cc 链接腿 + nm 符号断言）
 //! - [`zephyr`]：Zephyr west 工程模板（T-M6-06，module 链入 no_std 引擎 + 两板构建）
 //! - [`freertos`]：FreeRTOS QEMU 示例板（T-M6-07，mps2-an385 + 内核按 tag/sha256 现拉）
+//! - [`fitbit`]：Fitbit OS 应用包 `.fba`（T-M7-07，SDK 6.1 结构 + 三层结构自检）
+//! - [`zepp`]：Zepp OS 小程序 `.zab`（T-M7-08，manifest + md5 命名 zpk + 内层 device.zip）
 
 pub mod android;
 pub mod autosar;
 pub mod dmg;
 pub mod embedded;
+pub mod fitbit;
 pub mod freebsd;
 pub mod freertos;
 pub mod harmony;
@@ -43,3 +46,4 @@ pub mod webos;
 pub mod webtv;
 pub mod windows;
 pub mod zephyr;
+pub mod zepp;

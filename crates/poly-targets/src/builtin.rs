@@ -776,6 +776,57 @@ pub fn builtin() -> Vec<TargetSpec> {
                     .to_string(),
             ),
         },
+        // ---- L6 穿戴 JS 运行时（T-M7-07/08，ROADMAP §3.7）：Fitbit OS / Zepp OS ----
+        // 两目标的核心都不在设备上运行（runtime = None、bridge = None）：能力由平台 JS SDK /
+        // JS API 侧实现，复用 adapter-wear 的紧凑 tokens 与能力声明（ui = wear），不另起
+        // UI 导航系统。产物由 poly-bundle 按官方 SDK 结构组装；官方 CLI 缺席按环境槽
+        // SKIP-with-print，内建结构断言真跑。
+        TargetSpec {
+            id: "fitbit".to_string(),
+            tier: 6,
+            hosts: vec![Host::Win, Host::Linux, Host::Macos],
+            runtime: Runtime::None,
+            bridge: Bridge::None,
+            ui: vec!["wear".to_string()],
+            package: PackageSpec {
+                format: "fba".to_string(),
+                builder: "fitbit-build".to_string(),
+            },
+            signing: None,
+            verify: vec!["fitbit-structure-check".to_string()],
+            publish: vec!["fitbit-gallery".to_string()],
+            experimental: false,
+            notes: Some(
+                "核心不直接运行、能力由 JS 侧实现（runtime = none；Fitbit OS 侧 JS SDK 应用包 \
+                 `.fba`：应用清单 + device-<family>.zip + 可选 companion.zip，结构同官方 SDK \
+                 6.1）；fitbit-build 缺席时 CLI 自检 SKIP-with-print，结构断言真跑；签名 / \
+                 提审归 Fitbit Gallery 平台侧"
+                    .to_string(),
+            ),
+        },
+        TargetSpec {
+            id: "zepp".to_string(),
+            tier: 6,
+            hosts: vec![Host::Win, Host::Linux, Host::Macos],
+            runtime: Runtime::None,
+            bridge: Bridge::None,
+            ui: vec!["wear".to_string()],
+            package: PackageSpec {
+                format: "zab".to_string(),
+                builder: "zeus".to_string(),
+            },
+            signing: None,
+            verify: vec!["zepp-structure-check".to_string()],
+            publish: vec!["zepp-store".to_string()],
+            experimental: false,
+            notes: Some(
+                "核心不直接运行、能力由 Zepp JS API 侧实现（runtime = none）；Zepp 小程序 \
+                 `.zab`（外层 manifest.json + <md5>.zpk，zpk 内含 device.zip / app-side.zip，\
+                 结构同 zpm）；zeus / 模拟器缺席时安装与工具链校验 SKIP-with-print，结构断言\
+                 真跑；签名 / 提审归 Zepp 商店平台侧"
+                    .to_string(),
+            ),
+        },
         TargetSpec {
             id: "autosar".to_string(),
             tier: 6,

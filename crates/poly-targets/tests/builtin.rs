@@ -98,13 +98,14 @@ fn builtin_has_seven_valid_targets() {
     );
     assert_eq!(
         registry.all().count(),
-        33,
+        35,
         "M6 起内建 = L1 七 + L2 小程序族四（wechat / alipay / douyin / quickapp）+ \
          L3 电视族八（tvos + android-tv / fire-tv + tizen-tv / webos-tv / vidaa-tv / smartcast-tv \
          + roku※实验，T-M4-04/07/08/09/10/12）+ L5 OpenBSD / FreeBSD / NetBSD（T-M5-07/06/08）+\
          发行版三（ubuntu / fedora / mint，T-M5-01）+ ChromeOS 双轨（chromeos / chromeos-pwa，\
          T-M5-10）+ L6 车机 / 嵌入式六目标（android-automotive，T-M6-11；qnx / autosar，\
-         T-M6-03/04；vxworks / zephyr，T-M6-05/06；freertos，T-M6-07）"
+         T-M6-03/04；vxworks / zephyr，T-M6-05/06；freertos，T-M6-07）\
+         + L6 穿戴二（fitbit / zepp，T-M7-07/08）"
     );
     for spec in registry.all() {
         spec.validate()
@@ -299,8 +300,8 @@ fn linux_host_resolves_four_l1_targets_from_all() {
         ]),
         "L5 OpenBSD / FreeBSD / NetBSD + 发行版三 + ChromeOS 双轨应全部入选"
     );
-    // L6 车机 / 嵌入式：android-automotive 声明三宿主；qnx / autosar / vxworks / zephyr /
-    // freertos 声明 Linux 宿主 → 在 Linux 宿主下全部入选
+    // L6 车机 / 嵌入式 / 穿戴：android-automotive / fitbit / zepp 声明三宿主；
+    // qnx / autosar / vxworks / zephyr / freertos 声明 Linux 宿主 → 在 Linux 宿主下全部入选
     let l6: BTreeSet<&str> = resolved
         .selected
         .iter()
@@ -315,9 +316,11 @@ fn linux_host_resolves_four_l1_targets_from_all() {
             "autosar",
             "vxworks",
             "zephyr",
-            "freertos"
+            "freertos",
+            "fitbit",
+            "zepp"
         ]),
-        "L6 车机 + 嵌入式六目标应入选"
+        "L6 车机 + 嵌入式 + 穿戴八目标应入选"
     );
     assert_eq!(
         selected.len(),

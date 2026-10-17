@@ -35,14 +35,16 @@ use poly_core::events::BuildEvent;
 use poly_core::job::{Budget, SizePolicy};
 use poly_targets::{Registry, TargetSpec};
 
-/// 已注册的 6 个 tier-6 目标（T-M6-01..07/11 入 main 的声明面）。
-const TIER6_IDS: [&str; 6] = [
+/// 已注册的 8 个 tier-6 目标（T-M6-01..07/11 + T-M7-07/08 入 main 的声明面）。
+const TIER6_IDS: [&str; 8] = [
     "android-automotive",
     "autosar",
+    "fitbit",
     "freertos",
     "qnx",
     "vxworks",
     "zephyr",
+    "zepp",
 ];
 
 struct TempDir(PathBuf);
@@ -208,7 +210,8 @@ fn assert_gate(artifact: &Artifact, spec: &TargetSpec) {
 }
 
 /// 已注册 tier-6 目标全覆盖：每个声明的 format 都解析到内建打包器（= package 阶段会
-/// 走到同一预算门）；headless 集合恰好是 5 个，android-automotive 带 UI 不入矩阵。
+/// 走到同一预算门）；headless 集合恰好是 5 个，android-automotive / fitbit / zepp 带 UI
+/// 不入矩阵。
 #[test]
 fn all_registered_tier6_targets_route_through_package_budget_gate() {
     let tier6: Vec<TargetSpec> = Registry::builtin()
