@@ -8,11 +8,17 @@ license.workspace = true
 repository.workspace = true
 publish = false
 
+[features]
+default = ["std"]
+# T-M6-01：`--no-default-features` 下只保留摘要与缓存键（no_std + alloc）；
+# 磁盘缓存、目录树摘要与保留策略依赖文件系统，留在 std feature 后。
+std = ["blake3/std", "dep:serde_json", "serde/std", "thiserror/std"]
+
 [dependencies]
-blake3.workspace = true
-serde.workspace = true
-serde_json.workspace = true
-thiserror.workspace = true
+blake3 = { workspace = true, default-features = false }
+serde = { workspace = true, default-features = false, features = ["alloc"] }
+serde_json = { workspace = true, optional = true }
+thiserror = { workspace = true, default-features = false }
 
 [lints]
 workspace = true

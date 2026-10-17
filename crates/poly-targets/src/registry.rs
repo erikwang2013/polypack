@@ -1,6 +1,9 @@
 //! 目标注册表与 `--target all` 语义（ROADMAP §4.3）。
 
-use std::collections::BTreeMap;
+use alloc::collections::BTreeMap;
+use alloc::format;
+use alloc::string::{String, ToString};
+use alloc::vec::Vec;
 
 use crate::spec::{Host, SpecError, TargetSpec};
 
