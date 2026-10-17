@@ -12,10 +12,10 @@
 //!
 //! 语义与 T-M3-08 同口径：未设预算不判定；恰好等于上限不算超；超限 + `warn` 事件带
 //! `poly::E_BUDGET_0001` 但构建不拦；超限 + `fail` 给带修复提示的错误诊断（退出码 1）。
-//! 已注册 7 个 tier-6 目标全部登记（含带 UI 的 android-automotive：其 APK 产物走同一
-//! `package_target` 门禁，端到端 warn/fail 行为已由 `tests/budget.rs` 的快应用同一门禁
-//! 钉住；QNX 无 SDP 时按环境槽 SKIP-with-print，不伪造产物也即无体积可判；watchos
-//! 带 SwiftUI UI、且非 macOS 宿主按环境槽 SKIP，同样不入 headless 矩阵）。
+//! 已注册 10 个 tier-6 目标全部登记（含带 UI 的 android-automotive / watchos / fitbit /
+//! zepp：其产物走同一 `package_target` 门禁，端到端 warn/fail 行为已由 `tests/budget.rs`
+//! 的快应用同一门禁钉住；QNX 无 SDP 时按环境槽 SKIP-with-print，不伪造产物也即无体积可判；
+//! garmin 为 Monkey C spike 阶段已记录的打包器缺口）。
 //!
 //! 端到端 CLI 证据在 `POLY_CONTRACT_REAL=1` 的 `autosar_build_budget_gate_end_to_end`
 //! （真宿主静态库 + ARXML，真跑 `poly build --target autosar`）。
@@ -36,17 +36,25 @@ use poly_core::events::BuildEvent;
 use poly_core::job::{Budget, SizePolicy};
 use poly_targets::{Registry, TargetSpec};
 
-/// 已注册的 8 个 tier-6 目标（T-M6-01..07/11 + T-M7-09 garmin + T-M7-05/06 watchos）。
-const TIER6_IDS: [&str; 8] = [
+/// 已注册的 10 个 tier-6 目标（T-M6-01..07/11 + T-M7-05/06 watchos + T-M7-07/08 fitbit /
+/// zepp + T-M7-09 garmin）。
+const TIER6_IDS: [&str; 10] = [
     "android-automotive",
     "autosar",
+    "fitbit",
     "freertos",
     "garmin",
     "qnx",
     "vxworks",
     "watchos",
     "zephyr",
+    "zepp",
 ];
+
+/// 打包器缺口白名单：实验目标在打包器接线前如实留缺（T-M7-09 结论=继续受限档；
+/// Monkey C 子集仍为 spike，iq 打包器归后续任务）。进入本名单的目标必须是 experimental，
+/// 且一旦出现内建打包器必须移出名单（下面的断言会失败提醒）。
+const PACKAGER_GAPS: [&str; 1] = ["garmin"];
 
 struct TempDir(PathBuf);
 
@@ -211,7 +219,8 @@ fn assert_gate(artifact: &Artifact, spec: &TargetSpec) {
 }
 
 /// 已注册 tier-6 目标全覆盖：每个声明的 format 都解析到内建打包器（= package 阶段会
-/// 走到同一预算门）；headless 集合恰好是 5 个，android-automotive / watchos 带 UI 不入矩阵。
+/// 走到同一预算门）；headless 集合恰好是 5 个，android-automotive / watchos / fitbit / zepp
+/// 带 UI 不入矩阵（garmin 为已记录的打包器缺口，见 [`PACKAGER_GAPS`]）。
 #[test]
 fn all_registered_tier6_targets_route_through_package_budget_gate() {
     let tier6: Vec<TargetSpec> = Registry::builtin()
@@ -224,6 +233,19 @@ fn all_registered_tier6_targets_route_through_package_budget_gate() {
     assert_eq!(ids, TIER6_IDS, "tier-6 注册集合应与任务声明面一致");
 
     for spec in &tier6 {
+        if PACKAGER_GAPS.contains(&spec.id.as_str()) {
+            assert!(
+                spec.experimental,
+                "无打包器的目标必须是实验目标：{}",
+                spec.id
+            );
+            assert!(
+                poly_bundle::for_spec(spec).is_none(),
+                "{} 已列为打包器缺口，却存在内建打包器——请移出白名单",
+                spec.id
+            );
+            continue;
+        }
         let packager = poly_bundle::find(&spec.id, &spec.package.format)
             .unwrap_or_else(|| panic!("{} 的 format 无内建打包器", spec.id));
         assert_eq!(packager.id(), spec.id, "{} 打包器归属", spec.id);

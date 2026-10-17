@@ -1,0 +1,9 @@
+{
+  "format": "zab",
+  "configVersion": "v2",
+  "appName": "pax-notes",
+  "appId": 1001,
+  "versionCode": 12,
+  "versionName": "1.2.3",
+  "deviceEntries": ["app.js", "app.json"]
+}

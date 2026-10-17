@@ -205,6 +205,12 @@ enum Verifier {
     /// Roku 频道 zip 的侧载结构自检（[`poly_bundle::check_roku_structure`]，与打包器同一实现；
     /// 真机侧载腿本机不可得，按 T-M4-12 决策 SKIP-with-print，T-M4-15）。
     RokuSideload,
+    /// Fitbit `.fba` 三层结构自检（[`poly_bundle::check_fitbit_structure`]）+ 在场时的
+    /// `fitbit-build --help` 自检；CLI 缺席 SKIP-with-print，T-M7-07。
+    FitbitStructure,
+    /// Zepp `.zab` 结构自检（[`poly_bundle::check_zepp_structure`]：外层清单 / zpk md5 /
+    /// device.zip）+ 在场时的 `zeus --version`；模拟器安装腿不可得，SKIP-with-print，T-M7-08。
+    ZeppStructure,
     /// deb 结构检查 + 在场时的官方 lintian（`--fail-on error`），T-M5-01。
     DebLint,
     /// rpm 结构检查 + 在场时的官方 rpmlint，T-M5-01。
@@ -260,6 +266,8 @@ fn verifier_for(id: &str) -> Option<Verifier> {
         "pkg-check" => Some(Verifier::PkgCheck),
         "pkgsrc-check" => Some(Verifier::PkgsrcCheck),
         "sideload-structure-check" => Some(Verifier::RokuSideload),
+        "fitbit-structure-check" => Some(Verifier::FitbitStructure),
+        "zepp-structure-check" => Some(Verifier::ZeppStructure),
         "lintian" => Some(Verifier::DebLint),
         "rpmlint" => Some(Verifier::RpmLint),
         "appimage-structure" => Some(Verifier::AppimageStructure),
@@ -391,6 +399,8 @@ fn verify_target(
     let mut pkg_check_ids: Vec<String> = Vec::new();
     let mut pkgsrc_ids: Vec<String> = Vec::new();
     let mut roku_ids: Vec<String> = Vec::new();
+    let mut fitbit_ids: Vec<String> = Vec::new();
+    let mut zepp_ids: Vec<String> = Vec::new();
     let mut deb_ids: Vec<String> = Vec::new();
     let mut rpm_ids: Vec<String> = Vec::new();
     let mut appimage_ids: Vec<String> = Vec::new();
@@ -419,6 +429,8 @@ fn verify_target(
             Some(Verifier::PkgCheck) => pkg_check_ids.push(id.clone()),
             Some(Verifier::PkgsrcCheck) => pkgsrc_ids.push(id.clone()),
             Some(Verifier::RokuSideload) => roku_ids.push(id.clone()),
+            Some(Verifier::FitbitStructure) => fitbit_ids.push(id.clone()),
+            Some(Verifier::ZeppStructure) => zepp_ids.push(id.clone()),
             Some(Verifier::DebLint) => deb_ids.push(id.clone()),
             Some(Verifier::RpmLint) => rpm_ids.push(id.clone()),
             Some(Verifier::AppimageStructure) => appimage_ids.push(id.clone()),
@@ -485,6 +497,12 @@ fn verify_target(
     }
     if !roku_ids.is_empty() {
         checked |= verify_roku_sideload(project, spec, &roku_ids, events)?;
+    }
+    if !fitbit_ids.is_empty() {
+        checked |= verify_fitbit(project, spec, &fitbit_ids, events)?;
+    }
+    if !zepp_ids.is_empty() {
+        checked |= verify_zepp(project, spec, &zepp_ids, events)?;
     }
     if !deb_ids.is_empty() {
         checked |= verify_deb_lint(project, spec, &deb_ids, events)?;
@@ -1736,6 +1754,199 @@ fn verify_roku_sideload(
         &format!(
             "目标 {} 的真机侧载腿 SKIP-with-print：本机无 Roku SDK / 设备 / 模拟器（T-M4-12 \
              决策写明真机侧载为后续前置）；结构自检是本机真跑面",
+            spec.id
+        ),
+    );
+    for id in ids {
+        events.emit(&BuildEvent::Verified {
+            checker: id.clone(),
+            ok: true,
+        });
+    }
+    Ok(true)
+}
+
+/// Fitbit `.fba` 校验腿（`fitbit-structure-check`，T-M7-07）：与打包器**同一份**检查
+/// （[`poly_bundle::check_fitbit_structure`]：外层应用清单、每家族 `device-<family>.zip`、
+/// 组件清单三层；缺陷 E_BND_0006 硬失败）。官方 `fitbit-build` 只作工具在场自检
+/// （`--help`）：本机缺席 SKIP-with-print，结构断言是真跑面；产物组装不依赖 CLI。
+fn verify_fitbit(
+    project: &Project,
+    spec: &TargetSpec,
+    ids: &[String],
+    events: &mut dyn EventSink,
+) -> Result<bool, StageError> {
+    let staged = project::packages_root(&project.root).join(&spec.id);
+    let Some((package, count)) = staged_file(&staged, "fba") else {
+        warning(
+            events,
+            &format!(
+                "目标 {} 未校验：{} 下没有 *.fba（先跑 poly build 把产物流到打包暂存目录）",
+                spec.id,
+                staged.display()
+            ),
+        );
+        return Ok(false);
+    };
+    if count > 1 {
+        warning(
+            events,
+            &format!(
+                "目标 {} 的产物有 {count} 份 .fba（取最新一份 {}）",
+                spec.id,
+                package.display()
+            ),
+        );
+    }
+    let structure = match poly_bundle::check_fitbit_structure(&package) {
+        Ok(structure) => structure,
+        Err(err) => return Err(bundle_diagnostic(spec, &err).into()),
+    };
+    warning(
+        events,
+        &format!(
+            "目标 {} 的 .fba 结构自检：{} 条目，appId={} buildId={}，设备家族 {}（入口 {}）{}",
+            spec.id,
+            structure.entries.len(),
+            structure.app_id,
+            structure.build_id,
+            structure.families.join(", "),
+            structure.device_main,
+            if structure.companion {
+                "，含 companion.zip"
+            } else {
+                ""
+            }
+        ),
+    );
+    match poly_bundle::exec::tool_path("fitbit-build") {
+        Some(tool) => {
+            let command = poly_bundle::Command::new(tool.display().to_string(), ["--help"]);
+            match poly_bundle::exec::run(&command) {
+                Ok(_) => warning(
+                    events,
+                    &format!(
+                        "目标 {} 的 fitbit-build 自检真跑通过：{}",
+                        spec.id,
+                        command.line()
+                    ),
+                ),
+                Err(err) => warning(
+                    events,
+                    &format!(
+                        "目标 {} 的 fitbit-build 自检未通过：{err}（内建结构断言已过；官方 CLI 承载的是 \
+                         TS / rollup 编译与打包腿，不在本项目产物链）",
+                        spec.id
+                    ),
+                ),
+            }
+        }
+        None => warning(
+            events,
+            &format!(
+                "目标 {} 的 fitbit-build 自检 SKIP-with-print：PATH 里没有 fitbit-build（Fitbit OS \
+                 SDK 未安装）；内建结构断言已真跑，产物组装不依赖官方 CLI",
+                spec.id
+            ),
+        ),
+    }
+    for id in ids {
+        events.emit(&BuildEvent::Verified {
+            checker: id.clone(),
+            ok: true,
+        });
+    }
+    Ok(true)
+}
+
+/// Zepp `.zab` 校验腿（`zepp-structure-check`，T-M7-08）：与打包器**同一份**检查
+/// （[`poly_bundle::check_zepp_structure`]：外层清单 + zpk 的 md5 同源 + `device.zip`
+/// 内 `app.json` 交叉；缺陷硬失败）。官方 `zeus` 只作工具在场自检（`--version`），
+/// 模拟器安装腿本机不可得——两者缺席均 SKIP-with-print，结构断言是真跑面。
+fn verify_zepp(
+    project: &Project,
+    spec: &TargetSpec,
+    ids: &[String],
+    events: &mut dyn EventSink,
+) -> Result<bool, StageError> {
+    let staged = project::packages_root(&project.root).join(&spec.id);
+    let Some((package, count)) = staged_file(&staged, "zab") else {
+        warning(
+            events,
+            &format!(
+                "目标 {} 未校验：{} 下没有 *.zab（先跑 poly build 把产物流到打包暂存目录）",
+                spec.id,
+                staged.display()
+            ),
+        );
+        return Ok(false);
+    };
+    if count > 1 {
+        warning(
+            events,
+            &format!(
+                "目标 {} 的产物有 {count} 份 .zab（取最新一份 {}）",
+                spec.id,
+                package.display()
+            ),
+        );
+    }
+    let structure = match poly_bundle::check_zepp_structure(&package) {
+        Ok(structure) => structure,
+        Err(err) => return Err(bundle_diagnostic(spec, &err).into()),
+    };
+    warning(
+        events,
+        &format!(
+            "目标 {} 的 .zab 结构自检：{} 条目，configVersion={}，appName={} appId={} 版本 {}({})，\
+             zpk={}（md5 同源），device.zip {} 条目{}",
+            spec.id,
+            structure.entries.len(),
+            structure.config_version,
+            structure.app_name,
+            structure.app_id,
+            structure.version_name,
+            structure.version_code,
+            structure.zpk_name,
+            structure.device_entries.len(),
+            if structure.has_app_side {
+                "，含 app-side.zip"
+            } else {
+                ""
+            }
+        ),
+    );
+    match poly_bundle::exec::tool_path("zeus") {
+        Some(tool) => {
+            let command = poly_bundle::Command::new(tool.display().to_string(), ["--version"]);
+            match poly_bundle::exec::run(&command) {
+                Ok(_) => warning(
+                    events,
+                    &format!("目标 {} 的 zeus 自检真跑通过：{}", spec.id, command.line()),
+                ),
+                Err(err) => warning(
+                    events,
+                    &format!(
+                        "目标 {} 的 zeus 自检未通过：{err}（内建结构断言已过；官方 CLI 承载的是 \
+                         qjsc 编译与 App Store 打包腿，不在本项目产物链）",
+                        spec.id
+                    ),
+                ),
+            }
+        }
+        None => warning(
+            events,
+            &format!(
+                "目标 {} 的 zeus 自检 SKIP-with-print：PATH 里没有 zeus（Zepp 开发者工具未安装）",
+                spec.id
+            ),
+        ),
+    }
+    warning(
+        events,
+        &format!(
+            "目标 {} 的模拟器安装腿 SKIP-with-print：本机无 Zepp 模拟器 / 开发者工具；\
+             内建结构断言与官方 zpm 打包形态是本机真跑面，安装性待有模拟器的环境复核",
             spec.id
         ),
     );
