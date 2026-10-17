@@ -116,17 +116,27 @@
 | OpenBSD | native | ports | signify | portcheck | ports@ | |
 | BSD family (NetBSD / DragonFly, …) | native | pkgsrc, etc. | repository signing | packager self-check | self-hosted repo | |
 
-### 3.7 L6 per-platform detail (10)
+### 3.7 L6 per-platform detail (6 TargetSpecs + 5 planned)
+
+**Embedded / automotive targets already in TargetSpec.** The table below is generated from the `TargetSpec` declarations in `crates/poly-targets/src/builtin.rs` (`node tools/gen-target-table.mjs`); every field is reproduced verbatim from the registry, so do not edit it by hand. `--check` fails when the table drifts.
+
+<!-- BEGIN GENERATED: l6-embedded-status -->
+| Target | Runtime | Bridge | Packager & artifact | Signing | Artifact verification | Publishing channel | experimental | notes |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `android-automotive` | `native` | `uniffi` | `apk` · `android-aapt2` | `android-keystore` | `apksigner-verify`, `bundletool-validate` | `oem-channel` | `false` | AAOS 清单（android.hardware.type.automotive）；车厂渠道，无统一公开 API——发布需 OEM 凭据引用（占位 Publisher，不伪造提交） |
+| `autosar` | `staticlib` | `cffi` | `arxml` · `autosar-adaptive` | none | `arxml-schema`, `c-abi-symbols` | `self-hosted` | `false` | 无 UI、自部署；AUTOSAR Adaptive 清单（ARXML）由 poly_engine_* C ABI 单一来源派生（服务 / 端口与导出符号一一对应）；no_std 可选（引擎层 --no-default-features，应用提供 global_allocator / panic_handler） |
+| `freertos` | `staticlib` | `cffi` | `board` · `freertos-qemu` | none | `c-abi-symbols`, `freertos-qemu-smoke` | `self-hosted` | `false` | 无 UI、cffi、no_std；FreeRTOS 示例板包（mps2-an385 / Cortex-M3，静态库 + 启动 / 中断 / UART / FreeRTOSConfig / Makefile 工程模板）；内核 V11.1.0 按 tag + sha256 现拉不入库；`make smoke` 在 QEMU 中调用 poly_engine_* 并以 semihosting 退出码 0 结束；arm-none-eabi-gcc / qemu-system-arm / 网络缺席时按环境槽 SKIP-with-print |
+| `qnx` | `staticlib` | `cffi` | `image` · `qnx-sdp` | none | `qnx-image-structure`, `c-abi-symbols` | `self-hosted` | `false` | headless 核心（可选 HMI 归平台侧）；静态库 + 部署镜像（附 mkifs buildfile，可引导 .ifs / QEMU 归 T-M6-09）；交叉编译需 QNX SDP（$QNX_HOST / $QNX_TARGET）与 Rust QNX target，无 SDP 时按环境槽 SKIP-with-print，不伪造二进制；自部署 |
+| `vxworks` | `staticlib` | `cffi` | `library` · `vxworks-wr` | none | `c-abi-symbols`, `vxworks-ld-check` | `self-hosted` | `false` | 无 UI、cffi、no_std；format = `library`（默认，静态库）或 `image`（部署 kit zip，配置 [targets.vxworks].format 覆盖）；wr-cc / wr-ld 缺席时产物用 nm 符号闭包 + 结构断言校验并 SKIP-with-print，绝不伪造可加载镜像 |
+| `zephyr` | `staticlib` | `cffi` | `west` · `zephyr-west` | none | `c-abi-symbols`, `zephyr-west-build` | `self-hosted` | `false` | 无 UI、cffi、no_std；west 工程模板（zephyr module + 引擎静态库模块链入），qemu_x86 / qemu_cortex_m3 两板 `west build` 验收；最小 CONFIG_* 集随模板版本化；west / Zephyr SDK 缺席时按环境槽 SKIP-with-print |
+<!-- END GENERATED: l6-embedded-status -->
+
+**Planned L6 platforms not yet in TargetSpec** (companion templates / JS runtimes that do not produce a core TargetSpec):
 
 | Platform | Core runtime · bridge | Packager and artifacts | Signing | Artifact verification | Publishing channel | Notes |
 |---|---|---|---|---|---|---|
 | Apple watchOS | none (companion template) | watch bundle (Xcode) | codesign | codesign verify | App Store | ※experimental: SwiftUI companion template; macOS host |
 | Wear OS | native · uniffi | APK (Wear) | same as Android | bundletool | Google Play | |
-| Android Automotive | native · uniffi | APK (AAOS) | same as Android | bundletool | OEM channels | |
-| QNX | staticlib · cffi | image / library | platform-side | QNX cross-compile smoke (QEMU) | self-deployed | |
-| AUTOSAR (Adaptive) | staticlib · cffi (no_std optional) | ARXML + library | — | CI compile matrix | self-deployed | headless |
-| VxWorks | staticlib · cffi | library / image | — | CI compile matrix | self-deployed | headless |
-| RTOS (Zephyr / FreeRTOS) | staticlib · cffi (no_std) | library | — | CI compile matrix (west / QEMU) | self-deployed | headless |
 | Fitbit OS | — (JS runtime) | app package | platform-side | Fitbit CLI self-check | Fitbit Gallery | core does not run on-device |
 | Garmin (Connect IQ) | — (Monkey C transpile) | `.iq` | platform-side | Connect IQ compiler | Connect IQ Store | ※experimental |
 | Zepp OS | — (Zepp JS API) | Zepp mini app | platform-side | Zepp devtools | Zepp store | |

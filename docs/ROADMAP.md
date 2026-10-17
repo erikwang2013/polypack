@@ -116,17 +116,27 @@
 | OpenBSD | native | ports | signify | portcheck | ports@ | |
 | BSD 家族（NetBSD / DragonFly 等） | native | pkgsrc 等 | 仓库签名 | 打包器自检 | 自建仓库 | |
 
-### 3.7 L6 逐平台明细（10）
+### 3.7 L6 逐平台明细（6 个 TargetSpec + 5 个规划中）
+
+**已入 TargetSpec 的嵌入式 / 车机目标。** 下表由 `crates/poly-targets/src/builtin.rs` 的 `TargetSpec` 生成（`node tools/gen-target-table.mjs`），字段逐字同源，请勿手改；`--check` 在表与注册表漂移时失败。
+
+<!-- BEGIN GENERATED: l6-embedded-status -->
+| 目标 | 运行时 | 桥 | 打包器与产物 | 签名 | 产物校验 | 发布渠道 | experimental | notes |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `android-automotive` | `native` | `uniffi` | `apk` · `android-aapt2` | `android-keystore` | `apksigner-verify`, `bundletool-validate` | `oem-channel` | `false` | AAOS 清单（android.hardware.type.automotive）；车厂渠道，无统一公开 API——发布需 OEM 凭据引用（占位 Publisher，不伪造提交） |
+| `autosar` | `staticlib` | `cffi` | `arxml` · `autosar-adaptive` | — | `arxml-schema`, `c-abi-symbols` | `self-hosted` | `false` | 无 UI、自部署；AUTOSAR Adaptive 清单（ARXML）由 poly_engine_* C ABI 单一来源派生（服务 / 端口与导出符号一一对应）；no_std 可选（引擎层 --no-default-features，应用提供 global_allocator / panic_handler） |
+| `freertos` | `staticlib` | `cffi` | `board` · `freertos-qemu` | — | `c-abi-symbols`, `freertos-qemu-smoke` | `self-hosted` | `false` | 无 UI、cffi、no_std；FreeRTOS 示例板包（mps2-an385 / Cortex-M3，静态库 + 启动 / 中断 / UART / FreeRTOSConfig / Makefile 工程模板）；内核 V11.1.0 按 tag + sha256 现拉不入库；`make smoke` 在 QEMU 中调用 poly_engine_* 并以 semihosting 退出码 0 结束；arm-none-eabi-gcc / qemu-system-arm / 网络缺席时按环境槽 SKIP-with-print |
+| `qnx` | `staticlib` | `cffi` | `image` · `qnx-sdp` | — | `qnx-image-structure`, `c-abi-symbols` | `self-hosted` | `false` | headless 核心（可选 HMI 归平台侧）；静态库 + 部署镜像（附 mkifs buildfile，可引导 .ifs / QEMU 归 T-M6-09）；交叉编译需 QNX SDP（$QNX_HOST / $QNX_TARGET）与 Rust QNX target，无 SDP 时按环境槽 SKIP-with-print，不伪造二进制；自部署 |
+| `vxworks` | `staticlib` | `cffi` | `library` · `vxworks-wr` | — | `c-abi-symbols`, `vxworks-ld-check` | `self-hosted` | `false` | 无 UI、cffi、no_std；format = `library`（默认，静态库）或 `image`（部署 kit zip，配置 [targets.vxworks].format 覆盖）；wr-cc / wr-ld 缺席时产物用 nm 符号闭包 + 结构断言校验并 SKIP-with-print，绝不伪造可加载镜像 |
+| `zephyr` | `staticlib` | `cffi` | `west` · `zephyr-west` | — | `c-abi-symbols`, `zephyr-west-build` | `self-hosted` | `false` | 无 UI、cffi、no_std；west 工程模板（zephyr module + 引擎静态库模块链入），qemu_x86 / qemu_cortex_m3 两板 `west build` 验收；最小 CONFIG_* 集随模板版本化；west / Zephyr SDK 缺席时按环境槽 SKIP-with-print |
+<!-- END GENERATED: l6-embedded-status -->
+
+**规划中、尚未入 TargetSpec 的 L6 平台**（伴生模板 / JS 运行时，不产生核心 TargetSpec）：
 
 | 平台 | 核心运行时 · 桥 | 打包器与产物 | 签名 | 产物校验 | 发布渠道 | 备注 |
 |---|---|---|---|---|---|---|
 | Apple watchOS | 无（伴生模板） | watch 包（Xcode） | codesign | codesign verify | App Store | ※实验：SwiftUI 伴生模板；macOS 宿主 |
 | Wear OS | native · uniffi | APK（Wear） | 同 Android | bundletool | Google Play | |
-| Android Automotive | native · uniffi | APK（AAOS） | 同 Android | bundletool | 车厂 / OEM 渠道 | |
-| QNX | staticlib · cffi | 镜像 / 库 | 平台侧 | QNX 交叉编译冒烟（QEMU） | 自部署 | |
-| AUTOSAR（Adaptive） | staticlib · cffi（no_std 可选） | ARXML + 库 | — | CI 编译矩阵 | 自部署 | 无 UI |
-| VxWorks | staticlib · cffi | 库 / 镜像 | — | CI 编译矩阵 | 自部署 | 无 UI |
-| RTOS（Zephyr / FreeRTOS） | staticlib · cffi（no_std） | 库 | — | CI 编译矩阵（west / QEMU） | 自部署 | 无 UI |
 | Fitbit OS | —（JS 运行时） | 应用包 | 平台侧 | Fitbit CLI 自检 | Fitbit Gallery | 核心不直接运行 |
 | Garmin（Connect IQ） | —（Monkey C 转译） | `.iq` | 平台侧 | Connect IQ 编译器 | Connect IQ Store | ※实验 |
 | Zepp OS | —（Zepp JS API） | Zepp 小程序 | 平台侧 | Zepp 开发者工具 | Zepp 商店 | |
