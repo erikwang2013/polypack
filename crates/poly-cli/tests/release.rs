@@ -1,4 +1,4 @@
-//! T-M5-11 准备面：`poly release` 参数面与稳定错误码（真实接线待 T-M5-05/06/07）。
+//! T-M5-11 准备面：`poly release` 参数面与稳定错误码（deb/rpm 已接线 T-M5-05；pkg 待 T-M5-06）。
 
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
@@ -160,16 +160,32 @@ fn dry_run_reports_manifest_and_receipt_anchor() {
     let _ = std::fs::remove_dir_all(&root);
 }
 
+/// pkg 格式走 T-M5-06 本地后端；无 pkg(8) 的宿主只验稳定错误码与不落回执。
+fn fixture_pkg(tag: &str) -> PathBuf {
+    let root = fixture(tag);
+    let mut config = std::fs::read_to_string(root.join("polypack.toml")).expect("读配置");
+    config.push_str("[targets.linux]\nformat = \"pkg\"\n");
+    std::fs::write(root.join("polypack.toml"), config).expect("写配置");
+    let dir = root.join(".polypack").join("packages").join("linux");
+    std::fs::create_dir_all(&dir).expect("产物目录可建");
+    std::fs::write(dir.join("fixture-app-0.1.0.pkg"), b"pkg-bytes").expect("写产物");
+    root
+}
+
 #[test]
-fn unwired_backend_reports_stable_code_and_leaves_no_receipt() {
-    let root = fixture_rpm("pending");
+fn pkg_backend_without_tool_reports_stable_code_and_leaves_no_receipt() {
+    if poly_bundle::exec::tool_present("pkg") {
+        eprintln!("SKIP：本机有 pkg(8)，缺工具分支不可复现（FreeBSD 真跑归 T-M5-09）");
+        return;
+    }
+    let root = fixture_pkg("pending");
     let out = poly(&root, &["release", "--target", "linux"]);
-    assert_eq!(out.status.code(), Some(1), "后端未接线须失败");
+    assert_eq!(out.status.code(), Some(1), "缺 pkg(8) 须失败");
     let stderr = String::from_utf8_lossy(&out.stderr);
-    assert!(stderr.contains("poly::E_RELEASE_0004"), "{stderr}");
+    assert!(stderr.contains("poly::E_RELEASE_0005"), "{stderr}");
     assert!(
-        stderr.contains("--dry-run"),
-        "修复提示给出先行预演：{stderr}"
+        stderr.contains("FreeBSD"),
+        "修复提示点名 FreeBSD 用户态：{stderr}"
     );
     assert!(
         !root.join(".polypack").join("release").exists(),

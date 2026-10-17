@@ -26,7 +26,6 @@ pub use rpm::{Rpm, RpmStructure, check_rpm_structure, rpm_arch};
 pub use snap::{SNAP_PLUGS, Snap, SnapStructure, check_snap_structure};
 
 use std::path::{Path, PathBuf};
-use std::time::{Duration, UNIX_EPOCH};
 
 use poly_targets::TargetSpec;
 
@@ -46,8 +45,9 @@ pub const FLATPAK: &str = "flatpak";
 /// Snap 单文件格式。
 pub const SNAP: &str = "snap";
 
-/// 服务 `linux` L1 目标的发行版目标（T-M5-01：Ubuntu / Mint 走 deb，Fedora 走 rpm）。
-pub(crate) const DEB_TARGETS: &[&str] = &["linux", "ubuntu", "mint"];
+/// 服务 `linux` L1 目标的发行版目标（T-M5-01：Ubuntu / Mint 走 deb，Fedora 走 rpm；
+/// T-M5-10：ChromeOS Crostini 复用 deb 链，不新写打包器）。
+pub(crate) const DEB_TARGETS: &[&str] = &["linux", "ubuntu", "mint", "chromeos"];
 /// 服务 rpm 的目标。
 pub(crate) const RPM_TARGETS: &[&str] = &["linux", "fedora"];
 /// 服务 Flatpak 的 Linux 家族目标（ROADMAP L5：Ubuntu / Fedora / Mint 均可出 Flatpak）。
@@ -335,6 +335,8 @@ pub(crate) fn with_epoch(mut command: Command, epoch: Option<i64>) -> Command {
 pub(crate) fn normalize_mtime(path: &Path, epoch: i64) -> Result<(), BundleError> {
     #[cfg(unix)]
     {
+        use std::time::{Duration, UNIX_EPOCH};
+
         let time = UNIX_EPOCH + Duration::from_secs(epoch as u64);
         let times = std::fs::FileTimes::new()
             .set_accessed(time)

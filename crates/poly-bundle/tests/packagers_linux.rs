@@ -369,9 +369,10 @@ fn rpm_plan_declares_requires_and_package_builds_or_degrades_honestly() {
         "Requires: webkit2gtk4.1, gtk3, libsoup3\n",
         "cp -a \"%{_sourcedir}/payload/.\" \"%{buildroot}/\"\n",
         "/usr/bin/pax-notes\n",
-        "/usr/lib/Pax\\ Notes\n",
+        "\"/usr/lib/Pax Notes\"\n",
         "/usr/share/applications/pax-notes.desktop\n",
         "/usr/share/metainfo/com.polypack.paxnotes.metainfo.xml\n",
+        "/usr/share/doc/pax-notes/RUNTIME-DEPENDENCIES.txt\n",
         "%changelog\n* Mon Jan 01 2024",
     ] {
         assert!(spec_script.contents.contains(want), "spec 缺 {want:?}");
@@ -425,10 +426,10 @@ fn rpm_plan_declares_requires_and_package_builds_or_degrades_honestly() {
             assert!(
                 artifact
                     .path
-                    .join("share/metainfo/com.polypack.paxnotes.metainfo.xml")
+                    .join("usr/share/metainfo/com.polypack.paxnotes.metainfo.xml")
                     .is_file()
             );
-            assert!(artifact.path.join("bin/pax-notes").is_file());
+            assert!(artifact.path.join("usr/bin/pax-notes").is_file());
         }
         other => panic!("意外的 rpm 降级格式：{other}"),
     }

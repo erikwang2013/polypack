@@ -142,6 +142,12 @@ fn signing_owner(format: &str) -> Option<&'static str> {
             "OpenBSD signify 包签名归打包腿（pkg_sign；POLYPACK_OPENBSD_SIGNIFY_KEY），\
              真跑需 OpenBSD VM（T-M5-09）",
         ),
+        // T-M5-06：pkg(8) 的签名单元是仓库 catalogue（pkg repo rsa|ecdsa|eddsa:<keyfile>），
+        // 不逐包签；客户端以 PUBKEY 校验，真跑需 FreeBSD VM（T-M5-09）。
+        "pkg" => Some(
+            "FreeBSD 包仓库签名归 poly release（pkg repo ... rsa|ecdsa|eddsa:<keyfile>，\
+             客户端 PUBKEY 校验）；包文件不逐包签，真跑需 FreeBSD VM（T-M5-09）",
+        ),
         _ => None,
     }
 }

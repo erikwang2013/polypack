@@ -45,6 +45,10 @@ const FILES: &[(&str, &str)] = &[
         "ui/public/icon.svg",
         include_str!("../templates/app/ui/public/icon.svg"),
     ),
+    (
+        "ui/public/sw.js",
+        include_str!("../templates/app/ui/public/sw.js"),
+    ),
 ];
 
 /// `poly init` 的参数。

@@ -9,16 +9,21 @@
 //! - **T-M3-04** HarmonyOS 签名：[`harmony`] 的 hap-sign-tool `sign-app` / `verify-app`
 //!   （口令只能经 argv——展示 / 日志 / 事件流统一脱敏为 `****`；应用证书链与已签名 Profile
 //!   经载荷 `app_cert` / `profile` 字段注入）。
+//! - **T-M5-05** 仓库元数据签名：[`repo`] 的 [`RepoSigner`] / [`GpgSigner`]（deb `Release` /
+//!   `InRelease` 与 rpm `repomd.xml`；凭据同走 `CredentialRef`，隔离 GNUPGHOME 零残留）。
 
 pub mod android;
 pub mod error;
 pub mod harmony;
 pub mod ios;
+pub mod repo;
 pub mod secret;
+mod temp;
 pub mod vault;
 
 pub use android::{AndroidSigner, SignPlan, SignRequest, SignedArtifact};
 pub use error::{SignError, codes};
 pub use harmony::{HarmonySignPlan, HarmonySignRequest, HarmonySignedArtifact, HarmonySigner};
+pub use repo::{GpgSigner, RepoSigner};
 pub use secret::{SecretBackend, SigningMaterial, default_backends, resolve};
 pub use vault::HttpVaultClient;

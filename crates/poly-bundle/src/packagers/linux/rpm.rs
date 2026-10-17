@@ -178,15 +178,24 @@ fn rpm_spec(inputs: &BundleInputs) -> Result<String, BundleError> {
          mkdir -p \"%{buildroot}\"\n\
          cp -a \"%{_sourcedir}/payload/.\" \"%{buildroot}/\"\n",
     );
+    // rpm 内建 %clean 用未引号化的 %{buildroot}：TMPDIR 含 `(` / `&` 等元字符时
+    // shell 直接语法错误（测试路径 `ThreadId(10)` 实证），此处以引号版覆盖。
+    out.push_str("\n%clean\nrm -rf \"%{buildroot}\"\n");
     out.push_str("\n%files\n");
     out.push_str(&format!("/usr/bin/{binary}\n"));
     // 只声明产品自己的资源目录：`/lib`（或 /usr/lib）属于 filesystem 包，
     // 整目录入 %files 会让 dnf 事务冲突（filesystem-3.18 实测）。
-    out.push_str(&format!("/usr/lib/{}\n", product.name.replace(' ', "\\ ")));
+    // 含空格路径须整条加引号（rpm 4.18 实证：反斜杠转义与中段引号都按空白拆词，
+    // `/usr/lib/Pax\ Notes` 会被误读成 "Notes" 条目 → File must begin with "/"）。
+    out.push_str(&format!("\"/usr/lib/{}\"\n", product.name));
     out.push_str(&format!("/usr/share/applications/{kebab}.desktop\n"));
     out.push_str("/usr/share/icons/hicolor\n");
     out.push_str(&format!("/usr/share/metainfo/{id}.metainfo.xml\n"));
     out.push_str(&format!("/usr/share/doc/{kebab}/copyright\n"));
+    // 裸产物随附的运行时依赖说明：漏列即 rpmbuild 报 Installed (but unpackaged)。
+    out.push_str(&format!(
+        "/usr/share/doc/{kebab}/RUNTIME-DEPENDENCIES.txt\n"
+    ));
     out.push_str(&format!(
         "\n%changelog\n* {CHANGELOG_DATE} PolyPack <noreply@polypack.invalid> - {}-1\n- PolyPack build\n",
         product.version
@@ -356,8 +365,9 @@ mod tests {
         assert!(spec.contains("Requires: webkit2gtk4.1, gtk3, libsoup3\n"));
         assert!(spec.contains("%install\n"));
         assert!(spec.contains("/usr/bin/pax-notes\n"));
-        assert!(spec.contains("/usr/lib/Pax\\ Notes\n"));
+        assert!(spec.contains("\"/usr/lib/Pax Notes\"\n"));
         assert!(spec.contains("/usr/share/metainfo/com.polypack.paxnotes.metainfo.xml\n"));
+        assert!(spec.contains("/usr/share/doc/pax-notes/RUNTIME-DEPENDENCIES.txt\n"));
         assert!(spec.contains("%changelog\n* Mon Jan 01 2024"));
         assert!(!spec.contains("%prep"), "预布置载荷不需要 %prep");
     }

@@ -8,6 +8,7 @@
 //! - [`packager::find`]：按（目标 id，产物格式）取内建打包器
 //! - [`tauri::bare_product`]：T-M1-03 裸产物布局与 WebView 资源注入
 //! - [`webapp`]：web 系 TV 目标的共享载荷与同源摘要（T-M4-08 / T-M4-09 / T-M4-10）
+//! - [`pwa`]：PWA 三腿审计（manifest / 离线能力 / 安装性，T-M5-10）
 //! - [`arwrite`]：`.ipk` 的 ar / ustar tar / gzip 读写（T-M4-09，确定性字节）
 
 pub mod arwrite;
@@ -18,6 +19,7 @@ pub mod icons;
 pub mod inputs;
 pub mod packager;
 pub mod packagers;
+pub mod pwa;
 pub mod sri;
 pub mod tauri;
 pub mod tools;
@@ -34,6 +36,7 @@ pub use packager::{
     Artifact, ArtifactKind, BundlePlan, Command, Packager, ScriptFile, Skipped, builtin, find,
     for_spec,
 };
+pub use packagers::freebsd::{PkgStructure, check_pkg_structure};
 pub use packagers::harmony::{HapStructure, check_hap_structure};
 pub use packagers::linux::{
     AppdirStructure, DebStructure, FlatpakStructure, RpmStructure, SnapStructure,
@@ -48,3 +51,4 @@ pub use packagers::webos::{IpkStructure, ares_package_tool, check_ipk_structure}
 pub use packagers::webtv::{
     SMARTCAST, VIDAA, WebAppPlatform, WebAppStructure, check_web_app_structure,
 };
+pub use pwa::{PwaAudit, audit_pwa};
