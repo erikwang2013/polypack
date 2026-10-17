@@ -624,5 +624,34 @@ pub fn builtin() -> Vec<TargetSpec> {
                     .to_string(),
             ),
         },
+        // ---- L6 车机（T-M6-11，ROADMAP §3.7）：Android Automotive ----
+        // 复用 Android 链（format = `apk`、builder = `android-aapt2`；AAPT2 + bundletool +
+        // apksigner 不另起第二套实现），差异只在清单变体（`android.hardware.type.automotive`）
+        // 与发布渠道。车厂 / OEM 渠道无统一公开 API：`oem-channel` 是占位 Publisher，返回
+        // 「需 OEM 凭据引用」的明确错误，绝不伪造提交。
+        TargetSpec {
+            id: "android-automotive".to_string(),
+            tier: 6,
+            hosts: vec![Host::Win, Host::Linux, Host::Macos],
+            runtime: Runtime::Native,
+            bridge: Bridge::Uniffi,
+            ui: vec!["react-native".to_string()],
+            package: PackageSpec {
+                format: "apk".to_string(),
+                builder: "android-aapt2".to_string(),
+            },
+            signing: Some("android-keystore".to_string()),
+            verify: vec![
+                "apksigner-verify".to_string(),
+                "bundletool-validate".to_string(),
+            ],
+            publish: vec!["oem-channel".to_string()],
+            experimental: false,
+            notes: Some(
+                "AAOS 清单（android.hardware.type.automotive）；车厂渠道，无统一公开 API——\
+                 发布需 OEM 凭据引用（占位 Publisher，不伪造提交）"
+                    .to_string(),
+            ),
+        },
     ]
 }

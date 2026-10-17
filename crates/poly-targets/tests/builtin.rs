@@ -98,12 +98,12 @@ fn builtin_has_seven_valid_targets() {
     );
     assert_eq!(
         registry.all().count(),
-        27,
-        "M5 起内建 = L1 七 + L2 小程序族四（wechat / alipay / douyin / quickapp）+ \
+        28,
+        "M6 起内建 = L1 七 + L2 小程序族四（wechat / alipay / douyin / quickapp）+ \
          L3 电视族八（tvos + android-tv / fire-tv + tizen-tv / webos-tv / vidaa-tv / smartcast-tv \
          + roku※实验，T-M4-04/07/08/09/10/12）+ L5 OpenBSD / FreeBSD / NetBSD（T-M5-07/06/08）+\
          发行版三（ubuntu / fedora / mint，T-M5-01）+ ChromeOS 双轨（chromeos / chromeos-pwa，\
-         T-M5-10）"
+         T-M5-10）+ L6 Android Automotive（android-automotive，T-M6-11）"
     );
     for spec in registry.all() {
         spec.validate()
@@ -298,7 +298,22 @@ fn linux_host_resolves_four_l1_targets_from_all() {
         ]),
         "L5 OpenBSD / FreeBSD / NetBSD + 发行版三 + ChromeOS 双轨应全部入选"
     );
-    assert_eq!(selected.len(), l1.len() + l2.len() + l3.len() + l5.len());
+    // L6 车机：android-automotive 声明三宿主（复用 Android 工具链）→ Linux 宿主下入选
+    let l6: BTreeSet<&str> = resolved
+        .selected
+        .iter()
+        .filter(|s| s.tier == 6)
+        .map(|s| s.id.as_str())
+        .collect();
+    assert_eq!(
+        l6,
+        BTreeSet::from(["android-automotive"]),
+        "L6 Android Automotive（三宿主声明）应入选"
+    );
+    assert_eq!(
+        selected.len(),
+        l1.len() + l2.len() + l3.len() + l5.len() + l6.len()
+    );
 
     let excluded: BTreeSet<&str> = resolved.excluded.iter().map(|e| e.id.as_str()).collect();
     assert_eq!(
@@ -310,7 +325,7 @@ fn linux_host_resolves_four_l1_targets_from_all() {
         assert!(!target.reason.trim().is_empty(), "{} 缺排除原因", target.id);
     }
 
-    // 内建目标为 L1 / L2 / L3 / L5，不涉及厂商授权分支。
+    // 内建目标为 L1 / L2 / L3 / L5 / L6，不涉及厂商授权分支。
     assert!(resolved.excluded.iter().all(|e| !e.reason.contains("L7")));
 }
 
@@ -636,4 +651,61 @@ fn bsd_targets_are_reachable_on_bsd_hosts() {
             "{id}: Linux 交叉发起保留"
         );
     }
+}
+
+/// T-M6-11 验收（声明侧）：Android Automotive 按 ROADMAP §3.7 逐列对齐。
+/// §3.7 行 = native · uniffi / APK（AAOS）/ 签名同 Android / bundletool / 车厂 · OEM 渠道；
+/// 打包链复用 M2（builder `android-aapt2`），发布渠道是 `oem-channel` 占位 Publisher。
+#[test]
+fn builtin_matches_roadmap_3_7_automotive() {
+    let spec = Registry::builtin()
+        .get("android-automotive")
+        .expect("内建 android-automotive 目标")
+        .clone();
+    assert_eq!(spec.tier, 6, "Android Automotive 属 L6（ROADMAP §3.7）");
+    assert_eq!(
+        spec.hosts,
+        vec![Host::Win, Host::Linux, Host::Macos],
+        "复用 Android 工具链（三宿主）"
+    );
+    assert_eq!(spec.runtime, Runtime::Native, "§3.7 核心运行时 = native");
+    assert_eq!(spec.bridge, Bridge::Uniffi, "§3.7 桥 = uniffi");
+    assert_eq!(
+        spec.ui.iter().map(String::as_str).collect::<Vec<_>>(),
+        vec!["react-native"],
+        "RN 承载 UI（同 Android）"
+    );
+    assert_eq!(spec.package.format, "apk", "§3.7 产物 = APK（AAOS）");
+    assert_eq!(
+        spec.package.builder, "android-aapt2",
+        "复用 M2 Android 打包链（不新增第二套实现）"
+    );
+    assert_eq!(
+        spec.signing.as_deref(),
+        Some("android-keystore"),
+        "§3.7 签名 = 同 Android（凭据引用）"
+    );
+    assert_eq!(
+        spec.verify,
+        ["apksigner-verify", "bundletool-validate"].map(String::from),
+        "§3.7 产物校验 = bundletool（+ apksigner 取证）"
+    );
+    assert_eq!(
+        spec.publish,
+        vec!["oem-channel".to_string()],
+        "§3.7 发布渠道 = 车厂 / OEM（占位 Publisher）"
+    );
+    assert!(
+        !spec.experimental,
+        "§3.7 未标 ※实验：打包链为正式 Android 链"
+    );
+    let notes = spec.notes.as_deref().unwrap_or("");
+    assert!(
+        notes.contains("车厂渠道，无统一公开 API"),
+        "边界口径须如实入 notes：{notes}"
+    );
+    assert!(
+        notes.contains("android.hardware.type.automotive") && notes.contains("不伪造提交"),
+        "AAOS 清单变体与占位发布边界须入 notes：{notes}"
+    );
 }
