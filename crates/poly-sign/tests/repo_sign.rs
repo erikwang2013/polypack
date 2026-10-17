@@ -178,4 +178,3 @@ fn wrong_passphrase_is_an_error_not_an_empty_signature() {
     drop(signer);
     assert!(common::sign_temp_leftovers().is_empty());
 }
-

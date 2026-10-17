@@ -403,7 +403,6 @@ fn verify_evidence(stdout: &str) -> String {
         .join("\n")
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;

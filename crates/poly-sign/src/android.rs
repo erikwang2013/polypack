@@ -378,7 +378,6 @@ pub(crate) fn tail(text: &str, limit: usize) -> String {
     trimmed.chars().skip(skip).collect()
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;

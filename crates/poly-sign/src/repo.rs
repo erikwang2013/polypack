@@ -134,7 +134,10 @@ impl RepoSigner for GpgSigner {
             args.push(user.into());
         }
         let output = run(&args)?;
-        non_empty(output, "gpg --export 未导出公钥（key_alias 与实际私钥不匹配？）")
+        non_empty(
+            output,
+            "gpg --export 未导出公钥（key_alias 与实际私钥不匹配？）",
+        )
     }
 }
 
@@ -172,16 +175,17 @@ fn import(home: &Path, key: &Path) -> Result<(), SignError> {
 
 /// 执行 gpg：缺席 → [`SignError::ToolMissing`]；非零 → [`SignError::ToolFailed`]。
 fn run(args: &[OsString]) -> Result<Output, SignError> {
-    let output = Command::new("gpg")
-        .args(args)
-        .output()
-        .map_err(|source| SignError::ToolMissing {
-            tool: "gpg".to_string(),
-            hint: format!(
-                "安装 GnuPG（Debian/Ubuntu: apt install gnupg；Fedora: dnf install gnupg2）\
+    let output =
+        Command::new("gpg")
+            .args(args)
+            .output()
+            .map_err(|source| SignError::ToolMissing {
+                tool: "gpg".to_string(),
+                hint: format!(
+                    "安装 GnuPG（Debian/Ubuntu: apt install gnupg；Fedora: dnf install gnupg2）\
                  （底层错误：{source}）"
-            ),
-        })?;
+                ),
+            })?;
     if !output.status.success() {
         let shown = args
             .iter()
