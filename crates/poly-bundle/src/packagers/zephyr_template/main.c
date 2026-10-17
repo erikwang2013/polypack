@@ -14,7 +14,6 @@
  */
 #include <zephyr/kernel.h>
 #include <stdint.h>
-#include <stdio.h>
 #include <string.h>
 
 #include "polypack_engine.h"
@@ -27,7 +26,7 @@ static const char TARGET_JSON[] =
 
 static void step(const char *name, int ok)
 {
-	printf("[POLYPACK-STEP %s] %s\n", name, ok ? "PASS" : "FAIL");
+	printk("[POLYPACK-STEP %s] %s\n", name, ok ? "PASS" : "FAIL");
 }
 
 #if defined(CONFIG_SEMIHOST)
@@ -63,7 +62,7 @@ int main(void)
 	static const char lockfile_hex[] =
 		"1111111111111111111111111111111111111111111111111111111111111111";
 
-	printf("poly_engine version=%s abi=%u\n",
+	printk("poly_engine version=%s abi=%u\n",
 	       poly_engine_version(), (unsigned)poly_engine_abi_version());
 	step("version", poly_engine_version() != NULL);
 	ok &= poly_engine_version() != NULL;
@@ -85,11 +84,11 @@ int main(void)
 	k_sleep(K_MSEC(100));
 
 	if (ok) {
-		printf("SMOKE PASS\n");
+		printk("SMOKE PASS\n");
 		k_sleep(K_MSEC(100));
 		smoke_exit(0);
 	}
-	printf("SMOKE FAIL\n");
+	printk("SMOKE FAIL\n");
 	k_sleep(K_MSEC(100));
 	smoke_exit(1);
 	return 1;
