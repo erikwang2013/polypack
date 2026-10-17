@@ -28,7 +28,9 @@ blake3 = "1"
 zip = { version = "9.0.3", default-features = false, features = ["deflate"] }
 
 [workspace.lints.rust]
-unsafe_code = "forbid"
+# deny（而非 forbid）：T-M6-02 的 C ABI 模块需要显式 #[allow(unsafe_code)] 处理 C 指针边界；
+# 其余代码不写 allow 即禁止 unsafe。
+unsafe_code = "deny"
 missing_docs = "warn"
 
 [workspace.lints.clippy]

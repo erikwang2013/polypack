@@ -8,11 +8,20 @@ license.workspace = true
 repository.workspace = true
 publish = false
 
+[features]
+default = ["std"]
+# T-M6-01：关闭 std 后本 crate 以 no_std + alloc 编译（引擎层唯一需要的宿主面是分配器）；
+# schemars 的 JsonSchema 派生与 std 专属辅助留在 std feature 后。
+std = ["dep:schemars", "serde/std", "thiserror/std"]
+
 [dependencies]
-serde.workspace = true
+serde = { workspace = true, default-features = false, features = ["alloc"] }
+thiserror = { workspace = true, default-features = false }
+schemars = { workspace = true, optional = true }
+
+[dev-dependencies]
+# 测试里做 TOML 往返（生产代码不依赖 toml，故只在 dev 面）。
 toml.workspace = true
-thiserror.workspace = true
-schemars.workspace = true
 
 [lints]
 workspace = true

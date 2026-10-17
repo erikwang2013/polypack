@@ -18,11 +18,12 @@ use poly_publish::{
 };
 
 /// 全部渠道（渠道 id 与 poly-targets `TargetSpec.publish` registry 名同口径）。
-const CHANNELS: [Channel; 4] = [
+const CHANNELS: [Channel; 5] = [
     Channel::Wechat,
     Channel::Alipay,
     Channel::Douyin,
     Channel::QuickApp,
+    Channel::Oem,
 ];
 
 /// 记录调用序的 Publisher 替身（零平台名词、零网络）。
@@ -211,7 +212,12 @@ fn channel_ids_are_unique_and_round_trip() {
             "渠道 id 可反解：{id}"
         );
     }
-    for channel in [Channel::Wechat, Channel::Alipay, Channel::Douyin] {
+    for channel in [
+        Channel::Wechat,
+        Channel::Alipay,
+        Channel::Douyin,
+        Channel::Oem,
+    ] {
         assert!(
             ids.contains(&channel.id()),
             "{channel} 客户端在内置清单内：{ids:?}"
@@ -224,6 +230,11 @@ fn channel_ids_are_unique_and_round_trip() {
         Channel::QuickApp.id(),
         "quickapp-union-store",
         "快应用联盟商店 id 与 poly-targets registry 同口径（T-M3-12 复用）"
+    );
+    assert_eq!(
+        Channel::Oem.id(),
+        "oem-channel",
+        "车厂 / OEM 渠道 id 与 poly-targets registry 同口径（T-M6-11）"
     );
     for channel in CHANNELS {
         assert_eq!(

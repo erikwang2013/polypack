@@ -1,8 +1,12 @@
 //! `JobSpec`：一次构建请求的完整描述（ROADMAP §4.2）。
+//!
+//! T-M6-01：本模块属于引擎层，`std` 与 `no_std + alloc` 两种构建共用同一份实现。
 
-use std::time::Duration;
+use alloc::string::String;
+use alloc::vec::Vec;
+use core::time::Duration;
 
-use poly_targets::{ExcludedTarget, TargetSpec};
+use poly_targets::{ExcludedTarget, SpecError, TargetSpec};
 use serde::{Deserialize, Serialize};
 
 /// 构建 profile。
@@ -40,9 +44,8 @@ pub struct CredentialRef {
 }
 
 /// 超预算策略（`[budget].policy`）。
-#[derive(
-    Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema,
-)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "std", derive(schemars::JsonSchema))]
 #[serde(rename_all = "lowercase")]
 pub enum SizePolicy {
     /// 超预算仅告警（默认：本地开发不拦）。
@@ -52,8 +55,8 @@ pub enum SizePolicy {
     Fail,
 }
 
-impl std::fmt::Display for SizePolicy {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl core::fmt::Display for SizePolicy {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.write_str(match self {
             SizePolicy::Warn => "warn",
             SizePolicy::Fail => "fail",
@@ -112,4 +115,64 @@ pub struct JobSpec {
     /// 产物预算。
     #[serde(default)]
     pub budget: Budget,
+}
+
+/// `JobSpec` 校验失败原因（引擎层，no_std 可用）。
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
+pub enum JobError {
+    /// 一个目标都没有。
+    #[error("JobSpec 未包含任何目标")]
+    EmptyTargets,
+    /// 同一目标 id 出现多次。
+    #[error("目标重复: {0}")]
+    DuplicateTarget(String),
+    /// 目标声明本身非法（id / tier / 宿主 / 打包字段）。
+    #[error("目标 {id} 声明非法: {reason}")]
+    InvalidTarget {
+        /// 目标 id。
+        id: String,
+        /// `TargetSpec::validate` 给出的原因。
+        reason: SpecError,
+    },
+    /// 目标引用的凭据档案在 `secrets` 中没有对应引用。
+    #[error("目标 {target} 引用凭据档案 {name}，但 JobSpec 缺少对应凭据引用")]
+    MissingCredential {
+        /// 目标 id。
+        target: String,
+        /// 凭据档案名。
+        name: String,
+    },
+}
+
+impl JobSpec {
+    /// 校验：目标非空、id 不重复、目标声明合法、凭据引用齐备。
+    ///
+    /// 顺序与 `plan` 阶段的快速失败语义一致（空目标 → 重复 → 非法声明 → 缺凭据），
+    /// 引擎层与宿主流水线共用同一实现（T-M6-01）。
+    pub fn validate(&self) -> Result<(), JobError> {
+        if self.targets.is_empty() {
+            return Err(JobError::EmptyTargets);
+        }
+        for (index, spec) in self.targets.iter().enumerate() {
+            if self.targets[..index]
+                .iter()
+                .any(|other| other.id == spec.id)
+            {
+                return Err(JobError::DuplicateTarget(spec.id.clone()));
+            }
+            spec.validate().map_err(|reason| JobError::InvalidTarget {
+                id: spec.id.clone(),
+                reason,
+            })?;
+            if let Some(name) = &spec.signing
+                && !self.secrets.iter().any(|secret| &secret.name == name)
+            {
+                return Err(JobError::MissingCredential {
+                    target: spec.id.clone(),
+                    name: name.clone(),
+                });
+            }
+        }
+        Ok(())
+    }
 }

@@ -48,6 +48,7 @@ pub mod archive;
 pub mod douyin;
 pub mod error;
 pub mod flow;
+pub mod oem;
 pub mod secret;
 pub mod transport;
 pub mod wechat;
@@ -62,6 +63,7 @@ pub use archive::{Archive, AuditState, PollEntry, Receipt, SCHEMA_VERSION, recei
 pub use douyin::DouyinPublisher;
 pub use error::{PublishError, codes};
 pub use flow::{PollPolicy, PublishOutcome, PublishRequest, publish};
+pub use oem::OemPublisher;
 pub use package::Package;
 pub use secret::{CredentialProvider, EnvProvider, MemoryProvider, Redactor};
 pub use transport::{HttpRequest, HttpResponse, Method, Transport, UreqTransport};
@@ -78,6 +80,8 @@ pub enum Channel {
     Douyin,
     /// 快应用联盟商店（T-M3-12 复用本骨架的提审脚本；客户端 impl 由 packagers 侧补）。
     QuickApp,
+    /// 车厂 / OEM 渠道（T-M6-11 占位：无统一公开 API，需 OEM 凭据引用）。
+    Oem,
 }
 
 impl Channel {
@@ -88,6 +92,7 @@ impl Channel {
             Self::Alipay => "alipay-open-platform",
             Self::Douyin => "douyin-open-platform",
             Self::QuickApp => "quickapp-union-store",
+            Self::Oem => "oem-channel",
         }
     }
 
@@ -98,6 +103,7 @@ impl Channel {
             "alipay-open-platform" => Some(Self::Alipay),
             "douyin-open-platform" => Some(Self::Douyin),
             "quickapp-union-store" => Some(Self::QuickApp),
+            "oem-channel" => Some(Self::Oem),
             _ => None,
         }
     }
@@ -181,11 +187,13 @@ pub trait Publisher: Send + Sync {
     fn poll(&self, job: &Job<'_>) -> Result<PollOutcome, PublishError>;
 }
 
-/// 内置客户端清单（传输层共享）。CLI 按 `channel()` 派发；T-M3-10 起含三平台。
+/// 内置客户端清单（传输层共享）。CLI 按 `channel()` 派发；T-M3-10 起含三平台，
+/// T-M6-11 起含车厂 / OEM 占位客户端（`oem-channel`，不触网）。
 pub fn builtin(transport: std::sync::Arc<dyn Transport>) -> Vec<Box<dyn Publisher>> {
     vec![
         Box::new(WechatPublisher::new(transport.clone())),
         Box::new(AlipayPublisher::new(transport.clone())),
         Box::new(DouyinPublisher::new(transport)),
+        Box::new(OemPublisher),
     ]
 }

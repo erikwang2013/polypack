@@ -21,6 +21,8 @@ pub mod codes {
     pub const E_PUB_0004: &str = "poly::E_PUB_0004";
     /// 轮询超出预算仍未到终态（状态流水已落回执，R4：不承诺全自动过审）。
     pub const E_PUB_0005: &str = "poly::E_PUB_0005";
+    /// 车厂 / OEM 渠道占位：需 OEM 凭据引用（无统一公开 API，不提交）。
+    pub const E_PUB_0006: &str = "poly::E_PUB_0006";
 }
 
 /// 发布失败。
@@ -103,6 +105,14 @@ pub enum PublishError {
         /// 最后一次轮询的规范化状态。
         last: String,
     },
+    /// 车厂 / OEM 渠道占位：需 OEM 凭据引用（无统一公开 API，占位客户端不提交）。
+    #[error("OEM 渠道 {channel} 需 OEM 凭据引用（{credential}）：无统一公开 API，占位客户端不提交")]
+    OemCredentialsRequired {
+        /// 渠道 id（`oem-channel`）。
+        channel: &'static str,
+        /// 凭据档案名（= `CredentialRef.name`；值不经此处）。
+        credential: String,
+    },
 }
 
 impl PublishError {
@@ -116,6 +126,7 @@ impl PublishError {
             Self::Platform { .. } => codes::E_PUB_0003,
             Self::Input { .. } | Self::Archive { .. } | Self::Materials { .. } => codes::E_PUB_0004,
             Self::PollTimeout { .. } => codes::E_PUB_0005,
+            Self::OemCredentialsRequired { .. } => codes::E_PUB_0006,
         }
     }
 
@@ -153,6 +164,12 @@ impl PublishError {
             ),
             Self::PollTimeout { .. } => Some(
                 "R4：不承诺全自动过审；到平台后台查看审核结果，重跑同键命令只续轮询、不重复提审"
+                    .to_string(),
+            ),
+            Self::OemCredentialsRequired { .. } => Some(
+                "车厂 / OEM 渠道无统一公开 API：按车厂接入其发布工具 / 渠道，凭据以 \
+                 CredentialRef 引用（值经后端链现取，绝不落库）；占位客户端只做接线，\
+                 不伪造提交回执"
                     .to_string(),
             ),
         }

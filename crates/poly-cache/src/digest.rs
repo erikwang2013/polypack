@@ -1,8 +1,16 @@
 //! blake3 摘要、确定性目录树摘要与缓存键（ROADMAP §5.2）。
 
-use std::fmt;
+use core::fmt;
+
+#[cfg(feature = "std")]
 use std::fs;
+#[cfg(feature = "std")]
 use std::path::{Path, PathBuf};
+
+use alloc::borrow::ToOwned;
+use alloc::string::{String, ToString};
+#[cfg(feature = "std")]
+use alloc::vec::Vec;
 
 use serde::{Deserialize, Serialize};
 
@@ -11,6 +19,7 @@ use crate::error::CacheError;
 /// 缓存键域前缀 + 键格式版本：改动键的构造方式时必须递增。
 const KEY_DOMAIN: &str = "polypack-cache/v1";
 /// 目录树摘要域前缀：与字节摘要隔离，避免不同用途的摘要互相碰撞。
+#[cfg(feature = "std")]
 const TREE_DOMAIN: &str = "polypack-tree/v1";
 
 /// blake3 摘要（小写十六进制，64 字符）。
@@ -29,6 +38,7 @@ impl Digest {
     ///   含 `/` 的条目按相对路径前缀排除（如 `target/debug`）；
     /// - 空目录不参与摘要；符号链接按目标路径文本参与、不跟随（避免目录环）；
     ///   fifo / 设备 / socket 等其他类型不参与。
+    #[cfg(feature = "std")]
     pub fn of_tree(root: &Path, exclude: &[&str]) -> Result<Self, CacheError> {
         let mut nodes = Vec::new();
         collect_nodes(root, b"", exclude, &mut nodes)?;
@@ -133,6 +143,7 @@ fn hash_field(hasher: &mut blake3::Hasher, bytes: &[u8]) {
 }
 
 /// 目录树中的一个节点（普通文件或符号链接），`rel` 为 `/` 分隔的相对路径字节。
+#[cfg(feature = "std")]
 struct Node {
     rel: Vec<u8>,
     path: PathBuf,
@@ -140,12 +151,14 @@ struct Node {
 }
 
 /// 节点类型。
+#[cfg(feature = "std")]
 enum NodeKind {
     File,
     Link,
 }
 
 /// 递归收集节点；`prefix` 是已带尾部 `/` 的相对路径前缀（根目录为空）。
+#[cfg(feature = "std")]
 fn collect_nodes(
     dir: &Path,
     prefix: &[u8],
@@ -184,6 +197,7 @@ fn collect_nodes(
 }
 
 /// 排除匹配规则见 `Digest::of_tree` 文档。
+#[cfg(feature = "std")]
 fn is_excluded(rel: &[u8], exclude: &[&str]) -> bool {
     exclude.iter().any(|pattern| {
         let bytes = pattern.trim_matches('/').as_bytes();

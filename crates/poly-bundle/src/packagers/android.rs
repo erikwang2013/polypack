@@ -8,6 +8,10 @@
 //! 的 Leanback 三行（`android.software.leanback` / `android.hardware.touchscreen` / banner，
 //! 见 `generated_manifest`）与产物落点（未签名 APK）——不另起第二套 Android 打包。
 //!
+//! AAOS 变体（T-M6-11，`android-automotive`，format `apk`）同链复用：清单只加
+//! `android.hardware.type.automotive` 一行，产物落点同 TV（未签名 APK）——车厂渠道的占位
+//! 只发生在发布侧（poly-publish `oem-channel`），打包链保持与 Android 完全同源。
+//!
 //! 签名不在本任务范围内（T-M2-09 接入），产物一律是**未签名**件；bundletool 缺席时如实降级
 //! （模块 zip + 未签名 APK，notes 写明未做 bundletool 步骤），绝不伪造 bundletool 结果。
 
@@ -32,7 +36,13 @@ pub struct AndroidAab;
 /// 产物落点（未签名 APK；AAB / APK 集作为链中间产物照常落盘并进 notes）。字段即目标 id。
 pub struct AndroidTv(pub &'static str);
 
-/// 打包口径：AAB 目标与 TV 变体共用全部内部步骤，差异集中在此。
+/// AAOS 变体打包器（`android-automotive`；format `apk`，builder `android-aapt2`）。
+///
+/// 复用 [`AndroidAab`] 的整条内部链（T-M6-11）：差异只有生成清单的
+/// `android.hardware.type.automotive` 行与产物落点（未签名 APK，同 TV）。
+pub struct AndroidAutomotive;
+
+/// 打包口径：AAB 目标与 TV / AAOS 变体共用全部内部步骤，差异集中在此。
 #[derive(Clone, Copy)]
 struct Flavor {
     /// 事件 / 产物 / 错误归属（`Packager::id()`）。
@@ -41,6 +51,8 @@ struct Flavor {
     format: &'static str,
     /// TV 清单（Leanback 三行 + TV banner 引用）。
     tv: bool,
+    /// AAOS 清单（`android.hardware.type.automotive`）。
+    automotive: bool,
 }
 
 /// AAB 口径。
@@ -48,6 +60,7 @@ const AAB_FLAVOR: Flavor = Flavor {
     id: ANDROID,
     format: AAB,
     tv: false,
+    automotive: false,
 };
 
 /// TV 口径（两目标的差异只有 id）。
@@ -56,10 +69,20 @@ const fn tv_flavor(id: &'static str) -> Flavor {
         id,
         format: APK,
         tv: true,
+        automotive: false,
     }
 }
 
+/// AAOS 口径（T-M6-11）。
+const AUTOMOTIVE_FLAVOR: Flavor = Flavor {
+    id: ANDROID_AUTOMOTIVE,
+    format: APK,
+    tv: false,
+    automotive: true,
+};
+
 const ANDROID: &str = "android";
+const ANDROID_AUTOMOTIVE: &str = "android-automotive";
 const AAB: &str = "aab";
 const APK: &str = "apk";
 /// AAB 模块 zip 里清单的落点（bundletool 契约：根级 `manifest/AndroidManifest.xml`）。
@@ -111,6 +134,24 @@ impl Packager for AndroidTv {
 
     fn package(&self, inputs: &BundleInputs, spec: &TargetSpec) -> Result<Artifact, BundleError> {
         AndroidAab::chain_package(inputs, spec, tv_flavor(self.0))
+    }
+}
+
+impl Packager for AndroidAutomotive {
+    fn id(&self) -> &'static str {
+        ANDROID_AUTOMOTIVE
+    }
+
+    fn format(&self) -> &'static str {
+        APK
+    }
+
+    fn plan(&self, inputs: &BundleInputs, spec: &TargetSpec) -> Result<BundlePlan, BundleError> {
+        AndroidAab::chain_plan(inputs, spec, AUTOMOTIVE_FLAVOR)
+    }
+
+    fn package(&self, inputs: &BundleInputs, spec: &TargetSpec) -> Result<Artifact, BundleError> {
+        AndroidAab::chain_package(inputs, spec, AUTOMOTIVE_FLAVOR)
     }
 }
 
@@ -189,6 +230,14 @@ impl AndroidAab {
         //    却可能悄悄丢资源（如 `warn: removing resource …:string/x without required default
         //    value`）——如实记进产物说明，不靠「不看就没错」。
         let mut notes = Vec::new();
+        if flavor.automotive {
+            notes.push(match android.manifest.is_some() {
+                true => {
+                    "AAOS 清单：使用输入清单，未注入 android.hardware.type.automotive".to_string()
+                }
+                false => "AAOS 清单：android.hardware.type.automotive required=true".to_string(),
+            });
+        }
         if flavor.tv {
             match (android.manifest.is_some(), has_tv_banner(&android)) {
                 (true, _) => notes.push(
@@ -278,8 +327,8 @@ impl AndroidAab {
                 stage.module.display()
             )),
         }
-        if flavor.tv {
-            // TV 产物 = 未签名 APK（签名阶段按 `<kebab>-<version>-unsigned.apk` 定位）；
+        if flavor.format == APK {
+            // TV / AAOS 产物 = 未签名 APK（签名阶段按 `<kebab>-<version>-unsigned.apk` 定位）；
             // AAB / APK 集留在盘上作链证据，notes 已逐条列出。
             artifact_path = stage.apk.clone();
         }
@@ -470,6 +519,8 @@ fn with_source_date(mut command: Command) -> Command {
 /// TV 变体（`flavor.tv`）另加 Leanback 三行（T-M4-04 / ROADMAP §3.4）：
 /// `android.software.leanback` required=true、`android.hardware.touchscreen` required=false、
 /// `android:banner`（仅在输入 res 确有 `drawable*/tv_banner.*` 时引用——缺则省去，不伪造资源）。
+/// AAOS 变体（`flavor.automotive`）只加 `android.hardware.type.automotive` required=true
+/// （T-M6-11 / ROADMAP §3.7）。
 fn generated_manifest(
     product: &ProductInfo,
     package: &str,
@@ -506,6 +557,11 @@ fn generated_manifest(
         );
         out.push_str(
             "  <uses-feature android:name=\"android.hardware.touchscreen\" android:required=\"false\" />\n",
+        );
+    }
+    if flavor.automotive {
+        out.push_str(
+            "  <uses-feature android:name=\"android.hardware.type.automotive\" android:required=\"true\" />\n",
         );
     }
     out.push_str(&format!(
@@ -1103,5 +1159,41 @@ mod tests {
         };
         assert!(!has_tv_banner(&no_banner));
         let _ = std::fs::remove_dir_all(&base);
+    }
+
+    #[test]
+    fn automotive_manifest_carries_the_automotive_feature_only() {
+        // 结构断言不依赖 SDK：AAOS 清单变体由同一 `generated_manifest` 生成（T-M6-11）。
+        let stage = tv_stage();
+        let product = tv_product();
+        let package = android_package(&product.identifier).expect("可映射");
+        let manifest = generated_manifest(
+            &product,
+            &package,
+            &AndroidInputs::default(),
+            &stage,
+            false,
+            AUTOMOTIVE_FLAVOR,
+        );
+        assert!(
+            manifest.contains(
+                "<uses-feature android:name=\"android.hardware.type.automotive\" android:required=\"true\" />"
+            ),
+            "{manifest}"
+        );
+        assert!(
+            !manifest.contains("leanback") && !manifest.contains("android:banner"),
+            "AAOS 不叠加 TV 清单行：{manifest}"
+        );
+        // AAB / TV 口径不受影响。
+        let aab = generated_manifest(
+            &product,
+            &package,
+            &AndroidInputs::default(),
+            &stage,
+            false,
+            AAB_FLAVOR,
+        );
+        assert!(!aab.contains("automotive"), "{aab}");
     }
 }

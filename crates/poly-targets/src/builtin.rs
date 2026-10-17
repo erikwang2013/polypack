@@ -14,6 +14,10 @@
 //! signify / portcheck；Linux 宿主可发起的交叉面，真构建归 OpenBSD VM / T-M5-09）与
 //! ChromeOS 双轨（T-M5-10：Crostini deb + PWA 两目标，分别复用 Linux deb / Web 链）。
 
+use alloc::string::ToString;
+use alloc::vec;
+use alloc::vec::Vec;
+
 use crate::spec::{Bridge, Host, PackageSpec, Runtime, TargetSpec};
 
 /// 全部内建目标（L1 七 + L2 小程序族四 + L3 电视族八 + L5 发行版三 / OpenBSD / ChromeOS 双轨）。
@@ -621,6 +625,35 @@ pub fn builtin() -> Vec<TargetSpec> {
                  DragonFly 等同源）；Linux 交叉发起只生成骨架并做结构自检，bmake package / \
                  pkg_add 真跑归 NetBSD VM（T-M5-09）；仓库签名走 pkg_admin gpg-sign-package\
                  （逐包 GPG，仓库为扁平 .tgz + pkg_summary.gz，客户端 GPG_KEYRING_VERIFY）"
+                    .to_string(),
+            ),
+        },
+        // ---- L6 车机（T-M6-11，ROADMAP §3.7）：Android Automotive ----
+        // 复用 Android 链（format = `apk`、builder = `android-aapt2`；AAPT2 + bundletool +
+        // apksigner 不另起第二套实现），差异只在清单变体（`android.hardware.type.automotive`）
+        // 与发布渠道。车厂 / OEM 渠道无统一公开 API：`oem-channel` 是占位 Publisher，返回
+        // 「需 OEM 凭据引用」的明确错误，绝不伪造提交。
+        TargetSpec {
+            id: "android-automotive".to_string(),
+            tier: 6,
+            hosts: vec![Host::Win, Host::Linux, Host::Macos],
+            runtime: Runtime::Native,
+            bridge: Bridge::Uniffi,
+            ui: vec!["react-native".to_string()],
+            package: PackageSpec {
+                format: "apk".to_string(),
+                builder: "android-aapt2".to_string(),
+            },
+            signing: Some("android-keystore".to_string()),
+            verify: vec![
+                "apksigner-verify".to_string(),
+                "bundletool-validate".to_string(),
+            ],
+            publish: vec!["oem-channel".to_string()],
+            experimental: false,
+            notes: Some(
+                "AAOS 清单（android.hardware.type.automotive）；车厂渠道，无统一公开 API——\
+                 发布需 OEM 凭据引用（占位 Publisher，不伪造提交）"
                     .to_string(),
             ),
         },
