@@ -11,6 +11,7 @@
 //! - [`tizen`]：Tizen TV `.wgt`（T-M4-08，config.xml + UI 载荷 + 结构检查）
 //! - [`webos`]：webOS TV `.ipk`（T-M4-09，Debian 形态 ar 归档 + 结构检查）
 //! - [`webtv`]：VIDAA / Vizio SmartCast 应用包（T-M4-10，两目标 + 沙箱自检）
+//! - [`openbsd`]：OpenBSD ports 骨架（T-M5-07，Makefile / PLIST / DESCR + signify / portcheck）
 
 pub mod android;
 pub mod dmg;
@@ -18,6 +19,7 @@ pub mod harmony;
 pub mod ios;
 pub mod linux;
 pub mod miniapp;
+pub mod openbsd;
 pub mod tizen;
 pub mod web;
 pub mod webos;

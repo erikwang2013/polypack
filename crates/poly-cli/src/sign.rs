@@ -134,6 +134,12 @@ fn signing_owner(format: &str) -> Option<&'static str> {
             "Tizen 作者证书签名（三星签名工具）归平台侧（本机无 tizen CLI；凭据引用 tizen-author \
              已在 TargetSpec.signing 声明）",
         ),
+        // T-M5-07：signify 包签名在 OpenBSD 打包腿内（pkg_sign，钥经
+        // POLYPACK_OPENBSD_SIGNIFY_KEY）；真跑需 OpenBSD VM（T-M5-09）。
+        "ports" => Some(
+            "OpenBSD signify 包签名归打包腿（pkg_sign；POLYPACK_OPENBSD_SIGNIFY_KEY），\
+             真跑需 OpenBSD VM（T-M5-09）",
+        ),
         _ => None,
     }
 }

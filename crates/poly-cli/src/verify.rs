@@ -97,7 +97,7 @@ pub fn run(args: &Args, json: bool) -> Result<i32, Diagnostic> {
             .with_hint(
                 "校验器按 TargetSpec.verify 声明注册：ios 的 codesign-verify / spctl、harmonyos 的 \
                  hap-sign-verify / hap-structure-check、quickapp 的 hap-toolkit-lint、web 系 TV 的 \
-                 wgt-lint / ares-package / sandbox-selfcheck 已接入；\
+                 wgt-lint / ares-package / sandbox-selfcheck、OpenBSD 的 portcheck 已接入；\
                  其余 id 的归属见告警，可先用 poly verify --reproducible 做可复现比对",
             ));
         }
@@ -177,6 +177,9 @@ enum Verifier {
     /// VIDAA / Vizio 应用包的沙箱自检（[`poly_bundle::check_web_app_structure`] 三条规则：
     /// 入口文件 / 清单字段 / 体积，T-M4-10；体积上限走 `[budget].size` 同一门禁）。
     SandboxSelfcheck,
+    /// OpenBSD ports 骨架校验（[`poly_bundle::check_ports_structure`] 的内建结构断言 +
+    /// 在场时的官方 `portcheck -N`，T-M5-07）。
+    Portcheck,
 }
 
 /// 校验器 id → 已接入实现（`None` = 未接入，归属查 [`verifier_owner`]）。
@@ -189,6 +192,7 @@ fn verifier_for(id: &str) -> Option<Verifier> {
         "wgt-lint" => Some(Verifier::WgtLint),
         "ares-package" => Some(Verifier::AresPackage),
         "sandbox-selfcheck" => Some(Verifier::SandboxSelfcheck),
+        "portcheck" => Some(Verifier::Portcheck),
         _ => None,
     }
 }
@@ -302,6 +306,7 @@ fn verify_target(
     let mut wgt_lint_ids: Vec<String> = Vec::new();
     let mut ares_ids: Vec<String> = Vec::new();
     let mut sandbox_ids: Vec<String> = Vec::new();
+    let mut portcheck_ids: Vec<String> = Vec::new();
     for id in &spec.verify {
         match verifier_for(id) {
             Some(Verifier::IosCodesign) => ios_ids.push(id.clone()),
@@ -311,6 +316,7 @@ fn verify_target(
             Some(Verifier::WgtLint) => wgt_lint_ids.push(id.clone()),
             Some(Verifier::AresPackage) => ares_ids.push(id.clone()),
             Some(Verifier::SandboxSelfcheck) => sandbox_ids.push(id.clone()),
+            Some(Verifier::Portcheck) => portcheck_ids.push(id.clone()),
             None => unserved.push(match verifier_owner(id) {
                 Some(owner) => format!("{id}（{owner}）"),
                 // 注册表有 id 但没人认领：如实点名到具体 id，测试保证这里在 M2 的注册表上是死路
@@ -350,6 +356,9 @@ fn verify_target(
     }
     if !sandbox_ids.is_empty() {
         checked |= verify_sandbox_selfcheck(project, spec, &sandbox_ids, events)?;
+    }
+    if !portcheck_ids.is_empty() {
+        checked |= verify_ports(project, spec, &portcheck_ids, events)?;
     }
     Ok(checked)
 }
@@ -1129,6 +1138,107 @@ fn verify_sandbox_selfcheck(
         });
     }
     Ok(true)
+}
+
+/// OpenBSD ports 校验腿（`portcheck`，T-M5-07）：先跑与打包器**同一份**结构检查
+/// （[`poly_bundle::check_ports_structure`]：Makefile 必填项 / DESCR / PLIST 与载荷双向一致，
+/// 缺陷硬失败），官方 `portcheck -N` 在场时对端口目录再真跑一遍（非零退出 = 端口缺陷硬失败）；
+/// Linux 宿主通常无 portcheck（OpenBSD base 工具），缺席按环境槽告警跳过并注记——内建结构
+/// 断言是本机的真跑面，VM 真跑归 T-M5-09。
+fn verify_ports(
+    project: &Project,
+    spec: &TargetSpec,
+    ids: &[String],
+    events: &mut dyn EventSink,
+) -> Result<bool, StageError> {
+    let staged = project::packages_root(&project.root).join(&spec.id);
+    let Some((port, count)) = staged_ports_dir(&staged) else {
+        warning(
+            events,
+            &format!(
+                "目标 {} 未校验：{} 下没有 ports/<DISTNAME>/（先跑 poly build 把产物流到打包暂存目录）",
+                spec.id,
+                staged.display()
+            ),
+        );
+        return Ok(false);
+    };
+    if count > 1 {
+        warning(
+            events,
+            &format!(
+                "目标 {} 的产物有 {count} 个 ports 目录（取 {}）",
+                spec.id,
+                port.display()
+            ),
+        );
+    }
+    let structure = match poly_bundle::check_ports_structure(&port) {
+        Ok(structure) => structure,
+        Err(err) => return Err(bundle_diagnostic(spec, &err).into()),
+    };
+    warning(
+        events,
+        &format!(
+            "目标 {} 的 ports 结构检查：{} 个 PLIST 条目，DISTNAME={}，MAINTAINER={}",
+            spec.id,
+            structure.entries.len(),
+            structure.distname,
+            structure.maintainer
+        ),
+    );
+    if poly_bundle::exec::tool_present("portcheck") {
+        let command = poly_bundle::Command::new("portcheck", ["-N".to_string()]).in_dir(&port);
+        match poly_bundle::exec::run(&command) {
+            Ok(_) => warning(
+                events,
+                &format!("目标 {} 的 portcheck 真跑通过：{}", spec.id, command.line()),
+            ),
+            Err(err @ BundleError::ToolMissing { .. }) => {
+                warning(
+                    events,
+                    &format!("目标 {} 的 portcheck 未跑：{err}", spec.id),
+                );
+            }
+            Err(err) => {
+                return Err(webtv_defect(
+                    spec,
+                    format!("portcheck 判决不通过：{err}"),
+                    "修 Makefile / pkg/PLIST / pkg/DESCR 后重跑 poly build --target openbsd",
+                )
+                .into());
+            }
+        }
+    } else {
+        warning(
+            events,
+            &format!(
+                "目标 {} 的 portcheck 未跑：PATH 无 portcheck（内建结构断言已过；OpenBSD VM \
+                 真跑归 T-M5-09）",
+                spec.id
+            ),
+        );
+    }
+    for id in ids {
+        events.emit(&BuildEvent::Verified {
+            checker: id.clone(),
+            ok: true,
+        });
+    }
+    Ok(true)
+}
+
+/// 暂存目录下的 ports 骨架（`<staged>/ports/<DISTNAME>/`；多个取字典序最后一份）。
+fn staged_ports_dir(staged: &Path) -> Option<(PathBuf, usize)> {
+    let mut dirs: Vec<PathBuf> = std::fs::read_dir(staged.join("ports"))
+        .ok()?
+        .flatten()
+        .map(|entry| entry.path())
+        .filter(|path| path.is_dir() && path.join("Makefile").is_file())
+        .collect();
+    dirs.sort();
+    let count = dirs.len();
+    dirs.pop().map(|path| (path, count))
 }
 
 /// 对单个目标做二跑比对；返回是否真的比对了（`false` = 告警跳过并已说明原因）。
@@ -2142,6 +2252,60 @@ mod tests {
                 .unwrap_or_else(|| panic!("内建注册表缺少 {id}"));
             assert_eq!(spec.tier, 3, "{id} 应为 L3（tier 3）");
         }
+    }
+
+    /// T-M5-07：portcheck 已接入；合成 ports 骨架过结构检查并发出 `Verified`，
+    /// PLIST 与载荷漂移的坏件硬失败（portcheck 缺席时内建结构断言即真跑面）。
+    #[test]
+    fn portcheck_leg_verifies_synthetic_ports_and_fails_hard_on_defects() {
+        assert_eq!(verifier_for("portcheck"), Some(Verifier::Portcheck));
+        let (root, project) = fixture("ports-leg");
+        let spec = Registry::builtin()
+            .get("openbsd")
+            .expect("内建 openbsd 目标")
+            .clone();
+        let port = root.join(".polypack/packages/openbsd/ports/fixture-app-0.0.1");
+        std::fs::create_dir_all(port.join("pkg")).expect("建 ports 目录");
+        std::fs::write(
+            port.join("Makefile"),
+            "COMMENT =\tFixture app\nDISTNAME =\tfixture-app-0.0.1\nCATEGORIES =\tx11\n\
+             HOMEPAGE =\thttps://example.com\nMAINTAINER =\tFixture <ports@example.com>\n\
+             PERMIT_PACKAGE =\tYes\n\nNO_BUILD =\tYes\nNO_TEST =\tYes\n\ndo-install:\n\
+             \tcp -R ${FILESDIR}/payload/. ${PREFIX}/\n",
+        )
+        .expect("写 Makefile");
+        std::fs::write(port.join("pkg/DESCR"), "Fixture app.\n").expect("写 DESCR");
+        std::fs::write(
+            port.join("pkg/PLIST"),
+            "@bin bin/fixture-app\nshare/applications/fixture-app.desktop\n",
+        )
+        .expect("写 PLIST");
+        std::fs::create_dir_all(port.join("files/payload/bin")).expect("建载荷目录");
+        std::fs::create_dir_all(port.join("files/payload/share/applications")).expect("建载荷目录");
+        std::fs::write(port.join("files/payload/bin/fixture-app"), "#!/bin/sh\n").expect("写载荷");
+        std::fs::write(
+            port.join("files/payload/share/applications/fixture-app.desktop"),
+            "[Desktop Entry]\n",
+        )
+        .expect("写 desktop");
+
+        let mut sink = poly_core::events::HumanSink {
+            out: Vec::<u8>::new(),
+        };
+        assert!(
+            verify_target(&project, &spec, &mut sink).expect("ports 结构检查应通过"),
+            "合成 ports 骨架应过检"
+        );
+        let text = String::from_utf8_lossy(&sink.out).into_owned();
+        assert!(text.contains("ports 结构检查"), "{text}");
+        assert!(text.contains("fixture-app-0.0.1"), "{text}");
+        assert!(text.contains("portcheck"), "{text}");
+
+        // 载荷缺 PLIST 声明的文件 → 产物缺陷硬失败，不降级成跳过
+        std::fs::remove_file(port.join("files/payload/bin/fixture-app")).expect("移除载荷");
+        let err = verify_target(&project, &spec, &mut sink).expect_err("PLIST 漂移必须硬失败");
+        assert_eq!(err.diagnostic.code.to_string(), "poly::E_BND_0006");
+        let _ = std::fs::remove_dir_all(&root);
     }
 
     /// Tizen 腿：真造 `.wgt` → 结构检查过检并发出 `Verified`；缺清单的坏件硬失败（不降级）。

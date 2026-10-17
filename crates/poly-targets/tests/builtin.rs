@@ -98,10 +98,10 @@ fn builtin_has_seven_valid_targets() {
     );
     assert_eq!(
         registry.all().count(),
-        19,
-        "M4 起内建 = L1 七 + L2 小程序族四（wechat / alipay / douyin / quickapp）+ \
+        20,
+        "M5 起内建 = L1 七 + L2 小程序族四（wechat / alipay / douyin / quickapp）+ \
          L3 电视族八（tvos + android-tv / fire-tv + tizen-tv / webos-tv / vidaa-tv / smartcast-tv \
-         + roku※实验，T-M4-04/07/08/09/10/12）"
+         + roku※实验，T-M4-04/07/08/09/10/12）+ L5 OpenBSD（T-M5-07）"
     );
     for spec in registry.all() {
         spec.validate()
@@ -163,6 +163,17 @@ fn builtin_ids_are_the_l1_set() {
     assert_eq!(
         l3, expected_l3,
         "L3 恰为电视族八（tvos + android-tv / fire-tv + web 系四 + roku※实验）"
+    );
+
+    let l5: BTreeSet<String> = registry
+        .all()
+        .filter(|spec| spec.tier == 5)
+        .map(|spec| spec.id.clone())
+        .collect();
+    assert_eq!(
+        l5,
+        BTreeSet::from(["openbsd".to_string()]),
+        "L5 从 OpenBSD ports 目标起步（T-M5-07）"
     );
 }
 
@@ -253,7 +264,15 @@ fn linux_host_resolves_four_l1_targets_from_all() {
         ]),
         "电视两目标 + web 系 TV 四目标 + roku（三宿主声明）应全部入选"
     );
-    assert_eq!(selected.len(), l1.len() + l2.len() + l3.len());
+    // L5：openbsd 声明 Linux 宿主（交叉发起面）→ 同样入选
+    let l5: BTreeSet<&str> = resolved
+        .selected
+        .iter()
+        .filter(|s| s.tier == 5)
+        .map(|s| s.id.as_str())
+        .collect();
+    assert_eq!(l5, BTreeSet::from(["openbsd"]), "L5 openbsd 应入选");
+    assert_eq!(selected.len(), l1.len() + l2.len() + l3.len() + l5.len());
 
     let excluded: BTreeSet<&str> = resolved.excluded.iter().map(|e| e.id.as_str()).collect();
     assert_eq!(

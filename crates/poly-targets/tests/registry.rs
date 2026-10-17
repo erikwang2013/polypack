@@ -51,6 +51,7 @@ fn all_on_linux_excludes_windows_only_and_l7_with_reasons() {
             "vidaa-tv",
             "smartcast-tv",
             "roku",
+            "openbsd",
         ])
     );
 
@@ -145,14 +146,15 @@ fn allow_unreachable_keeps_all_targets() {
     let selected = selected_ids(&registry_with_l7(), &[Host::Linux], true);
     assert_eq!(
         selected.len(),
-        20, // L1 七 + L2 四 + L3 电视族八 + L7 一
+        21, // L1 七 + L2 四 + L3 电视族八 + L5 一 + L7 一
         "allow_unreachable 下 All 应全选: {selected:?}"
     );
 
     // 未开 allow_unreachable 时排除清单非空，两态互为对照
     assert_eq!(
         selected_ids(&registry_with_l7(), &[Host::Linux], false).len(),
-        15 // L1 四（Linux 可达）+ L2 四 + L3 电视族七（两 + web 系四 + roku）——tvos 为 macOS 专宿主
+        16 // L1 四（Linux 可达）+ L2 四 + L3 电视族七（两 + web 系四 + roku）+ L5 openbsd
+           // ——tvos 为 macOS 专宿主
     );
 }
 
