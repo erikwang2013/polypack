@@ -10,6 +10,31 @@ use poly_targets::Host;
 
 use crate::error::BundleError;
 
+/// 预置引擎静态库（测试 / CI 缓存）：`arch` 由目标打包器定义（VxWorks `vxworks`，
+/// Zephyr `x86` / `arm`）。
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct EmbeddedLib {
+    /// 架构键。
+    pub arch: String,
+    /// `.a` 路径。
+    pub path: PathBuf,
+}
+
+/// 嵌入式引擎打包输入（T-M6-05 / T-M6-06）。
+///
+/// 引擎静态库由应用侧 wrapper crate 产出（T-M6-02 契约：poly-core 只提供 rlib，
+/// 应用提供 global_allocator / panic_handler）；[`Self::prebuilt`] 非空时打包器不再起 cargo，
+/// 供测试与 CI 缓存复用。
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct EmbeddedInputs {
+    /// poly-core crate 源目录（`cargo metadata` 之外的显式来源；预置库时可缺省）。
+    pub core_crate: Option<PathBuf>,
+    /// T-M6-02 生成器产出的唯一 C 头文件（绝不手写第二份）。
+    pub header: PathBuf,
+    /// 预置引擎静态库。
+    pub prebuilt: Vec<EmbeddedLib>,
+}
+
 /// 产品元数据（来自 `polypack.toml`，由 `poly init` 模板填充）。
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ProductInfo {
@@ -285,6 +310,8 @@ pub struct BundleInputs {
     pub harmony: Option<HarmonyInputs>,
     /// Roku 打包输入（T-M4-15；`None` → 缺适配器，目标按环境性缺失跳过）。
     pub roku: Option<RokuInputs>,
+    /// 嵌入式引擎输入（T-M6-05 / T-M6-06；`None` → 静态库 / 镜像 / west 打包器报缺输入）。
+    pub embedded: Option<EmbeddedInputs>,
     /// 输出目录。
     pub out_dir: PathBuf,
 }
@@ -305,6 +332,7 @@ impl BundleInputs {
             miniapp_bridge: None,
             harmony: None,
             roku: None,
+            embedded: None,
             out_dir: out_dir.into(),
         }
     }

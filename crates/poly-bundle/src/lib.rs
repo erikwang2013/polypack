@@ -29,8 +29,8 @@ pub mod zipwrite;
 pub use error::{BundleError, codes};
 pub use icons::{IconSet, derive as derive_icons};
 pub use inputs::{
-    AndroidInputs, BareProduct, BundleInputs, HarmonyInputs, Icon, IconKind, IosInputs, NativeLib,
-    ProductInfo, RokuInputs,
+    AndroidInputs, BareProduct, BundleInputs, EmbeddedInputs, EmbeddedLib, HarmonyInputs, Icon,
+    IconKind, IosInputs, NativeLib, ProductInfo, RokuInputs,
 };
 pub use packager::{
     Artifact, ArtifactKind, BundlePlan, Command, Packager, ScriptFile, Skipped, builtin, find,
@@ -47,6 +47,8 @@ pub use packagers::miniapp::quickapp_hap_root;
 pub use packagers::openbsd::{PortsStructure, check_ports_structure};
 pub use packagers::pkgsrc::{PkgsrcStructure, check_pkgsrc_structure};
 pub use packagers::roku::{RokuStructure, check_roku_structure};
+pub use packagers::vxworks::{VxWorksStructure, check_vxworks_structure};
+pub use packagers::zephyr::{ZephyrStructure, check_zephyr_structure};
 pub use packagers::tizen::{WgtStructure, check_wgt_structure, wgt_lint_tool};
 pub use packagers::webos::{IpkStructure, ares_package_tool, check_ipk_structure};
 pub use packagers::webtv::{

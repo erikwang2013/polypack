@@ -98,12 +98,13 @@ fn builtin_has_seven_valid_targets() {
     );
     assert_eq!(
         registry.all().count(),
-        28,
+        30,
         "M6 起内建 = L1 七 + L2 小程序族四（wechat / alipay / douyin / quickapp）+ \
          L3 电视族八（tvos + android-tv / fire-tv + tizen-tv / webos-tv / vidaa-tv / smartcast-tv \
          + roku※实验，T-M4-04/07/08/09/10/12）+ L5 OpenBSD / FreeBSD / NetBSD（T-M5-07/06/08）+\
          发行版三（ubuntu / fedora / mint，T-M5-01）+ ChromeOS 双轨（chromeos / chromeos-pwa，\
-         T-M5-10）+ L6 Android Automotive（android-automotive，T-M6-11）"
+         T-M5-10）+ L6 Android Automotive（android-automotive，T-M6-11）+\
+         VxWorks / Zephyr（T-M6-05/06）"
     );
     for spec in registry.all() {
         spec.validate()
@@ -298,7 +299,7 @@ fn linux_host_resolves_four_l1_targets_from_all() {
         ]),
         "L5 OpenBSD / FreeBSD / NetBSD + 发行版三 + ChromeOS 双轨应全部入选"
     );
-    // L6 车机：android-automotive 声明三宿主（复用 Android 工具链）→ Linux 宿主下入选
+    // L6：android-automotive（三宿主）+ VxWorks / Zephyr（T-M6-05/06，Linux 宿主）→ 入选
     let l6: BTreeSet<&str> = resolved
         .selected
         .iter()
@@ -307,8 +308,8 @@ fn linux_host_resolves_four_l1_targets_from_all() {
         .collect();
     assert_eq!(
         l6,
-        BTreeSet::from(["android-automotive"]),
-        "L6 Android Automotive（三宿主声明）应入选"
+        BTreeSet::from(["android-automotive", "vxworks", "zephyr"]),
+        "L6 Android Automotive + VxWorks / Zephyr 应入选"
     );
     assert_eq!(
         selected.len(),

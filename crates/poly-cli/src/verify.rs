@@ -206,6 +206,13 @@ enum Verifier {
     /// 真浏览器腿（Chrome `Page.getInstallabilityErrors` + 断网重载）由
     /// `ui/smoke/pwa/audit.mjs` 另跑，Chrome 缺席时 SKIP-with-print。
     PwaAudit,
+    /// RTOS 静态库的 C ABI 符号一致性 / 未解析闭包 / no_std / §5.3 路径审计
+    /// （[`crate::verify_rtos`]，T-M6-05/06；与打包器同一实现）。
+    CAbiSymbols,
+    /// VxWorks kit 结构断言 + 在场时 `wr-cc` 真链（T-M6-05；工具链缺席 SKIP-with-print）。
+    VxWorksLd,
+    /// Zephyr west 模板结构 + 在场时两板 `west build`（T-M6-06；环境缺席 SKIP-with-print）。
+    ZephyrWestBuild,
 }
 
 /// 校验器 id → 已接入实现（`None` = 未接入，归属查 [`verifier_owner`]）。
@@ -229,6 +236,9 @@ fn verifier_for(id: &str) -> Option<Verifier> {
         "snap-lint" => Some(Verifier::SnapLint),
         "appstream-validate" => Some(Verifier::AppstreamValidate),
         "pwa-audit" => Some(Verifier::PwaAudit),
+        "c-abi-symbols" => Some(Verifier::CAbiSymbols),
+        "vxworks-ld-check" => Some(Verifier::VxWorksLd),
+        "zephyr-west-build" => Some(Verifier::ZephyrWestBuild),
         _ => None,
     }
 }
@@ -348,6 +358,9 @@ fn verify_target(
     let mut snap_ids: Vec<String> = Vec::new();
     let mut appstream_ids: Vec<String> = Vec::new();
     let mut pwa_ids: Vec<String> = Vec::new();
+    let mut c_abi_ids: Vec<String> = Vec::new();
+    let mut vxworks_ld_ids: Vec<String> = Vec::new();
+    let mut zephyr_west_ids: Vec<String> = Vec::new();
     for id in &spec.verify {
         match verifier_for(id) {
             Some(Verifier::IosCodesign) => ios_ids.push(id.clone()),
@@ -368,6 +381,9 @@ fn verify_target(
             Some(Verifier::SnapLint) => snap_ids.push(id.clone()),
             Some(Verifier::AppstreamValidate) => appstream_ids.push(id.clone()),
             Some(Verifier::PwaAudit) => pwa_ids.push(id.clone()),
+            Some(Verifier::CAbiSymbols) => c_abi_ids.push(id.clone()),
+            Some(Verifier::VxWorksLd) => vxworks_ld_ids.push(id.clone()),
+            Some(Verifier::ZephyrWestBuild) => zephyr_west_ids.push(id.clone()),
             None => unserved.push(match verifier_owner(id) {
                 Some(owner) => format!("{id}（{owner}）"),
                 // 注册表有 id 但没人认领：如实点名到具体 id，测试保证这里在 M2 的注册表上是死路
@@ -440,6 +456,15 @@ fn verify_target(
     }
     if !pwa_ids.is_empty() {
         checked |= verify_pwa_audit(project, spec, &pwa_ids, events)?;
+    }
+    if !c_abi_ids.is_empty() {
+        checked |= crate::verify_rtos::verify_c_abi_symbols(project, spec, &c_abi_ids, events)?;
+    }
+    if !vxworks_ld_ids.is_empty() {
+        checked |= crate::verify_rtos::verify_vxworks_ld(project, spec, &vxworks_ld_ids, events)?;
+    }
+    if !zephyr_west_ids.is_empty() {
+        checked |= crate::verify_rtos::verify_zephyr_west(project, spec, &zephyr_west_ids, events)?;
     }
     Ok(checked)
 }

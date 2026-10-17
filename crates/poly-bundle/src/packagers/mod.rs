@@ -15,9 +15,13 @@
 //! - [`freebsd`]：FreeBSD pkg（T-M5-06，`pkg create` + pkg 暂存树 / manifest 结构自检）
 //! - [`pkgsrc`]：NetBSD / DragonFly pkgsrc 骨架（T-M5-08，Makefile / PLIST / DESCR + 结构自检）
 //! - [`roku`]：Roku 频道 `.zip`（T-M4-15，复用 SceneGraph 发射器 + 侧载结构自检）
+//! - [`embedded`]：嵌入式共享实现（T-M6-05/06，引擎静态库构建 / C ABI 断言 / §5.3 路径审计）
+//! - [`vxworks`]：VxWorks 库 / 镜像 kit（T-M6-05，wr-cc 链接腿 + nm 符号断言）
+//! - [`zephyr`]：Zephyr west 工程模板（T-M6-06，module 链入 no_std 引擎 + 两板构建）
 
 pub mod android;
 pub mod dmg;
+pub mod embedded;
 pub mod freebsd;
 pub mod harmony;
 pub mod ios;
@@ -31,3 +35,5 @@ pub mod web;
 pub mod webos;
 pub mod webtv;
 pub mod windows;
+pub mod vxworks;
+pub mod zephyr;

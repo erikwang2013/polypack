@@ -15,8 +15,8 @@ use std::process::Command;
 
 use poly_bundle::error::BundleError;
 use poly_bundle::inputs::{
-    AndroidInputs, BundleInputs, HarmonyInputs, Icon, IconKind, IosInputs, NativeLib, ProductInfo,
-    RokuInputs,
+    AndroidInputs, BundleInputs, EmbeddedInputs, HarmonyInputs, Icon, IconKind, IosInputs,
+    NativeLib, ProductInfo, RokuInputs,
 };
 use poly_bundle::packagers::ios::{apple_platform, swift};
 use poly_core::bridge;
@@ -306,9 +306,38 @@ pub(crate) fn assemble_inputs(
                 ..Default::default()
             });
         }
+        // 嵌入式（T-M6-05 / T-M6-06）：VxWorks 库 / 镜像与 Zephyr west 模板都复用
+        // T-M6-02 的唯一头文件。头文件由 poly-core 生成器现场产出（poly-bundle 不依赖
+        // poly-core，依赖方向约束），打包器只消费；引擎静态库由应用侧 wrapper 构建。
+        // 必须按目标 id 收窄：`image` / `library` 也是 QNX / 其他嵌入式目标的 format，
+        // 按 format 泛注入会把本输入错派给别的打包器。
+        "library" | "image" | "west" if matches!(spec.id.as_str(), "vxworks" | "zephyr") => {
+            let include = out_dir.join("include");
+            poly_core::engine::header::write_header(&include)
+                .map_err(|err| project::io_error("生成 C ABI 头文件", &include, err))?;
+            inputs.embedded = Some(EmbeddedInputs {
+                core_crate: core_crate_source(),
+                header: include.join(poly_core::engine::header::HEADER_FILE),
+                prebuilt: Vec::new(),
+            });
+        }
         _ => {}
     }
     Ok(Some(inputs))
+}
+
+/// 嵌入式引擎的 poly-core 源目录：显式 `POLYPACK_CORE_CRATE` 优先，其次按本仓库布局
+/// 取 `crates/poly-core`（构建期路径；安装后的 poly 需设环境变量）。
+///
+/// shortcut: 安装版没有随包源码时返回 `None`，打包器如实报缺输入（嵌入式的工具链
+/// SKIP-with-print 只用于 wr-cc / west 缺席，不掩盖缺源码）；从 registry 解析 poly-core
+/// 源路径需要 `cargo metadata`（归后续 poly bridge cffi 集成）。
+fn core_crate_source() -> Option<PathBuf> {
+    if let Some(path) = std::env::var_os("POLYPACK_CORE_CRATE") {
+        return Some(PathBuf::from(path));
+    }
+    let local = Path::new(env!("CARGO_MANIFEST_DIR")).join("../poly-core");
+    local.is_dir().then_some(local)
 }
 
 /// 移动端无 UI 载荷（`ui_dist` 与 `android.assets` 均缺）时如实告警——产物能构建、但没有界面。

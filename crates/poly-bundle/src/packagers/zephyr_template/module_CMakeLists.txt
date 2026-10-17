@@ -1,0 +1,13 @@
+# 引擎层模块：按 ARCH 选择预构建的 no_std 静态库（x86 = qemu_x86 / arm = qemu_cortex_m3）。
+# zephyr_library_import 以 --whole-archive 链接归档，保证六个 poly_engine_* 符号不被裁剪。
+zephyr_include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
+
+if(ARCH STREQUAL "x86")
+  set(POLY_ENGINE_LIB ${CMAKE_CURRENT_SOURCE_DIR}/lib/x86/libpolypack_engine.a)
+elseif(ARCH STREQUAL "arm")
+  set(POLY_ENGINE_LIB ${CMAKE_CURRENT_SOURCE_DIR}/lib/arm/libpolypack_engine.a)
+else()
+  message(FATAL_ERROR "unsupported ARCH ${ARCH} for poly engine")
+endif()
+
+zephyr_library_import(poly_engine ${POLY_ENGINE_LIB})

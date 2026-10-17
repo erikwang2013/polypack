@@ -131,11 +131,35 @@ impl BundleError {
                 "roku.emitter" => {
                     "补 <适配器根>/scripts/emit.mjs（T-M4-15 发射入口，复用 src/emit.js）"
                 }
+                "embedded" => {
+                    "RTOS 静态库打包需注入 EmbeddedInputs（头文件 + poly-core 源或预置归档）；\
+                     用 poly build 走 CLI 通路即可自动生成"
+                }
+                "embedded.core_crate" => {
+                    "设置 POLYPACK_CORE_CRATE=/path/to/crates/poly-core，或经 poly build 注入"
+                }
                 _ => "核对 polypack.toml 与 JobSpec 的输入声明",
             }),
-            Self::InvalidInput { .. } => {
-                Some("产品名 / 版本 / 标识只允许字母数字与有限标点（见 ProductInfo::validate）")
-            }
+            Self::InvalidInput { field, .. } => Some(match *field {
+                "artifact.paths" => {
+                    "产物不得含绝对路径（§5.3）：用 --remap-path-prefix 在编译期映射构建路径，\
+                     并确认暂存目录不混入构建中间物"
+                }
+                "poly_engine_*" => {
+                    "C ABI 头文件与静态库必须同源：头文件由 poly_core::engine::header 生成，\
+                     不得手写第二份；核对 poly-core 的 six 个 poly_engine_* 导出"
+                }
+                "no_std" => {
+                    "以 default-features=false 构建 poly-core，应用侧提供 global_allocator 与 \
+                     panic_handler；不得链入 std"
+                }
+                "package.format" => {
+                    "在 polypack.toml 的 [targets.<id>] 里选该打包器支持的 format"
+                }
+                _ => {
+                    "产品名 / 版本 / 标识只允许字母数字与有限标点（见 ProductInfo::validate）"
+                }
+            }),
             Self::ToolFailed { hint, .. } => hint.as_deref().or(Some(
                 "命令与 stderr 已随本错直出；打包脚本与命令已落盘，可手动重跑",
             )),
