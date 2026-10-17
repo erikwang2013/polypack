@@ -76,7 +76,10 @@ jobs:
       - name: Node.js 20（Taro 宿主真编译）
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          # Node 22（npm 10.9.x）：宿主 package.json 含 `file:..` 依赖，npm 10.8 系在 macos 上
+          # 确定性撞 arborist 崩溃（"Cannot read properties of null (reading 'edgesOut')"，3/3
+          # 重试同秒复现——非瞬态；本机 npm 10.9.2 同 package.json 安装正常）。
+          node-version: "22"
 
       - name: Taro 工具链（真跑；@tarojs 4.3.0）
         # 宿主工程未入库锁文件（npm install 即生成）；装不上即红——真编译的前提，不做静默降级。
