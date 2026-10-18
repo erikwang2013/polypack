@@ -173,7 +173,7 @@
 - Deliverable: vite frontend build integration (invoke the build, produce dist), react-dom rendering baseline wiring, and PWA manifest generation (name / icons / theme color from polypack.toml; icons derived from Pax brand assets).
 - Acceptance: the sample UI builds to dist; manifest structure and icon-size assertions pass; html-validate passes on the emitted HTML; build failures carry an error code and location info.
 
-### T-M1-05 · ✅ poly-bundle: Packager trait and Windows packagers (MSI / NSIS) (MSI real execution proven — windows-2022 CI really runs candle+light+msiexec with payload byte checks (after the first-run LGHT0311 code-page fix); NSIS real compile now in CI — windows-2022 installs makensis and produces a non-empty PE installer; install → launch → uninstall smoke is still not implemented)
+### T-M1-05 · ✅ poly-bundle: Packager trait and Windows packagers (MSI / NSIS) (MSI real execution proven — windows-2022 CI really runs candle+light+msiexec with payload byte checks (after the first-run LGHT0311 code-page fix); NSIS real compile plus a silent install → launch → uninstall smoke now runs on the rust-ci Windows leg — makensis produces a non-empty PE installer, a host-compiled rustc fixture PE is installed via `/S` into a test temp dir (`/D=`) and launches with its marker output, and the install directory is removed after `uninstall.exe /S`; launching the real sample Tauri binary from the default Program Files path remains a gap, and non-Windows hosts skip explicitly)
 
 - Role: packagers
 - Deps: T-M1-03
