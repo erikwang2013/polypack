@@ -87,6 +87,11 @@ pub fn resolve(
     reference: &CredentialRef,
     backends: &[Box<dyn SecretBackend>],
 ) -> Result<SigningMaterial, SignError> {
+    // T-M8-07：worker 任务作用域的内存注入优先——载荷只在内存，作用域结束即清空；
+    // 未注入的档案仍按 `source` 走既有后端链（懒解析语义不变）。
+    if let Some(payload) = crate::inject::payload(&reference.name) {
+        return material_from_payload(&reference.name, MEMORY_ID, &payload);
+    }
     // 本 match 是穷尽的（无 `_ =>` 兜底）：poly-core 加 `CredentialSource` 变体会在此处编译失败，
     // 强制本层同步——M2 缓行 `File { path, password_env, alias }` 的理由见文件头。
     match &reference.source {

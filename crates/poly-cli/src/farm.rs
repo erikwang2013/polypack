@@ -7,7 +7,10 @@
 //!   等 worker 池注册后并发投递、回收结果并合并产物清单；超时 / 失联按 `--retries`
 //!   换 worker 重试，终态输出带 hint 的 `Failed` 事件；
 //! - 两侧共用 `poly_core::farm` 的同一套执行实现（同一 `Plan` DAG、同一缓存键公式），
-//!   缓存后端由 `--cache` 决定：`local`（工程本地）或共享目录（跨机复用）。
+//!   缓存后端由 `--cache` 决定：`local`（工程本地）或共享目录（跨机复用）；
+//! - worker 侧隔离（T-M8-07）：进程边界 + 每任务一次性私有工作目录（`--work-dir` 可指定
+//!   父目录，任务结束即删除）；凭据经 `--credential <档案名>=env:<变量名>` 只以内存态注入
+//!   （值不进 argv / 日志 / 磁盘），签名临时材料也落在该一次性目录内，任务结束随作用域清空。
 
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
@@ -15,9 +18,9 @@ use std::time::Duration;
 
 use poly_core::farm::{
     ArtifactRecord, CacheBackend, FarmPool, JobOutcome, PoolJob, PoolOptions, Requirement,
-    WorkerOptions, default_worker_id, local_caps, run_pool_worker,
+    TaskScope, TaskScopeFactory, WorkerOptions, default_worker_id, local_caps, run_pool_worker,
 };
-use poly_core::{Diagnostic, JobSpec, Profile};
+use poly_core::{BuildEvent, CredentialSource, Diagnostic, EventSink, JobSpec, Profile, codes};
 use poly_targets::{Host, Registry, TargetRequest, current_host};
 
 /// `poly farm` 的参数。
@@ -58,6 +61,14 @@ pub struct WorkerArgs {
     /// 缓存后端：`local`（工程本地）或共享目录路径（多构建地共用，跨机复用）。
     #[arg(long, default_value = "local")]
     pub cache: String,
+    /// 一次性任务工作目录的父目录（缺省系统临时目录）：worker 在下面建私有 0700 根，
+    /// 每任务一个子目录，任务结束即删除。
+    #[arg(long)]
+    pub work_dir: Option<PathBuf>,
+    /// 凭据下发映射 `<档案名>=env:<变量名>`（可重复）：值只在环境变量里，绝不进 argv / 日志；
+    /// worker 在任务开始时读入内存并注入签名链，任务结束即清除。
+    #[arg(long = "credential", value_name = "NAME=env:VAR")]
+    pub credential: Vec<String>,
 }
 
 /// `poly farm submit` 的参数。
@@ -102,6 +113,7 @@ pub fn run(args: &Args, json: bool) -> Result<i32, Diagnostic> {
 /// worker：以本机为构建地注册并服务（能力声明见 `local_caps`）。
 fn serve(args: &WorkerArgs, json: bool) -> Result<i32, Diagnostic> {
     let id = args.id.clone().unwrap_or_else(default_worker_id);
+    let credentials = credential_map(&args.credential)?;
     let opts = WorkerOptions {
         dir: args.dir.clone(),
         // `--target` 缺省 = 本机宿主可达的全部已声明目标（该参数帮助文本的「不限」语义）
@@ -113,6 +125,9 @@ fn serve(args: &WorkerArgs, json: bool) -> Result<i32, Diagnostic> {
         package: Some(|| Box::new(crate::package::PackageStage)),
         sign: Some(|| Box::new(crate::sign::SignStage)),
         verify: Some(|| Box::new(crate::verify::VerifyStage)),
+        work_root: args.work_dir.clone(),
+        // 凭据内存注入在 CLI / poly-sign 侧；core 只拿到这个不透明作用域工厂
+        task_scope: Some(task_scope_factory(credentials)),
     };
     let mut events = crate::project::sink(json);
     let exit = run_pool_worker(&opts, &cache_backend(&args.cache), events.as_mut())?;
@@ -123,6 +138,109 @@ fn serve(args: &WorkerArgs, json: bool) -> Result<i32, Diagnostic> {
         );
     }
     Ok(0)
+}
+
+/// 解析 `--credential <档案名>=env:<变量名>`：只接受 env 来源（值必须留在环境变量里）。
+fn credential_map(values: &[String]) -> Result<Vec<(String, String)>, Diagnostic> {
+    let mut credentials = Vec::new();
+    for value in values {
+        // 不回显参数原文：万一操作者把明文值误放进 argv，错误信息也不得把它带进日志
+        let invalid = |reason: &str| {
+            Diagnostic::error(
+                codes::E_FARM_0002,
+                format!("--credential 参数非法：{reason}"),
+            )
+            .with_hint("写成 --credential <档案名>=env:<变量名>；明文值绝不放进命令行")
+        };
+        let (name, source) = value.split_once('=').ok_or_else(|| invalid("缺少 `=`"))?;
+        let variable = source
+            .strip_prefix("env:")
+            .ok_or_else(|| invalid("只接受 env:<变量名> 来源"))?;
+        if name.is_empty() || variable.is_empty() {
+            return Err(invalid("档案名与变量名都不能为空"));
+        }
+        credentials.push((name.to_string(), variable.to_string()));
+    }
+    Ok(credentials)
+}
+
+/// 凭据注入作用域工厂：映射被多个任务复用；每次任务新建作用域（跨任务无凭据状态）。
+fn task_scope_factory(credentials: Vec<(String, String)>) -> TaskScopeFactory {
+    Box::new(move || {
+        Box::new(FarmTaskScope {
+            credentials: credentials.clone(),
+            scope: None,
+        }) as Box<dyn TaskScope>
+    })
+}
+
+/// worker 侧任务作用域：凭据只以内存态注入 poly-sign，任务结束随 guard drop 清空。
+///
+/// 值来自环境变量（`--credential` 只给变量名）；不落盘、不进 argv / 日志 / 事件。
+/// 同时把签名临时材料根指向任务的一次性工作目录（`CredentialScope` 内），
+/// 因此密钥材料与工作目录同生共死。
+struct FarmTaskScope {
+    /// 档案名 → 环境变量名。
+    credentials: Vec<(String, String)>,
+    scope: Option<poly_sign::CredentialScope>,
+}
+
+impl TaskScope for FarmTaskScope {
+    fn enter(
+        &mut self,
+        spec: &JobSpec,
+        workspace: &Path,
+        events: &mut dyn EventSink,
+    ) -> Result<(), Diagnostic> {
+        let mut payloads = Vec::new();
+        let mut injected = Vec::new();
+        for reference in &spec.secrets {
+            let variable = self
+                .credentials
+                .iter()
+                .find(|(name, _)| name == &reference.name)
+                .map(|(_, variable)| variable.clone())
+                .or_else(|| match &reference.source {
+                    CredentialSource::Env { variable } => Some(variable.clone()),
+                    _ => None,
+                });
+            let Some(variable) = variable else { continue };
+            match std::env::var(&variable) {
+                Ok(value) => {
+                    payloads.push((reference.name.clone(), value.into_bytes()));
+                    injected.push(reference.name.clone());
+                }
+                // 缺失不在这里失败：签名阶段沿用既有 skip-if-missing 语义并给出修复提示
+                Err(_) => events.emit(&BuildEvent::Warning {
+                    stage: "farm".to_string(),
+                    message: format!(
+                        "凭据档案 {} 的注入变量 {variable} 不可用（签名阶段将按凭据不可用处理）",
+                        reference.name
+                    ),
+                }),
+            }
+        }
+        self.scope = Some(poly_sign::CredentialScope::enter(payloads, workspace));
+        events.emit(&BuildEvent::Warning {
+            stage: "farm".to_string(),
+            message: format!(
+                "任务 {}：内存注入 {} 条凭据（{}）；一次性工作目录 {}（任务结束即删除）",
+                spec.id,
+                injected.len(),
+                if injected.is_empty() {
+                    "无".to_string()
+                } else {
+                    injected.join("、")
+                },
+                workspace.display()
+            ),
+        });
+        Ok(())
+    }
+
+    fn exit(&mut self) {
+        self.scope = None; // drop → 清空内存态载荷
+    }
 }
 
 /// 主端：等 worker 池注册 → 按目标并发投递 → 合并结果（失败时错误码与修复提示完整上抛）。

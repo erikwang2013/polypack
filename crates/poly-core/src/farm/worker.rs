@@ -6,6 +6,7 @@ use std::time::Duration;
 
 use poly_cache::{CacheStats, Digest};
 
+use super::isolation::{TaskWorkspace, WorkRoot};
 use super::{
     CacheBackend, DirTransport, FarmFrame, FarmTransport, PROTOCOL, PROTOCOL_V0, RemoteDiagnostic,
     WorkerCaps, unexpected_frame,
@@ -20,6 +21,28 @@ use crate::plan::{Project, Stage, StageError};
 /// 注入式阶段工厂：`package` / `sign` / `verify` 的实现在 poly-bundle / poly-sign / poly-cli，
 /// poly-core 不得依赖它们（依赖方向约束），故由调用方注入（[`InjectedStages`] 的元素类型）。
 pub type StageFactory = fn() -> Box<dyn Stage>;
+
+/// 任务作用域（worker 隔离与凭据内存注入的接缝，T-M8-07）。
+///
+/// core 在每任务前后成对调用：`enter`（一次性工作目录已建好）→ 执行 → `exit`
+/// （成功 / 失败 / `enter` 失败后都会调用）。实现方在 poly-cli：把 `JobSpec.secrets`
+/// 经 poly-sign 解析成内存态材料、并把签名临时根指向任务目录；`exit` 即销毁。
+/// poly-core 不依赖 poly-sign，只持有本 trait 对象（不透明句柄）。
+pub trait TaskScope {
+    /// 任务开始；`workspace` 为本任务独享、0700 的一次性目录。
+    fn enter(
+        &mut self,
+        spec: &JobSpec,
+        workspace: &Path,
+        events: &mut dyn EventSink,
+    ) -> Result<(), Diagnostic>;
+    /// 任务结束（成功、失败、`enter` 失败后都会调用）：销毁内存态凭据。
+    fn exit(&mut self);
+}
+
+/// 任务作用域工厂：每次任务新建（避免跨任务复用状态）；可捕获 worker 启动配置
+/// （如「凭据档案名 → 环境变量名」映射——只含名字，值绝不进命令行）。
+pub type TaskScopeFactory = Box<dyn Fn() -> Box<dyn TaskScope> + Send + Sync>;
 
 /// worker 运行参数。
 pub struct WorkerOptions {
@@ -37,6 +60,11 @@ pub struct WorkerOptions {
     pub sign: Option<StageFactory>,
     /// `verify` 阶段工厂（缺省保留占位）。
     pub verify: Option<StageFactory>,
+    /// 一次性任务工作目录的父目录（缺省系统临时目录）：worker 启动时在其下建私有
+    /// 0700 工作根，每任务一个子目录，任务结束即删除。
+    pub work_root: Option<PathBuf>,
+    /// 任务作用域工厂（CLI 注入凭据内存通道；core 不感知凭据类型）。
+    pub task_scope: Option<TaskScopeFactory>,
 }
 
 /// worker 退出信息。
@@ -59,10 +87,15 @@ pub fn run_worker(
     backend: &CacheBackend,
     events: &mut dyn EventSink,
 ) -> Result<WorkerExit, Diagnostic> {
+    let work_root = WorkRoot::create(opts.work_root.as_deref())?;
     let mut transport = DirTransport::worker(&opts.dir);
     let caps = opts.caps.clone();
-    register(&mut transport, PROTOCOL_V0, &caps, opts.idle, events)?;
-    service_loop(&mut transport, opts, backend, events)
+    let result = match register(&mut transport, PROTOCOL_V0, &caps, opts.idle, events) {
+        Ok(()) => service_loop(&mut transport, opts, backend, &work_root, events),
+        Err(err) => Err(err),
+    };
+    finish_work_root(work_root, events);
+    result
 }
 
 /// v1 worker 主循环：每 worker 独立信箱（`<dir>/v1/<worker_id>/`）注册，供主端池并发调度。
@@ -74,6 +107,19 @@ pub fn run_pool_worker(
     backend: &CacheBackend,
     events: &mut dyn EventSink,
 ) -> Result<WorkerExit, Diagnostic> {
+    let work_root = WorkRoot::create(opts.work_root.as_deref())?;
+    let result = serve_pool(opts, backend, &work_root, events);
+    finish_work_root(work_root, events);
+    result
+}
+
+/// v1 worker 的注册与服务主体（工作根已就绪；生命周期错误照常上抛）。
+fn serve_pool(
+    opts: &WorkerOptions,
+    backend: &CacheBackend,
+    work_root: &WorkRoot,
+    events: &mut dyn EventSink,
+) -> Result<WorkerExit, Diagnostic> {
     let peer = peer_dir(&opts.dir, &opts.caps.worker_id)?;
     std::fs::create_dir_all(&peer)
         .map_err(|err| super::io_error("创建 worker 信箱", &peer, err))?;
@@ -81,7 +127,18 @@ pub fn run_pool_worker(
     let mut caps = opts.caps.clone();
     caps.capacity = Some(opts.jobs);
     register(&mut transport, PROTOCOL, &caps, opts.idle, events)?;
-    service_loop(&mut transport, opts, backend, events)
+    service_loop(&mut transport, opts, backend, work_root, events)
+}
+
+/// 工作根显式删除；失败必须发声（`E_FARM_0006`），不能静默留下任务残留。
+fn finish_work_root(work_root: WorkRoot, events: &mut dyn EventSink) {
+    if let Err(err) = work_root.remove() {
+        events.emit(&BuildEvent::Failed {
+            stage: "farm/isolation".to_string(),
+            code: err.code.to_string(),
+            hint: err.hint.clone(),
+        });
+    }
 }
 
 /// v1 worker 信箱目录：`<dir>/v1/<worker_id>`（目录名即调度地址，禁止路径分隔符）。
@@ -165,6 +222,7 @@ fn service_loop(
     transport: &mut DirTransport,
     opts: &WorkerOptions,
     backend: &CacheBackend,
+    work_root: &WorkRoot,
     events: &mut dyn EventSink,
 ) -> Result<WorkerExit, Diagnostic> {
     let mut jobs = 0usize;
@@ -179,18 +237,50 @@ fn service_loop(
                 project_dir,
                 spec,
             } => {
-                let result = execute_and_report(
-                    &job_id,
-                    Path::new(&project_dir),
-                    &spec,
-                    backend,
-                    InjectedStages {
-                        package: opts.package,
-                        sign: opts.sign,
-                        verify: opts.verify,
-                    },
-                    events,
-                );
+                let workspace = TaskWorkspace::create(work_root.path())?;
+                let mut scope = opts.task_scope.as_ref().map(|factory| factory());
+                let entered = match scope.as_mut() {
+                    Some(scope) => scope.enter(&spec, workspace.path(), events),
+                    None => Ok(()),
+                };
+                let result = match entered {
+                    Ok(()) => execute_and_report(
+                        &job_id,
+                        Path::new(&project_dir),
+                        &spec,
+                        backend,
+                        InjectedStages {
+                            package: opts.package,
+                            sign: opts.sign,
+                            verify: opts.verify,
+                        },
+                        events,
+                    ),
+                    // 凭据注入失败 = 该任务失败（不碰构建），错误码与 hint 照常回传
+                    Err(err) => {
+                        events.emit(&BuildEvent::Failed {
+                            stage: format!("farm/{job_id}"),
+                            code: err.code.to_string(),
+                            hint: err.hint.clone(),
+                        });
+                        FarmFrame::Result {
+                            job_id: job_id.clone(),
+                            ok: false,
+                            error: Some(RemoteDiagnostic::from_diagnostic(&err)),
+                            artifacts: Vec::new(),
+                        }
+                    }
+                };
+                if let Some(scope) = scope.as_mut() {
+                    scope.exit();
+                }
+                if let Err(err) = workspace.remove() {
+                    events.emit(&BuildEvent::Failed {
+                        stage: "farm/isolation".to_string(),
+                        code: err.code.to_string(),
+                        hint: err.hint,
+                    });
+                }
                 transport.send(&result)?;
                 jobs += 1;
             }

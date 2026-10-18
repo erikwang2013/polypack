@@ -13,10 +13,14 @@
 //!   [`poly_cache::DirSharedStore`]，本地文件系统为默认；云对象存储为后续接入点）；
 //! - **凭据边界**（T-M2-11 同模型）：`JobSpec.secrets` 只传 `crate::job::CredentialRef` 引用，
 //!   绝不内联明文，凭据在构建地（worker）按需拉取；
+//! - **隔离**（T-M8-07）：worker 进程边界之内，每任务一个 0700 一次性工作目录，任务结束
+//!   整目录删除（目录名不含网络输入，符号链接不跟随）；凭据经 [`TaskScope`] 在 CLI /
+//!   poly-sign 侧解析为内存态材料，明文不落盘、不进 argv / 日志，任务结束即清空；
 //! - **失败回传**：worker 端诊断经 [`RemoteDiagnostic`] 完整回传（错误码 + 修复提示）；
 //!   任务超时 / worker 失联由主端判定（[`codes::E_FARM_0004`] / [`codes::E_FARM_0005`]）
 //!   并输出带 hint 的 `Failed` 事件。
 
+mod isolation;
 mod master;
 mod pool;
 mod worker;
@@ -34,7 +38,8 @@ use crate::job::JobSpec;
 pub use master::{FarmMaster, JobOutcome, Requirement};
 pub use pool::{FarmPool, PoolJob, PoolOptions, PoolResult};
 pub use worker::{
-    ExecOutcome, StageFactory, WorkerExit, WorkerOptions, execute_job, run_pool_worker, run_worker,
+    ExecOutcome, StageFactory, TaskScope, TaskScopeFactory, WorkerExit, WorkerOptions, execute_job,
+    run_pool_worker, run_worker,
 };
 
 /// 当前协议版本（`hello` / `hello_ack` 携带；新 worker / 主端默认声明）。

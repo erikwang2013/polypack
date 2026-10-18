@@ -18,7 +18,8 @@ pub(crate) struct TempDir(PathBuf);
 impl TempDir {
     /// 在系统临时目录下建 `<prefix><pid>-<序号>`（0700）。
     pub(crate) fn create(prefix: &str) -> Result<Self, SignError> {
-        let base = std::env::temp_dir();
+        // farm worker 的任务作用域把临时根指向一次性私有目录（T-M8-07）；本地构建走系统临时目录。
+        let base = crate::inject::temp_root().unwrap_or_else(std::env::temp_dir);
         for _ in 0..16 {
             let candidate = base.join(format!(
                 "{prefix}{}-{}",
