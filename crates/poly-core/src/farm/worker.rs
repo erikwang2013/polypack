@@ -7,8 +7,8 @@ use std::time::Duration;
 use poly_cache::{CacheStats, Digest};
 
 use super::{
-    CacheBackend, DirTransport, FarmFrame, FarmTransport, PROTOCOL, RemoteDiagnostic, WorkerCaps,
-    unexpected_frame,
+    CacheBackend, DirTransport, FarmFrame, FarmTransport, PROTOCOL, PROTOCOL_V0, RemoteDiagnostic,
+    WorkerCaps, unexpected_frame,
 };
 use crate::config::PolypackConfig;
 use crate::diagnostics::{Diagnostic, codes};
@@ -48,8 +48,9 @@ pub struct WorkerExit {
     pub reason: String,
 }
 
-/// worker 主循环：注册（`hello` → `hello_ack`）→「拉取 → 执行 → 回传」→ 直至 `goodbye` /
-/// 任务用尽 / 空闲超时。
+/// v0 worker 主循环：根信箱注册（`hello` → `hello_ack`）→「拉取 → 执行 → 回传」→ 直至
+/// `goodbye` / 任务用尽 / 空闲超时。保留 v0 版本身份与根信箱布局——`farm/v0` 兼容路径的
+/// 在线参照（v1 主端据此协商到 v0）。
 ///
 /// 任务失败**不**让 worker 退出：错误码与修复提示经 [`RemoteDiagnostic`] 完整回传给主端，
 /// worker 继续服务（只有生命周期错误——注册被拒 / 帧非法 / IO 失败——才返回 `Err`）。
@@ -59,6 +60,54 @@ pub fn run_worker(
     events: &mut dyn EventSink,
 ) -> Result<WorkerExit, Diagnostic> {
     let mut transport = DirTransport::worker(&opts.dir);
+    let caps = opts.caps.clone();
+    register(&mut transport, PROTOCOL_V0, &caps, opts.idle, events)?;
+    service_loop(&mut transport, opts, backend, events)
+}
+
+/// v1 worker 主循环：每 worker 独立信箱（`<dir>/v1/<worker_id>/`）注册，供主端池并发调度。
+///
+/// 帧字段与 v0 相同；`hello.worker.capacity` 声明本会话可接任务数（0 = 不限）。
+/// `worker_id` 会用作信箱目录名，故拒绝路径分隔符（合法性在边界处一次校验）。
+pub fn run_pool_worker(
+    opts: &WorkerOptions,
+    backend: &CacheBackend,
+    events: &mut dyn EventSink,
+) -> Result<WorkerExit, Diagnostic> {
+    let peer = peer_dir(&opts.dir, &opts.caps.worker_id)?;
+    std::fs::create_dir_all(&peer)
+        .map_err(|err| super::io_error("创建 worker 信箱", &peer, err))?;
+    let mut transport = DirTransport::worker(&peer);
+    let mut caps = opts.caps.clone();
+    caps.capacity = Some(opts.jobs);
+    register(&mut transport, PROTOCOL, &caps, opts.idle, events)?;
+    service_loop(&mut transport, opts, backend, events)
+}
+
+/// v1 worker 信箱目录：`<dir>/v1/<worker_id>`（目录名即调度地址，禁止路径分隔符）。
+fn peer_dir(dir: &Path, worker_id: &str) -> Result<PathBuf, Diagnostic> {
+    if worker_id.is_empty()
+        || worker_id.contains(['/', '\\'])
+        || worker_id == "."
+        || worker_id == ".."
+    {
+        return Err(Diagnostic::error(
+            codes::E_FARM_0002,
+            format!("worker 标识不能用作信箱目录名: {worker_id:?}"),
+        )
+        .with_hint("--id 只用字母、数字、-、_（不含路径分隔符）"));
+    }
+    Ok(dir.join("v1").join(worker_id))
+}
+
+/// 注册：作废旧会话残留帧 → `hello` → 等 `hello_ack`（拒绝 / 超时即失败）。
+fn register(
+    transport: &mut DirTransport,
+    protocol: &str,
+    caps: &WorkerCaps,
+    idle: Duration,
+    events: &mut dyn EventSink,
+) -> Result<(), Diagnostic> {
     // 注册前作废残留帧：上一轮会话留下的 `goodbye`（主端收尾后 worker 已按任务数退出，
     // 不再取件）若被当成注册结果，会把协议状态机误判为错帧。此刻收件箱里的帧必属已结束
     // 的会话——新主端在收到 `hello` 之前不会发声，故整体作废是安全的。
@@ -69,10 +118,10 @@ pub fn run_worker(
         });
     }
     transport.send(&FarmFrame::Hello {
-        protocol: PROTOCOL.to_string(),
-        worker: opts.caps.clone(),
+        protocol: protocol.to_string(),
+        worker: caps.clone(),
     })?;
-    let Some(frame) = transport.recv(opts.idle)? else {
+    let Some(frame) = transport.recv(idle)? else {
         return Err(
             Diagnostic::error(codes::E_FARM_0002, "等待注册结果超时（未收到 hello_ack）")
                 .with_hint("确认主端 poly farm submit 已启动，且与 worker 指向同一 --dir 农场目录"),
@@ -97,14 +146,27 @@ pub fn run_worker(
     events.emit(&BuildEvent::Warning {
         stage: "farm".to_string(),
         message: format!(
-            "worker {} 已注册（{}，宿主 {:?}，可构建 {} 个目标）",
-            opts.caps.worker_id,
-            opts.caps.triple,
-            opts.caps.host,
-            opts.caps.targets.len()
+            "worker {} 已注册（{}，宿主 {:?}，可构建 {} 个目标，本次最多接 {} 个任务）",
+            caps.worker_id,
+            caps.triple,
+            caps.host,
+            caps.targets.len(),
+            match caps.capacity {
+                Some(0) | None => "不限".to_string(),
+                Some(n) => n.to_string(),
+            }
         ),
     });
+    Ok(())
+}
 
+/// 「拉取 → 执行 → 回传」循环（v0 / v1 worker 共用）。
+fn service_loop(
+    transport: &mut DirTransport,
+    opts: &WorkerOptions,
+    backend: &CacheBackend,
+    events: &mut dyn EventSink,
+) -> Result<WorkerExit, Diagnostic> {
     let mut jobs = 0usize;
     let mut reason = "空闲超时（无任务）".to_string();
     while opts.jobs == 0 || jobs < opts.jobs {

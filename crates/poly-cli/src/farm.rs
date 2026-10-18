@@ -1,20 +1,23 @@
-//! `poly farm`：远程农场协议 v0 的命令行入口（T-M2-13）。
+//! `poly farm`：远程农场协议 v1 的命令行入口（T-M8-06；v0 命令面见 T-M2-13）。
 //!
 //! - `poly farm worker --dir <目录>`：本机作为构建地注册（能力声明 = 宿主 / triple /
-//!   `--target` 声明的可构建目标），随后进入「拉取 → 执行 → 回传」循环；
-//! - `poly farm submit --dir <目录> --config <polypack.toml>`：主端投递——先等 worker 注册，
-//!   再投递任务并回收结果与产物清单；
+//!   `--target` 声明的可构建目标 / 本次可接任务数），信箱为 `<dir>/v1/<id>/`；
+//!   同一农场目录可起多个 worker 组成池；
+//! - `poly farm submit --dir <目录> --config <polypack.toml>`：主端按目标拆分任务，
+//!   等 worker 池注册后并发投递、回收结果并合并产物清单；超时 / 失联按 `--retries`
+//!   换 worker 重试，终态输出带 hint 的 `Failed` 事件；
 //! - 两侧共用 `poly_core::farm` 的同一套执行实现（同一 `Plan` DAG、同一缓存键公式），
 //!   缓存后端由 `--cache` 决定：`local`（工程本地）或共享目录（跨机复用）。
 
-use std::path::PathBuf;
+use std::collections::BTreeMap;
+use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 use poly_core::farm::{
-    CacheBackend, FarmMaster, JobOutcome, Requirement, WorkerOptions, default_worker_id,
-    local_caps, run_worker,
+    ArtifactRecord, CacheBackend, FarmPool, JobOutcome, PoolJob, PoolOptions, Requirement,
+    WorkerOptions, default_worker_id, local_caps, run_pool_worker,
 };
-use poly_core::{Diagnostic, Profile};
+use poly_core::{Diagnostic, JobSpec, Profile};
 use poly_targets::{Host, Registry, TargetRequest, current_host};
 
 /// `poly farm` 的参数。
@@ -46,8 +49,8 @@ pub struct WorkerArgs {
     /// 本 worker 声明可构建的目标 id（可重复；缺省 = 不限，按本机宿主接受任务）。
     #[arg(long = "target", value_name = "ID")]
     pub targets: Vec<String>,
-    /// 处理多少个任务后退出（0 = 直到主端 `goodbye` 或空闲超时）。
-    #[arg(long, default_value_t = 1)]
+    /// 本次会话最多接多少个任务（0 = 直到主端 `goodbye` 或空闲超时）。
+    #[arg(long, default_value_t = 0)]
     pub jobs: usize,
     /// 空闲等待上限（秒）：超时即正常退出（无任务可做不是失败）。
     #[arg(long = "idle", default_value_t = 60)]
@@ -73,9 +76,16 @@ pub struct SubmitArgs {
     /// 构建 profile。
     #[arg(long, value_enum, default_value_t = crate::build::ProfileArg::Local)]
     pub profile: crate::build::ProfileArg,
-    /// 等待 worker 注册 / 等待任务结果的上限（秒）。
+    /// 等待 worker 注册 / 等待每个任务结果的上限（秒）。
     #[arg(long = "wait", default_value_t = 120)]
     pub wait_secs: u64,
+    /// 任务超时 / worker 失联后的重试次数（每次换一个 worker；0 = 不重试）。
+    #[arg(long, default_value_t = 1)]
+    pub retries: usize,
+    /// 构建地工程路径（缺省 = 本端工程根；跨机布局不同时显式给出。相对路径按各 worker
+    /// 自己的当前目录解析，因此本机多 worker 各持一份工程副本时用 `.` 即可）。
+    #[arg(long)]
+    pub project_dir: Option<PathBuf>,
     /// 缓存后端：`local` 或共享目录路径（与 worker 用同一共享目录即跨机命中）。
     #[arg(long, default_value = "local")]
     pub cache: String,
@@ -105,7 +115,7 @@ fn serve(args: &WorkerArgs, json: bool) -> Result<i32, Diagnostic> {
         verify: Some(|| Box::new(crate::verify::VerifyStage)),
     };
     let mut events = crate::project::sink(json);
-    let exit = run_worker(&opts, &cache_backend(&args.cache), events.as_mut())?;
+    let exit = run_pool_worker(&opts, &cache_backend(&args.cache), events.as_mut())?;
     if !json {
         println!(
             "poly farm worker 退出：{}（已完成 {} 个任务）",
@@ -115,7 +125,7 @@ fn serve(args: &WorkerArgs, json: bool) -> Result<i32, Diagnostic> {
     Ok(0)
 }
 
-/// 主端：等 worker 注册 → 投递任务 → 回收结果（失败时错误码与修复提示完整上抛）。
+/// 主端：等 worker 池注册 → 按目标并发投递 → 合并结果（失败时错误码与修复提示完整上抛）。
 fn submit(args: &SubmitArgs, json: bool) -> Result<i32, Diagnostic> {
     let project = crate::project::load(&args.config)?;
     let registry = Registry::builtin();
@@ -137,7 +147,7 @@ fn submit(args: &SubmitArgs, json: bool) -> Result<i32, Diagnostic> {
         .to_job(&registry, &request, profile(args.profile), &hosts)
         .map_err(|err| err.diagnostic)?;
 
-    // 注册准入判据：构建地宿主须落在任务各目标声明的宿主内，且须声明可构建全部目标
+    // 注册准入判据（池语义：至少匹配一个目标即可入池；逐任务派发时再按目标复核）
     let mut hosts = Vec::new();
     for target in &spec.targets {
         for host in &target.hosts {
@@ -154,29 +164,76 @@ fn submit(args: &SubmitArgs, json: bool) -> Result<i32, Diagnostic> {
             .map(|target| target.id.clone())
             .collect(),
     };
-    let job_id = format!("{}-{}", spec.id, std::process::id());
     let wait = Duration::from_secs(args.wait_secs);
-    let mut master = FarmMaster::new(&args.dir);
-    let worker = master.accept_worker(&requirement, wait)?;
+    let project_dir = args
+        .project_dir
+        .clone()
+        .unwrap_or_else(|| project.root.clone());
+    let jobs = split_jobs(&spec, &project_dir);
+    let mut pool = FarmPool::new(&args.dir);
+    let workers = pool.accept_workers(&requirement, wait, 1)?;
     if !json {
-        println!(
-            "worker 已注册：{}（{}，宿主 {:?}）",
-            worker.worker_id, worker.triple, worker.host
-        );
+        for worker in &workers {
+            println!(
+                "worker 已注册：{}（{}，宿主 {:?}）",
+                worker.worker_id, worker.triple, worker.host
+            );
+        }
     }
-    let outcome = master.submit(&job_id, &project.root, &spec, wait);
+    let mut events = crate::project::sink(json);
+    let results = pool.submit_jobs(
+        jobs,
+        &PoolOptions {
+            timeout: wait,
+            retries: args.retries,
+        },
+        events.as_mut(),
+    );
     // 无论成败都礼貌收尾（worker 侧据此退出循环）
-    let _ = master.farewell();
-    let artifacts = match outcome? {
-        JobOutcome::Done { artifacts } => artifacts,
-        // 失败：错误码 + 修复提示完整回传（不吞错），退出码 1
-        JobOutcome::Failed { error } => return Err(error.to_diagnostic()),
-    };
+    let _ = pool.farewell();
+
+    // 合并产物（按名称去重：各目标任务的 UI 产物同源）并定位首个失败任务
+    let mut artifacts: BTreeMap<String, ArtifactRecord> = BTreeMap::new();
+    let mut first_error = None;
+    let mut rows = Vec::new();
+    for result in &results {
+        let failed = match &result.outcome {
+            Ok(JobOutcome::Done { artifacts: list }) => {
+                for artifact in list {
+                    artifacts
+                        .entry(artifact.name.clone())
+                        .or_insert_with(|| artifact.clone());
+                }
+                None
+            }
+            // worker 端失败：错误码 + 修复提示完整回传（不吞错），退出码 1
+            Ok(JobOutcome::Failed { error }) => Some(error.to_diagnostic()),
+            Err(err) => Some(err.clone()),
+        };
+        if first_error.is_none() {
+            first_error = failed.clone();
+        }
+        rows.push(serde_json::json!({
+            "job_id": result.job_id,
+            "target": result.target,
+            "worker_id": result.worker_id,
+            "ok": failed.is_none(),
+            "code": failed.map(|err| err.code.to_string()),
+        }));
+    }
+    if let Some(err) = first_error {
+        return Err(err);
+    }
+
+    let job_id = format!("{}-{}", spec.id, std::process::id());
+    let artifacts: Vec<ArtifactRecord> = artifacts.into_values().collect();
     if json {
         let out = serde_json::json!({
             "event": "farm-result",
             "job_id": job_id,
             "cache": args.cache,
+            "workers": workers.iter().map(|worker| worker.worker_id.clone()).collect::<Vec<_>>(),
+            "jobs": rows,
             "artifacts": artifacts.iter().map(|artifact| serde_json::json!({
                 "name": artifact.name,
                 "bytes": artifact.bytes,
@@ -185,7 +242,12 @@ fn submit(args: &SubmitArgs, json: bool) -> Result<i32, Diagnostic> {
         });
         println!("{}", serde_json::to_string(&out).expect("任务结果可序列化"));
     } else {
-        println!("任务 {job_id} 完成：{} 个产物", artifacts.len());
+        println!(
+            "农场任务完成：{} 个任务 / {} 个 worker，合并 {} 个产物",
+            results.len(),
+            workers.len(),
+            artifacts.len()
+        );
         for artifact in &artifacts {
             println!(
                 "  {}（{} 字节，{}）",
@@ -194,6 +256,31 @@ fn submit(args: &SubmitArgs, json: bool) -> Result<i32, Diagnostic> {
         }
     }
     Ok(0)
+}
+
+/// 按目标拆分任务：每个目标一条 [`PoolJob`]（池据此并发派发到不同 worker）。
+///
+/// 凭据引用按目标裁剪——只把该目标签名档案的引用随任务走（明文本就不在车道上）。
+fn split_jobs(spec: &JobSpec, project_dir: &Path) -> Vec<PoolJob> {
+    spec.targets
+        .iter()
+        .map(|target| {
+            let mut single = spec.clone();
+            single.targets = vec![target.clone()];
+            single.secrets = spec
+                .secrets
+                .iter()
+                .filter(|secret| target.signing.as_deref() == Some(secret.name.as_str()))
+                .cloned()
+                .collect();
+            PoolJob {
+                job_id: format!("{}-{}-{}", spec.id, target.id, std::process::id()),
+                target: target.id.clone(),
+                project_dir: project_dir.to_path_buf(),
+                spec: single,
+            }
+        })
+        .collect()
 }
 
 /// worker 的能力声明清单：`--target` 显式给出时照用；缺省 = 本机宿主可达的全部已声明目标

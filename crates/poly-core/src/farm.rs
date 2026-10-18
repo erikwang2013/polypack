@@ -1,17 +1,23 @@
-//! 远程农场协议 v0（T-M2-13）：帧格式、worker 注册、拉取-执行-回传与跨机缓存。
+//! 远程农场协议 v1（T-M8-06；v0 帧格式见 T-M2-13）：帧格式、worker 注册、拉取-执行-回传、
+//! 并发调度与跨机缓存。
 //!
-//! - **线格式**：JSON Lines（每帧一行 UTF-8 JSON），版本串 [`PROTOCOL`]（`farm/v0`）；
+//! - **线格式**：JSON Lines（每帧一行 UTF-8 JSON），版本串 [`PROTOCOL`]（`farm/v1`）；
 //!   帧序：`hello`（注册 + 能力声明）→ `hello_ack` → `job` → `result` → `goodbye`；
-//! - **传输抽象**：[`FarmTransport`]；v0 默认实现 [`DirTransport`]（本地目录双信箱），
-//!   HTTP / SSH 等远端后端在 M3+ 接入同一 trait；
+//!   帧字段与 v0 完全一致（`JobSpec` 序列化未变），版本协商取双方共同版本——
+//!   v1 主端接受 `farm/v0` 旧 worker 并以 v0 回 `hello_ack`（[`PROTOCOL_V0`]）；
+//! - **传输抽象**：[`FarmTransport`]；默认实现 [`DirTransport`]（本地目录双信箱），
+//!   v1 worker 池为每 worker 一个信箱对（`<dir>/v1/<worker_id>/`），v0 worker 沿用根信箱；
 //! - **执行**：worker 与本地 `poly build` 共用同一 DAG 实现与同一缓存键公式，共享入口
 //!   即 [`execute_job`]（内部走 `crate::pipeline::plan_with_stages`）；
 //! - **跨机缓存**：[`CacheBackend`] 只换 `ObjectStore` 后端（[`DirSharedStore`] 为参考实现）；
 //! - **凭据边界**（T-M2-11 同模型）：`JobSpec.secrets` 只传 `crate::job::CredentialRef` 引用，
 //!   绝不内联明文，凭据在构建地（worker）按需拉取；
-//! - **失败回传**：worker 端诊断经 [`RemoteDiagnostic`] 完整回传（错误码 + 修复提示）。
+//! - **失败回传**：worker 端诊断经 [`RemoteDiagnostic`] 完整回传（错误码 + 修复提示）；
+//!   任务超时 / worker 失联由主端判定（[`codes::E_FARM_0004`] / [`codes::E_FARM_0005`]）
+//!   并输出带 hint 的 `Failed` 事件。
 
 mod master;
+mod pool;
 mod store;
 mod worker;
 
@@ -26,11 +32,20 @@ use crate::diagnostics::{Diagnostic, codes};
 use crate::job::JobSpec;
 
 pub use master::{FarmMaster, JobOutcome, Requirement};
+pub use pool::{FarmPool, PoolJob, PoolOptions, PoolResult};
 pub use store::DirSharedStore;
-pub use worker::{ExecOutcome, StageFactory, WorkerExit, WorkerOptions, execute_job, run_worker};
+pub use worker::{
+    ExecOutcome, StageFactory, WorkerExit, WorkerOptions, execute_job, run_pool_worker, run_worker,
+};
 
-/// 协议版本串（`hello` / `hello_ack` 携带；不等即 `poly::E_FARM_0001`）。
-pub const PROTOCOL: &str = "farm/v0";
+/// 当前协议版本（`hello` / `hello_ack` 携带；新 worker / 主端默认声明）。
+pub const PROTOCOL: &str = "farm/v1";
+
+/// 旧协议版本（v0 worker 仍可接入 v1 主端；帧字段与 v1 相同，仅版本串不同）。
+pub const PROTOCOL_V0: &str = "farm/v0";
+
+/// 本端支持的协议版本（版本协商：取双方共同版本）。
+pub const SUPPORTED_PROTOCOLS: [&str; 2] = [PROTOCOL_V0, PROTOCOL];
 
 /// 目录后端的轮询间隔（拉取循环的等待粒度）。
 const POLL_INTERVAL: Duration = Duration::from_millis(20);
@@ -88,20 +103,21 @@ impl FarmFrame {
         serde_json::to_string(self).expect("帧可序列化")
     }
 
-    /// 解析一行 JSON；格式非法 / 版本不符 → `poly::E_FARM_0001` + 修复提示。
+    /// 解析一行 JSON；格式非法 / 版本不受支持 → `poly::E_FARM_0001` + 修复提示。
     pub fn decode(line: &str) -> Result<Self, Diagnostic> {
         let frame: Self = serde_json::from_str(line.trim()).map_err(|err| {
-            Diagnostic::error(codes::E_FARM_0001, format!("农场协议帧解析失败: {err}"))
-                .with_hint("线格式 = JSON Lines（farm/v0）；核对两端 poly 版本与字段完整性")
+            Diagnostic::error(codes::E_FARM_0001, format!("农场协议帧解析失败: {err}")).with_hint(
+                "线格式 = JSON Lines（farm/v0 或 farm/v1）；核对两端 poly 版本与字段完整性",
+            )
         })?;
         if let Some(version) = frame.protocol()
-            && version != PROTOCOL
+            && !SUPPORTED_PROTOCOLS.contains(&version)
         {
             return Err(Diagnostic::error(
                 codes::E_FARM_0001,
-                format!("协议版本不受支持: {version}（本端为 {PROTOCOL}）"),
+                format!("协议版本不受支持: {version}（本端支持 farm/v0 / farm/v1）"),
             )
-            .with_hint("把主端与 worker 升级到同一 poly 版本后重试"));
+            .with_hint("把主端与 worker 升级到同一 poly 版本后重试（v1 主端仍接受 v0 worker）"));
         }
         Ok(frame)
     }
@@ -124,6 +140,13 @@ impl FarmFrame {
             Self::Goodbye => "goodbye",
         }
     }
+
+    /// 版本协商：`peer` 与本端共同支持的版本（不支持返回 `None`，由 [`Self::decode`] 拦截）。
+    pub fn negotiate(peer: &str) -> Option<&'static str> {
+        [PROTOCOL, PROTOCOL_V0]
+            .into_iter()
+            .find(|version| *version == peer)
+    }
 }
 
 /// worker 能力声明（注册载荷）：构建地 triple / 宿主 / 可构建目标。
@@ -137,6 +160,10 @@ pub struct WorkerCaps {
     pub host: Host,
     /// 该 worker 声明可构建的目标 id 列表。
     pub targets: Vec<String>,
+    /// v1：本次会话可接任务数（0 = 不限，直到 `goodbye` / 空闲超时）。
+    /// v0 worker 无此字段 → `None`，主端按 v0 语义视为 1（一次会话一个任务）。
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub capacity: Option<usize>,
 }
 
 /// 本机能力声明：宿主由编译期平台判定（未知平台 → `poly::E_FARM_0002`）；triple 优先
@@ -156,6 +183,7 @@ pub fn local_caps(worker_id: &str, targets: Vec<String>) -> Result<WorkerCaps, D
         triple,
         host,
         targets,
+        capacity: None,
     })
 }
 
@@ -328,7 +356,9 @@ fn unexpected_frame(expected: &str, frame: &FarmFrame) -> Diagnostic {
         codes::E_FARM_0001,
         format!("农场协议帧非预期: 期望 {expected}，实得 {}", frame.kind()),
     )
-    .with_hint("主端与 worker 的协议状态机必须同版本（farm/v0）：核对两端 poly 版本与投递顺序")
+    .with_hint(
+        "主端与 worker 的协议状态机必须同版本（farm/v0 / farm/v1）：核对两端 poly 版本与投递顺序",
+    )
 }
 
 /// IO 失败 → 稳定诊断。

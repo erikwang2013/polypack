@@ -107,6 +107,7 @@ fn local_worker(id: &str, targets: &[&str]) -> WorkerCaps {
         triple: poly_core::host_triple().unwrap_or_else(|_| "unknown-triple".to_string()),
         host: current_host().expect("测试宿主必被识别"),
         targets: targets.iter().map(|id| id.to_string()).collect(),
+        capacity: None,
     }
 }
 
@@ -157,8 +158,16 @@ fn frame_roundtrip_is_single_line_and_version_guarded() {
         );
     }
 
+    // 版本协商：v0（旧 worker）与 v1（当前）都可解析，未知版本才拒绝
+    for supported in ["farm/v0", "farm/v1"] {
+        let frame = FarmFrame::Hello {
+            protocol: supported.to_string(),
+            worker: caps.clone(),
+        };
+        FarmFrame::decode(&frame.encode()).expect("受支持版本应可解析");
+    }
     let bad_version = FarmFrame::Hello {
-        protocol: "farm/v1".to_string(),
+        protocol: "farm/v9".to_string(),
         worker: caps,
     };
     let err = FarmFrame::decode(&bad_version.encode()).expect_err("版本不符必须失败");
@@ -354,6 +363,7 @@ fn host_mismatch_rejects_registration_with_reason() {
                     triple: "x86_64-unknown-linux-gnu".to_string(),
                     host: Host::Linux,
                     targets: vec!["ios".to_string()],
+                    capacity: None,
                 },
             })
             .expect("发送注册帧");
