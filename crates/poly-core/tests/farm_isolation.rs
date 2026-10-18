@@ -128,6 +128,8 @@ struct Observed {
 struct RecordingScope {
     observed: Arc<Mutex<Vec<Observed>>>,
     /// 目录外的「受害者」目录（符号链接目标）。
+    // 仅 unix 用例读取（Windows 无 symlink 分支），避免 -D warnings 下的 dead_code
+    #[cfg_attr(not(unix), allow(dead_code))]
     outside: PathBuf,
     residue: bool,
 }
