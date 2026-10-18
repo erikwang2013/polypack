@@ -37,8 +37,8 @@ const builtinTargets = parseBuiltinTargets();
 
 test("poly-targets 哨兵：内建 L3 电视目标（*-tv）⊆ 本矩阵（登记落位后自动收口）", () => {
   assert.ok(builtinTargets.length >= 7, `内建目标解析异常（${builtinTargets.length} 个）`);
-  // L3 六枚口径（lead 定案）：android-tv / fire-tv / tizen-tv / webos-tv / vidaa-tv /
-  // smartcast-tv——凡内建目标 id 以 -tv 结尾者必在本矩阵（tvos 不带后缀，不在本哨兵面）。
+  // L3 七枚口径（lead 定案）：android-tv / fire-tv / harmonyos-tv / tizen-tv / webos-tv /
+  // vidaa-tv / smartcast-tv——凡内建目标 id 以 -tv 结尾者必在本矩阵（tvos 不带后缀，不在本哨兵面）。
   const tvTargets = builtinTargets.filter(
     (t) => typeof t.id === "string" && t.id.endsWith("-tv"),
   );
