@@ -16,6 +16,10 @@
 //! `android.hardware.type.watch` required=true，并把 minSdkVersion 抬到 [`WEAR_MIN_API`]
 //! 下限；生成 / 输入清单都过 [`validate_wear_manifest`]（Wear 特性 + 最小 API 级别）。
 //!
+//! GrapheneOS（`grapheneos`，format `apk`）复用**普通** APK 口径（无 TV / 车机 / Wear
+//! 清单注入）：产物是标准未签名 APK，签名与校验同 Android；无独立无 GMS 档——GMS 剔除
+//! 是应用侧约束，本链不注入也不校验。
+//!
 //! 签名不在本任务范围内（T-M2-09 接入），产物一律是**未签名**件；bundletool 缺席时如实降级
 //! （模块 zip + 未签名 APK，notes 写明未做 bundletool 步骤），绝不伪造 bundletool 结果。
 
@@ -52,7 +56,13 @@ pub struct AndroidAutomotive;
 /// `android.hardware.type.watch` 行、minSdk 下限与产物落点（未签名 APK，同 TV）。
 pub struct AndroidWear;
 
-/// 打包口径：AAB 目标与 TV / AAOS / Wear 变体共用全部内部步骤，差异集中在此。
+/// GrapheneOS 打包器（`grapheneos`；format `apk`，builder `android-aapt2`）。
+///
+/// 复用 [`AndroidAab`] 的普通 APK 口径：无 TV / 车机 / Wear 清单注入，产物 target 为
+/// `grapheneos`。无独立无 GMS 档（见模块文档）。
+pub struct GrapheneOs;
+
+/// 打包口径：AAB 目标与 TV / AAOS / Wear / GrapheneOS 变体共用全部内部步骤，差异集中在此。
 #[derive(Clone, Copy)]
 struct Flavor {
     /// 事件 / 产物 / 错误归属（`Packager::id()`）。
@@ -105,6 +115,15 @@ const WEAR_FLAVOR: Flavor = Flavor {
     wear: true,
 };
 
+/// GrapheneOS 口径：普通 APK（无任何设备专属清单注入）。
+const GRAPHENEOS_FLAVOR: Flavor = Flavor {
+    id: GRAPHENEOS,
+    format: APK,
+    tv: false,
+    automotive: false,
+    wear: false,
+};
+
 /// Wear OS 应用的最低 API 级别（Wear OS 2.0 / Android 8.0；Google Play 另要求 targetSdk
 /// 按年抬升，那是 targetSdk 策略，不改变这里的 minSdk 下限）。
 pub const WEAR_MIN_API: u32 = 26;
@@ -112,6 +131,7 @@ pub const WEAR_MIN_API: u32 = 26;
 const ANDROID: &str = "android";
 const ANDROID_AUTOMOTIVE: &str = "android-automotive";
 const WEAROS: &str = "wearos";
+const GRAPHENEOS: &str = "grapheneos";
 const AAB: &str = "aab";
 const APK: &str = "apk";
 /// AAB 模块 zip 里清单的落点（bundletool 契约：根级 `manifest/AndroidManifest.xml`）。
@@ -199,6 +219,24 @@ impl Packager for AndroidWear {
 
     fn package(&self, inputs: &BundleInputs, spec: &TargetSpec) -> Result<Artifact, BundleError> {
         AndroidAab::chain_package(inputs, spec, WEAR_FLAVOR)
+    }
+}
+
+impl Packager for GrapheneOs {
+    fn id(&self) -> &'static str {
+        GRAPHENEOS
+    }
+
+    fn format(&self) -> &'static str {
+        APK
+    }
+
+    fn plan(&self, inputs: &BundleInputs, spec: &TargetSpec) -> Result<BundlePlan, BundleError> {
+        AndroidAab::chain_plan(inputs, spec, GRAPHENEOS_FLAVOR)
+    }
+
+    fn package(&self, inputs: &BundleInputs, spec: &TargetSpec) -> Result<Artifact, BundleError> {
+        AndroidAab::chain_package(inputs, spec, GRAPHENEOS_FLAVOR)
     }
 }
 
@@ -1360,5 +1398,31 @@ mod tests {
         assert!(validate_wear_manifest(&low).is_err());
         let aab = generated_manifest(&product, &package, &android, &stage, false, AAB_FLAVOR);
         assert!(!aab.contains("type.watch"), "{aab}");
+    }
+
+    #[test]
+    fn grapheneos_uses_the_vanilla_apk_flavor() {
+        // 无设备专属清单注入：GrapheneOS 是普通 APK，不是 TV / 车机 / Wear 变体。
+        let stage = tv_stage();
+        let product = tv_product();
+        let package = android_package(&product.identifier).expect("可映射");
+        let manifest = generated_manifest(
+            &product,
+            &package,
+            &AndroidInputs::default(),
+            &stage,
+            false,
+            GRAPHENEOS_FLAVOR,
+        );
+        assert!(
+            !manifest.contains("leanback")
+                && !manifest.contains("type.automotive")
+                && !manifest.contains("type.watch"),
+            "{manifest}"
+        );
+        assert!(!manifest.contains("android:banner"), "{manifest}");
+        assert!(GrapheneOs.serves("grapheneos"));
+        assert!(!GrapheneOs.serves("android"));
+        assert_eq!(GrapheneOs.format(), APK);
     }
 }

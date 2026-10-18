@@ -98,10 +98,11 @@ fn builtin_has_seven_valid_targets() {
     );
     assert_eq!(
         registry.all().count(),
-        38,
+        40,
         "M7 起内建 = L1 七 + L2 小程序族四（wechat / alipay / douyin / quickapp）+ \
-         L3 电视族八（tvos + android-tv / fire-tv + tizen-tv / webos-tv / vidaa-tv / smartcast-tv \
-         + roku※实验，T-M4-04/07/08/09/10/12）+ L5 OpenBSD / FreeBSD / NetBSD（T-M5-07/06/08）+\
+         L3 电视族九（tvos + android-tv / fire-tv + tizen-tv / webos-tv / vidaa-tv / smartcast-tv \
+         + roku※实验，T-M4-04/07/08/09/10/12 + harmonyos-tv，T-M4-14）+ L4 GrapheneOS \
+         （grapheneos）+ L5 OpenBSD / FreeBSD / NetBSD（T-M5-07/06/08）+\
          发行版三（ubuntu / fedora / mint，T-M5-01）+ ChromeOS 双轨（chromeos / chromeos-pwa，\
          T-M5-10）+ L6 车机 / 嵌入式 / 穿戴十一目标（android-automotive，T-M6-11；qnx / autosar，\
          T-M6-03/04；vxworks / zephyr，T-M6-05/06；freertos，T-M6-07；garmin※实验，T-M7-09；\
@@ -155,6 +156,7 @@ fn builtin_ids_are_the_l1_set() {
         "tvos",
         "android-tv",
         "fire-tv",
+        "harmonyos-tv",
         "tizen-tv",
         "webos-tv",
         "vidaa-tv",
@@ -166,7 +168,18 @@ fn builtin_ids_are_the_l1_set() {
     .collect();
     assert_eq!(
         l3, expected_l3,
-        "L3 恰为电视族八（tvos + android-tv / fire-tv + web 系四 + roku※实验）"
+        "L3 恰为电视族九（tvos + android-tv / fire-tv / harmonyos-tv + web 系四 + roku※实验）"
+    );
+
+    let l4: BTreeSet<String> = registry
+        .all()
+        .filter(|spec| spec.tier == 4)
+        .map(|spec| spec.id.clone())
+        .collect();
+    assert_eq!(
+        l4,
+        BTreeSet::from(["grapheneos".to_string()]),
+        "L4 已声明目标仅 GrapheneOS（复用 Android 普通 APK 链）"
     );
 
     let l5: BTreeSet<String> = registry
@@ -257,7 +270,7 @@ fn linux_host_resolves_four_l1_targets_from_all() {
         BTreeSet::from(["wechat", "alipay", "douyin", "quickapp"]),
         "小程序族四目标应全部入选"
     );
-    // L3 电视两目标同声明三宿主（复用 Android 工具链）→ Linux 宿主下也全部入选；
+    // L3 电视三目标同声明三宿主（Android / HarmonyOS 链）→ Linux 宿主下也全部入选；
     // L3 web 系 TV 四目标声明三宿主（web 运行时，同 web 的宿主面）→ 任何宿主下都入选
     let l3: BTreeSet<&str> = resolved
         .selected
@@ -270,14 +283,23 @@ fn linux_host_resolves_four_l1_targets_from_all() {
         BTreeSet::from([
             "android-tv",
             "fire-tv",
+            "harmonyos-tv",
             "tizen-tv",
             "webos-tv",
             "vidaa-tv",
             "smartcast-tv",
             "roku"
         ]),
-        "电视两目标 + web 系 TV 四目标 + roku（三宿主声明）应全部入选"
+        "电视三目标 + web 系 TV 四目标 + roku（三宿主声明）应全部入选"
     );
+    // L4 GrapheneOS 声明三宿主（复用 Android APK 链）→ Linux 宿主下入选
+    let l4: BTreeSet<&str> = resolved
+        .selected
+        .iter()
+        .filter(|s| s.tier == 4)
+        .map(|s| s.id.as_str())
+        .collect();
+    assert_eq!(l4, BTreeSet::from(["grapheneos"]), "GrapheneOS 应入选");
     // L5：openbsd / freebsd / netbsd、发行版三与 ChromeOS deb 轨声明 Linux 宿主；
     // chromeos-pwa 声明三宿主（web 运行时）→ 全部入选
     let l5: BTreeSet<&str> = resolved
@@ -327,7 +349,7 @@ fn linux_host_resolves_four_l1_targets_from_all() {
     );
     assert_eq!(
         selected.len(),
-        l1.len() + l2.len() + l3.len() + l5.len() + l6.len()
+        l1.len() + l2.len() + l3.len() + l4.len() + l5.len() + l6.len()
     );
 
     let excluded: BTreeSet<&str> = resolved.excluded.iter().map(|e| e.id.as_str()).collect();
@@ -340,7 +362,7 @@ fn linux_host_resolves_four_l1_targets_from_all() {
         assert!(!target.reason.trim().is_empty(), "{} 缺排除原因", target.id);
     }
 
-    // 内建目标为 L1 / L2 / L3 / L5 / L6，不涉及厂商授权分支。
+    // 内建目标为 L1 / L2 / L3 / L4 / L5 / L6，不涉及厂商授权分支。
     assert!(resolved.excluded.iter().all(|e| !e.reason.contains("L7")));
 }
 
@@ -535,6 +557,57 @@ fn builtin_matches_roadmap_3_4_web_tv() {
         .and_then(|spec| spec.notes.clone())
         .expect("webos-tv 缺 notes");
     assert!(notes.contains("平台侧"), "webos-tv: {notes}");
+}
+
+/// T-M4-14 / L4 复用链验收（声明侧）：HarmonyOS TV 镜像 `harmonyos`，GrapheneOS 复用
+/// Android 普通 APK 链；边界（无 hdc 设备、无 GMS flavor、无 F-Droid 客户端）落在 notes。
+#[test]
+fn builtin_matches_harmonyos_tv_and_grapheneos_reuse_specs() {
+    let registry = Registry::builtin();
+
+    let tv = registry
+        .get("harmonyos-tv")
+        .expect("内建 harmonyos-tv 目标");
+    assert_eq!(tv.tier, 3, "harmonyos-tv: 电视族为 L3");
+    assert_eq!(tv.hosts, vec![Host::Win, Host::Linux, Host::Macos]);
+    assert_eq!(tv.runtime, Runtime::Native);
+    assert_eq!(tv.bridge, Bridge::Napi);
+    assert_eq!(tv.ui, ["react-native-ohos"]);
+    assert_eq!(tv.package.format, "hap");
+    assert_eq!(tv.package.builder, "harmonyos-hvigor");
+    assert_eq!(tv.signing.as_deref(), Some("harmonyos-hap-sign"));
+    assert_eq!(
+        tv.verify,
+        ["hap-sign-verify", "hap-structure-check"].map(String::from)
+    );
+    assert_eq!(tv.publish, ["appgallery-connect"]);
+    assert!(!tv.experimental);
+    let notes = tv.notes.as_deref().expect("harmonyos-tv 缺 notes");
+    assert!(
+        notes.contains("T-M4-14") && notes.contains("SKIP") && notes.contains("无独立渠道"),
+        "harmonyos-tv: {notes}"
+    );
+
+    let graphene = registry.get("grapheneos").expect("内建 grapheneos 目标");
+    assert_eq!(graphene.tier, 4, "grapheneos: L4 移动系统变体");
+    assert_eq!(graphene.hosts, vec![Host::Win, Host::Linux, Host::Macos]);
+    assert_eq!(graphene.runtime, Runtime::Native);
+    assert_eq!(graphene.bridge, Bridge::Uniffi);
+    assert_eq!(graphene.ui, ["react-native"]);
+    assert_eq!(graphene.package.format, "apk");
+    assert_eq!(graphene.package.builder, "android-aapt2");
+    assert_eq!(graphene.signing.as_deref(), Some("android-keystore"));
+    assert_eq!(
+        graphene.verify,
+        ["apksigner-verify", "bundletool-validate"].map(String::from)
+    );
+    assert_eq!(graphene.publish, ["self-hosted"]);
+    assert!(!graphene.experimental);
+    let notes = graphene.notes.as_deref().expect("grapheneos 缺 notes");
+    assert!(
+        notes.contains("GMS") && notes.contains("reproducible") && notes.contains("self-hosted"),
+        "grapheneos: {notes}"
+    );
 }
 
 /// T-M5-10 验收（声明侧）：ChromeOS 双轨按 ROADMAP §3.6 逐列对齐。

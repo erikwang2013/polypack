@@ -57,7 +57,7 @@
 
 ### 3.1.1 49 目标现状表（生成）
 
-下表是 49 个平台现状的单一事实源：36 行由 `TargetSpec` 逐字段生成（38 个已声明目标；RTOS、Chrome OS 行各合并两个），13 行规划平台显式标注「规划中」，字段来自 `tools/gen-status-table.mjs` 的声明清单。请勿手改：`node tools/gen-status-table.mjs` 生成；`--check` 在漂移时失败。平台矩阵增删按第 11 节第 4 条同步。
+下表是 49 个平台现状的单一事实源：38 行由 `TargetSpec` 逐字段生成（40 个已声明目标；RTOS、Chrome OS 行各合并两个），11 行规划平台显式标注「规划中」，字段来自 `tools/gen-status-table.mjs` 的声明清单。请勿手改：`node tools/gen-status-table.mjs` 生成；`--check` 在漂移时失败。平台矩阵增删按第 11 节第 4 条同步。
 
 <!-- BEGIN GENERATED: status-49 -->
 | 等级 | 平台 | 运行时 | 桥 | 打包器与产物 | 签名 | 产物校验 | 发布渠道 | experimental | notes |
@@ -74,20 +74,20 @@
 | L2 | 抖音小程序（`douyin`） | `wasm` | `wasm-bindgen` | `tt` · `taro-tt` | — | `douyin-devtools-cli` | `douyin-open-platform` | `false` | 小程序代码包（Taro 编译，平台 `tt`）；wasm 进宿主沙箱（T-M3-07） |
 | L2 | 快应用（`quickapp`） | `wasm` | `wasm-bindgen` | `rpk` · `hap-toolkit` | — | `hap-toolkit-lint` | `quickapp-union-store` | `false` | 快应用 `.rpk`（hap-toolkit 构建）；lint 入 verify、提审走联盟商店（T-M3-12） |
 | L2 | TikTok Minis（规划中） | HTML5 + Minis 桥 | HTML5 | zip | 平台侧 | 平台沙箱自检 | TikTok 平台 | — | 规划中：尚未声明 TargetSpec；经 HTML5 + Minis 桥接入，zip 由平台侧审核。 |
-| L2 | Google Play Instant（规划中） | native | uniffi | instant-aab · android-aapt2 | android-keystore | bundletool-validate | google-play | — | 规划中：复用 Android 基座（native · uniffi），产物为 Instant-enabled AAB；尚未声明 TargetSpec。 |
+| L2 | Google Play Instant（规划中） | native | uniffi | instant-aab · android-aapt2 | android-keystore | bundletool-validate | google-play | — | 规划中 · 已停服：Google 自 2025-12 起停止受理 Instant Apps 发布、Play services Instant API 停用；保留规划，不声明 TargetSpec。 |
 | L2 | Facebook Instant Games（规划中） | HTML5 | HTML5 | zip | 无 | Meta 沙箱自检 | Meta 平台 | — | 规划中：HTML5 运行时，Meta 沙箱自检；尚未声明 TargetSpec。 |
 | L2 | Snapchat Mini（规划中） | HTML5 | HTML5 | zip | 无 | Snap 沙箱自检 | Snap 平台 | — | 规划中：HTML5 运行时，Snap 沙箱自检；尚未声明 TargetSpec。 |
 | L2 | LINE Mini App（规划中） | LIFF（web） | HTTPS | 静态包 + LIFF 配置 | HTTPS / 平台 TLS | LIFF 配置检查 | LINE 平台 | — | 规划中：LIFF（web）承载，HTTPS / 平台 TLS；尚未声明 TargetSpec。 |
 | L3 | Android TV（`android-tv`） | `native` | `uniffi` | `apk` · `android-aapt2` | `android-keystore` | `apksigner-verify`, `bundletool-validate` | `google-play-tv` | `false` | Leanback 清单（android.software.leanback） |
 | L3 | Apple tvOS（`tvos`） | `native` | `uniffi` | `ipa` · `tvos-xcodebuild` | `apple-codesign` | `codesign-verify`, `spctl` | `app-store-connect` | `false` | RN-tvOS 承载 UI；需 macOS 宿主 |
-| L3 | HarmonyOS TV（规划中） | native | napi | hap · harmonyos-hvigor | harmonyos-hap-sign | hap-sign-verify, hap-structure-check | 华为视频商店 | — | 规划中：复用 HarmonyOS 基座（native · napi / RNOH）；尚未声明 TargetSpec。 |
+| L3 | HarmonyOS TV（`harmonyos-tv`） | `native` | `napi` | `hap` · `harmonyos-hvigor` | `harmonyos-hap-sign` | `hap-sign-verify`, `hap-structure-check` | `appgallery-connect` | `false` | RNOH TV 形态（T-M4-14：deviceTypes 含 `tv`、焦点 / 安全区复用 adapter-tv）；复用 HarmonyHap 打包链；无 hdc TV 设备——真机焦点走查 SKIP；发布走 AppGallery Connect（华为视频商店无独立渠道 id） |
 | L3 | Samsung Tizen（TV）（`tizen-tv`） | `wasm` | `wasm-bindgen` | `wgt` · `tizen-wgt` | `tizen-author` | `wgt-lint` | `tizen-seller-office` | `false` | web 运行时（Tizen TV）；作者证书签名（凭据引用 tizen-author）与侧载安装归三星工具链（本机无 tizen CLI，SDK 校验器缺席时如实跳过） |
 | L3 | LG webOS（`webos-tv`） | `wasm` | `wasm-bindgen` | `ipk` · `webos-ares` | — | `ares-package` | `lg-content-store` | `false` | web 运行时（LG webOS）；签名按平台侧（LG Content Store 发布签名），本地不签名（本机无 ares-cli，SDK 校验器缺席时如实跳过） |
 | L3 | Roku OS（`roku`） | `none` | `none` | `zip` · `roku-channel` | — | `sideload-structure-check` | `roku-channel-store` | `true` | 实验：SceneGraph 子集受限渲染——仅 UI 子集 + 原生逻辑（BrightScript 重写，无 JS 运行时）；侧载结构自检可用，真机实证待补（T-M4-15 触发前置；T-M4-12 决策：继续受限档） |
 | L3 | Amazon Fire TV（`fire-tv`） | `native` | `uniffi` | `apk` · `android-aapt2` | `android-keystore` | `apksigner-verify`, `bundletool-validate` | `amazon-appstore` | `false` | 复用 Android TV 同一 APK 链，渠道指向亚马逊应用商店 |
 | L3 | Vizio SmartCast（`smartcast-tv`） | `wasm` | `wasm-bindgen` | `web-app` · `smartcast-web-app` | — | `sandbox-selfcheck` | `vizio-platform` | `false` | web 运行时（Vizio SmartCast，远程托管）；无签名、无推送——只出沙箱自检包（入口 / 清单字段 / 体积），提报与安装归平台侧 |
 | L3 | Hisense VIDAA（`vidaa-tv`） | `wasm` | `wasm-bindgen` | `web-app` · `vidaa-web-app` | — | `sandbox-selfcheck` | `vidaa-store` | `false` | web 运行时（海信 VIDAA）；无签名、无推送——只出沙箱自检包（入口 / 清单字段 / 体积），提审与安装归平台商店侧 |
-| L4 | GrapheneOS（规划中） | native | uniffi | apk · android-aapt2 | apksigner / 社区密钥 | apksigner-verify + 可复现比对 | F-Droid / 自托管 | — | 规划中：Android 构建变体（无 GMS flavor），APK 自签名 / F-Droid；尚未声明 TargetSpec。 |
+| L4 | GrapheneOS（`grapheneos`） | `native` | `uniffi` | `apk` · `android-aapt2` | `android-keystore` | `apksigner-verify`, `bundletool-validate` | `self-hosted` | `false` | 复用 Android APK 链（同 aapt2 / keystore / 校验）；无独立无 GMS 打包档（GMS 剔除归应用侧）；发布走自托管（`self-hosted`；无 F-Droid 客户端 id）；可复现性走 `poly verify --reproducible`（同输入二跑，未实现上游构建对拍） |
 | L4 | KaiOS（规划中） | wasm | wasm-bindgen | zip + manifest | 平台侧 | 开发者工具自检 | KaiStore | — | 规划中：react-dom web 栈（wasm · wasm-bindgen），zip + manifest 投 KaiStore；尚未声明 TargetSpec。 |
 | L4 | Sailfish OS（规划中） | native | cffi | rpm | RPM GPG | rpmlint | Jolla Store | — | 规划中：native .so + Qt / Silica 壳，RPM 投 Jolla Store；尚未声明 TargetSpec。 |
 | L4 | Ubuntu Touch（规划中） | native | cffi | .click（Clickable） | Clickable 打包 | Clickable 构建检查 | OpenStore | — | 规划中：native .so + WebView 壳，.click（Clickable）投 OpenStore；尚未声明 TargetSpec。 |
@@ -134,7 +134,7 @@
 | 抖音小程序 | 同上 | 小程序代码包（Taro） | 平台侧 | 抖音开发者工具 CLI | 抖音开放平台 | |
 | 快应用 | wasm / JS（Taro 快应用目标） | `.rpk` | 平台侧 | hap-toolkit lint | 快应用联盟商店 | |
 | TikTok Minis | HTML5 + Minis 桥 | zip | 平台侧 | 平台沙箱自检 | TikTok 平台 | |
-| Google Play Instant | native（复用 Android） | Instant-enabled AAB | 同 Android | bundletool validate | Google Play | |
+| Google Play Instant | native（复用 Android） | Instant-enabled AAB | 同 Android | bundletool validate | Google Play | ※已停服：Google 自 2025-12 起不再受理 Instant Apps 发布（Play services Instant API 停用），保留规划、不声明 TargetSpec |
 | Facebook Instant Games | HTML5 | zip | 无 | Meta 沙箱自检 | Meta 平台 | |
 | Snapchat Mini | HTML5 | zip | 无 | Snap 沙箱自检 | Snap 平台 | |
 | LINE Mini App | LIFF（web） | 静态包 + LIFF 配置 | HTTPS / 平台 TLS | LIFF 配置检查 | LINE 平台 | |
@@ -145,7 +145,7 @@
 |---|---|---|---|---|---|---|
 | Android TV | native · uniffi | APK（Leanback 清单） | 同 Android | bundletool + 焦点导航冒烟 | Google Play（TV 轨道） | |
 | Apple tvOS | native staticlib · uniffi | TV 包（xcodebuild） | codesign | codesign verify | App Store | RN-tvOS 承载 UI；macOS 宿主 |
-| HarmonyOS TV | native · NAPI | HAP | hap-sign-tool | 同上 | 华为视频商店 | |
+| HarmonyOS TV | native · NAPI | HAP（复用 HarmonyHap） | hap-sign-tool | `hap-sign-verify` + `hap-structure-check` | AppGallery Connect（TV；无独立华为视频商店渠道 id） | T-M4-14：deviceTypes 含 `tv`、焦点 / 安全区复用 adapter-tv；无 hdc TV 设备，真机焦点走查 SKIP |
 | Samsung Tizen | wasm · wasm-bindgen | `.wgt` | Tizen 作者证书（三星签名工具） | `wgt-lint` | Seller Office | web 运行时 |
 | LG webOS | wasm · wasm-bindgen | `.ipk` | 平台侧（发布签名） | `ares-package` 校验 | LG Content Store | web 运行时 |
 | Roku OS | **无**（核心不参与） | 频道包（zip） | dev / 平台证书 | 侧载自检 | Roku 渠道商店 | ※实验：SceneGraph 子集渲染器，仅 UI 子集 + 原生逻辑 |
@@ -157,7 +157,7 @@
 
 | 平台 | 核心运行时 · 桥 | 打包器与产物 | 签名 | 产物校验 | 发布渠道 | 备注 |
 |---|---|---|---|---|---|---|
-| GrapheneOS | native · uniffi（无 GMS flavor） | APK | apksigner / 社区密钥 | apksigner verify + 可复现比对 | F-Droid / 自托管 | Android 构建变体 |
+| GrapheneOS | native · uniffi | APK（复用 Android APK 链） | apksigner / 社区密钥（android-keystore） | apksigner verify + `poly verify --reproducible`（同输入二跑） | 自托管（`self-hosted`；poly-publish 无 F-Droid 客户端） | 无独立无 GMS 打包档——GMS 剔除归应用侧；未实现上游构建对拍 |
 | KaiOS | wasm · wasm-bindgen | zip + manifest | 平台侧 | 开发者工具自检 | KaiStore | web 运行时 |
 | Sailfish OS | native `.so` + Qt/Silica 壳 | RPM | RPM GPG | rpmlint | Jolla Store | |
 | Ubuntu Touch | native `.so` + WebView 壳 | `.click`（Clickable） | Clickable 打包 | Clickable 构建检查 | OpenStore | |
@@ -338,7 +338,7 @@ cache_key = blake3(
 
 - 除数字签名与时间戳外，两次构建产物其余字节一致（`poly verify --reproducible`）；
 - 编译期注入 `SOURCE_DATE_EPOCH`；产物中禁止出现绝对路径与本机环境变量；
-- GrapheneOS 目标额外提供「可复现比对」通道（与上游构建对拍）。
+- GrapheneOS 目标同样走 `poly verify --reproducible`（同输入二跑比对）；与上游构建对拍未实现。
 
 ### 5.4 构建时限预算
 

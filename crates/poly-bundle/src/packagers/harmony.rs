@@ -64,6 +64,11 @@ impl Packager for HarmonyHap {
         HAP
     }
 
+    /// TV 形态复用同一条 HAP 链（T-M4-14）；产物 target 仍取 `spec.id`。
+    fn serves(&self, target_id: &str) -> bool {
+        target_id == self.id() || target_id == "harmonyos-tv"
+    }
+
     fn plan(&self, inputs: &BundleInputs, spec: &TargetSpec) -> Result<BundlePlan, BundleError> {
         check_format(spec, HAP)?;
         // 生成的工程配置直接内插产品元数据：先过白名单校验（无 JSON / 路径元字符）。
@@ -77,7 +82,7 @@ impl Packager for HarmonyHap {
             plan = plan.with_script(script.path, script.contents);
         }
         if stage.skeleton {
-            for script in skeleton_scripts(inputs, &stage) {
+            for script in skeleton_scripts(inputs, &stage, spec) {
                 plan = plan.with_script(script.path, script.contents);
             }
         } else if !stage.project.join("oh_modules").is_dir() {
@@ -149,7 +154,7 @@ impl Packager for HarmonyHap {
             structure.version_code,
             structure.module_name
         ));
-        fsutil::file_artifact(HARMONY, HAP, &artifact_path, notes)
+        fsutil::file_artifact(&spec.id, HAP, &artifact_path, notes)
     }
 }
 
@@ -284,7 +289,10 @@ fn bundle_name(identifier: &str) -> String {
 }
 
 /// 骨架工程的静态文件（配置 + 占位页；图标 PNG 与产品名内插由 `package()` / 参数补）。
-fn skeleton_scripts(inputs: &BundleInputs, stage: &Stage) -> Vec<ScriptFile> {
+///
+/// TV 目标（`harmonyos-tv`）只改 `module.json5` 的 `deviceTypes`（T-M4-14：TV 分发 /
+/// 安装要求含 `tv`）；复用既有 RNOH 宿主工程时该字段已由宿主模板给出，不改写。
+fn skeleton_scripts(inputs: &BundleInputs, stage: &Stage, spec: &TargetSpec) -> Vec<ScriptFile> {
     let project = &stage.project;
     let name = &inputs.product.name;
     let scripts: Vec<(&str, String)> = vec![
@@ -363,11 +371,20 @@ fn skeleton_scripts(inputs: &BundleInputs, stage: &Stage) -> Vec<ScriptFile> {
             "{\n  \"src\": [\n    \"pages/Index\"\n  ]\n}\n".to_string(),
         ),
     ];
+    let tv = spec.id == "harmonyos-tv";
     scripts
         .into_iter()
-        .map(|(relative, contents)| ScriptFile {
-            path: project.join(relative),
-            contents,
+        .map(|(relative, mut contents)| {
+            if tv && relative == "entry/src/main/module.json5" {
+                contents = contents.replace(
+                    "\"deviceTypes\": [\"default\", \"tablet\"]",
+                    "\"deviceTypes\": [\"default\", \"tv\"]",
+                );
+            }
+            ScriptFile {
+                path: project.join(relative),
+                contents,
+            }
         })
         .collect()
 }
@@ -650,6 +667,13 @@ mod tests {
     }
 
     #[test]
+    fn serves_harmonyos_tv_through_the_same_chain() {
+        assert!(HarmonyHap.serves("harmonyos"));
+        assert!(HarmonyHap.serves("harmonyos-tv"));
+        assert!(!HarmonyHap.serves("android"));
+    }
+
+    #[test]
     fn format_mismatch_is_rejected() {
         let mut spec = harmony_spec();
         spec.package.format = "aab".to_string();
@@ -787,6 +811,38 @@ mod tests {
             app.contents
         );
         assert!(app.contents.contains("10203"), "{}", app.contents);
+        // 手机形态：骨架清单 deviceTypes = default + tablet。
+        let phone_module = plan
+            .scripts
+            .iter()
+            .find(|script| script.path.ends_with("entry/src/main/module.json5"))
+            .expect("module.json5");
+        assert!(
+            phone_module
+                .contents
+                .contains("\"deviceTypes\": [\"default\", \"tablet\"]"),
+            "{}",
+            phone_module.contents
+        );
+
+        // TV 形态（T-M4-14）：同一骨架只把 deviceTypes 换为 default + tv。
+        let tv_spec = poly_targets::Registry::builtin()
+            .get("harmonyos-tv")
+            .expect("内建 harmonyos-tv 目标")
+            .clone();
+        let tv_plan = HarmonyHap.plan(&bounds, &tv_spec).expect("TV 骨架计划");
+        let tv_module = tv_plan
+            .scripts
+            .iter()
+            .find(|script| script.path.ends_with("entry/src/main/module.json5"))
+            .expect("module.json5");
+        assert!(
+            tv_module
+                .contents
+                .contains("\"deviceTypes\": [\"default\", \"tv\"]"),
+            "{}",
+            tv_module.contents
+        );
         let _ = std::fs::remove_dir_all(&base);
     }
 
