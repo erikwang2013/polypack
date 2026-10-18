@@ -3,7 +3,7 @@
 > 派生自 [ROADMAP.md](ROADMAP.md) §9 的里程碑分解；由 4 人规划小组并行产出、交叉对账后合并：**116 个任务**，跨里程碑引用经「存在性 + 描述匹配」两轮校验零悬空，中英任务 ID 逐一对齐。
 > 英文版：[TASKS.en.md](TASKS.en.md)。本文件受「文档同步约定」管辖（见 ROADMAP §11）：任务增删须双文件同一次提交更新，并由 T-M0-10 的结构级校验器在 CI 拦截漂移。
 > 扩展方向（E1–E8）已立项孵化，不占本任务表：见 [ROADMAP.md](ROADMAP.md) §13。
-> 进度（2026-10-19）：**M0 11/11** · **M1 已交付 15/15**（13 项 ✅；T-M1-05/07 的宿主工具级注记见任务条目）· **M2 已交付 15/15**（8 项 ✅：T-M2-02/06/07/08/09/11/14/15；T-M2-01/03/04/05/10/12/13 带宿主/阶段/设置注记，逐项见任务条目）· **CI 三宿主全绿**（rust-ci#38654820649）+ M2 新增四工作流（secret-scan 三宿主 / mobile-contract mock+夜跑真列 / bridge 夜跑真跑）· **M3 已交付 12/12**（7 项 ✅：T-M3-05/06/07/08/09/10/11；T-M3-01/02/03/04/12 带宿主/环境/联调注记，逐项见任务条目）+ M3 新增一工作流（miniprogram-contract mock+夜跑真列）· **M4 已交付 15/15**（T-M4-15 条件任务已交付：Roku 频道包打包器与契约测试落库（结构自检 / zip / 金样 / 确定性覆盖），真机侧载按环境槽 SKIP-with-print；T-M4-01/06/11/13 等带设备/宿主/联调注记，逐项见任务条目）+ M4 新增一工作流（tv-smoke mock+夜跑真列）· **M5 已交付 11/11**（T-M5-07 的 OpenBSD 安装冒烟与 T-M5-08 的 NetBSD `bmake` 真跑按环境槽 SKIP-with-print（镜像带宽 / 宿主缺席），由 bsd-ci 每夜裁决；T-M5-11 多目标真跑受单全局 `--credential` 契约限制，以 dry-run 双事件验证，按 target 分凭据留 M6）+ M5 新增一工作流（bsd-ci 夜跑 BSD 原生构建与安装冒烟）· **M6 已交付 13/13**（no_std 引擎层 + C ABI、QNX/AUTOSAR/VxWorks/Zephyr/FreeRTOS 五目标、AAOS、CI 矩阵与 QEMU 冒烟、状态表与预算/标注校验；QNX SDP / wr-cc / Xcode 类环境槽按 SKIP-with-print，模型与串口证据见各任务条目）+ M6 新增一工作流（embedded-ci：tier-6 矩阵从 TargetSpec 派生 + QEMU 冒烟，夜跑 19:27）· **M7 已交付 11/11**（adapter-wear + Wear OS 双冒烟 + watchOS 模板/打包链 + Fitbit/Zepp + Garmin spike + 实验目标三段式文档 + 穿戴契约；xcodebuild / codesign / Wear 设备类环境槽按 SKIP-with-print，garmin 的 iq 打包器为已记录实验缺口）+ M7 新增两工作流（wear-smoke 夜跑表单冒烟 / wear-release-smoke 发版门）。 · **M8 已交付 13/13**（插件沙箱 + WIT world、SRI/签名链、模板/脚手架、内建统一 provider、农场 v1、发布 GA、49 目标表、双语 GA 文档/技术审查/1 天演练（38min）；M8 未新增仓库工作流（模板 CI 位于 templates/），环境槽注记见各任务条目）。
+> 进度（2026-10-19）：**M0 11/11** · **M1 已交付 15/15**（14 项 ✅；T-M1-07 的 lintian deb 判词与 `dpkg -i` 冒烟仍待处理，逐项见任务条目）· **M2 已交付 15/15**（8 项 ✅：T-M2-02/06/07/08/09/11/14/15；T-M2-01/03/04/05/10/12/13 带宿主/阶段/设置注记，逐项见任务条目）· **CI 三宿主全绿**（rust-ci#38654820649）+ M2 新增四工作流（secret-scan 三宿主 / mobile-contract mock+夜跑真列 / bridge 夜跑真跑）· **M3 已交付 12/12**（7 项 ✅：T-M3-05/06/07/08/09/10/11；T-M3-01/02/03/04/12 带宿主/环境/联调注记，逐项见任务条目）+ M3 新增一工作流（miniprogram-contract mock+夜跑真列）· **M4 已交付 15/15**（T-M4-15 条件任务已交付：Roku 频道包打包器与契约测试落库（结构自检 / zip / 金样 / 确定性覆盖），真机侧载按环境槽 SKIP-with-print；T-M4-01/06/11/13 等带设备/宿主/联调注记，逐项见任务条目）+ M4 新增一工作流（tv-smoke mock+夜跑真列）· **M5 已交付 11/11**（T-M5-07 的 OpenBSD 安装冒烟与 T-M5-08 的 NetBSD `bmake` 真跑按环境槽 SKIP-with-print（镜像带宽 / 宿主缺席），由 bsd-ci 每夜裁决；T-M5-11 多目标真跑受单全局 `--credential` 契约限制，以 dry-run 双事件验证，按 target 分凭据留 M6）+ M5 新增一工作流（bsd-ci 夜跑 BSD 原生构建与安装冒烟）· **M6 已交付 13/13**（no_std 引擎层 + C ABI、QNX/AUTOSAR/VxWorks/Zephyr/FreeRTOS 五目标、AAOS、CI 矩阵与 QEMU 冒烟、状态表与预算/标注校验；QNX SDP / wr-cc / Xcode 类环境槽按 SKIP-with-print，模型与串口证据见各任务条目）+ M6 新增一工作流（embedded-ci：tier-6 矩阵从 TargetSpec 派生 + QEMU 冒烟，夜跑 19:27）· **M7 已交付 11/11**（adapter-wear + Wear OS 双冒烟 + watchOS 模板/打包链 + Fitbit/Zepp + Garmin spike + 实验目标三段式文档 + 穿戴契约；xcodebuild / codesign / Wear 设备类环境槽按 SKIP-with-print，garmin 的 iq 打包器为已记录实验缺口）+ M7 新增两工作流（wear-smoke 夜跑表单冒烟 / wear-release-smoke 发版门）。 · **M8 已交付 13/13**（插件沙箱 + WIT world、SRI/签名链、模板/脚手架、内建统一 provider、农场 v1、发布 GA、49 目标表、双语 GA 文档/技术审查/1 天演练（38min）；M8 未新增仓库工作流（模板 CI 位于 templates/），环境槽注记见各任务条目）。
 
 ## 团队编制与角色
 
@@ -173,7 +173,7 @@
 - 交付物: vite 前端构建集成（调起构建、产出 dist）、react-dom 渲染基线对接与 PWA manifest 生成（名称 / 图标 / 主题色来自 polypack.toml；图标基于 Pax 品牌资产）。
 - 验收: 示例 UI 构建出 dist；manifest 结构与图标尺寸断言通过；html-validate 对产物 HTML 通过；构建失败带错误码与定位信息。
 
-### T-M1-05 · poly-bundle：Packager trait 与 Windows 打包器（MSI / NSIS）（实现+契约完备；MSI 真机执行已通——windows-2022 CI 真跑 candle+light+msiexec 载荷字节核对（首跑 LGHT0311 码页修复后）；NSIS 文本层已验（`$` 转义负控）、真编译仍缺宿主）
+### T-M1-05 · ✅ poly-bundle：Packager trait 与 Windows 打包器（MSI / NSIS）（MSI 真机执行已通——windows-2022 CI 真跑 candle+light+msiexec 载荷字节核对（首跑 LGHT0311 码页修复后）；NSIS 真编译已入 CI——windows-2022 安装 makensis 后出非空 PE 安装器；安装 → 启动 → 卸载冒烟仍未实现）
 
 - 角色: packagers
 - 依赖: T-M1-03
@@ -189,7 +189,7 @@
 - 交付物: DMG 打包器（.app → 磁盘映像，含拖拽安装布局）。
 - 验收: macos-14 上生成 DMG，`hdiutil verify` 与挂载/卸载冒烟通过；非 macOS 宿主以 mock 模式跑通契约断言。
 
-### T-M1-07 · Linux 打包器（AppImage / deb）（deb 真产物含派生图标；AppImage 单文件待 appimagetool、lintian 待装）
+### T-M1-07 · Linux 打包器（AppImage / deb）（AppImage 1.9.1 真产单文件并启动冒烟已入 ubuntu-latest CI；lintian 真跑已入 CI，但 deb 仍报 2 个 error 级判词（malformed-contact / no-changelog，待 deb 打包器修复）；`dpkg -i` 安装/卸载冒烟仍待 root 宿主）
 
 - 角色: packagers
 - 依赖: T-M1-03、T-M1-05

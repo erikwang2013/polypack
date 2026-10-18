@@ -26,10 +26,51 @@ jobs:
       - name: 构建缓存
         uses: Swatinem/rust-cache@v2
 
-      # 依赖树为纯 Rust（无 *-sys / openssl 等）；以下仅为「测试真跑」所需的系统工具（T-M1-14 图标派生 / deb 校验）
+      # 依赖树为纯 Rust（无 *-sys / openssl 等）；以下仅为「测试真跑」所需的系统工具
+      # （T-M1-14 图标派生 / T-M1-07 deb 校验与 lintian）
       - name: 安装测试工具（Linux 真跑）
         if: runner.os == 'Linux'
-        run: sudo apt-get update -qq && sudo apt-get install -y -qq librsvg2-bin imagemagick desktop-file-utils
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq librsvg2-bin imagemagick desktop-file-utils lintian
+
+      # T-M1-07：AppImage 真跑。appimagetool 固定 1.9.1，按 GitHub release 发布的
+      # sha256 校验后安装（不裸下载）；extract-and-run 让 appimagetool 自身与产物都不依赖
+      # FUSE（ubuntu-latest 不保证 libfuse2）。
+      - name: 安装 appimagetool（Linux 真跑）
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          set -euo pipefail
+          case "$(uname -m)" in
+            x86_64)  asset=appimagetool-x86_64.AppImage
+                     sha=ed4ce84f0d9caff66f50bcca6ff6f35aae54ce8135408b3fa33abfc3cb384eb0 ;;
+            aarch64) asset=appimagetool-aarch64.AppImage
+                     sha=f0837e7448a0c1e4e650a93bb3e85802546e60654ef287576f46c71c126a9158 ;;
+            *) echo "不支持的架构：$(uname -m)" >&2; exit 1 ;;
+          esac
+          curl -fsSL --retry 3 -o /tmp/appimagetool \
+            "https://github.com/AppImage/appimagetool/releases/download/1.9.1/$asset"
+          echo "$sha  /tmp/appimagetool" | sha256sum -c -
+          sudo install -m 0755 /tmp/appimagetool /usr/local/bin/appimagetool
+          echo "APPIMAGE_EXTRACT_AND_RUN=1" >> "$GITHUB_ENV"
+
+      # T-M1-05：NSIS 真编译。windows-2022 未预装 NSIS；已有 makensis 则复用，否则
+      # choco 安装并把 NSIS 目录加入后续步骤 PATH。
+      - name: 安装 NSIS（Windows 真跑）
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          if (-not (Get-Command makensis -ErrorAction SilentlyContinue)) {
+            choco install nsis -y --no-progress
+          }
+          $nsis = Join-Path ${env:ProgramFiles(x86)} 'NSIS'
+          if (Test-Path $nsis) {
+            $nsis | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+            $env:PATH = "$nsis;$env:PATH"
+          }
+          if (-not (Get-Command makensis -ErrorAction SilentlyContinue)) {
+            throw "makensis 安装后仍不可用"
+          }
+          makensis -VERSION
 
       # Android 链真跑（runner 自带 SDK）需要现代 JDK：d8 在默认 Java 8 下
       # checkAndLoadMain 失败（windows 腿实证）；与 mobile-contract 的 setup-java 对齐
@@ -44,6 +85,12 @@ jobs:
 
       - name: cargo clippy
         run: cargo clippy --workspace --all-targets -- -D warnings
+
+      # T-M1-05 聚焦真编译：安装步骤已确保 makensis 在 PATH；测试内部仍有 skip 守卫，
+      # 仅当工具链真的不可用时才会打印 SKIP。
+      - name: NSIS 真编译（聚焦）
+        if: runner.os == 'Windows'
+        run: cargo test -p poly-bundle --test packagers_windows nsis_real_build_produces_pe_installer -- --nocapture
 
       - name: cargo test
         # --no-fail-fast：一次看到全部失败面（cargo 默认在首个失败二进制处中止，

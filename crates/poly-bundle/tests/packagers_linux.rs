@@ -10,7 +10,8 @@
 //! 入库），不再依赖宿主 rsvg-convert / magick；dpkg-deb / desktop-file-validate / sh
 //! 缺失时**显式 skip**（打印原因后通过），工具齐备的宿主走真跑分支。
 //!
-//! 阻塞项：`dpkg -i` 系统级安装需 root；AppImage 单文件生成需 appimagetool（本宿主未装）。
+//! 阻塞项：`dpkg -i` 系统级安装需 root；AppImage 单文件生成需 appimagetool、deb 验收需
+//! lintian（CI ubuntu 腿安装 1.9.1/sha256 校验与发行版 lintian；缺席宿主显式 skip）。
 
 mod common;
 
@@ -114,6 +115,26 @@ fn run(exe: &Path) -> std::process::Output {
         .arg("--version")
         .output()
         .expect("执行产物")
+}
+
+/// appimagetool 1.9.1 无 `ARCH` 时用 AppDir 内 `*.so.*` 的 ELF `e_machine` 猜架构；
+/// 夹具核心是 shell 脚本、没有共享库，补一个只带 ELF 头的桩让真跑路径可判架构。
+fn add_arch_stub(inputs: &BundleInputs) {
+    let machine: u16 = match std::env::consts::ARCH {
+        "x86_64" => 62,
+        "aarch64" => 183,
+        "x86" => 3,
+        "arm" => 40,
+        other => panic!("appimagetool 架构桩未覆盖 {other}"),
+    };
+    let mut elf = vec![0u8; 20];
+    elf[..4].copy_from_slice(b"\x7fELF");
+    elf[4] = 2; // ELFCLASS64（e_machine 字段位置与 class 无关）
+    elf[5] = 1; // little-endian
+    elf[0x12..0x14].copy_from_slice(&machine.to_le_bytes());
+    let root = inputs.bare.as_ref().expect("裸产物").root.join("usr/lib");
+    std::fs::create_dir_all(&root).unwrap();
+    std::fs::write(root.join("libpax.so.1"), elf).unwrap();
 }
 
 #[test]
@@ -283,8 +304,59 @@ fn deb_package_builds_and_verifies_with_dpkg_deb() {
     );
 }
 
+/// T-M1-07 lintian 真跑（与 `poly verify` 同口径 `--fail-on error`）。
+///
+/// 已知缺口（修复需改 deb 打包器，不在本任务文件范围内）：
+/// - `malformed-contact`：Maintainer 只有名称、没有邮箱；
+/// - `no-changelog`：数据段缺 `/usr/share/doc/<pkg>/changelog.gz`。
+///
+/// 本测试锁定"只有这两个 error"：出现新判词即失败；缺口修复后自然走成功分支，
+/// 届时把断言收紧为 `output.status.success()`。
 #[test]
-fn appimage_without_tool_yields_labeled_appdir_that_runs() {
+fn deb_lintian_real_run_reports_only_known_gaps() {
+    if common::skip_without_any(&["dpkg-deb", "lintian"]) {
+        return;
+    }
+    let base = scratch("lintian");
+    let inputs = inputs(&base);
+    let artifact = Deb.package(&inputs, &spec("deb")).expect("deb 组装");
+
+    let output = Command::new("lintian")
+        .args(["--fail-on", "error", &artifact.path.display().to_string()])
+        .output()
+        .expect("lintian 真跑");
+    let text = format!(
+        "{}{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let errors: Vec<&str> = text
+        .lines()
+        .filter(|line| line.starts_with("E:") || line.contains(" E: "))
+        .collect();
+    const KNOWN: [&str; 2] = ["malformed-contact", "no-changelog"];
+    let unexpected: Vec<&str> = errors
+        .iter()
+        .copied()
+        .filter(|error| !KNOWN.iter().any(|tag| error.contains(tag)))
+        .collect();
+    assert!(
+        unexpected.is_empty(),
+        "lintian 出现新的 error 级判词：{unexpected:?}\n{text}"
+    );
+    if !output.status.success() {
+        for tag in KNOWN {
+            assert!(
+                errors.iter().any(|error| error.contains(tag)),
+                "lintian 失败但不是已知缺口 {tag}：{text}"
+            );
+        }
+        eprintln!("已知 lintian 缺口（待 deb 打包器修复）：{KNOWN:?}");
+    }
+}
+
+#[test]
+fn appimage_builds_single_file_or_labeled_appdir_that_runs() {
     // AppDir 需要根级 AppRun 符号链接，且冒烟要执行 shell 夹具核心。
     if common::skip_unless_unix("AppDir 符号链接与 shell 夹具") || common::skip_without("sh")
     {
@@ -292,6 +364,7 @@ fn appimage_without_tool_yields_labeled_appdir_that_runs() {
     }
     let base = scratch("appimage");
     let inputs = inputs(&base);
+    add_arch_stub(&inputs);
     let plan = AppImage.plan(&inputs, &spec("appimage")).expect("计划");
     assert!(
         plan.commands[0].line().starts_with("appimagetool "),
@@ -303,18 +376,76 @@ fn appimage_without_tool_yields_labeled_appdir_that_runs() {
         "AppStream 元数据须交给 appimagetool 校验：{}",
         plan.commands[0].line()
     );
-    assert!(
-        plan.skipped.iter().any(|s| s.tool == "appimagetool"),
-        "缺工具须如实记录：{:?}",
-        plan.skipped
-    );
+    if !common::has("appimagetool") {
+        assert!(
+            plan.skipped.iter().any(|s| s.tool == "appimagetool"),
+            "缺工具须如实记录：{:?}",
+            plan.skipped
+        );
+    }
 
     let artifact = AppImage
         .package(&inputs, &spec("appimage"))
         .expect("AppDir");
     if artifact.format == "appimage" {
-        // 真机上装了 appimagetool 的路径：单文件产物。
-        assert!(artifact.path.extension().unwrap() == "AppImage");
+        // 装了 appimagetool 的真跑路径（CI ubuntu 腿安装 1.9.1）：单文件产物。
+        assert_eq!(artifact.kind, poly_bundle::ArtifactKind::File);
+        assert_eq!(
+            artifact.path.extension().and_then(|ext| ext.to_str()),
+            Some("AppImage"),
+            "产物路径：{}",
+            artifact.path.display()
+        );
+        let bytes = std::fs::read(&artifact.path).expect("读 AppImage");
+        assert!(
+            artifact.bytes > 0 && artifact.bytes == bytes.len() as u64,
+            "产物大小：{}（实读 {}）",
+            artifact.bytes,
+            bytes.len()
+        );
+        // AppImage = ELF runtime + 偏移 8 处的 `AI` 魔数（appimagetool 产 type 2）。
+        assert_eq!(
+            &bytes[..4],
+            b"\x7fELF",
+            "AppImage 须为 ELF：{}",
+            artifact.path.display()
+        );
+        assert_eq!(&bytes[8..10], b"AI", "缺 AppImage 魔数");
+        assert!(
+            matches!(bytes[10], 1 | 2),
+            "未知 AppImage 类型：{}",
+            bytes[10]
+        );
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            assert!(
+                std::fs::metadata(&artifact.path)
+                    .unwrap()
+                    .permissions()
+                    .mode()
+                    & 0o111
+                    != 0,
+                "AppImage 缺可执行位：{}",
+                artifact.path.display()
+            );
+        }
+        // 启动冒烟：extract-and-run 不依赖 FUSE（CI 缺 libfuse2 时同口径）。
+        let smoke = Command::new(&artifact.path)
+            .arg("--version")
+            .env("APPIMAGE_EXTRACT_AND_RUN", "1")
+            .output()
+            .expect("执行 AppImage");
+        assert!(
+            smoke.status.success(),
+            "AppImage 启动失败：{}",
+            String::from_utf8_lossy(&smoke.stderr)
+        );
+        assert!(
+            String::from_utf8_lossy(&smoke.stdout).contains("pax-notes 1.2.3"),
+            "AppImage 启动输出：{}",
+            String::from_utf8_lossy(&smoke.stdout)
+        );
         return;
     }
     assert_eq!(artifact.format, "appdir", "未打包必须如实标注格式");

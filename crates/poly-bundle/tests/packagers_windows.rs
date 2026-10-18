@@ -4,6 +4,8 @@
 //! [`BundleError::ToolMissing`]（`poly::E_BND_0001`）——「真机执行阻塞（宿主）」的证据。
 //! windows-2022 腿预装 WiX v3.14（`%WIX%\bin` 在 Machine PATH 上），走**真跑深检**：
 //! `candle` + `light` 出真 MSI → `msiexec /a` 管理安装解出载荷 → 字节级核对。
+//! NSIS 由 CI 安装后走真编译：`makensis` 出非空 PE 安装器（结构断言）；安装 → 启动 →
+//! 卸载冒烟尚未实现（见 T-M1-05 条目）。
 //!
 //! 输入用 `std::env::temp_dir()` 现造（每测试独立目录，`cargo test` 并行安全）。
 
@@ -282,7 +284,8 @@ fn nsis_plan_covers_install_and_uninstall_sections() {
 /// 宿主路径含 `$`（Windows 合法形态，如 `C:\$Recycle.Bin\…`）：脚本里的字面量须写 `$$`，
 /// 否则 makensis 把它当变量（`$Recycle` 未定义报错 / `$0`… 静默按寄存器替换）。
 ///
-/// 本机可证层=脚本文本；makensis 真编译面需 windows 腿（金样暂无 nsis 条目，CI 不触发）。
+/// 本机可证层=脚本文本；makensis 真编译面由 `nsis_real_build_produces_pe_installer`
+/// 在装有 NSIS 的宿主（CI windows-2022）覆盖。
 #[test]
 fn nsi_script_escapes_dollar_in_host_paths() {
     let inputs = inputs("nsis-esc$ape", true);
@@ -463,6 +466,60 @@ fn find_named(dir: &Path, name: &str) -> Option<PathBuf> {
         }
     }
     None
+}
+
+/// 真编译（装有 makensis 的宿主，CI windows-2022 安装 NSIS）：生成 `.nsi` → makensis
+/// 出 `.exe` → 非空 PE（MZ + `e_lfanew` 处 `PE\0\0`）。
+///
+/// 与 MSI 真跑不同，这里不做安装/启动/卸载冒烟：该冒烟需在 Windows 上以静默模式
+/// 真实改写系统状态（Program Files / 注册表 / 快捷方式），尚未实现，故不声称。
+#[test]
+fn nsis_real_build_produces_pe_installer() {
+    // 打包器按 Windows makensis 约定拼 `/V2`（POSIX makensis 只认 `-V2`），
+    // 真编译面由 windows-2022 腿覆盖；非 Windows 宿主显式 skip。
+    if !cfg!(windows) {
+        eprintln!("SKIP：NSIS 打包器使用 Windows makensis 选项（/V2），非 Windows 宿主不适用");
+        return;
+    }
+    if common::skip_without("makensis") {
+        return;
+    }
+    let mut inputs = inputs("nsis-real", false);
+    inputs.icons.push(Icon {
+        // 真 ICO（T-M1-14 派生资产）：makensis 会解析并嵌入安装器图标。
+        path: common::fixture("pax-notes.ico"),
+        kind: IconKind::Ico,
+        size: Some(256),
+    });
+
+    let artifact = Nsis
+        .package(&inputs, &spec("nsis"))
+        .expect("makensis 真编译");
+    assert_eq!(artifact.format, "nsis");
+    assert!(artifact.bytes > 0, "产物为空");
+    assert_eq!(
+        artifact.path.extension().and_then(|ext| ext.to_str()),
+        Some("exe"),
+        "产物路径：{}",
+        artifact.path.display()
+    );
+    assert!(
+        inputs.out_dir.join("pax-notes.nsi").is_file(),
+        "脚本应先落盘：{}",
+        inputs.out_dir.display()
+    );
+
+    let bytes = std::fs::read(&artifact.path).expect("读 NSIS 安装器");
+    assert_eq!(artifact.bytes, bytes.len() as u64, "产物大小与磁盘不一致");
+    assert_eq!(
+        &bytes[..2],
+        b"MZ",
+        "NSIS 产物须为 PE：{}",
+        artifact.path.display()
+    );
+    let pe = u32::from_le_bytes([bytes[0x3c], bytes[0x3d], bytes[0x3e], bytes[0x3f]]) as usize;
+    assert!(pe + 4 <= bytes.len(), "PE 头偏移越界：{pe}");
+    assert_eq!(&bytes[pe..pe + 4], b"PE\0\0", "PE 签名缺失");
 }
 
 #[test]
