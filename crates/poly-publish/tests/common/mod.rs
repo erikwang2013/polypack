@@ -107,6 +107,8 @@ impl Transport for FakeTransport {
             .pop_front()
             .ok_or_else(|| PublishError::Http {
                 endpoint: "(fake)".to_string(),
+                // 测试脚本用尽 = 契约违约（不是可重试的网络故障）：不给 5xx 形态，避免重试拖慢。
+                status: Some(400),
                 reason: format!("FakeTransport 脚本用尽（第 {index} 次请求 {}", request.url),
             })
     }

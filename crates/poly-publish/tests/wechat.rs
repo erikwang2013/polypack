@@ -396,43 +396,50 @@ fn resume_from_in_review_polls_only_until_rejected() {
 }
 
 #[test]
-fn platform_85009_surfaces_hint_and_receipt_stays_uploaded() {
+fn duplicate_submit_85009_is_accepted_as_idempotent() {
     let root = TempRoot::new("85009");
     let fake = FakeTransport::new(vec![
         common::json_ok(serde_json::json!({"errCode": 0, "data": {"randomString": RAND}})),
         common::json_ok(serde_json::json!({"errCode": 0})),
         token_response(),
+        // 平台侧已有审核中版本：幂等重发（超时后重试 / 崩溃后重跑）的正常形态。
         common::json_ok(serde_json::json!({"errcode": 85009, "errmsg": "already auditing"})),
+        common::json_ok(serde_json::json!({"errcode": 0, "status": 2})),
+        common::json_ok(serde_json::json!({"errcode": 0, "status": 0})),
     ]);
     let (reference, providers) = wechat_credential("wechat-mini");
     let request = request(&root, reference);
     let archive = Archive::new(root.path());
-    let err = publish(&WechatPublisher::new(fake), &request, &providers, &archive)
-        .expect_err("提审被平台拒");
+    let outcome = publish(
+        &WechatPublisher::new(fake.clone()),
+        &request,
+        &providers,
+        &archive,
+    )
+    .expect("85009 = 平台已受理，按幂等续走");
 
-    assert_eq!(err.code(), codes::E_PUB_0003);
-    match &err {
-        PublishError::Platform {
-            channel,
-            code,
-            hint,
-            ..
-        } => {
-            assert_eq!(*channel, "wechat-open-platform");
-            assert_eq!(code, "85009");
-            let hint = hint.as_deref().expect("85009 带修复提示");
-            assert!(hint.contains("at-least-once"), "提示点明提审边界：{hint}");
-        }
-        other => panic!("应为 Platform 错误：{other}"),
-    }
-
-    // 提审未受理 → 回执停在 uploaded：重跑只重发提审（平台以 85009 点破），不重传代码包。
-    let receipt = archive
-        .load(Channel::Wechat.id(), &receipt_key_of(&root))
-        .expect("读回执")
-        .expect("回执存在");
-    assert_eq!(receipt.state, AuditState::Uploaded);
-    assert!(receipt.submit.is_none(), "受理失败的提审不落快照");
+    assert_eq!(outcome.receipt.state, AuditState::Approved);
+    assert_eq!(
+        outcome.receipt.submit,
+        Some(serde_json::json!({"errcode": 85009, "errmsg": "already auditing"})),
+        "85009 响应作为受理快照留档"
+    );
+    let submits: Vec<_> = fake
+        .requests()
+        .into_iter()
+        .filter(|record| record.endpoint() == SUBMIT_URL)
+        .collect();
+    assert_eq!(submits.len(), 1, "重复提审不产生第二次提交");
+    let digest = Package::load(&root.dist())
+        .expect("读包")
+        .digest()
+        .to_string();
+    let expected = poly_publish::submission_key(Channel::Wechat.id(), APPID, VERSION, &digest);
+    assert_eq!(
+        submits[0].header(poly_publish::transport::IDEMPOTENCY_HEADER),
+        Some(expected.as_str()),
+        "提审带稳定幂等键"
+    );
 }
 
 #[test]

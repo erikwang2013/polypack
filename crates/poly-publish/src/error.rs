@@ -53,6 +53,8 @@ pub enum PublishError {
     Http {
         /// 端点（URL 含凭据时已被 [`crate::secret::Redactor`] 脱敏）。
         endpoint: String,
+        /// HTTP 状态码；`None` = 传输层失败（连接 / 超时 / 读响应）。
+        status: Option<u16>,
         /// 脱敏后的失败原因（含状态码与正文尾部）。
         reason: String,
     },
@@ -130,6 +132,29 @@ impl PublishError {
         }
     }
 
+    /// 是否可恢复（T-M8-10 重试判据）：传输层失败 / 5xx / 429 / 平台限流与系统繁忙码。
+    ///
+    /// 只用于**重试同一次调用**；提审的重试另由幂等键 + 平台原生去重码兜底
+    /// （85009 / 11303 / CAN_NOT_SUBMIT_WITH_AUDIT*）。
+    pub fn is_retryable(&self) -> bool {
+        match self {
+            Self::Http { status, .. } => match status {
+                None => true,
+                Some(408 | 425 | 429) => true,
+                Some(500..=599) => true,
+                Some(_) => false,
+            },
+            Self::Platform { channel, code, .. } => platform_code_retryable(channel, code),
+            Self::CredentialUnavailable { .. }
+            | Self::CredentialInvalid { .. }
+            | Self::Input { .. }
+            | Self::Archive { .. }
+            | Self::Materials { .. }
+            | Self::PollTimeout { .. }
+            | Self::OemCredentialsRequired { .. } => false,
+        }
+    }
+
     /// 修复提示（供 `Diagnostic::with_hint` 使用）。
     pub fn hint(&self) -> Option<String> {
         match self {
@@ -173,5 +198,18 @@ impl PublishError {
                     .to_string(),
             ),
         }
+    }
+}
+
+/// 平台侧可恢复码（限流 / 系统繁忙；渠道自有信封恒 HTTP 200，只能按码分类）。
+fn platform_code_retryable(channel: &str, code: &str) -> bool {
+    match channel {
+        // -1 系统繁忙；45009 接口调用额度超限；45011 分钟级限流。
+        "wechat-open-platform" => matches!(code, "-1" | "45009" | "45011"),
+        // 20000 / 20001 网关服务不可用；SYSTEM_ERROR 为业务子码（取 sub_code 优先）。
+        "alipay-open-platform" => matches!(code, "20000" | "20001" | "SYSTEM_ERROR"),
+        // 11300 系统繁忙；11301 提审过于频繁（平台限制约 10 秒一次）。
+        "douyin-open-platform" => matches!(code, "11300" | "11301"),
+        _ => false,
     }
 }
