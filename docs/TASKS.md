@@ -173,7 +173,7 @@
 - 交付物: vite 前端构建集成（调起构建、产出 dist）、react-dom 渲染基线对接与 PWA manifest 生成（名称 / 图标 / 主题色来自 polypack.toml；图标基于 Pax 品牌资产）。
 - 验收: 示例 UI 构建出 dist；manifest 结构与图标尺寸断言通过；html-validate 对产物 HTML 通过；构建失败带错误码与定位信息。
 
-### T-M1-05 · ✅ poly-bundle：Packager trait 与 Windows 打包器（MSI / NSIS）（MSI 真机执行已通——windows-2022 CI 真跑 candle+light+msiexec 载荷字节核对（首跑 LGHT0311 码页修复后）；NSIS 真编译已入 CI——windows-2022 安装 makensis 后出非空 PE 安装器；安装 → 启动 → 卸载冒烟仍未实现）
+### T-M1-05 · ✅ poly-bundle：Packager trait 与 Windows 打包器（MSI / NSIS）（MSI 真机执行已通——windows-2022 CI 真跑 candle+light+msiexec 载荷字节核对（首跑 LGHT0311 码页修复后）；NSIS 真编译 + 静默安装 → 启动 → 卸载冒烟已入 rust-ci Windows 腿——makensis 出非空 PE 安装器，rustc 现编译的夹具 PE 经 `/S` 装到测试临时目录（`/D=`）并启动输出标记，`uninstall.exe /S` 后安装目录移除；真实样例 Tauri 二进制与默认 Program Files 路径的启动仍为缺口，非 Windows 宿主显式 skip）
 
 - 角色: packagers
 - 依赖: T-M1-03

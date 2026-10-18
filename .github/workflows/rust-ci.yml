@@ -71,6 +71,12 @@ jobs:
         if: runner.os == 'Windows'
         run: cargo test -p poly-bundle --test packagers_windows nsis_real_build_produces_pe_installer -- --nocapture
 
+      # T-M1-05 聚焦冒烟：静默安装 → 启动已安装 PE → 静默卸载。夹具 PE 由宿主 rustc
+      # 现编译；测试内部仍有 Windows / makensis / rustc skip 守卫。
+      - name: NSIS 安装/启动/卸载冒烟（聚焦）
+        if: runner.os == 'Windows'
+        run: cargo test -p poly-bundle --test packagers_windows nsis_install_launch_uninstall_smoke -- --nocapture
+
       - name: cargo test
         # --no-fail-fast：一次看到全部失败面（cargo 默认在首个失败二进制处中止，
         # 会掩盖后续 crate 的问题；三宿主加固期需要全景）

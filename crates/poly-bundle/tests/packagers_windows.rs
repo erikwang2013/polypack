@@ -4,8 +4,8 @@
 //! [`BundleError::ToolMissing`]（`poly::E_BND_0001`）——「真机执行阻塞（宿主）」的证据。
 //! windows-2022 腿预装 WiX v3.14（`%WIX%\bin` 在 Machine PATH 上），走**真跑深检**：
 //! `candle` + `light` 出真 MSI → `msiexec /a` 管理安装解出载荷 → 字节级核对。
-//! NSIS 由 CI 安装后走真编译：`makensis` 出非空 PE 安装器（结构断言）；安装 → 启动 →
-//! 卸载冒烟尚未实现（见 T-M1-05 条目）。
+//! NSIS 由 CI 安装后走真编译：`makensis` 出非空 PE 安装器（结构断言），并做静默安装 →
+//! 启动 → 静默卸载冒烟（真实 rustc 编译的夹具 PE；见 `nsis_install_launch_uninstall_smoke`）。
 //!
 //! 输入用 `std::env::temp_dir()` 现造（每测试独立目录，`cargo test` 并行安全）。
 
@@ -14,6 +14,7 @@ mod common;
 use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::time::{Duration, Instant};
 
 use poly_bundle::packagers::windows::{Nsis, WixMsi, nsis_escape, xml_escape};
 use poly_bundle::{
@@ -471,8 +472,7 @@ fn find_named(dir: &Path, name: &str) -> Option<PathBuf> {
 /// 真编译（装有 makensis 的宿主，CI windows-2022 安装 NSIS）：生成 `.nsi` → makensis
 /// 出 `.exe` → 非空 PE（MZ + `e_lfanew` 处 `PE\0\0`）。
 ///
-/// 与 MSI 真跑不同，这里不做安装/启动/卸载冒烟：该冒烟需在 Windows 上以静默模式
-/// 真实改写系统状态（Program Files / 注册表 / 快捷方式），尚未实现，故不声称。
+/// 安装/启动/卸载冒烟由相邻的 `nsis_install_launch_uninstall_smoke` 覆盖。
 #[test]
 fn nsis_real_build_produces_pe_installer() {
     // 打包器按 Windows makensis 约定拼 `/V2`（POSIX makensis 只认 `-V2`），
@@ -520,6 +520,105 @@ fn nsis_real_build_produces_pe_installer() {
     let pe = u32::from_le_bytes([bytes[0x3c], bytes[0x3d], bytes[0x3e], bytes[0x3f]]) as usize;
     assert!(pe + 4 <= bytes.len(), "PE 头偏移越界：{pe}");
     assert_eq!(&bytes[pe..pe + 4], b"PE\0\0", "PE 签名缺失");
+}
+
+/// 真机冒烟（Windows + makensis）：真编译 → 静默安装（`/S`）→ 启动已安装 PE → 静默卸载
+/// （`uninstall.exe /S`）→ 安装目录移除。
+///
+/// 夹具核心 `pax-notes.exe` 用宿主 `rustc` 现编译为真实 Windows PE：`inputs()` 里的假
+/// `MZ` 字节无法启动，启动输出标记串证明运行的是**安装后**的副本。`/D=` 把 `$INSTDIR`
+/// 指向测试临时目录，避免写 Program Files / 依赖提权（NSIS 要求 `/D=` 为末参数且不带引号）。
+#[test]
+fn nsis_install_launch_uninstall_smoke() {
+    if !cfg!(windows) {
+        eprintln!("SKIP：NSIS 安装/启动/卸载冒烟仅 Windows 宿主可执行（/V2 与 PE 启动）");
+        return;
+    }
+    if common::skip_without_any(&["makensis", "rustc"]) {
+        return;
+    }
+
+    let inputs = inputs("nsis-smoke", false);
+    let root = inputs.bare.as_ref().unwrap().root.clone();
+    let src = inputs.out_dir.join("fixture.rs");
+    write(
+        &src,
+        br#"fn main() {
+    println!("pax-notes fixture ok");
+}
+"#,
+    );
+    let status = Command::new("rustc")
+        .args(["--edition=2021", "-O", "-o"])
+        .arg(root.join("pax-notes.exe"))
+        .arg(&src)
+        .status()
+        .expect("rustc 编译夹具");
+    assert!(status.success(), "rustc 夹具编译失败：{status}");
+
+    let artifact = Nsis
+        .package(&inputs, &spec("nsis"))
+        .expect("makensis 真编译");
+
+    let install_dir = inputs.out_dir.join("installed");
+    // NSIS 文档要求 /D= 不带引号；Command 会给含空格的参数加引号，故显式跳过。
+    if install_dir.to_string_lossy().contains(' ') {
+        eprintln!(
+            "SKIP：NSIS /D= 不接受带引号路径，临时目录含空格：{}",
+            install_dir.display()
+        );
+        return;
+    }
+    let status = Command::new(&artifact.path)
+        .arg("/S")
+        .arg(format!("/D={}", install_dir.display()))
+        .status()
+        .expect("静默安装真跑");
+    assert!(status.success(), "静默安装失败：{status}");
+
+    let exe = find_named(&install_dir, "pax-notes.exe")
+        .unwrap_or_else(|| panic!("安装目录缺少 pax-notes.exe：{}", install_dir.display()));
+    let uninstaller = install_dir.join("uninstall.exe");
+    assert!(uninstaller.is_file(), "安装目录缺少 uninstall.exe");
+
+    // 启动安装后的副本；标记串出现即真实执行证据。
+    let out = Command::new(&exe).output().expect("启动已安装可执行");
+    assert!(
+        out.status.success(),
+        "已安装可执行启动失败：{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    assert!(
+        String::from_utf8_lossy(&out.stdout).contains("pax-notes fixture ok"),
+        "启动输出不含标记串：{:?}",
+        String::from_utf8_lossy(&out.stdout)
+    );
+
+    // NSIS 卸载器把自己复制到临时目录后异步清理，轮询等待安装目录移除。
+    let status = Command::new(&uninstaller)
+        .arg("/S")
+        .status()
+        .expect("静默卸载真跑");
+    assert!(status.success(), "静默卸载失败：{status}");
+    assert!(
+        wait_until(Duration::from_secs(30), || !install_dir.exists()),
+        "卸载后安装目录仍在：{}",
+        install_dir.display()
+    );
+}
+
+/// 轮询直到条件成立或超时（NSIS 卸载器异步自清理）。
+fn wait_until(timeout: Duration, mut done: impl FnMut() -> bool) -> bool {
+    let deadline = Instant::now() + timeout;
+    loop {
+        if done() {
+            return true;
+        }
+        if Instant::now() >= deadline {
+            return false;
+        }
+        std::thread::sleep(Duration::from_millis(100));
+    }
 }
 
 #[test]
