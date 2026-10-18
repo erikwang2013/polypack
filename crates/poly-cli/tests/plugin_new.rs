@@ -314,6 +314,9 @@ fn scaffolded_plugin_loads_and_packages_via_host_sandbox() {
         fs_read: Vec::new(),
         fs_write: Vec::new(),
         net: Vec::new(),
+        sri: None,
+        signature: None,
+        trust_root: None,
     };
     let plugin = sandbox
         .load(&wasm, "e2e-target", Some(&digest), &root, &grant)

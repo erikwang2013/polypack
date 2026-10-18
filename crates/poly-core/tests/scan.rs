@@ -268,6 +268,39 @@ fn nul_bytes_disable_text_rules_but_not_magic_rules() {
     );
 }
 
+/// T-M8-03：插件制品（`.wasm`）扫描宿主绝对路径 / 环境变量痕迹 / 调试符号段；
+/// 报告只给脱敏描述与偏移（不回显宿主路径），非 `.wasm` 的二进制不施加制品规则。
+#[test]
+fn wasm_artifact_catches_host_paths_env_traces_and_debug_symbols() {
+    let mut wasm = b"\0asm\x01\0\0\0".to_vec();
+    wasm.extend_from_slice(b"\x10/home/alice/work/plugin/src/lib.rs");
+    wasm.extend_from_slice(b"\x08CARGO_MANIFEST_DIR");
+    wasm.extend_from_slice(b"\x0b.debug_info");
+    wasm.extend_from_slice(b"\x0d.debug_abbrev");
+
+    let report = scan_bytes("plugin.wasm", &wasm);
+    let rules: Vec<&str> = report.findings.iter().map(|finding| finding.rule).collect();
+    assert_eq!(
+        rules,
+        ["wasm-debug-symbols", "wasm-env-trace", "wasm-host-path"],
+        "三类制品规则各报一次（同规则去重）: {:?}",
+        report.findings
+    );
+    for finding in &report.findings {
+        assert_eq!(finding.line, 1);
+        assert!(!finding.hint.is_empty(), "命中必须带修复提示");
+        assert!(
+            !finding.excerpt.contains("/home/") && !finding.excerpt.contains("alice"),
+            "摘要不得回显宿主路径: {}",
+            finding.excerpt
+        );
+    }
+
+    // 同一字节流放在非 `.wasm` 路径上：制品规则不适用（既有二进制语义不变）。
+    let report = scan_bytes("plugin.bin", &wasm);
+    assert!(report.findings.is_empty(), "{:?}", report.findings);
+}
+
 /// 熵启发式的负例：校验和形态（纯小写十六进制）、短值、URL 都不报；对照正例命中。
 #[test]
 fn entropy_heuristic_ignores_checksums_short_values_and_urls() {

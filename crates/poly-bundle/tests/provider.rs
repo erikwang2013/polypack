@@ -16,6 +16,12 @@ use poly_targets::{Bridge, Host, PackageSpec, Runtime, TargetSpec};
 use sha2::{Digest, Sha256};
 
 /// Tizen WGT 的确定性字节基线（T-M8-05 改造前打包器矩阵的产物摘要）。
+///
+/// zip 中央目录会记录条目属性（外部属性 / 平台），因此摘要按宿主平台分基线；
+/// 「统一入口 == 直接打包器」的字节一致断言在全部平台恒成立（见下方测试）。
+#[cfg(windows)]
+const WGT_BASELINE: &str = "c4a0e4338e0691fba0cc0cf0d7ec6b98f843862d7c96f3d067c88a564809e45d";
+#[cfg(not(windows))]
 const WGT_BASELINE: &str = "626f4a5988183c434aeeb32b1e28cbb9a300d5fe49eccf0b4bae07c1a14f1532";
 
 struct Scratch(PathBuf);

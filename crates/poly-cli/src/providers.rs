@@ -9,7 +9,7 @@ use std::path::{Path, PathBuf};
 use poly_bundle::error::codes as bundle_codes;
 use poly_core::codes;
 use poly_core::{Code, Diagnostic, PluginGrant, Project};
-use poly_plugin::{PluginProvider, ResourceLimits, Sandbox};
+use poly_plugin::{PluginProvider, ResourceLimits, Sandbox, SignaturePolicy};
 use poly_targets::provider::{PackageArtifact, PackageInput, ProviderError, ProviderRegistry};
 use poly_targets::{Runtime, TargetSpec};
 
@@ -23,18 +23,41 @@ pub(crate) fn registry(project: &Project) -> Result<ProviderRegistry, Diagnostic
             fs_read: section.fs_read.clone(),
             fs_write: section.fs_write.clone(),
             net: section.net.clone(),
+            sri: section.sri.clone(),
+            signature: section.signature.clone(),
+            trust_root: section.trust_root.clone(),
         };
         let path = project.root.join(&grant.path);
-        let bytes = std::fs::read(&path).map_err(|err| {
-            plugin_diag(format!(
-                "读取插件 {}（{}）失败：{err}",
-                grant.id,
-                path.display()
-            ))
-        })?;
+        // §7 脱敏：错误只回显工程内相对路径，不拼接宿主绝对路径。
+        let bytes = std::fs::read(&path)
+            .map_err(|_| plugin_diag(format!("读取插件 {}（{}）失败", grant.id, grant.path)))?;
         let sandbox = Sandbox::new(ResourceLimits::default()).map_err(|err| err.diagnostic())?;
+        // T-M8-03：配置要求签名时，读取分离签名并以 CredentialRef 信任根验签；
+        // 验签先于组件编译，失败不实例化。
+        let detached = match &grant.signature {
+            Some(relative) => Some(std::fs::read(project.root.join(relative)).map_err(|_| {
+                plugin_diag(format!(
+                    "读取插件 {} 的分离签名（{}）失败",
+                    grant.id, relative
+                ))
+            })?),
+            None => None,
+        };
+        let backends = poly_sign::secret::default_backends();
+        let policy = grant.trust_root.as_ref().map(|trust_root| SignaturePolicy {
+            detached: detached.as_deref(),
+            trust_root,
+            backends: &backends,
+        });
         let plugin = sandbox
-            .load(&bytes, &grant.id, None, &project.root, &grant)
+            .load_signed(
+                &bytes,
+                &grant.id,
+                grant.sri.as_deref(),
+                policy.as_ref(),
+                &project.root,
+                &grant,
+            )
             .map_err(|err| err.diagnostic())?;
         // describe 的输入快照：插件可据 name / version / target 声明目标。
         let probe = poly_plugin::PackageInput {

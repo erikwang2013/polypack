@@ -87,26 +87,63 @@ pub fn resolve(
     reference: &CredentialRef,
     backends: &[Box<dyn SecretBackend>],
 ) -> Result<SigningMaterial, SignError> {
+    let (payload, backend) = payload_from(reference, backends)?;
+    material_from_payload(&reference.name, backend, &payload)
+}
+
+/// 解析信任根公钥（T-M8-03）：载荷契约 base64(JSON) `{"public_key":"<base64>"}`。
+///
+/// 与 [`resolve`] 分开：验签路径只接受公钥字段，私钥 / 口令永远不进入该载荷；
+/// 后端链与作用域注入语义与 [`resolve`] 完全一致。
+pub fn resolve_public_key(
+    reference: &CredentialRef,
+    backends: &[Box<dyn SecretBackend>],
+) -> Result<Vec<u8>, SignError> {
+    let (payload, backend) = payload_from(reference, backends)?;
+    let invalid = |reason: String| SignError::CredentialInvalid {
+        name: reference.name.clone(),
+        backend,
+        reason,
+    };
+    let json = b64()
+        .decode(&payload)
+        .map_err(|err| invalid(format!("载荷不是合法 base64：{err}")))?;
+    let parsed: PublicKeyPayload = serde_json::from_slice(&json).map_err(|err| {
+        invalid(format!(
+            "载荷不是合法 JSON 结构（第 {} 行第 {} 列）",
+            err.line(),
+            err.column()
+        ))
+    })?;
+    let key = b64()
+        .decode(&parsed.public_key)
+        .map_err(|err| invalid(format!("public_key 字段不是合法 base64：{err}")))?;
+    if key.is_empty() {
+        return Err(invalid("public_key 字段为空".to_string()));
+    }
+    Ok(key)
+}
+
+/// 拉取凭据载荷原文：作用域内存注入优先，其次按 `source` 选后端（先探测再拉取）。
+fn payload_from(
+    reference: &CredentialRef,
+    backends: &[Box<dyn SecretBackend>],
+) -> Result<(Vec<u8>, &'static str), SignError> {
     // T-M8-07：worker 任务作用域的内存注入优先——载荷只在内存，作用域结束即清空；
     // 未注入的档案仍按 `source` 走既有后端链（懒解析语义不变）。
     if let Some(payload) = crate::inject::payload(&reference.name) {
-        return material_from_payload(&reference.name, MEMORY_ID, &payload);
+        return Ok((payload, MEMORY_ID));
     }
     // 本 match 是穷尽的（无 `_ =>` 兜底）：poly-core 加 `CredentialSource` 变体会在此处编译失败，
     // 强制本层同步——M2 缓行 `File { path, password_env, alias }` 的理由见文件头。
-    match &reference.source {
-        CredentialSource::Keyring => material_from(
-            backend_by_id(backends, KEYRING_ID, &reference.name)?,
-            reference,
-        ),
-        CredentialSource::Vault => material_from(
-            backend_by_id(backends, VAULT_ID, &reference.name)?,
-            reference,
-        ),
-        CredentialSource::Env { variable } => {
-            material_from(&EnvBackend::new(variable.clone()), reference)
-        }
-    }
+    let backend: &dyn SecretBackend = match &reference.source {
+        CredentialSource::Keyring => backend_by_id(backends, KEYRING_ID, &reference.name)?,
+        CredentialSource::Vault => backend_by_id(backends, VAULT_ID, &reference.name)?,
+        CredentialSource::Env { variable } => &EnvBackend::new(variable.clone()),
+    };
+    backend.available()?;
+    let payload = backend.fetch(&reference.name)?;
+    Ok((payload, backend.id()))
 }
 
 /// 默认后端链：系统密钥库。
@@ -132,16 +169,6 @@ fn backend_by_id<'a>(
         backend: id,
         reason: format!("后端链中没有 {id} 后端"),
     })
-}
-
-/// 探测 → 拉取 → 解析载荷（顺序固定：先给出「不可用」而不是「载荷非法」）。
-fn material_from(
-    backend: &dyn SecretBackend,
-    reference: &CredentialRef,
-) -> Result<SigningMaterial, SignError> {
-    backend.available()?;
-    let payload = backend.fetch(&reference.name)?;
-    material_from_payload(&reference.name, backend.id(), &payload)
 }
 
 /// 解析 base64(JSON) 载荷。
@@ -217,6 +244,13 @@ struct Payload {
     /// HarmonyOS 已签名 Profile 的 base64（可省；HAP 签名链必需）。
     #[serde(default)]
     profile: Option<String>,
+}
+
+/// 信任根载荷 JSON 结构（只包含公钥；未知字段忽略）。
+#[derive(Deserialize)]
+struct PublicKeyPayload {
+    /// ASCII-armor 或二进制公钥的 base64。
+    public_key: String,
 }
 
 /// 标准字母表 base64。

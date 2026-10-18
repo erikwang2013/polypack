@@ -140,6 +140,10 @@ pub mod codes {
     pub const E_PLUGIN_0007: Code = Code::new("poly::E_PLUGIN_0007");
     /// 插件授权清单非法（授权目录不存在 / 域名或端口格式非法）。
     pub const E_PLUGIN_0008: Code = Code::new("poly::E_PLUGIN_0008");
+    /// 插件签名缺失或验签失败（签名与制品 / 信任根不匹配）。
+    pub const E_PLUGIN_0009: Code = Code::new("poly::E_PLUGIN_0009");
+    /// 插件签名信任根不可用（CredentialRef 解析失败 / 公钥导入失败 / 缺验签工具）。
+    pub const E_PLUGIN_0010: Code = Code::new("poly::E_PLUGIN_0010");
     /// IO 错误。
     pub const E_IO_0001: Code = Code::new("poly::E_IO_0001");
 }

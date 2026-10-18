@@ -31,8 +31,9 @@ const ALLOWED: &[(&str, &[&str])] = &[
     ("poly-publish", &["poly-core"]),
     // T-M8-01：插件宿主需要 JobSpec / PluginGrant / Diagnostic 等核心类型；
     // T-M8-05：插件实现统一 `TargetProvider`（poly-targets）。
-    // 方向仍是 core ← plugin（core 不反向依赖插件），无环；仍不得依赖 poly-bundle。
-    ("poly-plugin", &["poly-core", "poly-targets"]),
+    // T-M8-03：验签复用 poly-sign（GpgSigner / ArtifactVerifier / CredentialRef 解析），
+    // 不重造密码学。方向仍是 core ← sign ← plugin，无环；仍不得依赖 poly-bundle。
+    ("poly-plugin", &["poly-core", "poly-sign", "poly-targets"]),
     ("poly-targets", &[]),
     ("poly-toolchain", &[]),
     ("poly-cache", &[]),

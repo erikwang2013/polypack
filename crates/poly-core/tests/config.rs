@@ -434,6 +434,63 @@ fn plugin_grants_flow_into_job_spec() {
     assert!(job.plugins.is_empty(), "缺省 = 无任何插件能力");
 }
 
+/// T-M8-03：签名配置随 `to_job` 下传；`signature` / `trust_root` 必须成对
+/// （缺信任根 → `poly::E_PLUGIN_0008`）。签名配置只出现引用，不出现私钥。
+#[test]
+fn plugin_signature_config_flows_and_requires_trust_root() {
+    const BASE: &str = "[package]\nname = \"my-app\"\nversion = \"1.2.0\"\n\
+         [ui]\nframework = \"react\"\nentry = \"ui/index.html\"\n\
+         [core]\ncrate = \"core\"\n";
+    let signed = PolypackConfig::parse(&format!(
+        "{BASE}[[plugins]]\nid = \"signed\"\npath = \"plugins/signed.wasm\"\n\
+         signature = \"plugins/signed.wasm.sig\"\n\
+         trust_root = {{ name = \"plugin-trust-root\", source = \"keyring\" }}\n"
+    ))
+    .expect("含签名配置的 [[plugins]] 合法");
+    let job = signed
+        .to_job(
+            &Registry::builtin(),
+            &TargetRequest::Explicit(vec!["linux".to_string()]),
+            Profile::Local,
+            &[Host::Linux],
+        )
+        .expect("目标可解析");
+    assert_eq!(
+        job.plugins[0].signature.as_deref(),
+        Some("plugins/signed.wasm.sig")
+    );
+    assert_eq!(
+        job.plugins[0]
+            .trust_root
+            .as_ref()
+            .map(|root| root.name.as_str()),
+        Some("plugin-trust-root"),
+        "信任根只经 CredentialRef 引用"
+    );
+
+    // 只写 signature 缺 trust_root：装载期拒绝（而不是运行时才失败）。
+    let incomplete = PolypackConfig::parse(&format!(
+        "{BASE}[[plugins]]\nid = \"signed\"\npath = \"plugins/signed.wasm\"\n\
+         signature = \"plugins/signed.wasm.sig\"\n"
+    ))
+    .expect("语法合法（成对性由 to_job 校验）");
+    let err = incomplete
+        .to_job(
+            &Registry::builtin(),
+            &TargetRequest::Explicit(vec!["linux".to_string()]),
+            Profile::Local,
+            &[Host::Linux],
+        )
+        .expect_err("缺 trust_root 必须拒绝");
+    assert_eq!(err.diagnostic.code, codes::E_PLUGIN_0008);
+    assert!(
+        err.diagnostic
+            .hint
+            .expect("有修复提示")
+            .contains("trust_root")
+    );
+}
+
 /// 值形态的边界：`format` 非字符串 → `poly::E_TGT_0003`；值非法（非已知格式）**不在这里拦**
 /// ——由打包器 `check_format` 把关（错误码更清楚）。
 #[test]

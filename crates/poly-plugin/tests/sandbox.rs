@@ -64,6 +64,9 @@ fn grant(fs_read: &[&str], fs_write: &[&str], net: &[&str]) -> PluginGrant {
         fs_read: fs_read.iter().map(|s| (*s).to_string()).collect(),
         fs_write: fs_write.iter().map(|s| (*s).to_string()).collect(),
         net: net.iter().map(|s| (*s).to_string()).collect(),
+        sri: None,
+        signature: None,
+        trust_root: None,
     }
 }
 

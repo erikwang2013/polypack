@@ -1549,9 +1549,11 @@ dependencies = [
 name = "poly-plugin"
 version = "0.0.0"
 dependencies = [
+ "base64 0.22.1",
  "blake3",
  "libc",
  "poly-core",
+ "poly-sign",
  "poly-targets",
  "rustls-native-certs",
  "thiserror",

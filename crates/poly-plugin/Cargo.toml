@@ -10,7 +10,11 @@ publish = false
 
 [dependencies]
 poly-core.workspace = true
+# T-M8-05：插件实现统一 `TargetProvider` 契约（poly-targets）。
 poly-targets.workspace = true
+# T-M8-03：插件制品签名链复用 poly-sign（GpgSigner 签名 / ArtifactVerifier 验签 +
+# CredentialRef 凭据解析），不重造密码学。
+poly-sign.workspace = true
 blake3.workspace = true
 thiserror.workspace = true
 # T-M8-01：组件模型沙箱（版本与 feature 见根清单 workspace.dependencies）。
@@ -23,6 +27,10 @@ ureq = { version = "3.4", default-features = false, features = [
     "_ring",
 ] }
 rustls-native-certs = "0.8"
+
+[dev-dependencies]
+# 测试构造 CredentialRef 载荷（base64(JSON)）；与 poly-sign 同一版本，不引入新第三方树。
+base64.workspace = true
 
 [target.'cfg(unix)'.dependencies]
 # `O_NOFOLLOW`：写文件最后一跳拒绝符号链接（父路径已 canonicalize 校验）。

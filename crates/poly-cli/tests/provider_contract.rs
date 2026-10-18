@@ -54,6 +54,9 @@ fn grant() -> PluginGrant {
         fs_read: Vec::new(),
         fs_write: Vec::new(),
         net: Vec::new(),
+        sri: None,
+        signature: None,
+        trust_root: None,
     }
 }
 

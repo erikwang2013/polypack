@@ -11,8 +11,11 @@
 //!   经载荷 `app_cert` / `profile` 字段注入）。
 //! - **T-M5-05** 仓库元数据签名：[`repo`] 的 [`RepoSigner`] / [`GpgSigner`]（deb `Release` /
 //!   `InRelease` 与 rpm `repomd.xml`；凭据同走 `CredentialRef`，隔离 GNUPGHOME 零残留）。
+//! - **T-M8-03** 插件制品验签：[`artifact`] 的 [`ArtifactVerifier`]（离线 detached 签名，
+//!   信任根只经 `CredentialRef` 引用公钥；签名侧复用 [`GpgSigner`]）。
 
 pub mod android;
+pub mod artifact;
 pub mod error;
 pub mod harmony;
 pub mod inject;
@@ -23,6 +26,7 @@ mod temp;
 pub mod vault;
 
 pub use android::{AndroidSigner, SignPlan, SignRequest, SignedArtifact};
+pub use artifact::ArtifactVerifier;
 pub use error::{SignError, codes};
 pub use harmony::{HarmonySignPlan, HarmonySignRequest, HarmonySignedArtifact, HarmonySigner};
 pub use inject::CredentialScope;

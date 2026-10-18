@@ -21,6 +21,7 @@ pub enum Profile {
 
 /// 凭据来源（仅引用，绝不内联明文）。
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "std", derive(schemars::JsonSchema))]
 #[serde(rename_all = "lowercase")]
 pub enum CredentialSource {
     /// 系统密钥库（Keychain / Credential Manager / Secret Service）。
@@ -53,10 +54,20 @@ pub struct PluginGrant {
     /// 允许出网的域名（`host` 或 `host:port`）。
     #[serde(default)]
     pub net: Vec<String>,
+    /// 制品内容摘要（`blake3-<hex>`，`poly plugin digest` 产出）；设置后加载前校验（T-M8-03）。
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub sri: Option<String>,
+    /// 分离签名文件路径（相对工程根）；设置后加载前必须验签通过（T-M8-03）。
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub signature: Option<String>,
+    /// 签名信任根（公钥）的凭据引用；`signature` 设置时必填（T-M8-03）。
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub trust_root: Option<CredentialRef>,
 }
 
 /// 对密钥库条目的引用。
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "std", derive(schemars::JsonSchema))]
 pub struct CredentialRef {
     /// 凭据档案名（= TargetSpec.signing）。
     pub name: String,

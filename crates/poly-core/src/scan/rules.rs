@@ -27,6 +27,15 @@ pub(super) struct BinaryRule {
     pub(super) hint: &'static str,
 }
 
+/// 插件制品（`.wasm`）规则：按字节搜索标记，命中报告只给脱敏描述与偏移（T-M8-03）。
+pub(super) struct ArtifactRule {
+    pub(super) id: &'static str,
+    pub(super) needle: &'static [u8],
+    /// 可读命中描述（不含命中路径本身，§7 脱敏）。
+    pub(super) label: &'static str,
+    pub(super) hint: &'static str,
+}
+
 /// 文本规则表（顺序即优先级：同一行只报首个命中的规则，避免同一位点重复刷屏）。
 pub(super) const TEXT_RULES: &[TextRule] = &[
     TextRule {
@@ -72,6 +81,83 @@ pub(super) const BINARY_RULES: &[BinaryRule] = &[BinaryRule {
     magic: b"\xFE\xED\xFE\xED",
     hint: HINT_STORE,
 }];
+
+/// 修复提示：插件制品不得携带构建机信息。
+const HINT_ARTIFACT: &str = "重新构建插件并剥离宿主路径 / 环境变量痕迹（release 构建、strip 掉 name / debug 段）；\
+     制品不得携带构建机信息";
+/// 修复提示：调试符号段。
+const HINT_DEBUG: &str =
+    "发布前去掉调试段：wasm 用 `strip` / `wasm-opt -g`，或在 release profile 关 debug";
+
+/// 插件制品规则表（只在 `.wasm` 上施加）：宿主绝对路径 / 环境变量痕迹 / 调试符号段。
+pub(super) const ARTIFACT_RULES: &[ArtifactRule] = &[
+    ArtifactRule {
+        id: "wasm-host-path",
+        needle: b"/home/",
+        label: "宿主绝对路径（Linux 用户主目录）",
+        hint: HINT_ARTIFACT,
+    },
+    ArtifactRule {
+        id: "wasm-host-path",
+        needle: b"C:\\Users\\",
+        label: "宿主绝对路径（Windows 用户目录）",
+        hint: HINT_ARTIFACT,
+    },
+    ArtifactRule {
+        id: "wasm-host-path",
+        needle: b"C:/Users/",
+        label: "宿主绝对路径（Windows 用户目录）",
+        hint: HINT_ARTIFACT,
+    },
+    ArtifactRule {
+        id: "wasm-host-path",
+        needle: b"/var/folders/",
+        label: "宿主临时目录（macOS）",
+        hint: HINT_ARTIFACT,
+    },
+    ArtifactRule {
+        id: "wasm-host-path",
+        needle: b"/tmp/",
+        label: "宿主临时目录（Unix）",
+        hint: HINT_ARTIFACT,
+    },
+    ArtifactRule {
+        id: "wasm-env-trace",
+        needle: b"CARGO_MANIFEST_DIR",
+        label: "环境变量痕迹 CARGO_MANIFEST_DIR",
+        hint: HINT_ARTIFACT,
+    },
+    ArtifactRule {
+        id: "wasm-env-trace",
+        needle: b"USERPROFILE=",
+        label: "环境变量痕迹 USERPROFILE",
+        hint: HINT_ARTIFACT,
+    },
+    ArtifactRule {
+        id: "wasm-env-trace",
+        needle: b"TMPDIR=",
+        label: "环境变量痕迹 TMPDIR",
+        hint: HINT_ARTIFACT,
+    },
+    ArtifactRule {
+        id: "wasm-env-trace",
+        needle: b"$HOME",
+        label: "环境变量痕迹 $HOME",
+        hint: HINT_ARTIFACT,
+    },
+    ArtifactRule {
+        id: "wasm-debug-symbols",
+        needle: b".debug_info",
+        label: "调试符号段 .debug_info",
+        hint: HINT_DEBUG,
+    },
+    ArtifactRule {
+        id: "wasm-debug-symbols",
+        needle: b".debug_abbrev",
+        label: "调试符号段 .debug_abbrev",
+        hint: HINT_DEBUG,
+    },
+];
 
 /// PEM 私钥头：`-----BEGIN <标签>` 且标签以 `PRIVATE KEY` 收尾（RSA / EC / DSA / OPENSSH /
 /// ENCRYPTED / PGP 变体全覆盖；CERTIFICATE 不是私钥，不报）。
@@ -326,7 +412,7 @@ pub(super) fn line_has_allow_marker(line: &[u8]) -> bool {
 }
 
 /// 子串首次出现位置。
-fn find_sub(haystack: &[u8], needle: &[u8]) -> Option<usize> {
+pub(super) fn find_sub(haystack: &[u8], needle: &[u8]) -> Option<usize> {
     if needle.is_empty() {
         return None;
     }
