@@ -341,8 +341,9 @@ pub(crate) fn assemble_inputs(
             inputs.miniapp_host = Some(project.root.clone());
         }
         // Roku 频道（T-M4-15）：适配器根按工程根候选链解析（<root>/ui/adapters/roku），
-        // 频道骨架 + 发射器由打包器落暂存后复用 spike 发射器
-        "zip" => {
+        // 频道骨架 + 发射器由打包器落暂存后复用 spike 发射器。KaiOS 同为 `zip`，只消费
+        // 上方统一接线的 `ui_dist` + 产品元数据，无额外输入——按目标 id 收窄，避免误派。
+        "zip" if spec.id == "roku" => {
             inputs.roku = Some(RokuInputs {
                 project_root: project.root.clone(),
                 ..Default::default()

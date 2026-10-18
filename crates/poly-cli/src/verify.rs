@@ -207,6 +207,9 @@ enum Verifier {
     /// Roku 频道 zip 的侧载结构自检（[`poly_bundle::check_roku_structure`]，与打包器同一实现；
     /// 真机侧载腿本机不可得，按 T-M4-12 决策 SKIP-with-print，T-M4-15）。
     RokuSideload,
+    /// KaiOS 包 zip 结构自检（[`poly_bundle::check_kaios_structure`]：`manifest.webapp`
+    /// 必填字段 + 入口存在，与打包器同一实现；设备 / KaiStore 腿本机不可得，SKIP-with-print）。
+    KaiosStructure,
     /// Fitbit `.fba` 三层结构自检（[`poly_bundle::check_fitbit_structure`]）+ 在场时的
     /// `fitbit-build --help` 自检；CLI 缺席 SKIP-with-print，T-M7-07。
     FitbitStructure,
@@ -268,6 +271,7 @@ fn verifier_for(id: &str) -> Option<Verifier> {
         "pkg-check" => Some(Verifier::PkgCheck),
         "pkgsrc-check" => Some(Verifier::PkgsrcCheck),
         "sideload-structure-check" => Some(Verifier::RokuSideload),
+        "kaios-structure-check" => Some(Verifier::KaiosStructure),
         "fitbit-structure-check" => Some(Verifier::FitbitStructure),
         "zepp-structure-check" => Some(Verifier::ZeppStructure),
         "lintian" => Some(Verifier::DebLint),
@@ -401,6 +405,7 @@ fn verify_target(
     let mut pkg_check_ids: Vec<String> = Vec::new();
     let mut pkgsrc_ids: Vec<String> = Vec::new();
     let mut roku_ids: Vec<String> = Vec::new();
+    let mut kaios_ids: Vec<String> = Vec::new();
     let mut fitbit_ids: Vec<String> = Vec::new();
     let mut zepp_ids: Vec<String> = Vec::new();
     let mut deb_ids: Vec<String> = Vec::new();
@@ -431,6 +436,7 @@ fn verify_target(
             Some(Verifier::PkgCheck) => pkg_check_ids.push(id.clone()),
             Some(Verifier::PkgsrcCheck) => pkgsrc_ids.push(id.clone()),
             Some(Verifier::RokuSideload) => roku_ids.push(id.clone()),
+            Some(Verifier::KaiosStructure) => kaios_ids.push(id.clone()),
             Some(Verifier::FitbitStructure) => fitbit_ids.push(id.clone()),
             Some(Verifier::ZeppStructure) => zepp_ids.push(id.clone()),
             Some(Verifier::DebLint) => deb_ids.push(id.clone()),
@@ -499,6 +505,9 @@ fn verify_target(
     }
     if !roku_ids.is_empty() {
         checked |= verify_roku_sideload(project, spec, &roku_ids, events)?;
+    }
+    if !kaios_ids.is_empty() {
+        checked |= verify_kaios_structure(project, spec, &kaios_ids, events)?;
     }
     if !fitbit_ids.is_empty() {
         checked |= verify_fitbit(project, spec, &fitbit_ids, events)?;
@@ -1756,6 +1765,70 @@ fn verify_roku_sideload(
         &format!(
             "目标 {} 的真机侧载腿 SKIP-with-print：本机无 Roku SDK / 设备 / 模拟器（T-M4-12 \
              决策写明真机侧载为后续前置）；结构自检是本机真跑面",
+            spec.id
+        ),
+    );
+    for id in ids {
+        events.emit(&BuildEvent::Verified {
+            checker: id.clone(),
+            ok: true,
+        });
+    }
+    Ok(true)
+}
+
+/// KaiOS 包结构自检腿（`kaios-structure-check`）：与打包器**同一份**检查
+/// （[`poly_bundle::check_kaios_structure`]：zip 条目安全、`manifest.webapp` 必填字段
+/// name / version / launch_path、入口存在；缺陷 E_BND_0006 硬失败）。本机无 KaiOS 设备 /
+/// 模拟器与 KaiStore 凭据——设备 / 商店腿 SKIP-with-print，结构自检是本机真跑面。
+fn verify_kaios_structure(
+    project: &Project,
+    spec: &TargetSpec,
+    ids: &[String],
+    events: &mut dyn EventSink,
+) -> Result<bool, StageError> {
+    let staged = project::packages_root(&project.root).join(&spec.id);
+    let Some((package, count)) = staged_file(&staged, "zip") else {
+        warning(
+            events,
+            &format!(
+                "目标 {} 未校验：{} 下没有 *.zip（先跑 poly build 把产物流到打包暂存目录）",
+                spec.id,
+                staged.display()
+            ),
+        );
+        return Ok(false);
+    };
+    if count > 1 {
+        warning(
+            events,
+            &format!(
+                "目标 {} 的产物有 {count} 份 zip（取最新一份 {}）",
+                spec.id,
+                package.display()
+            ),
+        );
+    }
+    let structure = match poly_bundle::check_kaios_structure(&package) {
+        Ok(structure) => structure,
+        Err(err) => return Err(bundle_diagnostic(spec, &err).into()),
+    };
+    warning(
+        events,
+        &format!(
+            "目标 {} 的包结构自检：{} 条目，manifest name={} 版本 {}，launch_path={}",
+            spec.id,
+            structure.entries.len(),
+            structure.name,
+            structure.version,
+            structure.launch_path
+        ),
+    );
+    warning(
+        events,
+        &format!(
+            "目标 {} 的设备 / 商店腿 SKIP-with-print：本机无 KaiOS 设备 / 模拟器与 KaiStore \
+             凭据（平台侧签名与提审在 KaiStore 完成）；结构自检是本机真跑面",
             spec.id
         ),
     );
@@ -3030,6 +3103,24 @@ mod tests {
         );
     }
 
+    /// KaiOS 的 `kaios-structure-check` 已接入，与打包器共用结构检查。
+    #[test]
+    fn kaios_structure_check_is_served() {
+        let kaios = Registry::builtin()
+            .get("kaios")
+            .expect("内建 kaios 目标")
+            .clone();
+        assert_eq!(kaios.verify, vec!["kaios-structure-check"]);
+        assert_eq!(
+            verifier_for("kaios-structure-check"),
+            Some(Verifier::KaiosStructure)
+        );
+        assert!(
+            verifier_owner("kaios-structure-check").is_none(),
+            "已接入的校验器不得再留 owner 占位"
+        );
+    }
+
     /// ChromeOS PWA 轨的 `pwa-audit` 已接入（T-M5-10）；browser 模式下不可安装的
     /// display 与离线能力缺失都由 `poly_bundle::audit_pwa` 硬失败（见 poly-bundle 测试）。
     #[test]
@@ -4071,6 +4162,77 @@ mod tests {
         poly_bundle::zipwrite::write_zip(&[("manifest".to_string(), files.join("manifest"))], &bad)
             .expect("合成坏频道包");
         let err = verify_target(&project, &spec, &mut sink).expect_err("缺必需条目必须硬失败");
+        assert_eq!(err.diagnostic.code.to_string(), "poly::E_BND_0006");
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    /// KaiOS 包结构自检三态：合规过检发 `Verified`（含设备 / 商店腿 SKIP-with-print）/
+    /// 清单缺字段 E_BND_0006 硬失败 / 缺产物告警跳过并说明原因。
+    #[test]
+    fn kaios_structure_leg_covers_pass_fail_and_skip() {
+        let (root, project) = fixture("kaios-structure");
+        let spec = Registry::builtin()
+            .get("kaios")
+            .expect("内建 kaios 目标")
+            .clone();
+        let staged = root.join(".polypack/packages/kaios");
+        let mut sink = poly_core::events::HumanSink {
+            out: Vec::<u8>::new(),
+        };
+
+        // 三态 ①：缺产物 → 跳过并点名落点，不硬失败
+        assert!(!verify_target(&project, &spec, &mut sink).expect("缺产物不该失败"));
+        let text = String::from_utf8_lossy(&sink.out).replace('\\', "/");
+        assert!(text.contains("没有 *.zip"), "{text}");
+        assert!(text.contains(".polypack/packages/kaios"), "{text}");
+
+        std::fs::create_dir_all(&staged).expect("暂存目录可建");
+        let manifest = staged.join("manifest.webapp");
+        std::fs::write(
+            &manifest,
+            r#"{"name":"Fixture App","version":"1.0.0","launch_path":"/index.html"}"#,
+        )
+        .expect("写清单");
+        let index = staged.join("index.html");
+        std::fs::write(&index, "<!doctype html><title>fixture</title>").expect("写入口");
+        let good = staged.join("fixture-app-0.0.1.zip");
+        poly_bundle::zipwrite::write_zip(
+            &[
+                ("manifest.webapp".to_string(), manifest),
+                ("index.html".to_string(), index.clone()),
+            ],
+            &good,
+        )
+        .expect("合成合规包");
+
+        // 三态 ②：合规件 → 过检，结构摘要 + 设备 / 商店腿 SKIP 句都进事件流
+        sink.out.clear();
+        assert!(
+            verify_target(&project, &spec, &mut sink).expect("合规包应过检"),
+            "合规件必须给出 Verified 判决"
+        );
+        let text = String::from_utf8_lossy(&sink.out).into_owned();
+        assert!(text.contains("包结构自检"), "{text}");
+        assert!(text.contains("Fixture App"), "{text}");
+        assert!(text.contains("launch_path=/index.html"), "{text}");
+        assert!(text.contains("SKIP-with-print"), "{text}");
+        assert!(text.contains("KaiStore"), "{text}");
+        assert!(text.contains("kaios-structure-check"), "{text}");
+
+        // 三态 ③：坏件（清单缺 launch_path）→ E_BND_0006 硬失败，不降级成跳过
+        std::fs::remove_file(&good).expect("清掉合格件");
+        let bad_manifest = staged.join("bad.webapp");
+        std::fs::write(&bad_manifest, r#"{"name":"Broken","version":"1.0.0"}"#).expect("写坏清单");
+        let bad = staged.join("broken-0.0.1.zip");
+        poly_bundle::zipwrite::write_zip(
+            &[
+                ("manifest.webapp".to_string(), bad_manifest),
+                ("index.html".to_string(), index),
+            ],
+            &bad,
+        )
+        .expect("合成坏包");
+        let err = verify_target(&project, &spec, &mut sink).expect_err("缺必填字段必须硬失败");
         assert_eq!(err.diagnostic.code.to_string(), "poly::E_BND_0006");
         let _ = std::fs::remove_dir_all(&root);
     }

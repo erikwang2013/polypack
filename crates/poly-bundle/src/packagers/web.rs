@@ -93,7 +93,7 @@ impl Packager for StaticSite {
         // 原样写入：manifest 的生成（含图标尺寸）由 T-M1-04 负责，此处不做无谓改写。
         fsutil::write_text(&site.join("manifest.webmanifest"), &text)?;
 
-        assert_html_structure(&site)?;
+        assert_html_structure(&site, STATIC_SITE)?;
 
         let manifest = sri::manifest_of(&site)?;
         let integrity =
@@ -184,14 +184,17 @@ fn collect_html(dir: &Path, out: &mut Vec<PathBuf>) -> Result<(), BundleError> {
 /// 内建 HTML 结构断言：每个页面须含 doctype / html / body 标签（大小写不敏感）。
 ///
 /// html-validate 缺失时的守底检查；失败退化为「产物不可托管」的显式错误。
-fn assert_html_structure(site: &Path) -> Result<(), BundleError> {
+pub(crate) fn assert_html_structure(
+    site: &Path,
+    packager: &'static str,
+) -> Result<(), BundleError> {
     for html in html_files(site)? {
         let text = std::fs::read_to_string(&html).map_err(io_err(&html))?;
         let lower = text.to_lowercase();
         if let Some(missing) = HTML_REQUIRED.iter().find(|m| !lower.contains(**m)) {
             let rel = html.strip_prefix(site).unwrap_or(&html);
             return Err(BundleError::InvalidInput {
-                packager: STATIC_SITE,
+                packager,
                 field: "ui_dist(html)",
                 value: rel.to_string_lossy().to_string(),
                 reason: format!(
