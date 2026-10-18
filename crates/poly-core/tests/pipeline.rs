@@ -97,6 +97,7 @@ fn job(targets: Vec<TargetSpec>) -> JobSpec {
         excluded: Vec::new(),
         secrets: Vec::new(),
         budget: Budget::default(),
+        plugins: Vec::new(),
     }
 }
 

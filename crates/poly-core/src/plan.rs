@@ -441,6 +441,7 @@ mod tests {
             excluded: Vec::new(),
             secrets: Vec::new(),
             budget: Budget::default(),
+            plugins: Vec::new(),
         };
         let mut sink = HumanSink { out: Vec::new() };
         let mut ctx = StageContext {

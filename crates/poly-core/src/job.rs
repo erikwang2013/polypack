@@ -34,6 +34,27 @@ pub enum CredentialSource {
     },
 }
 
+/// 插件能力授权清单（T-M8-01）：空列表 = 沙箱默认（无文件系统、无网络）。
+///
+/// 路径相对工程根；域名写 `host` 或 `host:port`。清单随 `JobSpec` 持久化并进入
+/// `poly build --json` 事件流（`plugin_granted`），宿主按此逐项放行。
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PluginGrant {
+    /// 插件 id（= `polypack.toml` `[[plugins]]` 的 `id`）。
+    pub id: String,
+    /// 插件组件路径（相对工程根）。
+    pub path: String,
+    /// 只读目录（相对工程根）。
+    #[serde(default)]
+    pub fs_read: Vec<String>,
+    /// 可写目录（相对工程根）。
+    #[serde(default)]
+    pub fs_write: Vec<String>,
+    /// 允许出网的域名（`host` 或 `host:port`）。
+    #[serde(default)]
+    pub net: Vec<String>,
+}
+
 /// 对密钥库条目的引用。
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CredentialRef {
@@ -115,6 +136,9 @@ pub struct JobSpec {
     /// 产物预算。
     #[serde(default)]
     pub budget: Budget,
+    /// 插件能力授权清单（T-M8-01；缺省为空 = 无文件系统、无网络）。
+    #[serde(default)]
+    pub plugins: Vec<PluginGrant>,
 }
 
 /// `JobSpec` 校验失败原因（引擎层，no_std 可用）。

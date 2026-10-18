@@ -526,6 +526,7 @@ mod tests {
             excluded: Vec::new(),
             secrets: Vec::new(),
             budget: Budget::default(),
+            plugins: Vec::new(),
         }
     }
 

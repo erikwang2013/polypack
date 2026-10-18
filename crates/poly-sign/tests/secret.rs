@@ -70,6 +70,7 @@ fn same_job_resolves_via_keyring_and_vault_backends() {
         excluded: Vec::new(),
         secrets: vec![keyring_ref("pax-release")],
         budget: Default::default(),
+        plugins: Vec::new(),
     };
 
     let from_keyring = secret::resolve(

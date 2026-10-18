@@ -1,0 +1,12 @@
+[package]
+name = "polypack-componentize"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[dependencies]
+# 与 `wasm-tools component new` 同一实现（wit-component），不在本机全局安装 wasm-tools。
+# 版本与 fixtures 生成时一致：升级需重生成 tests/fixtures 并跑 poly-plugin 测试。
+wit-component = "=0.247.0"
+
+[workspace]

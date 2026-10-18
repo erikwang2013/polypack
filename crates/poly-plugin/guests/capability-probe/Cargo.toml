@@ -1,0 +1,19 @@
+[package]
+name = "polypack-capability-probe"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+wit-bindgen = { version = "=0.57.1", default-features = false, features = ["macros", "realloc"] }
+dlmalloc = { version = "=0.2.14", features = ["global"] }
+
+[profile.release]
+strip = true
+panic = "abort"
+opt-level = "s"
+
+[workspace]
