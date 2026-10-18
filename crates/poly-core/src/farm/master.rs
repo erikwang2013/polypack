@@ -6,7 +6,7 @@ use std::time::Duration;
 use poly_targets::Host;
 
 use super::{
-    ArtifactRecord, DirTransport, FarmFrame, FarmTransport, PROTOCOL, RemoteDiagnostic, WorkerCaps,
+    ArtifactRecord, DirTransport, FarmFrame, FarmTransport, RemoteDiagnostic, WorkerCaps,
     unexpected_frame,
 };
 use crate::diagnostics::{Diagnostic, codes};
@@ -71,9 +71,17 @@ impl<T: FarmTransport> FarmMaster<T> {
             )
             .with_hint("先启动 worker（poly farm worker --dir <目录>），再投递任务"));
         };
-        let FarmFrame::Hello { worker, .. } = frame else {
+        let FarmFrame::Hello { protocol, worker } = frame else {
             return Err(unexpected_frame("hello", &frame));
         };
+        // 版本协商：v1 主端接受 v0 worker，回包用对方版本（v0 帧字段与 v1 相同）
+        let version = FarmFrame::negotiate(&protocol).ok_or_else(|| {
+            Diagnostic::error(
+                codes::E_FARM_0001,
+                format!("worker 协议版本不受支持: {protocol}"),
+            )
+            .with_hint("升级 worker 到支持 farm/v0 或 farm/v1 的 poly 版本")
+        })?;
         let mismatch = if !require.hosts.is_empty() && !require.hosts.contains(&worker.host) {
             Some((
                 format!(
@@ -96,14 +104,14 @@ impl<T: FarmTransport> FarmMaster<T> {
         };
         if let Some((reason, fix)) = mismatch {
             let _ = self.transport.send(&FarmFrame::HelloAck {
-                protocol: PROTOCOL.to_string(),
+                protocol: version.to_string(),
                 accepted: false,
                 reason: Some(reason.clone()),
             });
             return Err(Diagnostic::error(codes::E_FARM_0002, reason).with_hint(fix));
         }
         self.transport.send(&FarmFrame::HelloAck {
-            protocol: PROTOCOL.to_string(),
+            protocol: version.to_string(),
             accepted: true,
             reason: None,
         })?;
