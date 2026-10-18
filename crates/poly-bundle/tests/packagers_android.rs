@@ -397,6 +397,10 @@ fn registry_exposes_android_packager() {
     );
     assert!(find("android", "aab").is_some());
     assert!(find("android", "apk").is_none());
+    // GrapheneOS 复用普通 APK 口径（无 TV / 车机 / Wear 清单注入）。
+    let graphene = find("grapheneos", "apk").expect("GrapheneOS APK 打包器");
+    assert_eq!(graphene.id(), "grapheneos");
+    assert!(find("grapheneos", "aab").is_none());
 }
 
 #[test]

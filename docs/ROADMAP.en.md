@@ -57,7 +57,7 @@
 
 ### 3.1.1 49-target status table (generated)
 
-The table below is the single source of truth for the status of all 49 platforms: 36 rows are generated field by field from `TargetSpec` (38 declared targets; the RTOS and Chrome OS rows each merge two; `notes` keeps the declaration's original Chinese text), and 13 planned platforms are explicitly marked "planned" with fields taken from the declarative manifest in `tools/gen-status-table.mjs`. Do not edit it by hand: regenerate with `node tools/gen-status-table.mjs`; `--check` fails on drift. Platform matrix additions/removals follow §11 item 4.
+The table below is the single source of truth for the status of all 49 platforms: 38 rows are generated field by field from `TargetSpec` (40 declared targets; the RTOS and Chrome OS rows each merge two; `notes` keeps the declaration's original Chinese text), and 11 planned platforms are explicitly marked "planned" with fields taken from the declarative manifest in `tools/gen-status-table.mjs`. Do not edit it by hand: regenerate with `node tools/gen-status-table.mjs`; `--check` fails on drift. Platform matrix additions/removals follow §11 item 4.
 
 <!-- BEGIN GENERATED: status-49 -->
 | Tier | Platform | Runtime | Bridge | Packager & artifact | Signing | Artifact verification | Publishing channel | experimental | notes |
@@ -74,20 +74,20 @@ The table below is the single source of truth for the status of all 49 platforms
 | L2 | Douyin Mini Program (`douyin`) | `wasm` | `wasm-bindgen` | `tt` · `taro-tt` | none | `douyin-devtools-cli` | `douyin-open-platform` | `false` | 小程序代码包（Taro 编译，平台 `tt`）；wasm 进宿主沙箱（T-M3-07） |
 | L2 | Quick App (快应用) (`quickapp`) | `wasm` | `wasm-bindgen` | `rpk` · `hap-toolkit` | none | `hap-toolkit-lint` | `quickapp-union-store` | `false` | 快应用 `.rpk`（hap-toolkit 构建）；lint 入 verify、提审走联盟商店（T-M3-12） |
 | L2 | TikTok Minis (planned) | HTML5 + Minis bridge | HTML5 | zip | platform-side | platform sandbox self-check | TikTok platform | none | Planned: no TargetSpec yet; delivered through the HTML5 + Minis bridge; the zip is reviewed platform-side. |
-| L2 | Google Play Instant (planned) | native | uniffi | instant-aab · android-aapt2 | android-keystore | bundletool-validate | google-play | none | Planned: reuses the Android base (native · uniffi) and emits an instant-enabled AAB; no TargetSpec yet. |
+| L2 | Google Play Instant (planned) | native | uniffi | instant-aab · android-aapt2 | android-keystore | bundletool-validate | google-play | none | Planned · discontinued: Google stopped accepting Instant Apps submissions and shut down Play services Instant APIs in Dec 2025; kept planned, no TargetSpec. |
 | L2 | Facebook Instant Games (planned) | HTML5 | HTML5 | zip | none | Meta sandbox self-check | Meta platform | none | Planned: HTML5 runtime with Meta sandbox self-check; no TargetSpec yet. |
 | L2 | Snapchat Mini (planned) | HTML5 | HTML5 | zip | none | Snap sandbox self-check | Snap platform | none | Planned: HTML5 runtime with Snap sandbox self-check; no TargetSpec yet. |
 | L2 | LINE Mini App (planned) | LIFF (web) | HTTPS | static bundle + LIFF config | HTTPS / platform TLS | LIFF config check | LINE platform | none | Planned: delivered as LIFF (web) over HTTPS / platform TLS; no TargetSpec yet. |
 | L3 | Android TV (`android-tv`) | `native` | `uniffi` | `apk` · `android-aapt2` | `android-keystore` | `apksigner-verify`, `bundletool-validate` | `google-play-tv` | `false` | Leanback 清单（android.software.leanback） |
 | L3 | Apple tvOS (`tvos`) | `native` | `uniffi` | `ipa` · `tvos-xcodebuild` | `apple-codesign` | `codesign-verify`, `spctl` | `app-store-connect` | `false` | RN-tvOS 承载 UI；需 macOS 宿主 |
-| L3 | HarmonyOS TV (planned) | native | napi | hap · harmonyos-hvigor | harmonyos-hap-sign | hap-sign-verify, hap-structure-check | Huawei video store | none | Planned: reuses the HarmonyOS base (native · napi / RNOH); no TargetSpec yet. |
+| L3 | HarmonyOS TV (`harmonyos-tv`) | `native` | `napi` | `hap` · `harmonyos-hvigor` | `harmonyos-hap-sign` | `hap-sign-verify`, `hap-structure-check` | `appgallery-connect` | `false` | RNOH TV 形态（T-M4-14：deviceTypes 含 `tv`、焦点 / 安全区复用 adapter-tv）；复用 HarmonyHap 打包链；无 hdc TV 设备——真机焦点走查 SKIP；发布走 AppGallery Connect（华为视频商店无独立渠道 id） |
 | L3 | Samsung Tizen (TV) (`tizen-tv`) | `wasm` | `wasm-bindgen` | `wgt` · `tizen-wgt` | `tizen-author` | `wgt-lint` | `tizen-seller-office` | `false` | web 运行时（Tizen TV）；作者证书签名（凭据引用 tizen-author）与侧载安装归三星工具链（本机无 tizen CLI，SDK 校验器缺席时如实跳过） |
 | L3 | LG webOS (`webos-tv`) | `wasm` | `wasm-bindgen` | `ipk` · `webos-ares` | none | `ares-package` | `lg-content-store` | `false` | web 运行时（LG webOS）；签名按平台侧（LG Content Store 发布签名），本地不签名（本机无 ares-cli，SDK 校验器缺席时如实跳过） |
 | L3 | Roku OS (`roku`) | `none` | `none` | `zip` · `roku-channel` | none | `sideload-structure-check` | `roku-channel-store` | `true` | 实验：SceneGraph 子集受限渲染——仅 UI 子集 + 原生逻辑（BrightScript 重写，无 JS 运行时）；侧载结构自检可用，真机实证待补（T-M4-15 触发前置；T-M4-12 决策：继续受限档） |
 | L3 | Amazon Fire TV (`fire-tv`) | `native` | `uniffi` | `apk` · `android-aapt2` | `android-keystore` | `apksigner-verify`, `bundletool-validate` | `amazon-appstore` | `false` | 复用 Android TV 同一 APK 链，渠道指向亚马逊应用商店 |
 | L3 | Vizio SmartCast (`smartcast-tv`) | `wasm` | `wasm-bindgen` | `web-app` · `smartcast-web-app` | none | `sandbox-selfcheck` | `vizio-platform` | `false` | web 运行时（Vizio SmartCast，远程托管）；无签名、无推送——只出沙箱自检包（入口 / 清单字段 / 体积），提报与安装归平台侧 |
 | L3 | Hisense VIDAA (`vidaa-tv`) | `wasm` | `wasm-bindgen` | `web-app` · `vidaa-web-app` | none | `sandbox-selfcheck` | `vidaa-store` | `false` | web 运行时（海信 VIDAA）；无签名、无推送——只出沙箱自检包（入口 / 清单字段 / 体积），提审与安装归平台商店侧 |
-| L4 | GrapheneOS (planned) | native | uniffi | apk · android-aapt2 | apksigner / community keys | apksigner-verify + reproducible diff | F-Droid / self-hosted | none | Planned: Android build variant (no-GMS flavor), self-signed APK / F-Droid; no TargetSpec yet. |
+| L4 | GrapheneOS (`grapheneos`) | `native` | `uniffi` | `apk` · `android-aapt2` | `android-keystore` | `apksigner-verify`, `bundletool-validate` | `self-hosted` | `false` | 复用 Android APK 链（同 aapt2 / keystore / 校验）；无独立无 GMS 打包档（GMS 剔除归应用侧）；发布走自托管（`self-hosted`；无 F-Droid 客户端 id）；可复现性走 `poly verify --reproducible`（同输入二跑，未实现上游构建对拍） |
 | L4 | KaiOS (planned) | wasm | wasm-bindgen | zip + manifest | platform-side | devtools self-check | KaiStore | none | Planned: react-dom web stack (wasm · wasm-bindgen), zip + manifest to KaiStore; no TargetSpec yet. |
 | L4 | Sailfish OS (planned) | native | cffi | rpm | RPM GPG | rpmlint | Jolla Store | none | Planned: native .so + Qt / Silica shell, RPM to Jolla Store; no TargetSpec yet. |
 | L4 | Ubuntu Touch (planned) | native | cffi | .click (Clickable) | Clickable packaging | Clickable build check | OpenStore | none | Planned: native .so + WebView shell, .click (Clickable) to OpenStore; no TargetSpec yet. |
@@ -134,7 +134,7 @@ The table below is the single source of truth for the status of all 49 platforms
 | Douyin Mini Program | same | mini-program bundle (Taro) | platform-side | Douyin devtools CLI | Douyin Open Platform | |
 | Quick App | wasm / JS (Taro quick-app target) | `.rpk` | platform-side | hap-toolkit lint | Quick App alliance stores | |
 | TikTok Minis | HTML5 + Minis bridge | zip | platform-side | platform sandbox self-check | TikTok platform | |
-| Google Play Instant | native (Android reuse) | instant-enabled AAB | same as Android | bundletool validate | Google Play | |
+| Google Play Instant | native (Android reuse) | instant-enabled AAB | same as Android | bundletool validate | Google Play | ※discontinued: Google stopped accepting Instant Apps submissions and shut down Play services Instant APIs in Dec 2025; kept planned, no TargetSpec |
 | Facebook Instant Games | HTML5 | zip | none | Meta sandbox self-check | Meta platform | |
 | Snapchat Mini | HTML5 | zip | none | Snap sandbox self-check | Snap platform | |
 | LINE Mini App | LIFF (web) | static bundle + LIFF config | HTTPS / platform TLS | LIFF config check | LINE platform | |
@@ -145,7 +145,7 @@ The table below is the single source of truth for the status of all 49 platforms
 |---|---|---|---|---|---|---|
 | Android TV | native · uniffi | APK (Leanback manifest) | same as Android | bundletool + focus-navigation smoke | Google Play (TV track) | |
 | Apple tvOS | native staticlib · uniffi | TV bundle (xcodebuild) | codesign | codesign verify | App Store | RN-tvOS carries the UI; macOS host |
-| HarmonyOS TV | native · NAPI | HAP | hap-sign-tool | same as HarmonyOS | Huawei video store | |
+| HarmonyOS TV | native · NAPI | HAP (reuses HarmonyHap) | hap-sign-tool | `hap-sign-verify` + `hap-structure-check` | AppGallery Connect (TV; no separate Huawei video store channel id) | T-M4-14: deviceTypes includes `tv`, focus / safe area reuse adapter-tv; no hdc TV device, on-device focus walkthrough SKIP |
 | Samsung Tizen | wasm · wasm-bindgen | `.wgt` | Tizen author certificate (Samsung signing tool) | `wgt-lint` | Seller Office | web runtime |
 | LG webOS | wasm · wasm-bindgen | `.ipk` | platform-side (publish signing) | `ares-package` check | LG Content Store | web runtime |
 | Roku OS | **none** (core does not run) | channel bundle (zip) | dev / platform certificate | sideload self-check | Roku channel store | ※experimental: SceneGraph-subset renderer; UI subset + native logic only |
@@ -157,7 +157,7 @@ The table below is the single source of truth for the status of all 49 platforms
 
 | Platform | Core runtime · bridge | Packager and artifacts | Signing | Artifact verification | Publishing channel | Notes |
 |---|---|---|---|---|---|---|
-| GrapheneOS | native · uniffi (no-GMS flavor) | APK | apksigner / community keys | apksigner verify + reproducible diff | F-Droid / self-hosted | Android build variant |
+| GrapheneOS | native · uniffi | APK (reuses Android APK chain) | apksigner / community keys (android-keystore) | apksigner verify + `poly verify --reproducible` (same-input two-run) | self-hosted (`self-hosted`; poly-publish has no F-Droid client) | no separate no-GMS flavor — GMS removal is an app-level concern; upstream-build diff not implemented |
 | KaiOS | wasm · wasm-bindgen | zip + manifest | platform-side | devtools self-check | KaiStore | web runtime |
 | Sailfish OS | native `.so` + Qt/Silica shell | RPM | RPM GPG | rpmlint | Jolla Store | |
 | Ubuntu Touch | native `.so` + WebView shell | `.click` (Clickable) | Clickable packaging | Clickable build check | OpenStore | |
@@ -338,7 +338,7 @@ Tiered caches: **library-level** (compile output) → **package-level** (package
 
 - Except for digital signatures and timestamps, artifacts are byte-identical across builds (`poly verify --reproducible`);
 - `SOURCE_DATE_EPOCH` is injected at compile time; absolute paths and host environment variables are banned from artifacts;
-- The GrapheneOS target additionally offers a "reproducible diff" channel against upstream builds.
+- The GrapheneOS target also uses `poly verify --reproducible` (same-input two-run comparison); a diff against upstream builds is not implemented.
 
 ### 5.4 Build-time budgets
 

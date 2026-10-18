@@ -138,6 +138,22 @@ fn every_provider_key_resolves_to_an_existing_packager() {
 }
 
 #[test]
+fn reused_targets_route_to_their_shared_packagers() {
+    // HarmonyOS TV 复用 hap 链，但打包器 id 仍是 harmonyos（产物 target 由 spec.id 给出）。
+    let tv = poly_bundle::find("harmonyos-tv", "hap").expect("harmonyos-tv/hap");
+    assert_eq!(tv.id(), "harmonyos");
+    assert_eq!(tv.format(), "hap");
+    // GrapheneOS 走普通 APK 口径，产物 target 必须是 grapheneos 本身。
+    let graphene = poly_bundle::find("grapheneos", "apk").expect("grapheneos/apk");
+    assert_eq!(graphene.id(), "grapheneos");
+    assert_eq!(graphene.format(), "apk");
+    assert!(
+        poly_bundle::find("grapheneos", "aab").is_none(),
+        "GrapheneOS 只声明 apk，不接 AAB"
+    );
+}
+
+#[test]
 fn declared_only_targets_stay_in_registry_and_skip_as_unavailable() {
     let registry = official_registry();
     let garmin = poly_targets::builtin::builtin()

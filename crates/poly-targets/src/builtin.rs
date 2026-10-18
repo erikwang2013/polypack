@@ -448,6 +448,33 @@ pub fn builtin() -> Vec<TargetSpec> {
             experimental: false,
             notes: Some("复用 Android TV 同一 APK 链，渠道指向亚马逊应用商店".to_string()),
         },
+        // HarmonyOS TV（T-M4-14 适配层）：复用 harmonyos 的整条 HAP 链，差异只在清单
+        // deviceTypes（default + tv，见 packagers/harmony.rs 骨架注入）与设备侧焦点走查。
+        TargetSpec {
+            id: "harmonyos-tv".to_string(),
+            tier: 3,
+            hosts: vec![Host::Win, Host::Linux, Host::Macos],
+            runtime: Runtime::Native,
+            bridge: Bridge::Napi,
+            ui: vec!["react-native-ohos".to_string()],
+            package: PackageSpec {
+                format: "hap".to_string(),
+                builder: "harmonyos-hvigor".to_string(),
+            },
+            signing: Some("harmonyos-hap-sign".to_string()),
+            verify: vec![
+                "hap-sign-verify".to_string(),
+                "hap-structure-check".to_string(),
+            ],
+            publish: vec!["appgallery-connect".to_string()],
+            experimental: false,
+            notes: Some(
+                "RNOH TV 形态（T-M4-14：deviceTypes 含 `tv`、焦点 / 安全区复用 adapter-tv）；\
+                 复用 HarmonyHap 打包链；无 hdc TV 设备——真机焦点走查 SKIP；发布走 \
+                 AppGallery Connect（华为视频商店无独立渠道 id）"
+                    .to_string(),
+            ),
+        },
         // ---- L3 web 系 TV 四目标（T-M4-08 / T-M4-09 / T-M4-10，ROADMAP §3.4）：wasm 核心 +
         // react-dom UI，一份 UI 产物多目标复用（同源同摘要，T-M4-09 验收口径）。签名边界如实
         // 入 notes：Tizen 作者证书归三星工具链（本机无 tizen CLI）；webOS 发布签名在平台侧；
@@ -555,6 +582,34 @@ pub fn builtin() -> Vec<TargetSpec> {
                 "实验：SceneGraph 子集受限渲染——仅 UI 子集 + 原生逻辑（BrightScript 重写，\
                  无 JS 运行时）；侧载结构自检可用，真机实证待补（T-M4-15 触发前置；T-M4-12 决策：\
                  继续受限档）"
+                    .to_string(),
+            ),
+        },
+        // ---- L4 移动系统变体：GrapheneOS 复用 Android 普通 APK 链（无 TV / 车机 / Wear 清单
+        // 注入）；无独立无 GMS flavor——GMS 剔除是应用侧约束，本链不注入也不校验。发布走
+        // 自托管（poly-publish 无 F-Droid 客户端），可复现性用 `poly verify --reproducible`。
+        TargetSpec {
+            id: "grapheneos".to_string(),
+            tier: 4,
+            hosts: vec![Host::Win, Host::Linux, Host::Macos],
+            runtime: Runtime::Native,
+            bridge: Bridge::Uniffi,
+            ui: vec!["react-native".to_string()],
+            package: PackageSpec {
+                format: "apk".to_string(),
+                builder: "android-aapt2".to_string(),
+            },
+            signing: Some("android-keystore".to_string()),
+            verify: vec![
+                "apksigner-verify".to_string(),
+                "bundletool-validate".to_string(),
+            ],
+            publish: vec!["self-hosted".to_string()],
+            experimental: false,
+            notes: Some(
+                "复用 Android APK 链（同 aapt2 / keystore / 校验）；无独立无 GMS 打包档\
+                 （GMS 剔除归应用侧）；发布走自托管（`self-hosted`；无 F-Droid 客户端 id）；\
+                 可复现性走 `poly verify --reproducible`（同输入二跑，未实现上游构建对拍）"
                     .to_string(),
             ),
         },

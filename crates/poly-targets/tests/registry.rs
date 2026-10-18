@@ -33,8 +33,9 @@ fn all_on_linux_excludes_windows_only_and_l7_with_reasons() {
     assert_eq!(
         selected,
         // L1 宿主可达者 + L2 小程序族四（Taro 编译不绑定本地宿主，任何宿主下都入选）
-        // + L3 电视两（复用 Android 工具链，三宿主声明）+ roku（三宿主声明）
+        // + L3 电视三（复用 Android / HarmonyOS 工具链，三宿主声明）+ roku（三宿主声明）
         // + L3 web 系 TV 四（T-M4-08/09/10，web 运行时三宿主全可达）
+        // + L4 GrapheneOS（复用 Android APK 链，三宿主声明）
         // + L6 AAOS / Wear 二（三宿主声明，复用 Android 链）+ QNX / AUTOSAR（三宿主声明，
         //   无 SDP 时打包按环境槽 SKIP，目标本身仍入选）+ garmin（T-M7-09 三宿主声明，
         //   无 Connect IQ SDK 时编译腿 SKIP-with-print，目标本身仍入选）+ 穿戴二
@@ -50,6 +51,8 @@ fn all_on_linux_excludes_windows_only_and_l7_with_reasons() {
             "quickapp",
             "android-tv",
             "fire-tv",
+            "harmonyos-tv",
+            "grapheneos",
             "tizen-tv",
             "webos-tv",
             "vidaa-tv",
@@ -174,16 +177,16 @@ fn allow_unreachable_keeps_all_targets() {
     let selected = selected_ids(&registry_with_l7(), &[Host::Linux], true);
     assert_eq!(
         selected.len(),
-        39, // L1 七 + L2 四 + L3 电视族八 + L5 八 + L6 十一 + L7 一
+        41, // L1 七 + L2 四 + L3 电视族九 + L4 一 + L5 八 + L6 十一 + L7 一
         "allow_unreachable 下 All 应全选: {selected:?}"
     );
 
     // 未开 allow_unreachable 时排除清单非空，两态互为对照
     assert_eq!(
         selected_ids(&registry_with_l7(), &[Host::Linux], false).len(),
-        33 // L1 四（Linux 可达）+ L2 四 + L3 电视族七（两 + web 系四 + roku）+ L5 八
-           // + L6 十（AAOS + Wear + QNX + AUTOSAR + VxWorks + Zephyr + FreeRTOS + Garmin
-           // + Fitbit + Zepp）——tvos / watchos 为 macOS 专宿主；chromeos 双轨均 Linux 可达
+        35 // L1 四（Linux 可达）+ L2 四 + L3 电视族八（三 + web 系四 + roku）+ L4 一
+           // + L5 八 + L6 十（AAOS + Wear + QNX + AUTOSAR + VxWorks + Zephyr + FreeRTOS
+           // + Garmin + Fitbit + Zepp）——tvos / watchos 为 macOS 专宿主；chromeos 双轨均 Linux 可达
     );
 }
 

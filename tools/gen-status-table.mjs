@@ -72,8 +72,8 @@ const PLATFORMS = [
     verify: bi('bundletool-validate', 'bundletool-validate'),
     publish: bi('google-play', 'google-play'),
     notes: bi(
-      '规划中：复用 Android 基座（native · uniffi），产物为 Instant-enabled AAB；尚未声明 TargetSpec。',
-      'Planned: reuses the Android base (native · uniffi) and emits an instant-enabled AAB; no TargetSpec yet.',
+      '规划中 · 已停服：Google 自 2025-12 起停止受理 Instant Apps 发布、Play services Instant API 停用；保留规划，不声明 TargetSpec。',
+      'Planned · discontinued: Google stopped accepting Instant Apps submissions and shut down Play services Instant APIs in Dec 2025; kept planned, no TargetSpec.',
     ),
   }),
   plannedRow(2, 'Facebook Instant Games', 'Facebook Instant Games', {
@@ -113,21 +113,10 @@ const PLATFORMS = [
     ),
   }),
 
-  // ── L3 电视与大屏（9）：HarmonyOS TV 为规划平台 ──
+  // ── L3 电视与大屏（9）──
   declaredRow(3, 'Android TV', 'Android TV', 'android-tv'),
   declaredRow(3, 'Apple tvOS', 'Apple tvOS', 'tvos'),
-  plannedRow(3, 'HarmonyOS TV', 'HarmonyOS TV', {
-    runtime: bi('native', 'native'),
-    bridge: bi('napi', 'napi'),
-    artifact: bi('hap · harmonyos-hvigor', 'hap · harmonyos-hvigor'),
-    signing: bi('harmonyos-hap-sign', 'harmonyos-hap-sign'),
-    verify: bi('hap-sign-verify, hap-structure-check', 'hap-sign-verify, hap-structure-check'),
-    publish: bi('华为视频商店', 'Huawei video store'),
-    notes: bi(
-      '规划中：复用 HarmonyOS 基座（native · napi / RNOH）；尚未声明 TargetSpec。',
-      'Planned: reuses the HarmonyOS base (native · napi / RNOH); no TargetSpec yet.',
-    ),
-  }),
+  declaredRow(3, 'HarmonyOS TV', 'HarmonyOS TV', 'harmonyos-tv'),
   declaredRow(3, 'Samsung Tizen（TV）', 'Samsung Tizen (TV)', 'tizen-tv'),
   declaredRow(3, 'LG webOS', 'LG webOS', 'webos-tv'),
   declaredRow(3, 'Roku OS', 'Roku OS', 'roku'),
@@ -135,19 +124,8 @@ const PLATFORMS = [
   declaredRow(3, 'Vizio SmartCast', 'Vizio SmartCast', 'smartcast-tv'),
   declaredRow(3, 'Hisense VIDAA', 'Hisense VIDAA', 'vidaa-tv'),
 
-  // ── L4 移动系统变体（4）：均为规划平台 ──
-  plannedRow(4, 'GrapheneOS', 'GrapheneOS', {
-    runtime: bi('native', 'native'),
-    bridge: bi('uniffi', 'uniffi'),
-    artifact: bi('apk · android-aapt2', 'apk · android-aapt2'),
-    signing: bi('apksigner / 社区密钥', 'apksigner / community keys'),
-    verify: bi('apksigner-verify + 可复现比对', 'apksigner-verify + reproducible diff'),
-    publish: bi('F-Droid / 自托管', 'F-Droid / self-hosted'),
-    notes: bi(
-      '规划中：Android 构建变体（无 GMS flavor），APK 自签名 / F-Droid；尚未声明 TargetSpec。',
-      'Planned: Android build variant (no-GMS flavor), self-signed APK / F-Droid; no TargetSpec yet.',
-    ),
-  }),
+  // ── L4 移动系统变体（4）：GrapheneOS 已声明，其余三为规划平台 ──
+  declaredRow(4, 'GrapheneOS', 'GrapheneOS', 'grapheneos'),
   plannedRow(4, 'KaiOS', 'KaiOS', {
     runtime: bi('wasm', 'wasm'),
     bridge: bi('wasm-bindgen', 'wasm-bindgen'),
