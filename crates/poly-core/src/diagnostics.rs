@@ -113,6 +113,22 @@ pub mod codes {
     pub const E_RELEASE_0005: Code = Code::new("poly::E_RELEASE_0005");
     /// 未找到可重签的未签名产物（`poly retry --from sign`）。
     pub const E_RETRY_0001: Code = Code::new("poly::E_RETRY_0001");
+    /// 插件能力拒绝：路径越出授权目录（路径穿越 / 符号链接逃逸 / 无写权限）。
+    pub const E_PLUGIN_0001: Code = Code::new("poly::E_PLUGIN_0001");
+    /// 插件出网域名未授权（或重定向目标越出白名单）。
+    pub const E_PLUGIN_0002: Code = Code::new("poly::E_PLUGIN_0002");
+    /// 插件资源上限耗尽（fuel / epoch 超时）。
+    pub const E_PLUGIN_0003: Code = Code::new("poly::E_PLUGIN_0003");
+    /// 插件内存超限（`memory.grow` 被宿主上限拒绝）。
+    pub const E_PLUGIN_0004: Code = Code::new("poly::E_PLUGIN_0004");
+    /// 插件接口版本不受支持（非 `target-spec/v1`）。
+    pub const E_PLUGIN_0005: Code = Code::new("poly::E_PLUGIN_0005");
+    /// 插件制品内容摘要（SRI）不匹配。
+    pub const E_PLUGIN_0006: Code = Code::new("poly::E_PLUGIN_0006");
+    /// 插件执行失败（trap / 插件返回 error / 出网传输失败）。
+    pub const E_PLUGIN_0007: Code = Code::new("poly::E_PLUGIN_0007");
+    /// 插件授权清单非法（授权目录不存在 / 域名或端口格式非法）。
+    pub const E_PLUGIN_0008: Code = Code::new("poly::E_PLUGIN_0008");
     /// IO 错误。
     pub const E_IO_0001: Code = Code::new("poly::E_IO_0001");
 }

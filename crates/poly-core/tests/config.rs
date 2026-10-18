@@ -390,6 +390,50 @@ fn to_job_applies_target_format_override() {
     assert_eq!(format_of("web"), "static-site", "未声明的目标不受影响");
 }
 
+/// T-M8-01：`[[plugins]]` 授权清单随 `to_job` 进 `JobSpec`；缺省段为空（沙箱默认拒绝）。
+#[test]
+fn plugin_grants_flow_into_job_spec() {
+    let config = PolypackConfig::parse(
+        "[package]\nname = \"my-app\"\nversion = \"1.2.0\"\n\
+         [ui]\nframework = \"react\"\nentry = \"ui/index.html\"\n\
+         [core]\ncrate = \"core\"\n\
+         [[plugins]]\nid = \"my-plugin\"\npath = \"plugins/my.wasm\"\n\
+         fs_read = [\"assets\"]\nnet = [\"api.example.com:8443\"]\n",
+    )
+    .expect("含 [[plugins]] 的配置合法");
+    let job = config
+        .to_job(
+            &Registry::builtin(),
+            &TargetRequest::Explicit(vec!["linux".to_string()]),
+            Profile::Local,
+            &[Host::Linux],
+        )
+        .expect("目标可解析");
+
+    assert_eq!(job.plugins.len(), 1);
+    assert_eq!(job.plugins[0].id, "my-plugin");
+    assert_eq!(job.plugins[0].path, "plugins/my.wasm");
+    assert_eq!(job.plugins[0].fs_read, ["assets"]);
+    assert!(job.plugins[0].fs_write.is_empty(), "未授权写目录必须为空");
+    assert_eq!(job.plugins[0].net, ["api.example.com:8443"]);
+
+    let bare = PolypackConfig::parse(
+        "[package]\nname = \"my-app\"\nversion = \"1.2.0\"\n\
+         [ui]\nframework = \"react\"\nentry = \"ui/index.html\"\n\
+         [core]\ncrate = \"core\"\n",
+    )
+    .expect("无 [[plugins]] 的配置合法");
+    let job = bare
+        .to_job(
+            &Registry::builtin(),
+            &TargetRequest::Explicit(vec!["linux".to_string()]),
+            Profile::Local,
+            &[Host::Linux],
+        )
+        .expect("目标可解析");
+    assert!(job.plugins.is_empty(), "缺省 = 无任何插件能力");
+}
+
 /// 值形态的边界：`format` 非字符串 → `poly::E_TGT_0003`；值非法（非已知格式）**不在这里拦**
 /// ——由打包器 `check_format` 把关（错误码更清楚）。
 #[test]

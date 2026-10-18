@@ -139,6 +139,7 @@ fn c_abi_is_callable_and_prefixed() {
         excluded: Vec::new(),
         secrets: Vec::new(),
         budget: poly_core::job::Budget::default(),
+        plugins: Vec::new(),
     };
     let json = serde_json::to_vec(&stub).expect("JobSpec 可序列化");
     assert_eq!(

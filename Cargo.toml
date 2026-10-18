@@ -26,6 +26,15 @@ schemars = "0.8"
 base64 = "0.22"
 blake3 = "1"
 zip = { version = "9.0.3", default-features = false, features = ["deflate"] }
+# T-M8-01 插件沙箱：仅组件模型 + Cranelift + 运行时/标准库；关掉默认的
+# async / GC / pooling / cache / profiling / WAT 等特性（体积与编译重）。
+# 版本钉死：wasmtime 的 C API / 组件 ABI 随小版本演进，沙箱边界不接受漂移。
+wasmtime = { version = "=49.0.3", default-features = false, features = [
+    "component-model",
+    "cranelift",
+    "runtime",
+    "std",
+] }
 
 [workspace.lints.rust]
 # deny（而非 forbid）：T-M6-02 的 C ABI 模块需要显式 #[allow(unsafe_code)] 处理 C 指针边界；

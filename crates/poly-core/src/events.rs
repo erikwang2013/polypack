@@ -84,6 +84,17 @@ pub enum BuildEvent {
         #[serde(skip_serializing_if = "Option::is_none")]
         hint: Option<String>,
     },
+    /// 插件能力授权清单（T-M8-01）：每个 `[[plugins]]` 一条，`poly build --json` 可见。
+    PluginGranted {
+        /// 插件 id。
+        plugin: String,
+        /// 只读目录。
+        fs_read: Vec<String>,
+        /// 可写目录。
+        fs_write: Vec<String>,
+        /// 出网域名白名单。
+        net: Vec<String>,
+    },
     /// 缓存查询结果。
     Cached {
         /// 缓存键。
@@ -150,6 +161,17 @@ impl<W: Write> EventSink for HumanSink<W> {
                 Some(h) => format!("✗ 失败：{stage} [{code}]（{h}）"),
                 None => format!("✗ 失败：{stage} [{code}]"),
             },
+            BuildEvent::PluginGranted {
+                plugin,
+                fs_read,
+                fs_write,
+                net,
+            } => format!(
+                "• 插件授权：{plugin}（读 {} 目录，写 {} 目录，出网 {} 域名）",
+                fs_read.len(),
+                fs_write.len(),
+                net.len()
+            ),
             BuildEvent::Cached { key, hit } => {
                 format!("• 缓存：{key} → {}", if *hit { "命中" } else { "未命中" })
             }

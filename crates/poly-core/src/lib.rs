@@ -46,7 +46,8 @@ pub use diagnostics::{Code, Diagnostic, Severity, codes};
 #[cfg(feature = "std")]
 pub use events::{BuildEvent, EventSink, HumanSink, JsonSink};
 pub use job::{
-    Budget, CredentialRef, CredentialSource, JobError, JobSpec, Profile, SizePolicy, TimeBudgets,
+    Budget, CredentialRef, CredentialSource, JobError, JobSpec, PluginGrant, Profile, SizePolicy,
+    TimeBudgets,
 };
 #[cfg(feature = "std")]
 pub use plan::{Plan, Project, Stage, StageContext, StageError, StageNode, StageOutcome};

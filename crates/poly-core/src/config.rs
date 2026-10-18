@@ -11,7 +11,9 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use crate::diagnostics::{Diagnostic, codes};
-use crate::job::{Budget, CredentialRef, CredentialSource, JobSpec, Profile, SizePolicy};
+use crate::job::{
+    Budget, CredentialRef, CredentialSource, JobSpec, PluginGrant, Profile, SizePolicy,
+};
 
 /// 当前支持的配置 schema 版本。
 pub const CONFIG_SCHEMA: u32 = 1;
@@ -154,6 +156,25 @@ impl Default for RetentionSection {
     }
 }
 
+/// `[[plugins]]` 段（T-M8-01）：插件能力授权清单，缺省空 = 沙箱默认（无文件系统、无网络）。
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct PluginSection {
+    /// 插件 id。
+    pub id: String,
+    /// 组件路径（相对工程根）。
+    pub path: String,
+    /// 只读目录（相对工程根）。
+    #[serde(default)]
+    pub fs_read: Vec<String>,
+    /// 可写目录（相对工程根）。
+    #[serde(default)]
+    pub fs_write: Vec<String>,
+    /// 允许出网的域名（`host` 或 `host:port`）。
+    #[serde(default)]
+    pub net: Vec<String>,
+}
+
 /// `[budget]` 段（ROADMAP §2 原则 4「预算式构建」；T-M3-08 体积门禁）。
 ///
 /// `size` 是每个打包产物的体积上限（字节）：出产物后按 [`Budget::size`] 判定，
@@ -198,6 +219,9 @@ pub struct PolypackConfig {
     /// `[budget]`。
     #[serde(default)]
     pub budget: BudgetSection,
+    /// `[[plugins]]`：插件能力授权清单（T-M8-01）。
+    #[serde(default)]
+    pub plugins: Vec<PluginSection>,
 }
 
 impl PolypackConfig {
@@ -325,6 +349,18 @@ impl PolypackConfig {
                 startup_ms: None,
                 policy: self.budget.policy,
             },
+            // T-M8-01：授权清单随 JobSpec 下传（宿主按项放行，空列表 = 无能力）。
+            plugins: self
+                .plugins
+                .iter()
+                .map(|plugin| PluginGrant {
+                    id: plugin.id.clone(),
+                    path: plugin.path.clone(),
+                    fs_read: plugin.fs_read.clone(),
+                    fs_write: plugin.fs_write.clone(),
+                    net: plugin.net.clone(),
+                })
+                .collect(),
         })
     }
 }

@@ -7,7 +7,7 @@ use std::sync::Arc;
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
 use poly_cache::{Cache, LocalStore, RetentionPolicy, enforce_retention};
-use poly_core::{BuildEvent, Diagnostic, EventSink, Profile, pipeline};
+use poly_core::{BuildEvent, Diagnostic, EventSink, PluginGrant, Profile, pipeline};
 use poly_targets::{Registry, TargetRequest, current_host};
 
 use crate::project;
@@ -82,6 +82,7 @@ pub fn run(args: &Args, json: bool) -> Result<i32, Diagnostic> {
         },
     )?;
     let mut events = project::sink(json);
+    emit_plugin_grants(events.as_mut(), &job.plugins);
     plan.run_with(Some(&project), &job, events.as_mut())?;
 
     // 产物快照（每目标一份）与 [retention] 自动淘汰：失败只告警，不影响构建结果
@@ -100,6 +101,18 @@ pub fn run(args: &Args, json: bool) -> Result<i32, Diagnostic> {
         );
     }
     Ok(0)
+}
+
+/// T-M8-01：授权清单进事件流（`poly build --json` 的 `plugin_granted` 事件）。
+fn emit_plugin_grants(events: &mut dyn EventSink, plugins: &[PluginGrant]) {
+    for grant in plugins {
+        events.emit(&BuildEvent::PluginGranted {
+            plugin: grant.id.clone(),
+            fs_read: grant.fs_read.clone(),
+            fs_write: grant.fs_write.clone(),
+            net: grant.net.clone(),
+        });
+    }
 }
 
 /// 产物快照：`<root>/.polypack/artifacts/<target>/build-<millis>/{core,dist}`，每目标保留
@@ -236,4 +249,43 @@ fn copy_dir(from: &Path, to: &Path) -> std::io::Result<()> {
         }
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    struct Collect(Vec<BuildEvent>);
+
+    impl EventSink for Collect {
+        fn emit(&mut self, event: &BuildEvent) {
+            self.0.push(event.clone());
+        }
+    }
+
+    #[test]
+    fn plugin_grants_are_emitted_to_event_stream() {
+        let plugins = vec![PluginGrant {
+            id: "my-plugin".to_string(),
+            path: "plugins/my.wasm".to_string(),
+            fs_read: vec!["assets".to_string()],
+            fs_write: vec!["out".to_string()],
+            net: vec!["api.example.com".to_string()],
+        }];
+        let mut sink = Collect(Vec::new());
+        emit_plugin_grants(&mut sink, &plugins);
+
+        assert_eq!(
+            sink.0,
+            vec![BuildEvent::PluginGranted {
+                plugin: "my-plugin".to_string(),
+                fs_read: vec!["assets".to_string()],
+                fs_write: vec!["out".to_string()],
+                net: vec!["api.example.com".to_string()],
+            }]
+        );
+        let json = serde_json::to_string(&sink.0[0]).expect("事件可序列化");
+        assert!(json.contains("\"event\":\"plugin_granted\""), "{json}");
+        assert!(json.contains("\"plugin\":\"my-plugin\""), "{json}");
+    }
 }

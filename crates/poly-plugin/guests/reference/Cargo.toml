@@ -1,0 +1,21 @@
+[package]
+name = "polypack-reference-plugin"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+# 与宿主同一份 WIT；钉死版本，构建脚本见 ../build.sh。
+wit-bindgen = { version = "=0.57.1", default-features = false, features = ["macros", "realloc"] }
+dlmalloc = { version = "=0.2.14", features = ["global"] }
+
+[profile.release]
+# §7：制品不带调试符号 / 绝对路径 / 环境变量。
+strip = true
+panic = "abort"
+opt-level = "s"
+
+[workspace]
