@@ -32,12 +32,18 @@ cargo test -- --nocapture
 `wasm32-unknown-unknown` 时按环境槽 SKIP-with-print。CI 步骤见
 `.github/workflows/ci.yml`，本地等价命令即上面的 `cargo test`。
 
+自定义 `describe` / `package` 后，同步 `contract/src/lib.rs` 顶部的
+`EXPECTED_FORMAT` 与 `EXPECTED_PACKAGE`（唯一需要随插件修改的断言）；
+忘记同步会让契约测试以退出码 101 失败。
+
 ## 在应用中注册
 
 ```toml
 [[plugins]]
 id = "__polypack_plugin_id__"
 path = "plugins/__polypack_plugin_id__.wasm"
+# 可选：制品内容摘要；设置后加载前强制校验（poly plugin digest 产出）
+# sri = "blake3-<hex>"
 # 默认零能力（无文件系统、无网络）；确需时按最小权限显式授权：
 # fs_read = ["data"]
 # fs_write = ["out"]
@@ -49,9 +55,32 @@ SRI（加载前校验的制品摘要）：
 ```bash
 poly plugin digest dist/plugin.wasm
 # blake3-<hex>
+poly --json plugin digest dist/plugin.wasm   # 脚本用（不混入横幅）
 ```
 
 该值与宿主 `Sandbox::load` 的 SRI 口径一致；插件重新构建后需重新计算。
+`poly plugin new` 只生成插件工程，不写入应用目录；构建后把产物复制过去：
+
+```bash
+mkdir -p <app>/plugins
+cp dist/plugin.wasm <app>/plugins/__polypack_plugin_id__.wasm
+```
+
+插件目标同样要求应用 `polypack.toml` 具备 `[ui]` 与 `[core]` 段（插件可以
+不使用它们，但 schema 必填）；最小占位与构建命令：
+
+```toml
+[ui]
+framework = "react"
+entry = "index.html"
+
+[core]
+crate = "core"
+```
+
+```bash
+poly build --config <app>/polypack.toml --target __polypack_plugin_id__
+```
 
 ## 占位符
 

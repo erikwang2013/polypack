@@ -69,8 +69,16 @@ fn plugin_satisfies_target_spec_v1_contract() {
 
     assert_eq!(report.spec_version, "target-spec/v1");
     assert_eq!(report.id, contract::PLUGIN_ID);
-    assert_eq!(report.format, "example-bin");
-    assert_eq!(report.bytes, report.expected);
+    assert_eq!(
+        report.format,
+        contract::EXPECTED_FORMAT,
+        "产物格式与 EXPECTED_FORMAT 不一致；自定义 describe/package 后同步 contract/src/lib.rs"
+    );
+    assert_eq!(
+        report.bytes,
+        contract::EXPECTED_PACKAGE,
+        "package 字节与 EXPECTED_PACKAGE 不一致；自定义 package 后同步 contract/src/lib.rs"
+    );
     assert!(
         report.digest.starts_with("blake3-") && report.digest.len() == "blake3-".len() + 64,
         "SRI 口径不符: {}",

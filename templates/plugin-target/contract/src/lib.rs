@@ -12,6 +12,16 @@ use bindings::{BuildInputs, CoreLib, PolypackTarget, PolypackTargetImports, UiBu
 /// 与 `plugin/src/lib.rs` 的 `PLUGIN_ID` 保持一致（`poly plugin new` 同步替换）。
 pub const PLUGIN_ID: &str = "__polypack_plugin_id__";
 
+/// 模板默认产物格式；自定义 `describe` / `package` 后同步本常量。
+///
+/// 这是契约测试唯一需要随插件修改的断言来源；忘了同步会让 `cargo test` 以 101 失败。
+pub const EXPECTED_FORMAT: &str = "example-bin";
+
+/// 模板默认产物字节（`verify` 的输入是 index.html / app.js / CORE 三个固定片段）。
+///
+/// 自定义 `package` 的输出格式后，把这里替换为新的期望字节。
+pub const EXPECTED_PACKAGE: &[u8] = b"index.html\n<html>\napp.js\nJS\nCORE";
+
 struct Host;
 
 // `types` 接口只有数据类型，无宿主函数；bindgen 仍要求空实现。
@@ -37,8 +47,6 @@ pub struct Report {
     pub format: String,
     /// 插件返回的产物字节。
     pub bytes: Vec<u8>,
-    /// 模板契约期望的产物字节。
-    pub expected: Vec<u8>,
     /// 制品摘要（SRI 口径 `blake3-<hex>`）。
     pub digest: String,
 }
@@ -82,7 +90,6 @@ pub fn verify(wasm: &[u8]) -> Result<Report, String> {
         id: spec.id,
         format: artifact.format,
         bytes: artifact.bytes,
-        expected: b"index.html\n<html>\napp.js\nJS\nCORE".to_vec(),
         digest: format!("blake3-{}", blake3::hash(wasm).to_hex()),
     })
 }

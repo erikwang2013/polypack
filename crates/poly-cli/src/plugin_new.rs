@@ -179,8 +179,15 @@ fn new(args: &NewArgs, json: bool) -> Result<i32, Diagnostic> {
         println!("     [[plugins]]");
         println!("     id = \"{id}\"");
         println!("     path = \"plugins/{id}.wasm\"");
+        println!("     sri = \"blake3-<hex>\"   # 可选；设置后加载前强制校验");
         println!(
             "  3. SRI 来源：poly plugin digest dist/plugin.wasm → blake3-<hex>（与宿主加载同口径）"
+        );
+        println!(
+            "  4. 复制产物到应用：mkdir -p <app>/plugins && cp dist/plugin.wasm <app>/plugins/{id}.wasm"
+        );
+        println!(
+            "     自定义 describe/package 后同步 contract/src/lib.rs 的 EXPECTED_FORMAT/EXPECTED_PACKAGE"
         );
     }
     Ok(0)

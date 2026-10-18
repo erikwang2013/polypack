@@ -3,6 +3,9 @@
 //! `describe` 声明目标规格；`package` 把 UI 文件与核心库按
 //! `<name>\n<bytes>\n` 顺序拼成 `example-bin` 产物。按需改写这两个函数，
 //! 并保持 `spec-version` 为 `target-spec/v1`。
+//!
+//! 改写后同步 `contract/src/lib.rs` 的 `EXPECTED_FORMAT` / `EXPECTED_PACKAGE`
+//! （契约测试唯一需要随插件修改的断言），再跑 `cargo test`。
 
 #![no_std]
 extern crate alloc;
