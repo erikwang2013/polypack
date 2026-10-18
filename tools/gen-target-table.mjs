@@ -274,9 +274,9 @@ export function embeddedTargets(specs = parseTargetSpecs()) {
 
 /* ── Markdown 渲染 ── */
 
-const cell = (text) => String(text).replace(/\|/g, '\\|').replace(/\r?\n/g, ' ');
-const code = (text) => `\`${cell(text)}\``;
-const codeList = (items) => items.map(code).join(', ');
+export const cell = (text) => String(text).replace(/\|/g, '\\|').replace(/\r?\n/g, ' ');
+export const code = (text) => `\`${cell(text)}\``;
+export const codeList = (items) => items.map(code).join(', ');
 
 /** 渲染一张状态表。notes 逐字复现（仅做表格管道符转义）。 */
 export function renderTable(specs, lang = 'zh') {
@@ -309,9 +309,9 @@ export function renderTable(specs, lang = 'zh') {
 
 const escapeRe = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-/** 读取文档中的标记块内容（不含标记行）。 */
-function readBlock(text, file) {
-  const re = new RegExp(`${escapeRe(BEGIN)}([\\s\\S]*?)${escapeRe(END)}`, 'g');
+/** 读取文档中的标记块内容（不含标记行）。供其它生成器复用，默认 L6 标记。 */
+export function readBlock(text, file, begin = BEGIN, end = END) {
+  const re = new RegExp(`${escapeRe(begin)}([\\s\\S]*?)${escapeRe(end)}`, 'g');
   const hits = [...text.matchAll(re)];
   if (hits.length !== 1) {
     throw new Error(`${file}: 期望恰好 1 个状态表标记块，实际 ${hits.length} 个`);
@@ -320,7 +320,7 @@ function readBlock(text, file) {
 }
 
 /** 比较期望块与实际块，返回首个差异行。 */
-function firstDiff(actual, expected) {
+export function firstDiff(actual, expected) {
   const a = actual.split('\n');
   const e = expected.split('\n');
   for (let i = 0; i < Math.max(a.length, e.length); i += 1) {

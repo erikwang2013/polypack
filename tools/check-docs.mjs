@@ -7,6 +7,9 @@
  *   2) Markdown 表格行数（'^| ' 行）一致
  *   3) 对 TASKS 档对：任务 ID 集合逐一相同
  *   4) L6 嵌入式 / 车机状态表与 TargetSpec 逐字一致（T-M6-12，见 gen-target-table.mjs）
+ *   5) 49 目标现状表与 TargetSpec / 规划清单逐字一致，且 README 平台矩阵 49 行、
+ *      L1–L7 分级计数与清单一致（T-M8-12，见 gen-status-table.mjs；矩阵增删时
+ *      按 ROADMAP §11 第 4 条提示待更新项）
  *
  * 零依赖。用法: node tools/check-docs.mjs   (一致 exit 0, 漂移 exit 1)
  */
@@ -15,6 +18,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { checkGeneratedDocs } from './gen-target-table.mjs';
+import { checkReadmeMatrix, checkStatusDocs } from './gen-status-table.mjs';
 import { checkExperimentalConsistency } from './check-experimental.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -57,6 +61,14 @@ const generated = checkGeneratedDocs();
 for (const line of generated.lines) (line.ok ? console.log : console.error)(line.text);
 failed += generated.failed;
 
+// T-M8-12：49 行现状表 + README 平台矩阵 ↔ 声明清单（含 §11 第 4 条提示）。
+const status = checkStatusDocs();
+for (const line of status.lines) (line.ok ? console.log : console.error)(line.text);
+failed += status.failed;
+const matrix = checkReadmeMatrix();
+for (const line of matrix.lines) (line.ok ? console.log : console.error)(line.text);
+failed += matrix.failed;
+
 // T-M6-13：experimental 三处一致（TargetSpec / 生成文档表 / CI 强度）。
 try {
   const experimental = checkExperimentalConsistency();
@@ -70,6 +82,6 @@ try {
 console.log(
   failed
     ? `\n${failed} 项漂移`
-    : '\n五对文档结构一致（含 TargetSpec 状态表与 experimental 三处一致）',
+    : '\n五对文档结构一致（含 TargetSpec 状态表、49 目标现状表、平台矩阵与 experimental 三处一致）',
 );
 process.exit(failed ? 1 : 0);
