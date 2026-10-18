@@ -34,6 +34,9 @@ unknown-git = "deny"
 [licenses]
 allow = [
     "Apache-2.0",
+    # wasmtime / cranelift / wasmparser 全系（T-M8-01 插件沙箱）：Apache-2.0 + LLVM 例外，
+    # 仍是宽松许可；cargo-deny 按完整 SPDX 表达式匹配，故单列。
+    "Apache-2.0 WITH LLVM-exception",
     "MIT",
     "BSD-2-Clause",
     "BSD-3-Clause",
