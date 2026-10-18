@@ -15,7 +15,9 @@ use crate::error::PublishError;
 use crate::time::unix_now;
 
 /// 回执 schema 版本（格式变更即升；读侧拒绝非本版本）。
-pub const SCHEMA_VERSION: u32 = 1;
+///
+/// v2（T-M8-11）：新增提交号与提审 / 终态时间戳（可选字段；旧回执按格式变更拒绝）。
+pub const SCHEMA_VERSION: u32 = 2;
 
 /// 规范化审核状态（平台原始响应原样存 `raw`，不丢信息）。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -107,6 +109,15 @@ pub struct Receipt {
     pub first_unix: u64,
     /// 最近一次执行时刻（unix 秒）。
     pub last_unix: u64,
+    /// 平台提交号（提审受理回执号；平台未给则缺省，原始响应仍在 `submit` / `polls`）。
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub submission_id: Option<String>,
+    /// 提审受理时刻（unix 秒；与 `SubmitJournal.submitted_unix` 同源，崩溃续跑可复原）。
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub submitted_unix: Option<u64>,
+    /// 终态判定时刻（unix 秒；approved / rejected / withdrawn / released 落盘时）。
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub decided_unix: Option<u64>,
     /// 上传响应快照（各平台客户端自述形态；已脱敏）。
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub upload: Option<serde_json::Value>,
@@ -132,6 +143,9 @@ impl Receipt {
             runs: 1,
             first_unix: now,
             last_unix: now,
+            submission_id: None,
+            submitted_unix: None,
+            decided_unix: None,
             upload: None,
             submit: None,
             polls: Vec::new(),
@@ -139,8 +153,8 @@ impl Receipt {
     }
 }
 
-/// 提审去重状态 schema 版本（T-M8-10 落盘；T-M8-11 在此之上扩展提交号 / 时间戳）。
-pub const SUBMIT_SCHEMA_VERSION: u32 = 1;
+/// 提审去重状态 schema 版本（T-M8-10 落盘；v2 = T-M8-11 扩展提交号 / 受理时刻）。
+pub const SUBMIT_SCHEMA_VERSION: u32 = 2;
 
 /// 提审去重状态。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -173,6 +187,12 @@ pub struct SubmitJournal {
     pub first_unix: u64,
     /// 最近一次执行时刻（unix 秒）。
     pub last_unix: u64,
+    /// 平台提交号（受理回执里的提审单号；平台未给则缺省，受理快照仍进回执 `submit`）。
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub submission_id: Option<String>,
+    /// 平台受理时刻（unix 秒；`Accepted` 时写入，崩溃续跑据此复原回执时间线）。
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub submitted_unix: Option<u64>,
 }
 
 impl SubmitJournal {
@@ -186,6 +206,8 @@ impl SubmitJournal {
             attempts: 0,
             first_unix: now,
             last_unix: now,
+            submission_id: None,
+            submitted_unix: None,
         }
     }
 }

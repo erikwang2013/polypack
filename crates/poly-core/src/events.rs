@@ -69,10 +69,12 @@ pub enum BuildEvent {
         /// 是否通过。
         ok: bool,
     },
-    /// 发布完成。
+    /// 发布完成（提审到终态且通过 / 已上架）。
     Published {
         /// 渠道。
         channel: String,
+        /// 平台提交号（提审单号；平台未给时为本地幂等键）。
+        submission: String,
     },
     /// 失败（携带稳定错误码与提示）。
     Failed {
@@ -145,7 +147,10 @@ impl<W: Write> EventSink for HumanSink<W> {
                 None => format!("• 预算：{target}（{format}）{bytes}/{limit} 字节（在预算内）"),
             },
             BuildEvent::Verified { checker, ok } => format!("• 校验：{checker} → {ok}"),
-            BuildEvent::Published { channel } => format!("• 发布：{channel}"),
+            BuildEvent::Published {
+                channel,
+                submission,
+            } => format!("• 发布：{channel}（submission={submission}）"),
             BuildEvent::Failed { stage, code, hint } => match hint {
                 Some(h) => format!("✗ 失败：{stage} [{code}]（{h}）"),
                 None => format!("✗ 失败：{stage} [{code}]"),
@@ -170,5 +175,32 @@ impl<W: Write> EventSink for JsonSink<W> {
         if let Ok(line) = serde_json::to_string(event) {
             let _ = writeln!(self.out, "{line}");
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// JSON 事件流与人读输出同源于一个事件：渠道与提交号两边都在（口径一致）。
+    #[test]
+    fn published_event_renders_same_fields_in_both_channels() {
+        let event = BuildEvent::Published {
+            channel: "wechat-open-platform".to_string(),
+            submission: "audit-42".to_string(),
+        };
+        let mut json = Vec::new();
+        JsonSink { out: &mut json }.emit(&event);
+        let line = String::from_utf8(json).expect("UTF-8");
+        let value: serde_json::Value = serde_json::from_str(line.trim()).expect("JSON 行");
+        assert_eq!(value["event"], "published");
+        assert_eq!(value["channel"], "wechat-open-platform");
+        assert_eq!(value["submission"], "audit-42");
+
+        let mut human = Vec::new();
+        HumanSink { out: &mut human }.emit(&event);
+        let text = String::from_utf8(human).expect("UTF-8");
+        assert!(text.contains("wechat-open-platform"), "{text}");
+        assert!(text.contains("submission=audit-42"), "{text}");
     }
 }

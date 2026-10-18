@@ -299,6 +299,57 @@ fn retry_from_verify_reruns_declared_verifiers_without_signing() {
     );
 }
 
+/// T-M8-11 验收（CLI 侧）：`poly retry --from publish` 接线——必填发布参数由 clap 把关，
+/// 满足后进入 `poly publish` 通路（凭据缺失报发布域稳定码，而非签名 / 校验域）。
+#[test]
+fn retry_from_publish_wires_publish_path_and_requires_publish_inputs() {
+    let temp = TempDir::new("publish");
+    fixture(temp.path());
+
+    let out = poly(&["retry", "--from", "publish"], temp.path());
+    assert_eq!(out.status.code(), Some(2), "缺必填发布参数须由 clap 拒绝");
+    let stderr = String::from_utf8_lossy(&out.stderr);
+    for flag in ["--appid", "--version", "--credential"] {
+        assert!(stderr.contains(flag), "缺 {flag} 须点名：{stderr}");
+    }
+
+    // 最小代码包载体（目录形态，根含 app.json）→ 进入 publish 的 prepare 通路。
+    let dist = temp.path().join("dist");
+    std::fs::create_dir_all(&dist).expect("建代码包目录");
+    std::fs::write(dist.join("app.json"), r#"{"pages":["pages/index/index"]}"#).expect("写");
+    let out = Command::new(env!("CARGO_BIN_EXE_poly"))
+        .args([
+            "retry",
+            "--from",
+            "publish",
+            "--channel",
+            "wechat-open-platform",
+            "--appid",
+            "wx1",
+            "--version",
+            "1.0.0",
+            "--credential",
+            "env:POLYPACK_RETRY_PUBLISH_CRED_MISSING",
+        ])
+        .arg("--package")
+        .arg(&dist)
+        .arg("--json")
+        .current_dir(temp.path())
+        .env_remove("POLYPACK_RETRY_PUBLISH_CRED_MISSING")
+        .output()
+        .expect("poly 可执行");
+    assert_eq!(out.status.code(), Some(1), "凭据缺失须非零退出");
+    let stderr = String::from_utf8_lossy(&out.stderr);
+    assert!(
+        stderr.contains("poly::E_PUB_0001"),
+        "须走发布域凭据诊断（不是签名 / 校验域）：{stderr}"
+    );
+    assert!(
+        !stderr.contains("poly::E_SIG_") && !stderr.contains("poly::E_VERIFY_"),
+        "不得落入其它重跑阶段：{stderr}"
+    );
+}
+
 #[test]
 fn retry_sign_really_signs_and_reruns_independently() {
     let Some(tools) = discover() else {
