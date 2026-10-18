@@ -9,6 +9,7 @@ mod farm;
 mod init;
 mod mood;
 mod package;
+mod plugin_new;
 mod project;
 mod publish;
 mod release;
@@ -63,6 +64,8 @@ enum Command {
     Verify(verify::Args),
     /// 内建目标清单（CI 矩阵派生：`poly targets --tier 6 --headless --json`）。
     Targets(targets::Args),
+    /// 插件开发：从内嵌模板生成工程、输出制品 SRI 摘要。
+    Plugin(plugin_new::Args),
     /// 商店提审（R4 止步提审）：产物定位 → 凭据引用解析 → 上传 / 提审 / 轮询（幂等重跑）。
     Publish(publish::Args),
     /// 多目标仓库发布：产物集合 → 仓库元数据刷新与签名 → 回执归档（幂等重跑）。
@@ -87,6 +90,7 @@ fn main() -> std::process::ExitCode {
         Command::Retry(args) => retry::run(&args, cli.json),
         Command::Verify(args) => verify::run(&args, cli.json),
         Command::Targets(args) => targets::run(&args, cli.json),
+        Command::Plugin(args) => plugin_new::run(&args, cli.json),
         Command::Publish(args) => publish::run(&args, cli.json),
         Command::Release(args) => release::run(&args, cli.json),
     };

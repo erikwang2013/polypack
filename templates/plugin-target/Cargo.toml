@@ -1,0 +1,6 @@
+[workspace]
+resolver = "3"
+members = ["contract"]
+
+# 独立模板仓库：plugin / componentize 各自带 [workspace]，
+# 避免被本 workspace 或宿主 PolyPack 仓库（crates/*）吸收。

@@ -1514,11 +1514,13 @@ name = "poly-cli"
 version = "0.0.0"
 dependencies = [
  "base64 0.22.1",
+ "blake3",
  "clap",
  "flate2",
  "poly-bundle",
  "poly-cache",
  "poly-core",
+ "poly-plugin",
  "poly-publish",
  "poly-sign",
  "poly-targets",
