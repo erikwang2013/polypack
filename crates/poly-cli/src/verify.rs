@@ -35,7 +35,8 @@ use poly_core::events::{BuildEvent, EventSink};
 use poly_core::job::JobSpec;
 use poly_core::plan::{Stage, StageContext, StageError, StageOutcome};
 use poly_core::{Profile, Project, codes};
-use poly_targets::{Host, Registry, TargetRequest, TargetSpec, current_host};
+use poly_targets::provider::ProviderError;
+use poly_targets::{Host, TargetRequest, TargetSpec, current_host};
 
 use crate::project;
 
@@ -68,7 +69,8 @@ pub struct Args {
 /// 执行 `poly verify`；返回进程退出码。
 pub fn run(args: &Args, json: bool) -> Result<i32, Diagnostic> {
     let project = project::load(&args.config)?;
-    let registry = Registry::builtin();
+    // T-M8-05：目标表与 `poly build` 同源（官方目标 + `[[plugins]]` 插件）。
+    let registry = crate::providers::target_registry(&project)?;
     let Some(host) = current_host() else {
         return Err(Diagnostic::error(
             codes::E_VERIFY_0002,
@@ -2625,16 +2627,17 @@ fn compare(
     json: bool,
     events: &mut dyn EventSink,
 ) -> Result<bool, Diagnostic> {
-    let Some(packager) = poly_bundle::for_spec(spec) else {
+    let providers = crate::providers::registry(project)?;
+    if providers.get(&spec.id, &spec.package.format).is_none() {
         warning(
             events,
             &format!(
-                "目标 {} 未做复现比对：无内建打包器（format = {}）",
+                "目标 {} 未做复现比对：无 provider（format = {}）",
                 spec.id, spec.package.format
             ),
         );
         return Ok(false);
-    };
+    }
 
     // 每一跑一个独立绝对目录；同一目标的旧证据先清掉，比对后的产物留作证据
     let root = project.root.join(".polypack").join("repro").join(&spec.id);
@@ -2651,14 +2654,33 @@ fn compare(
         else {
             return Ok(false);
         };
-        match packager.package(&inputs, spec) {
-            Ok(artifact) => runs.push(artifact),
+        match crate::providers::package(&providers, spec, &inputs) {
+            Ok(artifact) => {
+                let Some(path) = artifact.path else {
+                    return Err(Diagnostic::error(
+                        Code::new(codes::E_TGT_0003.as_str()),
+                        format!("目标 {} 的 provider 未落盘产物", spec.id),
+                    ));
+                };
+                runs.push(Artifact {
+                    target: artifact.target,
+                    format: artifact.format,
+                    path: PathBuf::from(path),
+                    bytes: artifact.bytes,
+                    kind: if artifact.directory {
+                        ArtifactKind::Directory
+                    } else {
+                        ArtifactKind::File
+                    },
+                    notes: artifact.notes,
+                });
+            }
             // 宿主缺打包工具 / 输入未就绪：与 package 阶段同语义，告警跳过本目标
-            Err(err @ (BundleError::ToolMissing { .. } | BundleError::MissingInput { .. })) => {
-                warning(events, &format!("目标 {} 未做复现比对：{err}", spec.id));
+            Err(ProviderError::Unavailable(reason)) => {
+                warning(events, &format!("目标 {} 未做复现比对：{reason}", spec.id));
                 return Ok(false);
             }
-            Err(other) => return Err(bundle_diagnostic(spec, &other)),
+            Err(other) => return Err(crate::package::provider_diagnostic(spec, other)),
         }
     }
 
@@ -2950,6 +2972,7 @@ pub(crate) fn warning(events: &mut dyn EventSink, message: &str) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use poly_targets::Registry;
 
     /// 建最小工程骨架（含 `polypack.toml` 的 package 段：`.app` 名由它派生）。
     fn fixture(tag: &str) -> (std::path::PathBuf, Project) {

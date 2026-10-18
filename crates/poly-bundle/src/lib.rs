@@ -20,6 +20,7 @@ pub mod icons;
 pub mod inputs;
 pub mod packager;
 pub mod packagers;
+pub mod provider;
 pub mod pwa;
 pub mod sri;
 pub mod tauri;
@@ -64,4 +65,5 @@ pub use packagers::webtv::{
 };
 pub use packagers::zephyr::{ZephyrStructure, check_zephyr_structure};
 pub use packagers::zepp::{ZeppStructure, check_zepp_structure};
+pub use provider::{BuiltinProvider, official_providers, official_registry};
 pub use pwa::{PwaAudit, audit_pwa};

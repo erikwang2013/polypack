@@ -26,6 +26,7 @@ use poly_core::events::{BuildEvent, EventSink};
 use poly_core::job::{JobSpec, SizePolicy};
 use poly_core::pipeline;
 use poly_core::plan::{Stage, StageContext, StageError, StageOutcome};
+use poly_targets::provider::{ProviderError, ProviderRegistry};
 use poly_targets::{Bridge, Host, TargetSpec, current_host};
 
 use crate::project;
@@ -100,9 +101,10 @@ impl Stage for PackageStage {
             });
         }
 
+        let providers = crate::providers::registry(project)?;
         let mut packaged = 0;
         for spec in &native {
-            if package_target(project, spec, host, ctx)? {
+            if package_target(project, &providers, spec, host, ctx)? {
                 packaged += 1;
             }
         }
@@ -121,28 +123,29 @@ impl Stage for PackageStage {
 /// 打包单个目标；返回是否真的产出了安装包（跳过 / 环境性缺失为 `false`）。
 fn package_target(
     project: &poly_core::Project,
+    providers: &ProviderRegistry,
     spec: &TargetSpec,
     host: Host,
     ctx: &mut StageContext<'_>,
 ) -> Result<bool, StageError> {
     let out_dir = project::packages_root(&project.root).join(&spec.id);
-    let Some(packager) = poly_bundle::for_spec(spec) else {
+    if providers.get(&spec.id, &spec.package.format).is_none() {
         skip(
             ctx.events,
             spec,
             &out_dir,
             &format!(
-                "无内建打包器（format = {}，矩阵 T-M1-05..08 未覆盖）",
+                "无 provider（format = {}，矩阵 T-M1-05..08 未覆盖）",
                 spec.package.format
             ),
         )?;
         return Ok(false);
-    };
+    }
     let Some(inputs) = assemble_inputs(project, spec, host, &out_dir, ctx.events)? else {
         return Ok(false);
     };
 
-    match packager.package(&inputs, spec) {
+    match crate::providers::package(providers, spec, &inputs) {
         Ok(artifact) => {
             ctx.events.emit(&BuildEvent::Packaged {
                 format: artifact.format.clone(),
@@ -166,8 +169,22 @@ fn package_target(
             }
             Ok(true)
         }
-        Err(err) => environment_slot(ctx.events, spec, &out_dir, err).map(|slot| slot.is_some()),
+        Err(ProviderError::Unavailable(reason)) => {
+            skip(ctx.events, spec, &out_dir, &reason).map(|slot| slot.is_some())
+        }
+        Err(other) => Err(provider_diagnostic(spec, other).into()),
     }
+}
+
+/// provider 失败 → 稳定诊断（`Unavailable` 已在调用处按跳过处理）。
+pub(crate) fn provider_diagnostic(spec: &TargetSpec, err: ProviderError) -> Diagnostic {
+    let code = err.code().unwrap_or(poly_core::codes::E_TGT_0003.as_str());
+    let mut diagnostic =
+        Diagnostic::error(Code::new(code), format!("目标 {} 打包失败：{err}", spec.id));
+    if let Some(hint) = err.hint() {
+        diagnostic = diagnostic.with_hint(hint);
+    }
+    diagnostic
 }
 
 /// 组装一次打包的全部输入。

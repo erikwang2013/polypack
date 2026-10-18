@@ -10,6 +10,7 @@ mod init;
 mod mood;
 mod package;
 mod project;
+mod providers;
 mod publish;
 mod release;
 mod retry;

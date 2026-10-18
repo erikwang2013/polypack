@@ -29,7 +29,9 @@ const ALLOWED: &[(&str, &[&str])] = &[
     ("poly-bundle", &["poly-core", "poly-targets"]),
     ("poly-sign", &["poly-core"]),
     ("poly-publish", &["poly-core"]),
-    ("poly-plugin", &["poly-targets"]),
+    // T-M8-01/02 起插件宿主复用 poly-core 的错误码 / 事件 / 授权模型；
+    // T-M8-05 起插件实现统一 `TargetProvider`（poly-targets）。仍不得依赖 poly-bundle。
+    ("poly-plugin", &["poly-core", "poly-targets"]),
     ("poly-targets", &[]),
     ("poly-toolchain", &[]),
     ("poly-cache", &[]),

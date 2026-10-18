@@ -19,6 +19,11 @@ impl Code {
     pub const fn new(code: &'static str) -> Self {
         Self(code)
     }
+
+    /// 稳定码字符串（`poly::E_*`；跨 crate 透传给统一错误类型）。
+    pub const fn as_str(&self) -> &'static str {
+        self.0
+    }
 }
 
 impl std::fmt::Display for Code {

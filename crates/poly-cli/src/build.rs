@@ -8,7 +8,7 @@ use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
 use poly_cache::{Cache, LocalStore, RetentionPolicy, enforce_retention};
 use poly_core::{BuildEvent, Diagnostic, EventSink, PluginGrant, Profile, pipeline};
-use poly_targets::{Registry, TargetRequest, current_host};
+use poly_targets::{TargetRequest, current_host};
 
 use crate::project;
 
@@ -56,7 +56,8 @@ pub struct Args {
 pub fn run(args: &Args, json: bool) -> Result<i32, Diagnostic> {
     let started = Instant::now();
     let project = project::load(&args.config)?;
-    let registry = Registry::builtin();
+    // T-M8-05：目标表来自统一 provider 注册表（官方目标 + `[[plugins]]` 插件同表）。
+    let registry = crate::providers::target_registry(&project)?;
     let hosts: Vec<_> = current_host().into_iter().collect();
     // 缺省与 `--target all` 同为「当前宿主可达的全部已声明目标」（§4.3）
     let request = if args.targets.is_empty() || args.targets.iter().any(|id| id == "all") {

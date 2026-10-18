@@ -9,9 +9,13 @@
 extern crate alloc;
 
 pub mod builtin;
+pub mod provider;
 pub mod registry;
 pub mod spec;
 
+pub use provider::{
+    PackageArtifact, PackageInput, ProviderError, ProviderRegistry, TargetProvider,
+};
 pub use registry::{
     ExcludedTarget, Registry, ResolvedTargets, TargetRegistry, TargetRequest, current_host,
 };

@@ -12,11 +12,13 @@
 pub mod capability;
 pub mod error;
 pub mod limits;
+pub mod provider;
 pub mod sandbox;
 
 pub use capability::{AuthorizedUrl, CapabilityPolicy};
 pub use error::PluginError;
 pub use limits::ResourceLimits;
+pub use provider::PluginProvider;
 pub use sandbox::{
     PackageInput, PackagedArtifact, Plugin, Sandbox, TARGET_SPEC_VERSION, TargetSpecInfo,
     content_digest, validate_spec_version,

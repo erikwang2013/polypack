@@ -10,6 +10,7 @@ publish = false
 
 [dependencies]
 poly-core.workspace = true
+poly-targets.workspace = true
 blake3.workspace = true
 thiserror.workspace = true
 # T-M8-01：组件模型沙箱（版本与 feature 见根清单 workspace.dependencies）。
