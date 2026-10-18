@@ -1,7 +1,7 @@
 //! worker 侧：拉取-执行-回传循环，以及本地 / 远程共用的任务执行入口。
 
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use poly_cache::{CacheStats, Digest};
@@ -280,13 +280,37 @@ pub fn execute_job(
         Profile::Ci => "ci",
         Profile::Local => "local",
     };
-    let cache = Arc::new(backend.cache(project_root));
+    // 缓存降级告警不能直接借用 `events`（`plan.run_with` 期间独占），先缓冲再统一发出
+    let warnings = Arc::new(Mutex::new(Vec::new()));
+    let cache = Arc::new(backend.cache_with(project_root, {
+        let warnings = Arc::clone(&warnings);
+        move |message| {
+            if let Ok(mut list) = warnings.lock() {
+                list.push(message.to_string());
+            }
+        }
+    }));
+    drain_cache_warnings(&warnings, events); // 构造期告警（共享目录缺席）
     let plan = pipeline::plan_with_stages(cache.clone(), profile, stages)?;
-    plan.run_with(Some(&project), spec, events)?;
+    let ran = plan.run_with(Some(&project), spec, events);
+    drain_cache_warnings(&warnings, events); // 运行期告警（后端 IO 降级）
+    ran?;
     Ok(ExecOutcome {
         artifacts: collect_artifacts(&project),
         cache: cache.stats(),
     })
+}
+
+/// 把缓冲的缓存降级告警逐条发成 `Warning` 事件（阶段名 `cache`）。
+fn drain_cache_warnings(warnings: &Mutex<Vec<String>>, events: &mut dyn EventSink) {
+    if let Ok(mut list) = warnings.lock() {
+        for message in list.drain(..) {
+            events.emit(&BuildEvent::Warning {
+                stage: "cache".to_string(),
+                message,
+            });
+        }
+    }
 }
 
 /// 产物记录：核心二进制（存在时）+ `dist/` 下全部文件（相对路径升序）。

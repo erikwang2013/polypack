@@ -9,7 +9,8 @@
 //!   v1 worker 池为每 worker 一个信箱对（`<dir>/v1/<worker_id>/`），v0 worker 沿用根信箱；
 //! - **执行**：worker 与本地 `poly build` 共用同一 DAG 实现与同一缓存键公式，共享入口
 //!   即 [`execute_job`]（内部走 `crate::pipeline::plan_with_stages`）；
-//! - **跨机缓存**：[`CacheBackend`] 只换 `ObjectStore` 后端（[`DirSharedStore`] 为参考实现）；
+//! - **跨机缓存**：[`CacheBackend`] 只换 `ObjectStore` 后端（共享目录后端 =
+//!   [`poly_cache::DirSharedStore`]，本地文件系统为默认；云对象存储为后续接入点）；
 //! - **凭据边界**（T-M2-11 同模型）：`JobSpec.secrets` 只传 `crate::job::CredentialRef` 引用，
 //!   绝不内联明文，凭据在构建地（worker）按需拉取；
 //! - **失败回传**：worker 端诊断经 [`RemoteDiagnostic`] 完整回传（错误码 + 修复提示）；
@@ -18,13 +19,12 @@
 
 mod master;
 mod pool;
-mod store;
 mod worker;
 
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
-use poly_cache::{Cache, Digest};
+use poly_cache::{Cache, Digest, DirSharedStore, FallbackStore, LocalStore};
 use poly_targets::{Host, current_host};
 use serde::{Deserialize, Serialize};
 
@@ -33,7 +33,6 @@ use crate::job::JobSpec;
 
 pub use master::{FarmMaster, JobOutcome, Requirement};
 pub use pool::{FarmPool, PoolJob, PoolOptions, PoolResult};
-pub use store::DirSharedStore;
 pub use worker::{
     ExecOutcome, StageFactory, WorkerExit, WorkerOptions, execute_job, run_pool_worker, run_worker,
 };
@@ -332,20 +331,44 @@ impl FarmTransport for DirTransport {
     }
 }
 
-/// worker 侧缓存来源。
+/// worker 侧缓存来源（只携带位置，不暴露具体后端类型：上层只经 `ObjectStore` trait 使用）。
 pub enum CacheBackend {
     /// 工程本地 CAS：`<工程根>/.polypack/cache`（默认）。
     Local,
-    /// 跨机共享对象存储：多构建地共用同一后端根目录（[`DirSharedStore`] 格式）。
+    /// 跨机共享对象存储：多构建地共用同一后端根目录（挂载共享盘即可）。
     Shared(PathBuf),
 }
 
 impl CacheBackend {
     /// 构造 [`Cache`] 门面：同一 trait 换后端即跨机复用（缓存键公式不含绝对路径）。
     pub fn cache(&self, project_root: &Path) -> Cache {
+        self.cache_with(project_root, |_| {})
+    }
+
+    /// 同 [`Self::cache`]，但共享后端缺席 / 运行中不可用时先经 `warn` 告警（每类只报一次）
+    /// 再降级，绝不让构建失败：
+    ///
+    /// - 共享目录不可用（未挂载 / 路径被占用 / 权限不足）→ 直接用工程本地 CAS；
+    /// - 运行中读写失败（掉线、权限、损坏）→ [`FallbackStore`] 落到工程本地 CAS。
+    pub fn cache_with(
+        &self,
+        project_root: &Path,
+        warn: impl Fn(&str) + Send + Sync + 'static,
+    ) -> Cache {
+        let local = || LocalStore::new(project_root.join(".polypack").join("cache"));
         match self {
-            Self::Local => Cache::from_root(project_root.join(".polypack").join("cache")),
-            Self::Shared(root) => Cache::new(DirSharedStore::new(root)),
+            Self::Local => Cache::new(local()),
+            Self::Shared(root) => {
+                let shared = DirSharedStore::new(root);
+                if let Err(err) = shared.ensure_ready() {
+                    warn(&format!(
+                        "共享缓存目录不可用（{}），已降级为工程本地缓存（构建继续）: {err}",
+                        root.display()
+                    ));
+                    return Cache::new(local());
+                }
+                Cache::new(FallbackStore::new(shared, local(), warn))
+            }
         }
     }
 }
