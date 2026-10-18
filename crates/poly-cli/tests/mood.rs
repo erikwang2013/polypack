@@ -1,6 +1,6 @@
 //! T-M1-14（CLI 半）验收：启动横幅与结束表情的人读输出契约。
 //!
-//! 覆盖：成功路径（笑）、有告警路径（疑惑 / 待确认）、失败路径（哭）、JSON 通道不混入表情行、
+//! 覆盖：成功路径（欢乐）、有告警路径（撒娇 / 待确认）、失败路径（哭）、JSON 通道不混入表情行、
 //! 管道（非 TTY）形态下不带 ANSI 转义序列（降级为纯文字）。表情本身的映射与降级由
 //! `src/mood.rs` 的单元测试逐项断言，这里只验真实进程的输出。
 
@@ -59,9 +59,9 @@ fn last_line(out: &Output) -> String {
 
 // ---------------------------------------------------------------- 契约
 
-/// 成功路径：横幅眨眼、结束笑；管道里不带 ANSI 转义序列（降级为纯文字）。
+/// 成功路径：横幅笑、结束欢乐；管道里不带 ANSI 转义序列（降级为纯文字）。
 #[test]
-fn success_path_prints_idle_banner_and_happy_face() {
+fn success_path_prints_idle_banner_and_joy_face() {
     let project = TempDir::new("mood-ok");
     let out = poly(&["init", "."], project.path());
     assert!(
@@ -77,12 +77,12 @@ fn success_path_prints_idle_banner_and_happy_face() {
         .collect();
     let banner = lines.first().copied().unwrap_or_default();
     assert!(
-        banner.starts_with("(-_-)") && banner.contains("PolyPack"),
-        "首行应为眨眼横幅: {banner}"
+        banner.starts_with("(^‿^)") && banner.contains("PolyPack"),
+        "首行应为笑横幅: {banner}"
     );
     assert!(
-        last_line(&out).starts_with("(^‿^) 完成"),
-        "末行应为笑 + 完成: {}",
+        last_line(&out).starts_with("(≧▽≦) 完成"),
+        "末行应为欢乐 + 完成: {}",
         last_line(&out)
     );
     assert!(
@@ -91,12 +91,12 @@ fn success_path_prints_idle_banner_and_happy_face() {
     );
 }
 
-/// 有告警路径：待确认（疑惑）；告警数写在状态行里。
+/// 有告警路径：待确认（撒娇）；告警数写在状态行里。
 ///
 /// 用默认 `poly build`（本机可达的全部目标）：模板声明的 android / harmonyos 在本机没有
 /// 打包器，package 阶段如实告警并跳过——正是「跑完了但需要人看一眼」的形态。
 #[test]
-fn warnings_path_prints_confused_face() {
+fn warnings_path_prints_coy_face() {
     let project = TempDir::new("mood-warn");
     assert!(
         poly(&["init", "."], project.path()).status.success(),
@@ -116,8 +116,8 @@ fn warnings_path_prints_confused_face() {
     );
     let last = last_line(&out);
     assert!(
-        last.starts_with("(・_・?) 待确认"),
-        "末行应为疑惑 + 待确认: {last}"
+        last.starts_with("(｡•́︿•̀｡) 待确认"),
+        "末行应为撒娇 + 待确认: {last}"
     );
     assert!(last.contains("条告警"), "状态行应带告警数: {last}");
 }
