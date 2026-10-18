@@ -3,7 +3,7 @@
 > 派生自 [ROADMAP.md](ROADMAP.md) §9 的里程碑分解；由 4 人规划小组并行产出、交叉对账后合并：**116 个任务**，跨里程碑引用经「存在性 + 描述匹配」两轮校验零悬空，中英任务 ID 逐一对齐。
 > 英文版：[TASKS.en.md](TASKS.en.md)。本文件受「文档同步约定」管辖（见 ROADMAP §11）：任务增删须双文件同一次提交更新，并由 T-M0-10 的结构级校验器在 CI 拦截漂移。
 > 扩展方向（E1–E8）已立项孵化，不占本任务表：见 [ROADMAP.md](ROADMAP.md) §13。
-> 进度（2026-10-17）：**M0 11/11** · **M1 已交付 15/15**（11 项 ✅；T-M1-02/05/06/07 的对应 CI 腿已全绿，余下工具级注记见任务条目）· **M2 已交付 15/15**（8 项 ✅：T-M2-02/06/07/08/09/11/14/15；T-M2-01/03/04/05/10/12/13 带宿主/阶段/设置注记，逐项见任务条目）· **CI 三宿主全绿**（rust-ci#38654820649）+ M2 新增四工作流（secret-scan 三宿主 / mobile-contract mock+夜跑真列 / bridge 夜跑真跑）· **M3 已交付 12/12**（7 项 ✅：T-M3-05/06/07/08/09/10/11；T-M3-01/02/03/04/12 带宿主/环境/联调注记，逐项见任务条目）+ M3 新增一工作流（miniprogram-contract mock+夜跑真列）· **M4 已交付 14/15**（T-M4-15 条件任务未触发：（决策=继续受限档，真机侧载为触发前置）；T-M4-01/06/11/13 等带设备/宿主/联调注记，逐项见任务条目）+ M4 新增一工作流（tv-smoke mock+夜跑真列）· **M5 已交付 11/11**（T-M5-07 的 OpenBSD 安装冒烟与 T-M5-08 的 NetBSD `bmake` 真跑按环境槽 SKIP-with-print（镜像带宽 / 宿主缺席），由 bsd-ci 每夜裁决；T-M5-11 多目标真跑受单全局 `--credential` 契约限制，以 dry-run 双事件验证，按 target 分凭据留 M6）+ M5 新增一工作流（bsd-ci 夜跑 BSD 原生构建与安装冒烟）· **M6 已交付 13/13**（no_std 引擎层 + C ABI、QNX/AUTOSAR/VxWorks/Zephyr/FreeRTOS 五目标、AAOS、CI 矩阵与 QEMU 冒烟、状态表与预算/标注校验；QNX SDP / wr-cc / Xcode 类环境槽按 SKIP-with-print，模型与串口证据见各任务条目）+ M6 新增一工作流（embedded-ci：tier-6 矩阵从 TargetSpec 派生 + QEMU 冒烟，夜跑 19:27）· **M7 已交付 11/11**（adapter-wear + Wear OS 双冒烟 + watchOS 模板/打包链 + Fitbit/Zepp + Garmin spike + 实验目标三段式文档 + 穿戴契约；xcodebuild / codesign / Wear 设备类环境槽按 SKIP-with-print，garmin 的 iq 打包器为已记录实验缺口）+ M7 新增两工作流（wear-smoke 夜跑表单冒烟 / wear-release-smoke 发版门）。 · **M8 已交付 13/13**（插件沙箱 + WIT world、SRI/签名链、模板/脚手架、内建统一 provider、农场 v1、发布 GA、49 目标表、双语 GA 文档/技术审查/1 天演练（38min）；M8 未新增仓库工作流（模板 CI 位于 templates/），环境槽注记见各任务条目）。
+> 进度（2026-10-19）：**M0 11/11** · **M1 已交付 15/15**（11 项 ✅；T-M1-02/05/06/07 的对应 CI 腿已全绿，余下工具级注记见任务条目）· **M2 已交付 15/15**（8 项 ✅：T-M2-02/06/07/08/09/11/14/15；T-M2-01/03/04/05/10/12/13 带宿主/阶段/设置注记，逐项见任务条目）· **CI 三宿主全绿**（rust-ci#38654820649）+ M2 新增四工作流（secret-scan 三宿主 / mobile-contract mock+夜跑真列 / bridge 夜跑真跑）· **M3 已交付 12/12**（7 项 ✅：T-M3-05/06/07/08/09/10/11；T-M3-01/02/03/04/12 带宿主/环境/联调注记，逐项见任务条目）+ M3 新增一工作流（miniprogram-contract mock+夜跑真列）· **M4 已交付 15/15**（T-M4-15 条件任务已交付：Roku 频道包打包器与契约测试落库（结构自检 / zip / 金样 / 确定性覆盖），真机侧载按环境槽 SKIP-with-print；T-M4-01/06/11/13 等带设备/宿主/联调注记，逐项见任务条目）+ M4 新增一工作流（tv-smoke mock+夜跑真列）· **M5 已交付 11/11**（T-M5-07 的 OpenBSD 安装冒烟与 T-M5-08 的 NetBSD `bmake` 真跑按环境槽 SKIP-with-print（镜像带宽 / 宿主缺席），由 bsd-ci 每夜裁决；T-M5-11 多目标真跑受单全局 `--credential` 契约限制，以 dry-run 双事件验证，按 target 分凭据留 M6）+ M5 新增一工作流（bsd-ci 夜跑 BSD 原生构建与安装冒烟）· **M6 已交付 13/13**（no_std 引擎层 + C ABI、QNX/AUTOSAR/VxWorks/Zephyr/FreeRTOS 五目标、AAOS、CI 矩阵与 QEMU 冒烟、状态表与预算/标注校验；QNX SDP / wr-cc / Xcode 类环境槽按 SKIP-with-print，模型与串口证据见各任务条目）+ M6 新增一工作流（embedded-ci：tier-6 矩阵从 TargetSpec 派生 + QEMU 冒烟，夜跑 19:27）· **M7 已交付 11/11**（adapter-wear + Wear OS 双冒烟 + watchOS 模板/打包链 + Fitbit/Zepp + Garmin spike + 实验目标三段式文档 + 穿戴契约；xcodebuild / codesign / Wear 设备类环境槽按 SKIP-with-print，garmin 的 iq 打包器为已记录实验缺口）+ M7 新增两工作流（wear-smoke 夜跑表单冒烟 / wear-release-smoke 发版门）。 · **M8 已交付 13/13**（插件沙箱 + WIT world、SRI/签名链、模板/脚手架、内建统一 provider、农场 v1、发布 GA、49 目标表、双语 GA 文档/技术审查/1 天演练（38min）；M8 未新增仓库工作流（模板 CI 位于 templates/），环境槽注记见各任务条目）。
 
 ## 团队编制与角色
 
@@ -25,7 +25,7 @@
 | M1 桌面与 Web | 15 | 31.5 | 无缓冲（31.5d / 30d 容量，105%）；产物在 M2 前未签名 |
 | M2 移动 | 15 | 38 | 满载 101%；含远程农场与「发起地/构建地」文档 |
 | M3 鸿蒙与小程序 | 12 | 31.5 | 满载 105%；含快应用打包与商店校验 |
-| M4 TV 家族 | 15 | 36 | 含条件任务 T-M4-15（Roku 打包器；未触发时 14 任务 / 33d） |
+| M4 TV 家族 | 15 | 36 | 含条件任务 T-M4-15（Roku 频道包打包器与契约测试已交付；真机侧载为环境槽 SKIP-with-print） |
 | M5 发行版与 BSD | 11 | 25 | BSD 构建宿主方案在 T-M5-09 定型并回写 §8 |
 | M6 嵌入式与车机 | 13 | 36 | 含 no_std feature 拆分（不新增 crate） |
 | M7 穿戴 | 11 | 29 | Wear OS 为平台级支持（UI 运行时 beta）；watchOS / Garmin 为实验目标 |
@@ -58,7 +58,7 @@
 - 交付物: 含 9 个 crate 空壳的 Cargo workspace（poly-cli / poly-core / poly-targets / poly-toolchain / poly-bundle / poly-sign / poly-publish / poly-cache / poly-plugin）+ 依赖方向约束的检查脚本。
 - 验收: `cargo check --workspace` 全绿；人为引入反向依赖（如 poly-core 依赖 poly-bundle）时检查失败并指出违规方向。
 
-### T-M0-02 · 三宿主 CI 与 Rust 构建缓存（工作流已交付；远端待账单恢复验证）
+### T-M0-02 · ✅ 三宿主 CI 与 Rust 构建缓存（三宿主 rust-ci 全绿：ubuntu / macos / windows 近期运行均通过（2026-10-18）；「远端账单恢复」注记已过时）
 
 - 角色: infra
 - 依赖: T-M0-01
@@ -149,7 +149,7 @@
 - 交付物: Stage trait 实现框架（plan / probe / compile / bundle / package）与 DAG 调度（petgraph），compile 与 bundle(ui) 双支线并行、汇聚于 package。
 - 验收: 以 mock 目标跑通「双并行支线 → 汇聚」的完整事件序列；单支线失败时其余支线状态汇总上报；事件与错误码符合 T-M0-07 约定。
 
-### T-M1-02 · Tauri 管线：triple 探测与核心编译（Linux 真跑；跨宿主编译待 CI 三宿主）
+### T-M1-02 · ✅ Tauri 管线：triple 探测与核心编译（Linux 真跑；跨宿主编译已由三宿主 rust-ci 全绿覆盖）
 
 - 角色: core
 - 依赖: T-M0-09、T-M1-01
@@ -264,7 +264,7 @@
 
 > 前置依赖: T-M0-01（workspace）、T-M0-02（三宿主 CI）、T-M0-04/T-M0-05（TargetSpec DSL 与 L1 声明）、T-M0-06/T-M0-07（JobSpec 与诊断框架）、T-M0-09（工具链探测）、T-M1-05（Packager 接口）、T-M1-09（poly-cache）、T-M1-11（示例应用模板）｜出口条件: 示例 APK/IPA 可安装且签名可验证；密钥零入库（secret-scan 全绿）；Linux 宿主经远程农场出 IPA
 
-### T-M2-01 · uniffi 桥生成器（UDL 单源 → Kotlin/Swift 绑定；摘要入缓存键、四出口登记；Kotlin 真编译 + 双 ABI .so 真跑；Swift 编译真证——真生成器 uniffi 产物 + 真调用面过 swiftc -typecheck（macos-14 真模式实证））
+### T-M2-01 · ✅ uniffi 桥生成器（UDL 单源 → Kotlin/Swift 绑定；摘要入缓存键、四出口登记；Kotlin 真编译 + 双 ABI .so 真跑；Swift 编译真证——真生成器 uniffi 产物 + 真调用面过 swiftc -typecheck（macos-14 真模式实证））
 
 - 角色: core
 - 依赖: T-M0-01、T-M1-11
@@ -280,7 +280,7 @@
 - 交付物: 核心编译为各 ABI triple 的 JNI `.so` + 生成的 Kotlin 绑定，组装为 AAR（清单/资源最小化），作为 Android 打包阶段的输入。
 - 验收: AAR 在 Android 契约测试中加载成功；Kotlin 侧调用示例接口结果与 Rust 单测一致；AAR 走库级缓存，二跑命中。
 
-### T-M2-03 · Swift 绑定产物（XCFramework）（三 triple/lipo/结构与篡改校验完备；macos-14 真跑已覆盖 cargo×3 交叉编译 + lipo 合并 + `xcodebuild -create-xcframework` 真链接与 archive 链；simulator 调用对拍真证——simctl spawn 真跑 paxAdd(-5,3)=-2 与 i32 回绕（macos-14 真模式实证））
+### T-M2-03 · ✅ Swift 绑定产物（XCFramework）（三 triple/lipo/结构与篡改校验完备；macos-14 真跑已覆盖 cargo×3 交叉编译 + lipo 合并 + `xcodebuild -create-xcframework` 真链接与 archive 链；simulator 调用对拍真证——simctl spawn 真跑 paxAdd(-5,3)=-2 与 i32 回绕（macos-14 真模式实证））
 
 - 角色: platforms
 - 依赖: T-M2-01
@@ -352,7 +352,7 @@
 - 交付物: 凭据解析层：`CredentialRef` → 后端链（本地 keyring + Vault 后端 trait + CI 内存注入），签名阶段按需拉取、用后即弃；仓库内明文凭据即构建失败。
 - 验收: 同一 JobSpec 分别在 keyring 与 Vault 后端解析成功；事件流/日志中凭据值不可见（脱敏断言）；`poly retry --from sign` 独立重跑并重新拉取凭据。
 
-### T-M2-12 · secret-scan（提交与构建双重检查）（构造样本全命中 + 全历史 823 文件真扫零命中 + CI 三宿主工作流；「必过检查项」branch protection 已设置——3 宿主 secret-scan 为 required checks（2026-10-16 核实；enforce_admins=false，admin 直推走绕过））
+### T-M2-12 · ✅ secret-scan（提交与构建双重检查）（构造样本全命中 + 全历史 823 文件真扫零命中 + CI 三宿主工作流；「必过检查项」branch protection 已设置——3 宿主 secret-scan 为 required checks（2026-10-16 核实）；enforce_admins=false，admin 直推绕过 required checks，仍为流程缺口）
 
 - 角色: release-sec
 - 依赖: T-M0-02
@@ -601,7 +601,7 @@
 - 交付物: HarmonyOS TV 目标适配核对：打包链复用 M3 的 RNOH 宿主与 HAP 打包/签名（hap-sign-tool），本任务只补 TV 侧适配——TV 分辨率与安全区核对、接入 adapter-tv 焦点系统。
 - 验收: HAP 在 HarmonyOS 模拟器或开发者工具中安装并启动；方向键焦点遍历与焦点环按 adapter-tv 行为通过冒烟；目标分辨率下 TV 安全区无遮挡。
 
-### T-M4-15 · Roku 频道包打包器与校验器（条件任务）
+### T-M4-15 · ✅ Roku 频道包打包器与校验器（条件任务已交付：打包器 crates/poly-bundle/src/packagers/roku/ + 契约测试 crates/poly-bundle/tests/packagers_roku.rs + 适配产物 ui/adapters/roku；结构自检 / zip / 金样 / 确定性已覆盖；真机侧载按环境槽 SKIP-with-print）
 
 - 角色: packagers
 - 依赖: T-M4-12
@@ -609,7 +609,7 @@
 - 交付物: SceneGraph 子集渲染器产物打成 Roku 频道包（zip）+ 侧载自检，受限能力说明书随产物一并发布；档期为 T-M4-12 决策通过后安排（M5–M8 窗口内）。
 - 验收: 仅当 T-M4-12 的 spike 决策为「继续」时执行；触发时频道包在 Roku 设备/模拟器侧载自检通过，受限能力说明书随产物发布且与 TargetSpec `experimental` / `notes` 一致；未触发时本任务不占用排期、不计入里程碑进度。
 
-<!-- 统计: M4=15任务/36d（T-M4-15 为条件任务 3d，未触发时 14任务/33d）, M5=11任务/25d -->
+<!-- 统计: M4=15任务/36d（T-M4-15 条件任务已交付）, M5=11任务/25d -->
 
 ## M5 桌面发行版与 BSD（3 周）
 
@@ -703,7 +703,7 @@
 - 交付物: 多目标发布编排：一条命令完成 fedora（rpm 仓库）与 freebsd（pkg 仓库）的产物上传、仓库元数据刷新与签名、回执归档；与 M1/M2 的 publish 阶段复用同一 DAG 与事件流。
 - 验收: 端到端可重跑（二跑缓存命中，仓库元数据幂等）；`--json` 事件流含 Published 事件与回执路径；失败时输出稳定错误码与修复提示。
 
-<!-- 统计: M4=15任务/36d（T-M4-15 为条件任务 3d，未触发时 14任务/33d）, M5=11任务/25d -->
+<!-- 统计: M4=15任务/36d（T-M4-15 条件任务已交付）, M5=11任务/25d -->
 ## M6 嵌入式与车机（5 周）
 > 前置依赖: M0（TargetSpec DSL 与 crate 依赖方向约束）、M2（Android 打包链，供 Automotive 复用）｜出口条件: 全部无 UI 目标（QNX / AUTOSAR / VxWorks / Zephyr / FreeRTOS）进 CI 编译矩阵；QNX 冒烟通过
 

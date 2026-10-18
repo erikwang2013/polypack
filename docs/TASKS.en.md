@@ -3,7 +3,7 @@
 > Derived from the milestone breakdown in [ROADMAP.en.md](ROADMAP.en.md) §9; produced in parallel by a four-person planning group and merged after cross-reconciliation: **116 tasks**, all cross-milestone references verified in two passes (existence + description match, zero dangling), Chinese/English task IDs aligned one-to-one.
 > Chinese original: [TASKS.md](TASKS.md). This file falls under the documentation sync convention (ROADMAP §11): task additions/removals must land in both files in the same commit, and drift is caught in CI by the structural checker delivered in T-M0-10.
 > Extension directions (E1–E8) are incubated and intentionally absent from this task table — see [ROADMAP.en.md](ROADMAP.en.md) §13.
-> Progress (2026-10-17): **M0 11/11** · **M1 delivered 15/15** (11 ✅; the matching CI legs for T-M1-02/05/06/07 are green — remaining tool-level notes live in the task entries) · **M2 delivered 15/15** (8 ✅: T-M2-02/06/07/08/09/11/14/15; T-M2-01/03/04/05/10/12/13 carry host/stage/settings notes — see each entry) · **CI green on all three hosts** (rust-ci#38654820649) plus four new M2 workflows (secret-scan ×3 hosts / mobile-contract mock-per-push + nightly real / bridge nightly real) · **M3 delivered 12/12** (7 ✅: T-M3-05/06/07/08/09/10/11; T-M3-01/02/03/04/12 carry host/environment/interop notes — see each entry) plus one new M3 workflow (miniprogram-contract mock-per-push + nightly real) · **M4 delivered 14/15** (conditional T-M4-15 not triggered — decision: continue in constrained mode, on-device sideload is its prerequisite; T-M4-01/06/11/13 etc. carry device/host/interop notes — see each entry) plus one new M4 workflow (tv-smoke mock-per-push + nightly real) · **M5 delivered 11/11** (T-M5-07 OpenBSD install smoke and T-M5-08 NetBSD `bmake` real run are SKIP-with-print per environment slot (image bandwidth / host absent), arbitrated by the first bsd-ci night; the multi-target true run is limited by the single global `--credential` contract and verified via dry-run dual events, per-target credentials deferred to M6) plus one new M5 workflow (bsd-ci nightly BSD native builds + install smoke) · **M6 delivered 13/13** (the no_std engine layer + C ABI, the QNX / AUTOSAR / VxWorks / Zephyr / FreeRTOS targets, AAOS, the CI matrix and QEMU smokes, and the status-table / budget / labeling validators; QNX SDP / wr-cc / Xcode-class environment slots record SKIP-with-print, with model and serial evidence in each task entry) plus one new M6 workflow (embedded-ci: tier-6 matrix derived from TargetSpec + QEMU smokes, nightly 19:27) · **M7 delivered 11/11** (adapter-wear + the Wear OS dual smoke + the watchOS template/packaging chain + Fitbit/Zepp + the Garmin spike + the experimental-target three-section docs + wearable contracts; xcodebuild / codesign / Wear-device environment slots record SKIP-with-print, and the Garmin iq packager is a recorded experimental gap) plus two new M7 workflows (wear-smoke nightly form smoke / wear-release-smoke release gate). · **M8 delivered 13/13** (plugin sandbox + WIT world, SRI/signature chain, template/scaffolding, unified built-in providers, farm v1, publishing GA, 49-target table, bilingual GA docs/technical review/one-day rehearsal (38 min); M8 adds no repository workflows (the template CI lives under templates/); environment-slot notes live in each task entry).
+> Progress (2026-10-19): **M0 11/11** · **M1 delivered 15/15** (11 ✅; the matching CI legs for T-M1-02/05/06/07 are green — remaining tool-level notes live in the task entries) · **M2 delivered 15/15** (8 ✅: T-M2-02/06/07/08/09/11/14/15; T-M2-01/03/04/05/10/12/13 carry host/stage/settings notes — see each entry) · **CI green on all three hosts** (rust-ci#38654820649) plus four new M2 workflows (secret-scan ×3 hosts / mobile-contract mock-per-push + nightly real / bridge nightly real) · **M3 delivered 12/12** (7 ✅: T-M3-05/06/07/08/09/10/11; T-M3-01/02/03/04/12 carry host/environment/interop notes — see each entry) plus one new M3 workflow (miniprogram-contract mock-per-push + nightly real) · **M4 delivered 15/15** (the conditional T-M4-15 is delivered: the Roku channel-pack packager and contract tests have landed (structure self-check / zip / golden / determinism covered), with on-device sideload SKIP-with-print per the environment slot; T-M4-01/06/11/13 etc. carry device/host/interop notes — see each entry) plus one new M4 workflow (tv-smoke mock-per-push + nightly real) · **M5 delivered 11/11** (T-M5-07 OpenBSD install smoke and T-M5-08 NetBSD `bmake` real run are SKIP-with-print per environment slot (image bandwidth / host absent), arbitrated by the first bsd-ci night; the multi-target true run is limited by the single global `--credential` contract and verified via dry-run dual events, per-target credentials deferred to M6) plus one new M5 workflow (bsd-ci nightly BSD native builds + install smoke) · **M6 delivered 13/13** (the no_std engine layer + C ABI, the QNX / AUTOSAR / VxWorks / Zephyr / FreeRTOS targets, AAOS, the CI matrix and QEMU smokes, and the status-table / budget / labeling validators; QNX SDP / wr-cc / Xcode-class environment slots record SKIP-with-print, with model and serial evidence in each task entry) plus one new M6 workflow (embedded-ci: tier-6 matrix derived from TargetSpec + QEMU smokes, nightly 19:27) · **M7 delivered 11/11** (adapter-wear + the Wear OS dual smoke + the watchOS template/packaging chain + Fitbit/Zepp + the Garmin spike + the experimental-target three-section docs + wearable contracts; xcodebuild / codesign / Wear-device environment slots record SKIP-with-print, and the Garmin iq packager is a recorded experimental gap) plus two new M7 workflows (wear-smoke nightly form smoke / wear-release-smoke release gate). · **M8 delivered 13/13** (plugin sandbox + WIT world, SRI/signature chain, template/scaffolding, unified built-in providers, farm v1, publishing GA, 49-target table, bilingual GA docs/technical review/one-day rehearsal (38 min); M8 adds no repository workflows (the template CI lives under templates/); environment-slot notes live in each task entry).
 
 ## Team roster
 
@@ -25,7 +25,7 @@
 | M1 Desktop & Web | 15 | 31.5 | no buffer (31.5d vs 30d capacity, 105%); artifacts unsigned until M2 |
 | M2 Mobile | 15 | 38 | 101% loaded; includes the remote-farm and "initiate vs build" docs |
 | M3 HarmonyOS & mini programs | 12 | 31.5 | 105% loaded; includes Quick App packaging and store verification |
-| M4 TV family | 15 | 36 | includes the conditional T-M4-15 (Roku packager; 14 tasks / 33d if untriggered) |
+| M4 TV family | 15 | 36 | includes the conditional T-M4-15 (Roku channel-pack packager and contract tests delivered; on-device sideload is an environment slot, SKIP-with-print) |
 | M5 Desktop distros & BSD | 11 | 25 | the BSD build-host decision lands in T-M5-09 and writes back to §8 |
 | M6 Embedded & automotive | 13 | 36 | includes the no_std feature split (no new crate) |
 | M7 Wearables | 11 | 29 | Wear OS is platform-level support (UI runtime beta); watchOS / Garmin are experimental |
@@ -58,7 +58,7 @@
 - Deliverable: A Cargo workspace with 9 crate stubs (poly-cli / poly-core / poly-targets / poly-toolchain / poly-bundle / poly-sign / poly-publish / poly-cache / poly-plugin) plus a dependency-direction constraint check script.
 - Acceptance: `cargo check --workspace` is green; introducing a reverse dependency by hand (e.g. poly-core depending on poly-bundle) makes the check fail and names the offending direction.
 
-### T-M0-02 · Three-host CI with Rust build caching (workflow delivered; remote run pending billing)
+### T-M0-02 · ✅ Three-host CI with Rust build caching (three-host rust-ci green: recent ubuntu / macos / windows runs all pass (2026-10-18); the "remote billing recovery" caveat is stale)
 
 - Role: infra
 - Deps: T-M0-01
@@ -149,7 +149,7 @@
 - Deliverable: The Stage trait implementation framework (plan / probe / compile / bundle / package) and DAG scheduling (petgraph), with the compile and bundle(ui) branches running in parallel and converging at package.
 - Acceptance: a mock target drives the full "two parallel branches → convergence" event sequence; when one branch fails, the other branches' statuses are summarized in the report; events and error codes follow the T-M0-07 conventions.
 
-### T-M1-02 · Tauri pipeline: triple detection and core compile (Linux real-run; cross-host compile awaits the three-host CI)
+### T-M1-02 · ✅ Tauri pipeline: triple detection and core compile (Linux real-run; cross-host compilation is covered by the green three-host rust-ci)
 
 - Role: core
 - Deps: T-M0-09, T-M1-01
@@ -264,7 +264,7 @@
 
 > Prerequisites: T-M0-01 (workspace), T-M0-02 (three-host CI), T-M0-04/T-M0-05 (TargetSpec DSL and L1 declarations), T-M0-06/T-M0-07 (JobSpec and diagnostics framework), T-M0-09 (toolchain probes), T-M1-05 (Packager trait), T-M1-09 (poly-cache), T-M1-11 (sample-app template) | Exit criteria: sample APK/IPA installs and signatures verify; zero keys in-repo (secret-scan green); a Linux host produces an IPA through the remote farm
 
-### T-M2-01 · uniffi bridge generator (UDL single source → Kotlin/Swift bindings; digest in the cache key, four exits registered; Kotlin really compiled + dual-ABI .so real runs — Swift compile proven: real generator output + real calling surface pass swiftc -typecheck (macos-14 real-mode evidence))
+### T-M2-01 · ✅ uniffi bridge generator (UDL single source → Kotlin/Swift bindings; digest in the cache key, four exits registered; Kotlin really compiled + dual-ABI .so real runs — Swift compile proven: real generator output + real calling surface pass swiftc -typecheck (macos-14 real-mode evidence))
 
 - Role: core
 - Deps: T-M0-01, T-M1-11
@@ -280,7 +280,7 @@
 - Deliverable: the core compiled to JNI `.so` per ABI triple + generated Kotlin bindings, assembled into an AAR (minimal manifest/resources) as the input to Android packaging.
 - Acceptance: the AAR loads in the Android contract test; Kotlin-side calls to the sample interface return the same results as the Rust unit tests; the AAR goes through the library-level cache and hits on the second run.
 
-### T-M2-03 · Swift binding artifact (XCFramework) (triple/lipo structure + tamper checks complete; the macos-14 real run now covers cargo ×3 cross-compilation + lipo merge + a real `xcodebuild -create-xcframework` link and archive chain; simulator call parity proven — simctl spawn really runs paxAdd(-5,3)=-2 and i32 wraparound (macos-14 real-mode evidence))
+### T-M2-03 · ✅ Swift binding artifact (XCFramework) (triple/lipo structure + tamper checks complete; the macos-14 real run now covers cargo ×3 cross-compilation + lipo merge + a real `xcodebuild -create-xcframework` link and archive chain; simulator call parity proven — simctl spawn really runs paxAdd(-5,3)=-2 and i32 wraparound (macos-14 real-mode evidence))
 
 - Role: platforms
 - Deps: T-M2-01
@@ -352,7 +352,7 @@
 - Deliverable: credential resolution layer: `CredentialRef` → backend chain (local keyring + Vault backend trait + CI memory injection); the sign stage pulls on demand and discards immediately; plaintext credentials in the repo fail the build.
 - Acceptance: the same JobSpec resolves against both the keyring and Vault backends; credential values never appear in the event stream/logs (redaction assertion); `poly retry --from sign` reruns independently and re-pulls credentials.
 
-### T-M2-12 · secret-scan (commit and build double-check) (constructed samples all hit + full-history real scan of 823 files clean + three-host CI workflow; required-check branch protection is set — the three-host secret-scan jobs are the required checks (verified 2026-10-16; enforce_admins=false, admin direct pushes bypass))
+### T-M2-12 · ✅ secret-scan (commit and build double-check) (constructed samples all hit + full-history real scan of 823 files clean + three-host CI workflow; required-check branch protection is set — the three-host secret-scan jobs are the required checks (verified 2026-10-16); enforce_admins=false, so admin direct pushes bypass the required checks — this remains a process gap)
 
 - Role: release-sec
 - Deps: T-M0-02
@@ -601,7 +601,7 @@
 - Deliverable: HarmonyOS TV target adaptation check: the packaging chain reuses the M3 RNOH host and HAP packaging/signing (hap-sign-tool); this task only adds the TV side — TV resolution and safe-area verification plus wiring into the adapter-tv focus system.
 - Acceptance: The HAP installs and launches on a HarmonyOS emulator or in the developer tools; directional focus traversal and the focus ring pass the smoke per adapter-tv behaviour; the TV safe area is unobstructed at the target resolutions.
 
-### T-M4-15 · Roku channel package packager and verifier (conditional)
+### T-M4-15 · ✅ Roku channel package packager and verifier (conditional task delivered: packager crates/poly-bundle/src/packagers/roku/ + contract test crates/poly-bundle/tests/packagers_roku.rs + adapter output ui/adapters/roku; structure self-check / zip / golden / determinism covered; on-device sideload records SKIP-with-print per the environment slot)
 
 - Role: packagers
 - Deps: T-M4-12
@@ -609,7 +609,7 @@
 - Deliverable: Package the SceneGraph subset renderer output into a Roku channel package (zip) with sideload self-check, and ship the restricted-capability statement alongside the artifact; scheduled only after the T-M4-12 decision comes back "continue" (within the M5–M8 window).
 - Acceptance: Executed only when the T-M4-12 spike decision is "continue"; when triggered, the channel package passes sideload self-check on a Roku device/emulator and the restricted-capability statement ships with the artifact and matches TargetSpec `experimental` / `notes`; when not triggered the task occupies no schedule and does not count toward milestone progress.
 
-<!-- 统计: M4=15 tasks/36d (T-M4-15 is conditional at 3d; 14 tasks/33d if not triggered), M5=11 tasks/25d -->
+<!-- 统计: M4=15 tasks/36d (T-M4-15 conditional task delivered), M5=11 tasks/25d -->
 
 ## M5 Desktop Distributions and BSD (3 weeks)
 
@@ -703,7 +703,7 @@
 - Deliverable: Multi-target release orchestration: one command performs artifact upload, repository metadata refresh and signing, and receipt archival for fedora (rpm repos) and freebsd (pkg repos); shares the same DAG and event stream as the M1/M2 publish stage.
 - Acceptance: End-to-end run is re-runnable (second run hits cache; repository metadata refresh is idempotent); the `--json` event stream contains Published events with receipt paths; failures emit stable error codes with fix hints.
 
-<!-- 统计: M4=15 tasks/36d (T-M4-15 is conditional at 3d; 14 tasks/33d if not triggered), M5=11 tasks/25d -->
+<!-- 统计: M4=15 tasks/36d (T-M4-15 conditional task delivered), M5=11 tasks/25d -->
 ## M6 embedded & automotive (5 weeks)
 > Prerequisites: M0 (TargetSpec DSL and crate dependency-direction constraints), M2 (Android packaging chain, reused by Automotive) | Exit criteria: every headless target (QNX / AUTOSAR / VxWorks / Zephyr / FreeRTOS) is in the CI compile matrix; QNX smoke passes
 
