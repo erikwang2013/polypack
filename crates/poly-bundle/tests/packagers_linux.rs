@@ -164,7 +164,7 @@ fn deb_package_builds_and_verifies_with_dpkg_deb() {
         "Package: pax-notes\n",
         "Version: 1.2.3\n",
         &format!("Architecture: {arch}\n"),
-        "Maintainer: PolyPack\n",
+        "Maintainer: PolyPack <noreply@polypack.dev>\n",
         "Installed-Size: ",
         "Section: utils\n",
         "Priority: optional\n",
@@ -306,14 +306,9 @@ fn deb_package_builds_and_verifies_with_dpkg_deb() {
 
 /// T-M1-07 lintian 真跑（与 `poly verify` 同口径 `--fail-on error`）。
 ///
-/// 已知缺口（修复需改 deb 打包器，不在本任务文件范围内）：
-/// - `malformed-contact`：Maintainer 只有名称、没有邮箱；
-/// - `no-changelog`：数据段缺 `/usr/share/doc/<pkg>/changelog.gz`。
-///
-/// 本测试锁定"只有这两个 error"：出现新判词即失败；缺口修复后自然走成功分支，
-/// 届时把断言收紧为 `output.status.success()`。
+/// Maintainer 邮箱、changelog、libc6 依赖与描述兜底均已修，CI 上必须零 error。
 #[test]
-fn deb_lintian_real_run_reports_only_known_gaps() {
+fn deb_lintian_real_run_is_clean() {
     if common::skip_without_any(&["dpkg-deb", "lintian"]) {
         return;
     }
@@ -330,29 +325,60 @@ fn deb_lintian_real_run_reports_only_known_gaps() {
         String::from_utf8_lossy(&output.stdout),
         String::from_utf8_lossy(&output.stderr)
     );
-    let errors: Vec<&str> = text
-        .lines()
-        .filter(|line| line.starts_with("E:") || line.contains(" E: "))
-        .collect();
-    const KNOWN: [&str; 2] = ["malformed-contact", "no-changelog"];
-    let unexpected: Vec<&str> = errors
-        .iter()
-        .copied()
-        .filter(|error| !KNOWN.iter().any(|tag| error.contains(tag)))
-        .collect();
     assert!(
-        unexpected.is_empty(),
-        "lintian 出现新的 error 级判词：{unexpected:?}\n{text}"
+        output.status.success(),
+        "lintian --fail-on error 必须零 error：\n{text}"
     );
-    if !output.status.success() {
-        for tag in KNOWN {
-            assert!(
-                errors.iter().any(|error| error.contains(tag)),
-                "lintian 失败但不是已知缺口 {tag}：{text}"
-            );
-        }
-        eprintln!("已知 lintian 缺口（待 deb 打包器修复）：{KNOWN:?}");
+}
+
+/// T-M1-07 安装验收：passwordless sudo 的 root 宿主上真跑 `dpkg -i` → 启动 → `dpkg -r`。
+///
+/// 本地无 sudo 时显式 skip；CI ubuntu-latest 提供 passwordless sudo。测试用
+/// `--force-depends` 安装，因为夹具核心是 shell 脚本、不依赖 WebView 运行库。
+#[test]
+fn deb_installs_runs_and_uninstalls_on_root_host() {
+    if common::skip_without_any(&["dpkg"]) {
+        return;
     }
+    if !Command::new("sudo")
+        .args(["-n", "true"])
+        .status()
+        .is_ok_and(|status| status.success())
+    {
+        eprintln!("SKIP：无 passwordless sudo，跳过 dpkg -i 安装/卸载冒烟");
+        return;
+    }
+    let base = scratch("dpkg-install");
+    let inputs = inputs(&base);
+    let artifact = Deb.package(&inputs, &spec("deb")).expect("deb 组装");
+
+    let install = Command::new("sudo")
+        .args([
+            "dpkg",
+            "-i",
+            "--force-depends",
+            &artifact.path.display().to_string(),
+        ])
+        .status()
+        .expect("dpkg -i");
+    let smoke = Command::new("pax-notes").arg("--version").output();
+    let remove = Command::new("sudo")
+        .args(["dpkg", "-r", "pax-notes"])
+        .status();
+
+    assert!(install.success(), "dpkg -i 失败");
+    let smoke = smoke.expect("启动已安装的可执行");
+    assert!(
+        smoke.status.success(),
+        "安装后启动失败：{}",
+        String::from_utf8_lossy(&smoke.stderr)
+    );
+    assert!(
+        String::from_utf8_lossy(&smoke.stdout).contains("pax-notes 1.2.3"),
+        "启动输出不符：{}",
+        String::from_utf8_lossy(&smoke.stdout)
+    );
+    assert!(remove.expect("dpkg -r").success(), "dpkg -r 卸载失败");
 }
 
 #[test]
