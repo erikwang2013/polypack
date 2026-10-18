@@ -1,0 +1,69 @@
+<svg width="640" height="384" viewBox="0 0 720 432" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="pax-t pax-d">
+  <title id="pax-t">Pax · 邮差蟹 — 欢乐表情（动态）</title>
+  <desc id="pax-d">PolyPack 项目宠物 Pax 的欢乐表情（joy），带该表情专属的 CSS 动效；减弱动态效果时定格为静态形态。</desc>
+  <style>@media (prefers-reduced-motion: no-preference) {
+    .pax-crab { animation: pax-bounce 1.7s ease-in-out infinite; }
+    .pax-sparkle { animation: pax-sparkle 1.4s ease-in-out infinite; }
+    .pax-sparkle-b { animation-delay: -0.45s; }
+    .pax-sparkle-c { animation-delay: -0.9s; }
+  }
+  @keyframes pax-bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+  @keyframes pax-sparkle { 0%, 100% { opacity: 0.25; transform: scale(0.72); } 50% { opacity: 1; transform: scale(1.18); } }
+  </style>
+
+  <defs>
+    <marker id="pax-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#94a3b8"/>
+    </marker>
+  </defs>
+  <path d="M170,206 C 300,60 470,40 548,72" fill="none" stroke="#94a3b8" stroke-width="2" stroke-dasharray="5 6" marker-end="url(#pax-arrow)"/>
+  <path d="M482,178 C 540,140 580,124 622,128" fill="none" stroke="#94a3b8" stroke-width="2" stroke-dasharray="5 6" marker-end="url(#pax-arrow)"/>
+  <path d="M478,212 C 520,252 552,276 586,288" fill="none" stroke="#94a3b8" stroke-width="2" stroke-dasharray="5 6" marker-end="url(#pax-arrow)"/>
+  <g stroke="#64748b" stroke-width="3" fill="#ffffff" stroke-linejoin="round">
+    <rect x="552" y="50" width="28" height="48" rx="7"/>
+    <rect x="626" y="126" width="26" height="32" rx="7"/>
+    <path d="M630,126 v-10 h18 v10 M630,158 v10 h18 v-10" fill="none"/>
+    <rect x="588" y="276" width="66" height="42" rx="7"/>
+    <path d="M621,318 v9 M607,327 h28" fill="none"/>
+  </g>
+  <circle cx="566" cy="88" r="2.6" fill="#64748b" stroke="none"/>
+  <ellipse cx="300" cy="396" rx="152" ry="15" fill="#0f172a" opacity="0.06"/>
+  <g class="pax-crab">
+    <g stroke="#c2410c" stroke-width="11" stroke-linecap="round" fill="none">
+      <path d="M214,318 L182,356"/>
+      <path d="M246,338 L228,380"/>
+      <path d="M282,348 L276,388"/>
+      <path d="M386,318 L418,356"/>
+      <path d="M354,338 L372,380"/>
+      <path d="M318,348 L324,388"/>
+    </g>
+    <ellipse cx="300" cy="268" rx="110" ry="78" fill="#ea580c" stroke="#9a3412" stroke-width="3"/>
+    <ellipse cx="300" cy="292" rx="72" ry="46" fill="#fdba74" opacity="0.85"/>
+<g class="pax-face pax-face-joy"><ellipse cx="242" cy="300" rx="12" ry="7.5" fill="#fb7185" opacity="0.55"/><ellipse cx="358" cy="300" rx="12" ry="7.5" fill="#fb7185" opacity="0.55"/><path d="M276,283 Q300,318 324,283 Z" fill="#7c2d12" stroke="#9a3412" stroke-width="3" stroke-linejoin="round"/><ellipse cx="300" cy="303" rx="11" ry="6.5" fill="#fb7185"/><path d="M220,156 Q236,140 252,156" fill="none" stroke="#9a3412" stroke-width="4.5" stroke-linecap="round"/><path d="M348,156 Q364,140 380,156" fill="none" stroke="#9a3412" stroke-width="4.5" stroke-linecap="round"/>
+      <g transform="translate(198,120)"><path class="pax-sparkle" d="M0,-9 L2.4,-2.4 L9,0 L2.4,2.4 L0,9 L-2.4,2.4 L-9,0 L-2.4,-2.4 Z" fill="#fbbf24"/></g>
+      <g transform="translate(410,104)"><path class="pax-sparkle pax-sparkle-b" d="M0,-8 L2.1,-2.1 L8,0 L2.1,2.1 L0,8 L-2.1,2.1 L-8,0 L-2.1,-2.1 Z" fill="#f59e0b"/></g>
+      <g transform="translate(424,236)"><path class="pax-sparkle pax-sparkle-c" d="M0,-7 L1.9,-1.9 L7,0 L1.9,1.9 L0,7 L-1.9,1.9 L-7,0 L-1.9,-1.9 Z" fill="#fbbf24"/></g></g>
+    <g stroke="#9a3412" stroke-width="6" stroke-linecap="round">
+      <path d="M252,206 L238,162"/>
+      <path d="M348,206 L362,162"/>
+    </g>
+    <path d="M246,192 q0,-54 54,-54 q54,0 54,54 z" fill="#0891b2" stroke="#0e7490" stroke-width="3"/>
+    <rect x="234" y="188" width="132" height="14" rx="7" fill="#0e7490"/>
+    <circle cx="300" cy="166" r="10" fill="#fdba74" stroke="#0e7490" stroke-width="2.5"/>
+    <rect x="295.5" y="161.5" width="9" height="8.5" rx="2" fill="#9a3412"/>
+    <path d="M206,258 L148,216" stroke="#ea580c" stroke-width="16" stroke-linecap="round"/>
+    <g transform="rotate(-8 118 253)">
+      <rect x="64" y="210" width="108" height="86" rx="10" fill="#d4a373" stroke="#b08968" stroke-width="3"/>
+      <rect x="107" y="210" width="22" height="86" fill="#b08968" opacity="0.85"/>
+      <circle cx="150" cy="240" r="17" fill="#ffffff" stroke="#0891b2" stroke-width="2" stroke-dasharray="3 2.6"/>
+      <ellipse cx="150" cy="240" rx="11.5" ry="4.4" fill="none" stroke="#0891b2" stroke-width="2" transform="rotate(-32 150 240)"/>
+      <circle cx="150" cy="240" r="2.4" fill="#0891b2"/>
+      <text x="80" y="282" font-size="13" font-family="'JetBrains Mono', ui-monospace, 'PingFang SC', 'Microsoft YaHei', monospace" font-weight="700" fill="#7c4a2a">POLY</text>
+    </g>
+    <circle cx="128" cy="194" r="22" fill="#ea580c" stroke="#9a3412" stroke-width="3"/>
+    <path d="M112,184 q14,-9 28,-3" fill="none" stroke="#9a3412" stroke-width="2.5" stroke-linecap="round"/>
+    <path d="M394,254 L452,208" stroke="#ea580c" stroke-width="16" stroke-linecap="round"/>
+    <circle cx="464" cy="192" r="24" fill="#ea580c" stroke="#9a3412" stroke-width="3"/>
+    <path d="M448,180 q16,-10 32,-4" fill="none" stroke="#9a3412" stroke-width="2.5" stroke-linecap="round"/>
+  </g>
+</svg>

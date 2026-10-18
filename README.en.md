@@ -12,17 +12,17 @@
 
 ## Meet Pax
 
-![Pax's animated expression loop: happy → blinking → puzzled → crying → shocked](docs/assets/pax.svg)
+![Pax's animated expression loop: smile → joy → crying → dejected → shocked → angry → coy → cute → ingratiating → knocking → covering face → sticking tongue](docs/assets/pax.svg)
 
 **Pax** is the PolyPack project pet — a postcrab. The rust-orange shell is a nod to Ferris; the postal cap on its head is its job: it packs your app into a parcel, sticks a React-orbit stamp on it, and delivers it claw by claw to phones, watches, and TVs. The parcel it carries is your one codebase, compiled into dozens of artifacts.
 
-Pax is animated and multi-form: it idly bobs, blinks on a timer, and cycles through five expressions — **happy / blinking / puzzled / crying / shocked**; every individual expression carries its own motion too — crying drips tears, shock shivers and sweats, puzzled floats a question mark, blinking blinks on a timer, happy bobs lightly. All pure CSS, no scripts; with "reduce motion" enabled every form settles into its static pose. All five at a glance (every one in the grid is moving):
+Pax is animated and multi-form: it idly bobs and cycles through twelve colorful expressions — **smile / joy / crying / dejected / shocked / angry / coy / cute / ingratiating / knocking / covering face / sticking tongue**; every individual expression carries its own motion too — crying drips tears, shock shivers and sweats, anger throbs and steams, coy floats hearts, knocking taps with a claw, dejection sighs and sinks, sticking tongue wiggles... All pure CSS, no scripts; with "reduce motion" enabled every form settles into its static pose. All twelve at a glance (every one in the grid is moving):
 
-![Pax's five expressions, each animated: happy / crying / shocked / puzzled / blinking](docs/assets/pax-moods.svg)
+![Pax's twelve colorful expressions, each animated: smile / joy / crying / dejected / shocked / angry / coy / cute / ingratiating / knocking / covering face / sticking tongue](docs/assets/pax-moods.svg)
 
-Individual expression files (each with its own motion): [happy](docs/assets/pax-happy.svg) · [crying](docs/assets/pax-cry.svg) · [shocked](docs/assets/pax-shock.svg) · [puzzled](docs/assets/pax-confused.svg) · [blinking](docs/assets/pax-blink.svg); open [docs/pax.html](docs/pax.html) locally to switch expressions by hand.
+Individual expression files (each with its own motion): [smile](docs/assets/pax-smile.svg) · [joy](docs/assets/pax-joy.svg) · [crying](docs/assets/pax-cry.svg) · [dejected](docs/assets/pax-dejected.svg) · [shocked](docs/assets/pax-shock.svg) · [angry](docs/assets/pax-angry.svg) · [coy](docs/assets/pax-coquettish.svg) · [cute](docs/assets/pax-cute.svg) · [ingratiating](docs/assets/pax-ingratiating.svg) · [knocking](docs/assets/pax-knock.svg) · [covering face](docs/assets/pax-facepalm.svg) · [sticking tongue](docs/assets/pax-tongue.svg); open [docs/pax.html](docs/pax.html) locally to switch expressions by hand.
 
-**Brand rule**: Pax *is* the PolyPack project icon — the docs favicon ([pax-mark.svg](docs/assets/pax-mark.svg)), the mini badge in the bottom-right corner of generated diagrams, and future CLI / GUI / installer icons all use it; the five expressions map onto build states (success = happy · failure = crying · exception = shocked · needs-confirmation = puzzled · idle = blinking). Every form is generated from a single source by `tools/build-pax.mjs`.
+**Brand rule**: Pax *is* the PolyPack project icon — the docs favicon ([pax-mark.svg](docs/assets/pax-mark.svg)), the mini badge in the bottom-right corner of generated diagrams, and future CLI / GUI / installer icons all use it; the twelve expressions map onto build states (success = joy · failure = crying · exception = shocked · needs-confirmation = coy · idle = smile). Every form is generated from a single source by `tools/build-pax.mjs`.
 
 Pax shares the same color variables as every diagram in this repository — you will meet its rust orange and orbit cyan again in the architecture diagram.
 
@@ -376,3 +376,17 @@ Cross-host builds (Linux origin → macOS worker produces an IPA) — deployment
 ## License
 
 [Apache-2.0](LICENSE) (the `LICENSE` file is in place; contribution rules formalize with the code).
+
+<!-- assets-license:start -->
+## Visual Assets License
+
+The project pets, images, icons and emoji/expression forms in this repository
+(including the SVG/PNG files under `docs/assets/`) are **NOT open-source assets**.
+All rights are reserved. No copying, modification, redistribution, public
+transmission or commercial use is permitted without prior written permission.
+For commercial licensing contact **erik@erik.xyz**. See
+[ASSETS-LICENSE.md](ASSETS-LICENSE.md).
+
+> The code remains under the repository's existing licence (Apache-2.0). Third-party
+> assets (e.g. the Go Gopher where explicitly noted) keep their original licences.
+<!-- assets-license:end -->

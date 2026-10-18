@@ -10,17 +10,17 @@
 
 ## 认识 Pax
 
-![Pax 的动态表情循环：笑 → 眨眼 → 疑惑 → 哭 → 惊恐](docs/assets/pax.svg)
+![Pax 的动态表情循环：笑 → 欢乐 → 哭 → 沮丧 → 惊恐 → 愤怒 → 撒娇 → 卖萌 → 讨好 → 敲打 → 捂脸 → 吐舌头](docs/assets/pax.svg)
 
 **Pax（帕克斯）** 是 PolyPack 的项目宠物——一只邮差蟹。Rust 橙的蟹壳致敬 Ferris，头顶的邮政帽是它的工种：把你的应用打包成一件快递件，贴上 React 轨道邮票，用钳子一件件送达手机、手表、电视们手里。它抱着的那件包裹，就是同一份代码库编译出的几十种产物。
 
-Pax 是动态多形态的：空闲时轻轻浮动、定时眨眼，并循环展示 **笑 / 眨眼 / 疑惑 / 哭 / 惊恐** 五种表情；每一个单独的表情也都有自己的动态——哭是泪滴下落、惊恐是发抖加汗滴、疑惑是问号浮动、眨眼是定期眨眼、笑是轻盈浮动。全部为纯 CSS 动画、无脚本；系统开启「减弱动态效果」时各自定格为对应的静态形态。五种表情一览（格子里每一只都在动）：
+Pax 是动态多形态的：空闲时轻轻浮动，并循环展示 **笑 / 欢乐 / 哭 / 沮丧 / 惊恐 / 愤怒 / 撒娇 / 卖萌 / 讨好 / 敲打 / 捂脸 / 吐舌头** 十二种彩色表情；每一个单独的表情也都有自己的动态——哭是泪滴下落、惊恐是发抖加汗滴、愤怒是怒纹加蒸汽、撒娇是爱心上浮、敲打是钳击火星、沮丧是叹气下沉、吐舌头是舌头摆动…… 全部为纯 CSS 动画、无脚本；系统开启「减弱动态效果」时各自定格为对应的静态形态。十二种表情一览（格子里每一只都在动）：
 
-![Pax 的五种表情（各自带动态）：笑 / 哭 / 惊恐 / 疑惑 / 眨眼](docs/assets/pax-moods.svg)
+![Pax 的十二种彩色表情（各自带动态）：笑 / 欢乐 / 哭 / 沮丧 / 惊恐 / 愤怒 / 撒娇 / 卖萌 / 讨好 / 敲打 / 捂脸 / 吐舌头](docs/assets/pax-moods.svg)
 
-独立表情文件（每个都带自己的动态）：[笑](docs/assets/pax-happy.svg) · [哭](docs/assets/pax-cry.svg) · [惊恐](docs/assets/pax-shock.svg) · [疑惑](docs/assets/pax-confused.svg) · [眨眼](docs/assets/pax-blink.svg)；本地打开 [docs/pax.html](docs/pax.html) 可手动切换表情。
+独立表情文件（每个都带自己的动态）：[笑](docs/assets/pax-smile.svg) · [欢乐](docs/assets/pax-joy.svg) · [哭](docs/assets/pax-cry.svg) · [沮丧](docs/assets/pax-dejected.svg) · [惊恐](docs/assets/pax-shock.svg) · [愤怒](docs/assets/pax-angry.svg) · [撒娇](docs/assets/pax-coquettish.svg) · [卖萌](docs/assets/pax-cute.svg) · [讨好](docs/assets/pax-ingratiating.svg) · [敲打](docs/assets/pax-knock.svg) · [捂脸](docs/assets/pax-facepalm.svg) · [吐舌头](docs/assets/pax-tongue.svg)；本地打开 [docs/pax.html](docs/pax.html) 可手动切换表情。
 
-**品牌约定**：Pax 就是 PolyPack 的项目图标——文档 favicon（[pax-mark.svg](docs/assets/pax-mark.svg)）、生成图示右下角的微缩角标、未来的 CLI / GUI / 安装包图标都用它；五种表情同时映射构建状态（成功 = 笑 · 失败 = 哭 · 异常 = 惊恐 · 待确认 = 疑惑 · 空闲 = 眨眼）。全部形态由 `tools/build-pax.mjs` 单一源生成。
+**品牌约定**：Pax 就是 PolyPack 的项目图标——文档 favicon（[pax-mark.svg](docs/assets/pax-mark.svg)）、生成图示右下角的微缩角标、未来的 CLI / GUI / 安装包图标都用它；十二种表情同时映射构建状态（成功 = 欢乐 · 失败 = 哭 · 异常 = 惊恐 · 待确认 = 撒娇 · 空闲 = 笑）。全部形态由 `tools/build-pax.mjs` 单一源生成。
 
 Pax 与全部文档图示共用同一套色彩变量，你会在架构图里再次见到它身上的锈橙与轨道蓝。
 
@@ -374,3 +374,14 @@ polypack/
 ## 许可
 
 [Apache-2.0](LICENSE)（`LICENSE` 已落地；贡献规则随代码化完善）。
+
+<!-- assets-license:start -->
+## 视觉资产授权 / Visual Assets License
+
+本项目的项目宠物、图片、图标、表情（包括 `docs/pet-expressions/` 等目录下的
+SVG / PNG）**不是开源资产**，版权归作者所有。未经书面许可不得复制、修改、再分发或
+用于商业用途；商业使用需取得商业授权，联系 **erik@erik.xyz**。详见
+[ASSETS-LICENSE.md](ASSETS-LICENSE.md)。
+
+> 代码部分仍遵循仓库原有 `LICENSE`；第三方素材（如明确标注的 Go Gopher 等）仍遵循其原许可证。
+<!-- assets-license:end -->

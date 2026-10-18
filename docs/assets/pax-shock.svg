@@ -37,15 +37,7 @@
     </g>
     <ellipse cx="300" cy="268" rx="110" ry="78" fill="#ea580c" stroke="#9a3412" stroke-width="3"/>
     <ellipse cx="300" cy="292" rx="72" ry="46" fill="#fdba74" opacity="0.85"/>
-
-  <g class="pax-face pax-face-shock">
-      <circle cx="234" cy="152" r="21" fill="#ffffff" stroke="#9a3412" stroke-width="3"/>
-      <circle cx="366" cy="152" r="21" fill="#ffffff" stroke="#9a3412" stroke-width="3"/>
-      <circle cx="237" cy="148" r="4.2" fill="#0f172a"/>
-      <circle cx="363" cy="148" r="4.2" fill="#0f172a"/>
-      <ellipse cx="300" cy="294" rx="11" ry="14" fill="#7c2d12" stroke="#9a3412" stroke-width="3"/>
-      <g class="pax-sweat"><path d="M398,96 C404,105 404,114 398,119 C392,114 392,105 398,96 Z" fill="#bae6fd" stroke="#0891b2" stroke-width="2"/></g>
-  </g>
+<g class="pax-face pax-face-shock"><circle cx="234" cy="152" r="21" fill="#ffffff" stroke="#9a3412" stroke-width="3"/><circle cx="366" cy="152" r="21" fill="#ffffff" stroke="#9a3412" stroke-width="3"/><circle cx="237" cy="148" r="4.2" fill="#0f172a"/><circle cx="363" cy="148" r="4.2" fill="#0f172a"/><ellipse cx="300" cy="294" rx="11" ry="14" fill="#7c2d12" stroke="#9a3412" stroke-width="3"/><g class="pax-sweat"><path d="M398,96 C404,105 404,114 398,119 C392,114 392,105 398,96 Z" fill="#bae6fd" stroke="#0891b2" stroke-width="2"/></g></g>
     <g stroke="#9a3412" stroke-width="6" stroke-linecap="round">
       <path d="M252,206 L238,162"/>
       <path d="M348,206 L362,162"/>

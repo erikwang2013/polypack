@@ -1,29 +1,61 @@
-<svg width="890" height="190" viewBox="0 0 890 190" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="pax-moods-t pax-moods-d">
-  <title id="pax-moods-t">Pax 的五种表情（各自带动态）— 笑 / 哭 / 惊恐 / 疑惑 / 眨眼</title>
-  <desc id="pax-moods-d">邮差蟹 Pax 的全身联系表：五种表情（含蟹腿与钳子）及中英文标签，每个形态各自带有专属动效（笑=浮动、哭=泪滴、惊恐=发抖加汗滴、疑惑=问号浮动、眨眼=定期眨眼）。</desc>
-  <style>.cell-blink .pax-blink-open { opacity: 0; }
-  @media (prefers-reduced-motion: no-preference) {
-    .cell-happy .pax-crab { animation: pax-bob 3s ease-in-out infinite; }
-    .cell-cry .pax-crab { animation: pax-bob 4s ease-in-out -0.45s infinite; }
+<svg width="1062" height="390" viewBox="0 0 1062 390" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="pax-moods-t pax-moods-d">
+  <title id="pax-moods-t">Pax 的十二种彩色表情（各自带动态）— 笑 / 欢乐 / 哭 / 沮丧 / 惊恐 / 愤怒 / 撒娇 / 卖萌 / 讨好 / 敲打 / 捂脸 / 吐舌头</title>
+  <desc id="pax-moods-d">邮差蟹 Pax 的全身联系表：十二种彩色表情（含蟹腿与钳子）及中英文标签，每个形态各自带有专属动效（笑=浮动、欢乐=弹跳加星光、哭=泪滴、沮丧=叹气下沉、惊恐=发抖加汗滴、愤怒=怒纹加蒸汽、撒娇=爱心上浮、卖萌=爱心眼、讨好=星星眼、敲打=钳击火星、捂脸=捂眼、吐舌头=舌头摆动）。</desc>
+  <style>@media (prefers-reduced-motion: no-preference) {
+    .cell-smile .pax-crab { animation: pax-bob 3s ease-in-out infinite; animation-delay: 0.00s; }
+    .cell-joy .pax-crab { animation: pax-bounce 1.7s ease-in-out infinite; animation-delay: -0.45s; }
+    .cell-joy .pax-sparkle { animation: pax-sparkle 1.4s ease-in-out infinite; }
+    .cell-joy .pax-sparkle-b { animation-delay: -0.45s; }
+    .cell-joy .pax-sparkle-c { animation-delay: -0.9s; }
+    .cell-cry .pax-crab { animation: pax-bob 4s ease-in-out infinite; animation-delay: -0.90s; }
     .cell-cry .pax-tear-a { animation: pax-tear 1.15s ease-in infinite; }
     .cell-cry .pax-tear-b { animation: pax-tear 1.15s ease-in 0.2s infinite; }
-    .cell-shock .pax-crab { animation: pax-shiver 0.16s linear infinite; }
+    .cell-dejected .pax-crab { animation: pax-droop 4.5s ease-in-out infinite; animation-delay: -1.35s; }
+    .cell-dejected .pax-sigh { animation: pax-sigh 3s ease-out infinite; }
+    .cell-shock .pax-crab { animation: pax-shiver 0.16s linear infinite; animation-delay: -1.80s; }
     .cell-shock .pax-sweat { animation: pax-drip 1.4s ease-in infinite; }
-    .cell-confused .pax-crab { animation: pax-bob 3.4s ease-in-out -1.35s infinite; }
-    .cell-confused .pax-question { animation: pax-float 2.2s ease-in-out infinite; }
-    .cell-blink .pax-crab { animation: pax-bob 3.2s ease-in-out -1.80s infinite; }
-    .cell-blink .pax-blink-open { animation: pax-blink-open 3.2s linear infinite; }
-    .cell-blink .pax-blink-shut { animation: pax-blink-shut 3.2s linear infinite; }
+    .cell-angry .pax-crab { animation: pax-rage 0.32s linear infinite; animation-delay: -2.25s; }
+    .cell-angry .pax-vein { animation: pax-vein 0.7s ease-in-out infinite; }
+    .cell-angry .pax-steam { animation: pax-steam 1.3s ease-out infinite; }
+    .cell-angry .pax-steam-b { animation-delay: -0.65s; }
+    .cell-coquettish .pax-crab { transform-origin: 300px 300px; animation: pax-sway 3s ease-in-out infinite; animation-delay: -2.70s; }
+    .cell-coquettish .pax-heart-a { animation: pax-heart 2.4s ease-out infinite; }
+    .cell-coquettish .pax-heart-b { animation: pax-heart 2.4s ease-out 1.2s infinite; }
+    .cell-cute .pax-crab { animation: pax-bounce 1.5s ease-in-out infinite; animation-delay: -3.15s; }
+    .cell-cute .pax-heart-eye { transform-origin: 0 8px; animation: pax-heart-eye 1.4s ease-in-out infinite; }
+    .cell-cute .pax-sparkle { animation: pax-sparkle 1.2s ease-in-out infinite; }
+    .cell-cute .pax-sparkle-b { animation-delay: -0.4s; }
+    .cell-cute .pax-sparkle-c { animation-delay: -0.8s; }
+    .cell-ingratiating .pax-crab { animation: pax-bounce 2.1s ease-in-out infinite; animation-delay: -3.60s; }
+    .cell-ingratiating .pax-sparkle { animation: pax-sparkle 1.6s ease-in-out infinite; }
+    .cell-ingratiating .pax-sparkle-b { animation-delay: -0.5s; }
+    .cell-ingratiating .pax-sparkle-c { animation-delay: -1s; }
+    .cell-knock .pax-crab { animation: pax-tap 0.9s ease-in-out infinite; animation-delay: -4.05s; }
+    .cell-knock .pax-impact { animation: pax-impact 0.9s ease-out infinite; }
+    .cell-facepalm .pax-crab { transform-origin: 300px 300px; animation: pax-sway 3.2s ease-in-out infinite; animation-delay: -4.50s; }
+    .cell-facepalm .pax-sweat { animation: pax-drip 2s ease-in infinite; }
+    .cell-tongue .pax-crab { animation: pax-bob 2.6s ease-in-out infinite; animation-delay: -4.95s; }
+    .cell-tongue .pax-tongue { animation: pax-tongue 0.9s ease-in-out infinite; }
   }
   @keyframes pax-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
-  @keyframes pax-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+  @keyframes pax-bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+  @keyframes pax-sparkle { 0%, 100% { opacity: 0.25; transform: scale(0.72); } 50% { opacity: 1; transform: scale(1.18); } }
   @keyframes pax-tear { 0% { transform: translateY(0); opacity: 0; } 15% { opacity: 1; } 100% { transform: translateY(30px); opacity: 0; } }
+  @keyframes pax-droop { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(6px); } }
+  @keyframes pax-sigh { 0% { opacity: 0; transform: translateX(0) scale(0.85); } 30% { opacity: 1; } 100% { opacity: 0; transform: translateX(14px) scale(1.05); } }
   @keyframes pax-shiver { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-1.6px); } 75% { transform: translateX(1.6px); } }
   @keyframes pax-drip { 0% { transform: translateY(0); opacity: 0.3; } 40% { opacity: 1; } 100% { transform: translateY(12px); opacity: 0; } }
-  @keyframes pax-blink-open { 0%, 87% { opacity: 1; } 88.5%, 93% { opacity: 0; } 94.5%, 100% { opacity: 1; } }
-  @keyframes pax-blink-shut { 0%, 87% { opacity: 0; } 88.5%, 93% { opacity: 1; } 94.5%, 100% { opacity: 0; } }</style>
-  <rect width="890" height="190" fill="#f8fafc"/>
-  <g class="cell cell-happy">
+  @keyframes pax-rage { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-2.4px); } 75% { transform: translateX(2.4px); } }
+  @keyframes pax-vein { 0%, 100% { opacity: 0.75; transform: scale(0.9); } 50% { opacity: 1; transform: scale(1.15); } }
+  @keyframes pax-steam { 0% { opacity: 0; transform: translateY(6px) scale(0.8); } 30% { opacity: 1; } 100% { opacity: 0; transform: translateY(-16px) scale(1.1); } }
+  @keyframes pax-sway { 0%, 100% { transform: rotate(-2.5deg); } 50% { transform: rotate(2.5deg); } }
+  @keyframes pax-heart { 0% { opacity: 0; transform: translateY(8px) scale(0.7); } 25% { opacity: 1; } 100% { opacity: 0; transform: translateY(-22px) scale(1.05); } }
+  @keyframes pax-heart-eye { 0%, 100% { transform: scale(0.92); } 50% { transform: scale(1.08); } }
+  @keyframes pax-tap { 0%, 100% { transform: translateX(0); } 30% { transform: translateX(6px); } 55% { transform: translateX(-1px); } }
+  @keyframes pax-impact { 0%, 100% { opacity: 0.2; transform: scale(0.7); } 35% { opacity: 1; transform: scale(1); } }
+  @keyframes pax-tongue { 0%, 100% { transform: rotate(-6deg); } 50% { transform: rotate(6deg); } }</style>
+  <rect width="1062" height="390" fill="#f8fafc"/>
+  <g class="cell cell-smile">
     <rect x="20" y="14" width="162" height="128" rx="12" fill="#ffffff" stroke="#e2e8f0"/>
     <svg x="26" y="20" width="150" height="116" viewBox="54 64 448 346" preserveAspectRatio="xMidYMid meet">
       <g class="pax-crab">
@@ -36,17 +68,7 @@
       <path d="M318,348 L324,388"/>
     </g>
     <ellipse cx="300" cy="268" rx="110" ry="78" fill="#ea580c" stroke="#9a3412" stroke-width="3"/>
-    <ellipse cx="300" cy="292" rx="72" ry="46" fill="#fdba74" opacity="0.85"/>
-  <g class="pax-face pax-face-happy">
-      <ellipse cx="242" cy="300" rx="12" ry="7.5" fill="#fb7185" opacity="0.55"/>
-      <ellipse cx="358" cy="300" rx="12" ry="7.5" fill="#fb7185" opacity="0.55"/>
-      <path d="M276,283 Q300,318 324,283 Z" fill="#7c2d12" stroke="#9a3412" stroke-width="3" stroke-linejoin="round"/>
-      <ellipse cx="300" cy="303" rx="11" ry="6.5" fill="#fb7185"/>
-      <circle cx="236" cy="154" r="17" fill="#ffffff" stroke="#9a3412" stroke-width="3"/>
-      <circle cx="364" cy="154" r="17" fill="#ffffff" stroke="#9a3412" stroke-width="3"/>
-      <circle cx="240" cy="158" r="7.5" fill="#0f172a"/>
-      <circle cx="360" cy="158" r="7.5" fill="#0f172a"/>
-  </g>
+    <ellipse cx="300" cy="292" rx="72" ry="46" fill="#fdba74" opacity="0.85"/><g class="pax-face pax-face-smile"><ellipse cx="242" cy="300" rx="12" ry="7.5" fill="#fb7185" opacity="0.55"/><ellipse cx="358" cy="300" rx="12" ry="7.5" fill="#fb7185" opacity="0.55"/><path d="M282,294 Q300,306 318,294" fill="none" stroke="#9a3412" stroke-width="4" stroke-linecap="round"/><circle cx="236" cy="154" r="17" fill="#ffffff" stroke="#9a3412" stroke-width="3"/><circle cx="364" cy="154" r="17" fill="#ffffff" stroke="#9a3412" stroke-width="3"/><circle cx="240" cy="158" r="7.5" fill="#0f172a"/><circle cx="360" cy="158" r="7.5" fill="#0f172a"/></g>
     <g stroke="#9a3412" stroke-width="6" stroke-linecap="round">
       <path d="M252,206 L238,162"/>
       <path d="M348,206 L362,162"/>
@@ -71,9 +93,9 @@
     <path d="M448,180 q16,-10 32,-4" fill="none" stroke="#9a3412" stroke-width="2.5" stroke-linecap="round"/></g>
     </svg>
     <text x="101" y="160" text-anchor="middle" font-size="13" font-weight="700" fill="#0f172a" font-family="'JetBrains Mono', ui-monospace, 'PingFang SC', 'Microsoft YaHei', monospace">笑</text>
-    <text x="101" y="175" text-anchor="middle" font-size="10.5" fill="#64748b" font-family="'JetBrains Mono', ui-monospace, 'PingFang SC', 'Microsoft YaHei', monospace">happy</text>
+    <text x="101" y="175" text-anchor="middle" font-size="10.5" fill="#64748b" font-family="'JetBrains Mono', ui-monospace, 'PingFang SC', 'Microsoft YaHei', monospace">smile</text>
   </g>
-  <g class="cell cell-cry">
+  <g class="cell cell-joy">
     <rect x="192" y="14" width="162" height="128" rx="12" fill="#ffffff" stroke="#e2e8f0"/>
     <svg x="198" y="20" width="150" height="116" viewBox="54 64 448 346" preserveAspectRatio="xMidYMid meet">
       <g class="pax-crab">
@@ -86,16 +108,10 @@
       <path d="M318,348 L324,388"/>
     </g>
     <ellipse cx="300" cy="268" rx="110" ry="78" fill="#ea580c" stroke="#9a3412" stroke-width="3"/>
-    <ellipse cx="300" cy="292" rx="72" ry="46" fill="#fdba74" opacity="0.85"/>
-  <g class="pax-face pax-face-cry">
-      <path d="M282,298 Q300,282 318,298" fill="none" stroke="#9a3412" stroke-width="4" stroke-linecap="round"/>
-      <circle cx="236" cy="154" r="17" fill="#ffffff" stroke="#9a3412" stroke-width="3"/>
-      <circle cx="364" cy="154" r="17" fill="#ffffff" stroke="#9a3412" stroke-width="3"/>
-      <circle cx="241" cy="149" r="7" fill="#0f172a"/>
-      <circle cx="359" cy="149" r="7" fill="#0f172a"/>
-      <g class="pax-tear pax-tear-a"><path d="M228,178 C233,185 233,192 228,196 C223,192 223,185 228,178 Z" fill="#7dd3fc" stroke="#0891b2" stroke-width="2"/></g>
-      <g class="pax-tear pax-tear-b"><path d="M372,178 C377,185 377,192 372,196 C367,192 367,185 372,178 Z" fill="#7dd3fc" stroke="#0891b2" stroke-width="2"/></g>
-  </g>
+    <ellipse cx="300" cy="292" rx="72" ry="46" fill="#fdba74" opacity="0.85"/><g class="pax-face pax-face-joy"><ellipse cx="242" cy="300" rx="12" ry="7.5" fill="#fb7185" opacity="0.55"/><ellipse cx="358" cy="300" rx="12" ry="7.5" fill="#fb7185" opacity="0.55"/><path d="M276,283 Q300,318 324,283 Z" fill="#7c2d12" stroke="#9a3412" stroke-width="3" stroke-linejoin="round"/><ellipse cx="300" cy="303" rx="11" ry="6.5" fill="#fb7185"/><path d="M220,156 Q236,140 252,156" fill="none" stroke="#9a3412" stroke-width="4.5" stroke-linecap="round"/><path d="M348,156 Q364,140 380,156" fill="none" stroke="#9a3412" stroke-width="4.5" stroke-linecap="round"/>
+      <g transform="translate(198,120)"><path class="pax-sparkle" d="M0,-9 L2.4,-2.4 L9,0 L2.4,2.4 L0,9 L-2.4,2.4 L-9,0 L-2.4,-2.4 Z" fill="#fbbf24"/></g>
+      <g transform="translate(410,104)"><path class="pax-sparkle pax-sparkle-b" d="M0,-8 L2.1,-2.1 L8,0 L2.1,2.1 L0,8 L-2.1,2.1 L-8,0 L-2.1,-2.1 Z" fill="#f59e0b"/></g>
+      <g transform="translate(424,236)"><path class="pax-sparkle pax-sparkle-c" d="M0,-7 L1.9,-1.9 L7,0 L1.9,1.9 L0,7 L-1.9,1.9 L-7,0 L-1.9,-1.9 Z" fill="#fbbf24"/></g></g>
     <g stroke="#9a3412" stroke-width="6" stroke-linecap="round">
       <path d="M252,206 L238,162"/>
       <path d="M348,206 L362,162"/>
@@ -119,10 +135,10 @@
     <circle cx="464" cy="192" r="24" fill="#ea580c" stroke="#9a3412" stroke-width="3"/>
     <path d="M448,180 q16,-10 32,-4" fill="none" stroke="#9a3412" stroke-width="2.5" stroke-linecap="round"/></g>
     </svg>
-    <text x="273" y="160" text-anchor="middle" font-size="13" font-weight="700" fill="#0f172a" font-family="'JetBrains Mono', ui-monospace, 'PingFang SC', 'Microsoft YaHei', monospace">哭</text>
-    <text x="273" y="175" text-anchor="middle" font-size="10.5" fill="#64748b" font-family="'JetBrains Mono', ui-monospace, 'PingFang SC', 'Microsoft YaHei', monospace">crying</text>
+    <text x="273" y="160" text-anchor="middle" font-size="13" font-weight="700" fill="#0f172a" font-family="'JetBrains Mono', ui-monospace, 'PingFang SC', 'Microsoft YaHei', monospace">欢乐</text>
+    <text x="273" y="175" text-anchor="middle" font-size="10.5" fill="#64748b" font-family="'JetBrains Mono', ui-monospace, 'PingFang SC', 'Microsoft YaHei', monospace">joy</text>
   </g>
-  <g class="cell cell-shock">
+  <g class="cell cell-cry">
     <rect x="364" y="14" width="162" height="128" rx="12" fill="#ffffff" stroke="#e2e8f0"/>
     <svg x="370" y="20" width="150" height="116" viewBox="54 64 448 346" preserveAspectRatio="xMidYMid meet">
       <g class="pax-crab">
@@ -135,15 +151,9 @@
       <path d="M318,348 L324,388"/>
     </g>
     <ellipse cx="300" cy="268" rx="110" ry="78" fill="#ea580c" stroke="#9a3412" stroke-width="3"/>
-    <ellipse cx="300" cy="292" rx="72" ry="46" fill="#fdba74" opacity="0.85"/>
-  <g class="pax-face pax-face-shock">
-      <circle cx="234" cy="152" r="21" fill="#ffffff" stroke="#9a3412" stroke-width="3"/>
-      <circle cx="366" cy="152" r="21" fill="#ffffff" stroke="#9a3412" stroke-width="3"/>
-      <circle cx="237" cy="148" r="4.2" fill="#0f172a"/>
-      <circle cx="363" cy="148" r="4.2" fill="#0f172a"/>
-      <ellipse cx="300" cy="294" rx="11" ry="14" fill="#7c2d12" stroke="#9a3412" stroke-width="3"/>
-      <g class="pax-sweat"><path d="M398,96 C404,105 404,114 398,119 C392,114 392,105 398,96 Z" fill="#bae6fd" stroke="#0891b2" stroke-width="2"/></g>
-  </g>
+    <ellipse cx="300" cy="292" rx="72" ry="46" fill="#fdba74" opacity="0.85"/><g class="pax-face pax-face-cry"><path d="M282,298 Q300,282 318,298" fill="none" stroke="#9a3412" stroke-width="4" stroke-linecap="round"/><circle cx="236" cy="154" r="17" fill="#ffffff" stroke="#9a3412" stroke-width="3"/><circle cx="364" cy="154" r="17" fill="#ffffff" stroke="#9a3412" stroke-width="3"/><circle cx="240" cy="158" r="7.5" fill="#0f172a"/><circle cx="360" cy="158" r="7.5" fill="#0f172a"/>
+      <g class="pax-tear pax-tear-a"><path d="M228,178 C233,185 233,192 228,196 C223,192 223,185 228,178 Z" fill="#7dd3fc" stroke="#0891b2" stroke-width="2"/></g>
+      <g class="pax-tear pax-tear-b"><path d="M372,178 C377,185 377,192 372,196 C367,192 367,185 372,178 Z" fill="#7dd3fc" stroke="#0891b2" stroke-width="2"/></g></g>
     <g stroke="#9a3412" stroke-width="6" stroke-linecap="round">
       <path d="M252,206 L238,162"/>
       <path d="M348,206 L362,162"/>
@@ -167,10 +177,10 @@
     <circle cx="464" cy="192" r="24" fill="#ea580c" stroke="#9a3412" stroke-width="3"/>
     <path d="M448,180 q16,-10 32,-4" fill="none" stroke="#9a3412" stroke-width="2.5" stroke-linecap="round"/></g>
     </svg>
-    <text x="445" y="160" text-anchor="middle" font-size="13" font-weight="700" fill="#0f172a" font-family="'JetBrains Mono', ui-monospace, 'PingFang SC', 'Microsoft YaHei', monospace">惊恐</text>
-    <text x="445" y="175" text-anchor="middle" font-size="10.5" fill="#64748b" font-family="'JetBrains Mono', ui-monospace, 'PingFang SC', 'Microsoft YaHei', monospace">shocked</text>
+    <text x="445" y="160" text-anchor="middle" font-size="13" font-weight="700" fill="#0f172a" font-family="'JetBrains Mono', ui-monospace, 'PingFang SC', 'Microsoft YaHei', monospace">哭</text>
+    <text x="445" y="175" text-anchor="middle" font-size="10.5" fill="#64748b" font-family="'JetBrains Mono', ui-monospace, 'PingFang SC', 'Microsoft YaHei', monospace">crying</text>
   </g>
-  <g class="cell cell-confused">
+  <g class="cell cell-dejected">
     <rect x="536" y="14" width="162" height="128" rx="12" fill="#ffffff" stroke="#e2e8f0"/>
     <svg x="542" y="20" width="150" height="116" viewBox="54 64 448 346" preserveAspectRatio="xMidYMid meet">
       <g class="pax-crab">
@@ -183,16 +193,7 @@
       <path d="M318,348 L324,388"/>
     </g>
     <ellipse cx="300" cy="268" rx="110" ry="78" fill="#ea580c" stroke="#9a3412" stroke-width="3"/>
-    <ellipse cx="300" cy="292" rx="72" ry="46" fill="#fdba74" opacity="0.85"/>
-  <g class="pax-face pax-face-confused">
-      <ellipse cx="242" cy="300" rx="12" ry="7.5" fill="#fb7185" opacity="0.55"/>
-      <ellipse cx="358" cy="300" rx="12" ry="7.5" fill="#fb7185" opacity="0.55"/>
-      <path d="M280,288 q8,8 16,0 q8,-8 16,0 q8,8 16,0" fill="none" stroke="#9a3412" stroke-width="4" stroke-linecap="round"/>
-      <circle cx="236" cy="154" r="17" fill="#ffffff" stroke="#9a3412" stroke-width="3"/>
-      <circle cx="240" cy="158" r="7.5" fill="#0f172a"/>
-      <path d="M348,154 Q364,140 380,154" fill="none" stroke="#9a3412" stroke-width="4.5" stroke-linecap="round"/>
-      <g class="pax-question"><text x="356" y="116" font-size="54" font-weight="800" text-anchor="middle" fill="#0891b2" font-family="'JetBrains Mono', ui-monospace, 'PingFang SC', 'Microsoft YaHei', monospace">?</text></g>
-  </g>
+    <ellipse cx="300" cy="292" rx="72" ry="46" fill="#fdba74" opacity="0.85"/><g class="pax-face pax-face-dejected"><path d="M220,150 Q236,166 252,150" fill="none" stroke="#9a3412" stroke-width="4.5" stroke-linecap="round"/><path d="M348,150 Q364,166 380,150" fill="none" stroke="#9a3412" stroke-width="4.5" stroke-linecap="round"/><path d="M282,300 Q300,288 318,300" fill="none" stroke="#9a3412" stroke-width="4" stroke-linecap="round"/><g transform="translate(348,248)"><g class="pax-sigh" fill="#cbd5e1"><ellipse cx="0" cy="0" rx="13" ry="7"/><ellipse cx="10" cy="-6" rx="8" ry="6"/><ellipse cx="-9" cy="-5" rx="7" ry="5"/></g></g></g>
     <g stroke="#9a3412" stroke-width="6" stroke-linecap="round">
       <path d="M252,206 L238,162"/>
       <path d="M348,206 L362,162"/>
@@ -216,10 +217,10 @@
     <circle cx="464" cy="192" r="24" fill="#ea580c" stroke="#9a3412" stroke-width="3"/>
     <path d="M448,180 q16,-10 32,-4" fill="none" stroke="#9a3412" stroke-width="2.5" stroke-linecap="round"/></g>
     </svg>
-    <text x="617" y="160" text-anchor="middle" font-size="13" font-weight="700" fill="#0f172a" font-family="'JetBrains Mono', ui-monospace, 'PingFang SC', 'Microsoft YaHei', monospace">疑惑</text>
-    <text x="617" y="175" text-anchor="middle" font-size="10.5" fill="#64748b" font-family="'JetBrains Mono', ui-monospace, 'PingFang SC', 'Microsoft YaHei', monospace">puzzled</text>
+    <text x="617" y="160" text-anchor="middle" font-size="13" font-weight="700" fill="#0f172a" font-family="'JetBrains Mono', ui-monospace, 'PingFang SC', 'Microsoft YaHei', monospace">沮丧</text>
+    <text x="617" y="175" text-anchor="middle" font-size="10.5" fill="#64748b" font-family="'JetBrains Mono', ui-monospace, 'PingFang SC', 'Microsoft YaHei', monospace">dejected</text>
   </g>
-  <g class="cell cell-blink">
+  <g class="cell cell-shock">
     <rect x="708" y="14" width="162" height="128" rx="12" fill="#ffffff" stroke="#e2e8f0"/>
     <svg x="714" y="20" width="150" height="116" viewBox="54 64 448 346" preserveAspectRatio="xMidYMid meet">
       <g class="pax-crab">
@@ -232,25 +233,7 @@
       <path d="M318,348 L324,388"/>
     </g>
     <ellipse cx="300" cy="268" rx="110" ry="78" fill="#ea580c" stroke="#9a3412" stroke-width="3"/>
-    <ellipse cx="300" cy="292" rx="72" ry="46" fill="#fdba74" opacity="0.85"/>
-  <g class="pax-face pax-face-happy pax-blink-open">
-      <ellipse cx="242" cy="300" rx="12" ry="7.5" fill="#fb7185" opacity="0.55"/>
-      <ellipse cx="358" cy="300" rx="12" ry="7.5" fill="#fb7185" opacity="0.55"/>
-      <path d="M276,283 Q300,318 324,283 Z" fill="#7c2d12" stroke="#9a3412" stroke-width="3" stroke-linejoin="round"/>
-      <ellipse cx="300" cy="303" rx="11" ry="6.5" fill="#fb7185"/>
-      <circle cx="236" cy="154" r="17" fill="#ffffff" stroke="#9a3412" stroke-width="3"/>
-      <circle cx="364" cy="154" r="17" fill="#ffffff" stroke="#9a3412" stroke-width="3"/>
-      <circle cx="240" cy="158" r="7.5" fill="#0f172a"/>
-      <circle cx="360" cy="158" r="7.5" fill="#0f172a"/>
-  </g>
-  <g class="pax-face pax-face-blink pax-blink-shut">
-      <ellipse cx="242" cy="300" rx="12" ry="7.5" fill="#fb7185" opacity="0.55"/>
-      <ellipse cx="358" cy="300" rx="12" ry="7.5" fill="#fb7185" opacity="0.55"/>
-      <path d="M276,283 Q300,318 324,283 Z" fill="#7c2d12" stroke="#9a3412" stroke-width="3" stroke-linejoin="round"/>
-      <ellipse cx="300" cy="303" rx="11" ry="6.5" fill="#fb7185"/>
-      <path d="M220,154 Q236,142 252,154" fill="none" stroke="#9a3412" stroke-width="4.5" stroke-linecap="round"/>
-      <path d="M348,154 Q364,142 380,154" fill="none" stroke="#9a3412" stroke-width="4.5" stroke-linecap="round"/>
-  </g>
+    <ellipse cx="300" cy="292" rx="72" ry="46" fill="#fdba74" opacity="0.85"/><g class="pax-face pax-face-shock"><circle cx="234" cy="152" r="21" fill="#ffffff" stroke="#9a3412" stroke-width="3"/><circle cx="366" cy="152" r="21" fill="#ffffff" stroke="#9a3412" stroke-width="3"/><circle cx="237" cy="148" r="4.2" fill="#0f172a"/><circle cx="363" cy="148" r="4.2" fill="#0f172a"/><ellipse cx="300" cy="294" rx="11" ry="14" fill="#7c2d12" stroke="#9a3412" stroke-width="3"/><g class="pax-sweat"><path d="M398,96 C404,105 404,114 398,119 C392,114 392,105 398,96 Z" fill="#bae6fd" stroke="#0891b2" stroke-width="2"/></g></g>
     <g stroke="#9a3412" stroke-width="6" stroke-linecap="round">
       <path d="M252,206 L238,162"/>
       <path d="M348,206 L362,162"/>
@@ -274,7 +257,311 @@
     <circle cx="464" cy="192" r="24" fill="#ea580c" stroke="#9a3412" stroke-width="3"/>
     <path d="M448,180 q16,-10 32,-4" fill="none" stroke="#9a3412" stroke-width="2.5" stroke-linecap="round"/></g>
     </svg>
-    <text x="789" y="160" text-anchor="middle" font-size="13" font-weight="700" fill="#0f172a" font-family="'JetBrains Mono', ui-monospace, 'PingFang SC', 'Microsoft YaHei', monospace">眨眼</text>
-    <text x="789" y="175" text-anchor="middle" font-size="10.5" fill="#64748b" font-family="'JetBrains Mono', ui-monospace, 'PingFang SC', 'Microsoft YaHei', monospace">blinking</text>
+    <text x="789" y="160" text-anchor="middle" font-size="13" font-weight="700" fill="#0f172a" font-family="'JetBrains Mono', ui-monospace, 'PingFang SC', 'Microsoft YaHei', monospace">惊恐</text>
+    <text x="789" y="175" text-anchor="middle" font-size="10.5" fill="#64748b" font-family="'JetBrains Mono', ui-monospace, 'PingFang SC', 'Microsoft YaHei', monospace">shocked</text>
+  </g>
+  <g class="cell cell-angry">
+    <rect x="880" y="14" width="162" height="128" rx="12" fill="#ffffff" stroke="#e2e8f0"/>
+    <svg x="886" y="20" width="150" height="116" viewBox="54 64 448 346" preserveAspectRatio="xMidYMid meet">
+      <g class="pax-crab">
+    <g stroke="#c2410c" stroke-width="11" stroke-linecap="round" fill="none">
+      <path d="M214,318 L182,356"/>
+      <path d="M246,338 L228,380"/>
+      <path d="M282,348 L276,388"/>
+      <path d="M386,318 L418,356"/>
+      <path d="M354,338 L372,380"/>
+      <path d="M318,348 L324,388"/>
+    </g>
+    <ellipse cx="300" cy="268" rx="110" ry="78" fill="#ea580c" stroke="#9a3412" stroke-width="3"/>
+    <ellipse cx="300" cy="292" rx="72" ry="46" fill="#fdba74" opacity="0.85"/><g class="pax-face pax-face-angry"><circle cx="236" cy="154" r="17" fill="#ffffff" stroke="#9a3412" stroke-width="3"/><circle cx="364" cy="154" r="17" fill="#ffffff" stroke="#9a3412" stroke-width="3"/><circle cx="240" cy="158" r="7.5" fill="#0f172a"/><circle cx="360" cy="158" r="7.5" fill="#0f172a"/><path d="M214,136 L252,150" fill="none" stroke="#9a3412" stroke-width="5.5" stroke-linecap="round"/><path d="M348,150 L386,136" fill="none" stroke="#9a3412" stroke-width="5.5" stroke-linecap="round"/><path d="M276,286 h48 v20 h-48 z" fill="#ffffff" stroke="#9a3412" stroke-width="3" stroke-linejoin="round"/><path d="M288,286 v20 M300,286 v20 M312,286 v20" stroke="#9a3412" stroke-width="2"/><g transform="translate(300,116)"><g class="pax-vein" stroke="#dc2626" stroke-width="5" stroke-linecap="round"><path d="M-9,-9 L9,9 M9,-9 L-9,9"/></g></g>
+      <g transform="translate(202,120)"><g class="pax-steam" fill="#e2e8f0" stroke="#94a3b8" stroke-width="2"><circle cx="0" cy="0" r="7"/><circle cx="9" cy="-7" r="5.5"/><circle cx="-8" cy="-6" r="5"/></g></g>
+      <g transform="translate(398,120)"><g class="pax-steam pax-steam-b" fill="#e2e8f0" stroke="#94a3b8" stroke-width="2"><circle cx="0" cy="0" r="7"/><circle cx="9" cy="-7" r="5.5"/><circle cx="-8" cy="-6" r="5"/></g></g></g>
+    <g stroke="#9a3412" stroke-width="6" stroke-linecap="round">
+      <path d="M252,206 L238,162"/>
+      <path d="M348,206 L362,162"/>
+    </g>
+    <path d="M246,192 q0,-54 54,-54 q54,0 54,54 z" fill="#0891b2" stroke="#0e7490" stroke-width="3"/>
+    <rect x="234" y="188" width="132" height="14" rx="7" fill="#0e7490"/>
+    <circle cx="300" cy="166" r="10" fill="#fdba74" stroke="#0e7490" stroke-width="2.5"/>
+    <rect x="295.5" y="161.5" width="9" height="8.5" rx="2" fill="#9a3412"/>
+    <path d="M206,258 L148,216" stroke="#ea580c" stroke-width="16" stroke-linecap="round"/>
+    <g transform="rotate(-8 118 253)">
+      <rect x="64" y="210" width="108" height="86" rx="10" fill="#d4a373" stroke="#b08968" stroke-width="3"/>
+      <rect x="107" y="210" width="22" height="86" fill="#b08968" opacity="0.85"/>
+      <circle cx="150" cy="240" r="17" fill="#ffffff" stroke="#0891b2" stroke-width="2" stroke-dasharray="3 2.6"/>
+      <ellipse cx="150" cy="240" rx="11.5" ry="4.4" fill="none" stroke="#0891b2" stroke-width="2" transform="rotate(-32 150 240)"/>
+      <circle cx="150" cy="240" r="2.4" fill="#0891b2"/>
+      <text x="80" y="282" font-size="13" font-family="'JetBrains Mono', ui-monospace, 'PingFang SC', 'Microsoft YaHei', monospace" font-weight="700" fill="#7c4a2a">POLY</text>
+    </g>
+    <circle cx="128" cy="194" r="22" fill="#ea580c" stroke="#9a3412" stroke-width="3"/>
+    <path d="M112,184 q14,-9 28,-3" fill="none" stroke="#9a3412" stroke-width="2.5" stroke-linecap="round"/>
+    <path d="M394,254 L452,208" stroke="#ea580c" stroke-width="16" stroke-linecap="round"/>
+    <circle cx="464" cy="192" r="24" fill="#ea580c" stroke="#9a3412" stroke-width="3"/>
+    <path d="M448,180 q16,-10 32,-4" fill="none" stroke="#9a3412" stroke-width="2.5" stroke-linecap="round"/></g>
+    </svg>
+    <text x="961" y="160" text-anchor="middle" font-size="13" font-weight="700" fill="#0f172a" font-family="'JetBrains Mono', ui-monospace, 'PingFang SC', 'Microsoft YaHei', monospace">愤怒</text>
+    <text x="961" y="175" text-anchor="middle" font-size="10.5" fill="#64748b" font-family="'JetBrains Mono', ui-monospace, 'PingFang SC', 'Microsoft YaHei', monospace">angry</text>
+  </g>
+  <g class="cell cell-coquettish">
+    <rect x="20" y="214" width="162" height="128" rx="12" fill="#ffffff" stroke="#e2e8f0"/>
+    <svg x="26" y="220" width="150" height="116" viewBox="54 64 448 346" preserveAspectRatio="xMidYMid meet">
+      <g class="pax-crab">
+    <g stroke="#c2410c" stroke-width="11" stroke-linecap="round" fill="none">
+      <path d="M214,318 L182,356"/>
+      <path d="M246,338 L228,380"/>
+      <path d="M282,348 L276,388"/>
+      <path d="M386,318 L418,356"/>
+      <path d="M354,338 L372,380"/>
+      <path d="M318,348 L324,388"/>
+    </g>
+    <ellipse cx="300" cy="268" rx="110" ry="78" fill="#ea580c" stroke="#9a3412" stroke-width="3"/>
+    <ellipse cx="300" cy="292" rx="72" ry="46" fill="#fdba74" opacity="0.85"/><g class="pax-face pax-face-coquettish"><ellipse cx="242" cy="300" rx="12" ry="7.5" fill="#fb7185" opacity="0.55"/><ellipse cx="358" cy="300" rx="12" ry="7.5" fill="#fb7185" opacity="0.55"/><path d="M220,156 Q236,140 252,156" fill="none" stroke="#9a3412" stroke-width="4.5" stroke-linecap="round"/><path d="M348,156 Q364,140 380,156" fill="none" stroke="#9a3412" stroke-width="4.5" stroke-linecap="round"/><path d="M219,149 l-7,-5 M381,149 l7,-5" fill="none" stroke="#9a3412" stroke-width="3" stroke-linecap="round"/><ellipse cx="300" cy="296" rx="8" ry="9" fill="#7c2d12" stroke="#9a3412" stroke-width="2.5"/><ellipse cx="300" cy="299" rx="4.5" ry="3" fill="#fb7185"/>
+      <g transform="translate(400,112)"><path class="pax-heart pax-heart-a" d="M0,4 C-3,-3 -11,0 -8,6 C-6,10 0,15 0,15 C0,15 6,10 8,6 C11,0 3,-3 0,4 Z" fill="#fb7185" stroke="#f43f5e" stroke-width="1.5"/></g>
+      <g transform="translate(424,146)"><path class="pax-heart pax-heart-b" d="M0,3 C-2,-2 -8,0 -6,4 C-4,7 0,11 0,11 C0,11 4,7 6,4 C8,0 2,-2 0,3 Z" fill="#fda4af"/></g></g>
+    <g stroke="#9a3412" stroke-width="6" stroke-linecap="round">
+      <path d="M252,206 L238,162"/>
+      <path d="M348,206 L362,162"/>
+    </g>
+    <path d="M246,192 q0,-54 54,-54 q54,0 54,54 z" fill="#0891b2" stroke="#0e7490" stroke-width="3"/>
+    <rect x="234" y="188" width="132" height="14" rx="7" fill="#0e7490"/>
+    <circle cx="300" cy="166" r="10" fill="#fdba74" stroke="#0e7490" stroke-width="2.5"/>
+    <rect x="295.5" y="161.5" width="9" height="8.5" rx="2" fill="#9a3412"/>
+    <path d="M206,258 L148,216" stroke="#ea580c" stroke-width="16" stroke-linecap="round"/>
+    <g transform="rotate(-8 118 253)">
+      <rect x="64" y="210" width="108" height="86" rx="10" fill="#d4a373" stroke="#b08968" stroke-width="3"/>
+      <rect x="107" y="210" width="22" height="86" fill="#b08968" opacity="0.85"/>
+      <circle cx="150" cy="240" r="17" fill="#ffffff" stroke="#0891b2" stroke-width="2" stroke-dasharray="3 2.6"/>
+      <ellipse cx="150" cy="240" rx="11.5" ry="4.4" fill="none" stroke="#0891b2" stroke-width="2" transform="rotate(-32 150 240)"/>
+      <circle cx="150" cy="240" r="2.4" fill="#0891b2"/>
+      <text x="80" y="282" font-size="13" font-family="'JetBrains Mono', ui-monospace, 'PingFang SC', 'Microsoft YaHei', monospace" font-weight="700" fill="#7c4a2a">POLY</text>
+    </g>
+    <circle cx="128" cy="194" r="22" fill="#ea580c" stroke="#9a3412" stroke-width="3"/>
+    <path d="M112,184 q14,-9 28,-3" fill="none" stroke="#9a3412" stroke-width="2.5" stroke-linecap="round"/>
+    <path d="M394,254 L452,208" stroke="#ea580c" stroke-width="16" stroke-linecap="round"/>
+    <circle cx="464" cy="192" r="24" fill="#ea580c" stroke="#9a3412" stroke-width="3"/>
+    <path d="M448,180 q16,-10 32,-4" fill="none" stroke="#9a3412" stroke-width="2.5" stroke-linecap="round"/></g>
+    </svg>
+    <text x="101" y="360" text-anchor="middle" font-size="13" font-weight="700" fill="#0f172a" font-family="'JetBrains Mono', ui-monospace, 'PingFang SC', 'Microsoft YaHei', monospace">撒娇</text>
+    <text x="101" y="375" text-anchor="middle" font-size="10.5" fill="#64748b" font-family="'JetBrains Mono', ui-monospace, 'PingFang SC', 'Microsoft YaHei', monospace">coy</text>
+  </g>
+  <g class="cell cell-cute">
+    <rect x="192" y="214" width="162" height="128" rx="12" fill="#ffffff" stroke="#e2e8f0"/>
+    <svg x="198" y="220" width="150" height="116" viewBox="54 64 448 346" preserveAspectRatio="xMidYMid meet">
+      <g class="pax-crab">
+    <g stroke="#c2410c" stroke-width="11" stroke-linecap="round" fill="none">
+      <path d="M214,318 L182,356"/>
+      <path d="M246,338 L228,380"/>
+      <path d="M282,348 L276,388"/>
+      <path d="M386,318 L418,356"/>
+      <path d="M354,338 L372,380"/>
+      <path d="M318,348 L324,388"/>
+    </g>
+    <ellipse cx="300" cy="268" rx="110" ry="78" fill="#ea580c" stroke="#9a3412" stroke-width="3"/>
+    <ellipse cx="300" cy="292" rx="72" ry="46" fill="#fdba74" opacity="0.85"/><g class="pax-face pax-face-cute"><ellipse cx="242" cy="300" rx="12" ry="7.5" fill="#fb7185" opacity="0.55"/><ellipse cx="358" cy="300" rx="12" ry="7.5" fill="#fb7185" opacity="0.55"/><path d="M276,283 Q300,318 324,283 Z" fill="#7c2d12" stroke="#9a3412" stroke-width="3" stroke-linejoin="round"/><ellipse cx="300" cy="303" rx="11" ry="6.5" fill="#fb7185"/>
+      <g transform="translate(236,154)"><g class="pax-heart-eye"><path d="M0,4 C-4,-5 -15,-1 -11,7 C-8,13 0,19 0,19 C0,19 8,13 11,7 C15,-1 4,-5 0,4 Z" fill="#fb7185" stroke="#9a3412" stroke-width="2.5"/></g></g>
+      <g transform="translate(364,154)"><g class="pax-heart-eye"><path d="M0,4 C-4,-5 -15,-1 -11,7 C-8,13 0,19 0,19 C0,19 8,13 11,7 C15,-1 4,-5 0,4 Z" fill="#fb7185" stroke="#9a3412" stroke-width="2.5"/></g></g>
+      <g transform="translate(198,120)"><path class="pax-sparkle" d="M0,-9 L2.4,-2.4 L9,0 L2.4,2.4 L0,9 L-2.4,2.4 L-9,0 L-2.4,-2.4 Z" fill="#fbbf24"/></g>
+      <g transform="translate(410,104)"><path class="pax-sparkle pax-sparkle-b" d="M0,-8 L2.1,-2.1 L8,0 L2.1,2.1 L0,8 L-2.1,2.1 L-8,0 L-2.1,-2.1 Z" fill="#f59e0b"/></g>
+      <g transform="translate(424,236)"><path class="pax-sparkle pax-sparkle-c" d="M0,-7 L1.9,-1.9 L7,0 L1.9,1.9 L0,7 L-1.9,1.9 L-7,0 L-1.9,-1.9 Z" fill="#fbbf24"/></g></g>
+    <g stroke="#9a3412" stroke-width="6" stroke-linecap="round">
+      <path d="M252,206 L238,162"/>
+      <path d="M348,206 L362,162"/>
+    </g>
+    <path d="M246,192 q0,-54 54,-54 q54,0 54,54 z" fill="#0891b2" stroke="#0e7490" stroke-width="3"/>
+    <rect x="234" y="188" width="132" height="14" rx="7" fill="#0e7490"/>
+    <circle cx="300" cy="166" r="10" fill="#fdba74" stroke="#0e7490" stroke-width="2.5"/>
+    <rect x="295.5" y="161.5" width="9" height="8.5" rx="2" fill="#9a3412"/>
+    <path d="M206,258 L148,216" stroke="#ea580c" stroke-width="16" stroke-linecap="round"/>
+    <g transform="rotate(-8 118 253)">
+      <rect x="64" y="210" width="108" height="86" rx="10" fill="#d4a373" stroke="#b08968" stroke-width="3"/>
+      <rect x="107" y="210" width="22" height="86" fill="#b08968" opacity="0.85"/>
+      <circle cx="150" cy="240" r="17" fill="#ffffff" stroke="#0891b2" stroke-width="2" stroke-dasharray="3 2.6"/>
+      <ellipse cx="150" cy="240" rx="11.5" ry="4.4" fill="none" stroke="#0891b2" stroke-width="2" transform="rotate(-32 150 240)"/>
+      <circle cx="150" cy="240" r="2.4" fill="#0891b2"/>
+      <text x="80" y="282" font-size="13" font-family="'JetBrains Mono', ui-monospace, 'PingFang SC', 'Microsoft YaHei', monospace" font-weight="700" fill="#7c4a2a">POLY</text>
+    </g>
+    <circle cx="128" cy="194" r="22" fill="#ea580c" stroke="#9a3412" stroke-width="3"/>
+    <path d="M112,184 q14,-9 28,-3" fill="none" stroke="#9a3412" stroke-width="2.5" stroke-linecap="round"/>
+    <path d="M394,254 L452,208" stroke="#ea580c" stroke-width="16" stroke-linecap="round"/>
+    <circle cx="464" cy="192" r="24" fill="#ea580c" stroke="#9a3412" stroke-width="3"/>
+    <path d="M448,180 q16,-10 32,-4" fill="none" stroke="#9a3412" stroke-width="2.5" stroke-linecap="round"/></g>
+    </svg>
+    <text x="273" y="360" text-anchor="middle" font-size="13" font-weight="700" fill="#0f172a" font-family="'JetBrains Mono', ui-monospace, 'PingFang SC', 'Microsoft YaHei', monospace">卖萌</text>
+    <text x="273" y="375" text-anchor="middle" font-size="10.5" fill="#64748b" font-family="'JetBrains Mono', ui-monospace, 'PingFang SC', 'Microsoft YaHei', monospace">cute</text>
+  </g>
+  <g class="cell cell-ingratiating">
+    <rect x="364" y="214" width="162" height="128" rx="12" fill="#ffffff" stroke="#e2e8f0"/>
+    <svg x="370" y="220" width="150" height="116" viewBox="54 64 448 346" preserveAspectRatio="xMidYMid meet">
+      <g class="pax-crab">
+    <g stroke="#c2410c" stroke-width="11" stroke-linecap="round" fill="none">
+      <path d="M214,318 L182,356"/>
+      <path d="M246,338 L228,380"/>
+      <path d="M282,348 L276,388"/>
+      <path d="M386,318 L418,356"/>
+      <path d="M354,338 L372,380"/>
+      <path d="M318,348 L324,388"/>
+    </g>
+    <ellipse cx="300" cy="268" rx="110" ry="78" fill="#ea580c" stroke="#9a3412" stroke-width="3"/>
+    <ellipse cx="300" cy="292" rx="72" ry="46" fill="#fdba74" opacity="0.85"/><g class="pax-face pax-face-ingratiating"><ellipse cx="242" cy="300" rx="12" ry="7.5" fill="#fb7185" opacity="0.55"/><ellipse cx="358" cy="300" rx="12" ry="7.5" fill="#fb7185" opacity="0.55"/>
+      <path d="M218,134 Q236,126 254,134" fill="none" stroke="#9a3412" stroke-width="3.5" stroke-linecap="round"/>
+      <path d="M346,134 Q364,126 382,134" fill="none" stroke="#9a3412" stroke-width="3.5" stroke-linecap="round"/>
+      <circle cx="236" cy="156" r="19" fill="#ffffff" stroke="#9a3412" stroke-width="3"/>
+      <circle cx="364" cy="156" r="19" fill="#ffffff" stroke="#9a3412" stroke-width="3"/>
+      <circle cx="239" cy="160" r="10" fill="#0f172a"/>
+      <circle cx="361" cy="160" r="10" fill="#0f172a"/>
+      <circle cx="243" cy="156" r="3.4" fill="#ffffff"/>
+      <circle cx="365" cy="156" r="3.4" fill="#ffffff"/><path d="M282,294 Q300,306 318,294" fill="none" stroke="#9a3412" stroke-width="4" stroke-linecap="round"/>
+      <g transform="translate(198,120)"><path class="pax-sparkle" d="M0,-9 L2.4,-2.4 L9,0 L2.4,2.4 L0,9 L-2.4,2.4 L-9,0 L-2.4,-2.4 Z" fill="#fbbf24"/></g>
+      <g transform="translate(410,104)"><path class="pax-sparkle pax-sparkle-b" d="M0,-8 L2.1,-2.1 L8,0 L2.1,2.1 L0,8 L-2.1,2.1 L-8,0 L-2.1,-2.1 Z" fill="#f59e0b"/></g>
+      <g transform="translate(424,236)"><path class="pax-sparkle pax-sparkle-c" d="M0,-7 L1.9,-1.9 L7,0 L1.9,1.9 L0,7 L-1.9,1.9 L-7,0 L-1.9,-1.9 Z" fill="#fbbf24"/></g></g>
+    <g stroke="#9a3412" stroke-width="6" stroke-linecap="round">
+      <path d="M252,206 L238,162"/>
+      <path d="M348,206 L362,162"/>
+    </g>
+    <path d="M246,192 q0,-54 54,-54 q54,0 54,54 z" fill="#0891b2" stroke="#0e7490" stroke-width="3"/>
+    <rect x="234" y="188" width="132" height="14" rx="7" fill="#0e7490"/>
+    <circle cx="300" cy="166" r="10" fill="#fdba74" stroke="#0e7490" stroke-width="2.5"/>
+    <rect x="295.5" y="161.5" width="9" height="8.5" rx="2" fill="#9a3412"/>
+    <path d="M206,258 L148,216" stroke="#ea580c" stroke-width="16" stroke-linecap="round"/>
+    <g transform="rotate(-8 118 253)">
+      <rect x="64" y="210" width="108" height="86" rx="10" fill="#d4a373" stroke="#b08968" stroke-width="3"/>
+      <rect x="107" y="210" width="22" height="86" fill="#b08968" opacity="0.85"/>
+      <circle cx="150" cy="240" r="17" fill="#ffffff" stroke="#0891b2" stroke-width="2" stroke-dasharray="3 2.6"/>
+      <ellipse cx="150" cy="240" rx="11.5" ry="4.4" fill="none" stroke="#0891b2" stroke-width="2" transform="rotate(-32 150 240)"/>
+      <circle cx="150" cy="240" r="2.4" fill="#0891b2"/>
+      <text x="80" y="282" font-size="13" font-family="'JetBrains Mono', ui-monospace, 'PingFang SC', 'Microsoft YaHei', monospace" font-weight="700" fill="#7c4a2a">POLY</text>
+    </g>
+    <circle cx="128" cy="194" r="22" fill="#ea580c" stroke="#9a3412" stroke-width="3"/>
+    <path d="M112,184 q14,-9 28,-3" fill="none" stroke="#9a3412" stroke-width="2.5" stroke-linecap="round"/>
+    <path d="M394,254 L452,208" stroke="#ea580c" stroke-width="16" stroke-linecap="round"/>
+    <circle cx="464" cy="192" r="24" fill="#ea580c" stroke="#9a3412" stroke-width="3"/>
+    <path d="M448,180 q16,-10 32,-4" fill="none" stroke="#9a3412" stroke-width="2.5" stroke-linecap="round"/></g>
+    </svg>
+    <text x="445" y="360" text-anchor="middle" font-size="13" font-weight="700" fill="#0f172a" font-family="'JetBrains Mono', ui-monospace, 'PingFang SC', 'Microsoft YaHei', monospace">讨好</text>
+    <text x="445" y="375" text-anchor="middle" font-size="10.5" fill="#64748b" font-family="'JetBrains Mono', ui-monospace, 'PingFang SC', 'Microsoft YaHei', monospace">ingratiating</text>
+  </g>
+  <g class="cell cell-knock">
+    <rect x="536" y="214" width="162" height="128" rx="12" fill="#ffffff" stroke="#e2e8f0"/>
+    <svg x="542" y="220" width="150" height="116" viewBox="54 64 448 346" preserveAspectRatio="xMidYMid meet">
+      <g class="pax-crab">
+    <g stroke="#c2410c" stroke-width="11" stroke-linecap="round" fill="none">
+      <path d="M214,318 L182,356"/>
+      <path d="M246,338 L228,380"/>
+      <path d="M282,348 L276,388"/>
+      <path d="M386,318 L418,356"/>
+      <path d="M354,338 L372,380"/>
+      <path d="M318,348 L324,388"/>
+    </g>
+    <ellipse cx="300" cy="268" rx="110" ry="78" fill="#ea580c" stroke="#9a3412" stroke-width="3"/>
+    <ellipse cx="300" cy="292" rx="72" ry="46" fill="#fdba74" opacity="0.85"/><g class="pax-face pax-face-knock"><circle cx="236" cy="154" r="17" fill="#ffffff" stroke="#9a3412" stroke-width="3"/><circle cx="364" cy="154" r="17" fill="#ffffff" stroke="#9a3412" stroke-width="3"/><circle cx="243" cy="157" r="7.5" fill="#0f172a"/><circle cx="367" cy="157" r="7.5" fill="#0f172a"/><path d="M218,138 L252,147" fill="none" stroke="#9a3412" stroke-width="4.5" stroke-linecap="round"/><path d="M348,147 L382,138" fill="none" stroke="#9a3412" stroke-width="4.5" stroke-linecap="round"/><path d="M279,287 Q300,317 321,287 Z" fill="#7c2d12" stroke="#9a3412" stroke-width="3" stroke-linejoin="round"/><ellipse cx="300" cy="305" rx="9" ry="5" fill="#fb7185"/><g transform="translate(464,192)"><g class="pax-impact" stroke="#f59e0b" stroke-width="5" stroke-linecap="round"><path d="M18,-18 L24,-24"/><path d="M26,0 L34,0"/><path d="M18,18 L24,24"/></g></g></g>
+    <g stroke="#9a3412" stroke-width="6" stroke-linecap="round">
+      <path d="M252,206 L238,162"/>
+      <path d="M348,206 L362,162"/>
+    </g>
+    <path d="M246,192 q0,-54 54,-54 q54,0 54,54 z" fill="#0891b2" stroke="#0e7490" stroke-width="3"/>
+    <rect x="234" y="188" width="132" height="14" rx="7" fill="#0e7490"/>
+    <circle cx="300" cy="166" r="10" fill="#fdba74" stroke="#0e7490" stroke-width="2.5"/>
+    <rect x="295.5" y="161.5" width="9" height="8.5" rx="2" fill="#9a3412"/>
+    <path d="M206,258 L148,216" stroke="#ea580c" stroke-width="16" stroke-linecap="round"/>
+    <g transform="rotate(-8 118 253)">
+      <rect x="64" y="210" width="108" height="86" rx="10" fill="#d4a373" stroke="#b08968" stroke-width="3"/>
+      <rect x="107" y="210" width="22" height="86" fill="#b08968" opacity="0.85"/>
+      <circle cx="150" cy="240" r="17" fill="#ffffff" stroke="#0891b2" stroke-width="2" stroke-dasharray="3 2.6"/>
+      <ellipse cx="150" cy="240" rx="11.5" ry="4.4" fill="none" stroke="#0891b2" stroke-width="2" transform="rotate(-32 150 240)"/>
+      <circle cx="150" cy="240" r="2.4" fill="#0891b2"/>
+      <text x="80" y="282" font-size="13" font-family="'JetBrains Mono', ui-monospace, 'PingFang SC', 'Microsoft YaHei', monospace" font-weight="700" fill="#7c4a2a">POLY</text>
+    </g>
+    <circle cx="128" cy="194" r="22" fill="#ea580c" stroke="#9a3412" stroke-width="3"/>
+    <path d="M112,184 q14,-9 28,-3" fill="none" stroke="#9a3412" stroke-width="2.5" stroke-linecap="round"/>
+    <path d="M394,254 L452,208" stroke="#ea580c" stroke-width="16" stroke-linecap="round"/>
+    <circle cx="464" cy="192" r="24" fill="#ea580c" stroke="#9a3412" stroke-width="3"/>
+    <path d="M448,180 q16,-10 32,-4" fill="none" stroke="#9a3412" stroke-width="2.5" stroke-linecap="round"/></g>
+    </svg>
+    <text x="617" y="360" text-anchor="middle" font-size="13" font-weight="700" fill="#0f172a" font-family="'JetBrains Mono', ui-monospace, 'PingFang SC', 'Microsoft YaHei', monospace">敲打</text>
+    <text x="617" y="375" text-anchor="middle" font-size="10.5" fill="#64748b" font-family="'JetBrains Mono', ui-monospace, 'PingFang SC', 'Microsoft YaHei', monospace">knocking</text>
+  </g>
+  <g class="cell cell-facepalm">
+    <rect x="708" y="214" width="162" height="128" rx="12" fill="#ffffff" stroke="#e2e8f0"/>
+    <svg x="714" y="220" width="150" height="116" viewBox="54 64 448 346" preserveAspectRatio="xMidYMid meet">
+      <g class="pax-crab">
+    <g stroke="#c2410c" stroke-width="11" stroke-linecap="round" fill="none">
+      <path d="M214,318 L182,356"/>
+      <path d="M246,338 L228,380"/>
+      <path d="M282,348 L276,388"/>
+      <path d="M386,318 L418,356"/>
+      <path d="M354,338 L372,380"/>
+      <path d="M318,348 L324,388"/>
+    </g>
+    <ellipse cx="300" cy="268" rx="110" ry="78" fill="#ea580c" stroke="#9a3412" stroke-width="3"/>
+    <ellipse cx="300" cy="292" rx="72" ry="46" fill="#fdba74" opacity="0.85"/><g class="pax-face pax-face-facepalm"><ellipse cx="242" cy="300" rx="12" ry="7.5" fill="#fb7185" opacity="0.55"/><ellipse cx="358" cy="300" rx="12" ry="7.5" fill="#fb7185" opacity="0.55"/><path d="M276,294 q8,8 16,0 q8,-8 16,0 q8,8 16,0" fill="none" stroke="#9a3412" stroke-width="4" stroke-linecap="round"/><g class="pax-sweat"><path d="M398,96 C404,105 404,114 398,119 C392,114 392,105 398,96 Z" fill="#bae6fd" stroke="#0891b2" stroke-width="2"/></g>
+      <circle cx="236" cy="154" r="26" fill="#ea580c" stroke="#9a3412" stroke-width="3"/>
+      <circle cx="364" cy="154" r="26" fill="#ea580c" stroke="#9a3412" stroke-width="3"/>
+      <path d="M218,146 q18,-11 36,-2" fill="none" stroke="#9a3412" stroke-width="2.5" stroke-linecap="round"/>
+      <path d="M346,146 q18,-11 36,-2" fill="none" stroke="#9a3412" stroke-width="2.5" stroke-linecap="round"/></g>
+    <g stroke="#9a3412" stroke-width="6" stroke-linecap="round">
+      <path d="M252,206 L238,162"/>
+      <path d="M348,206 L362,162"/>
+    </g>
+    <path d="M246,192 q0,-54 54,-54 q54,0 54,54 z" fill="#0891b2" stroke="#0e7490" stroke-width="3"/>
+    <rect x="234" y="188" width="132" height="14" rx="7" fill="#0e7490"/>
+    <circle cx="300" cy="166" r="10" fill="#fdba74" stroke="#0e7490" stroke-width="2.5"/>
+    <rect x="295.5" y="161.5" width="9" height="8.5" rx="2" fill="#9a3412"/>
+    <path d="M206,258 L148,216" stroke="#ea580c" stroke-width="16" stroke-linecap="round"/>
+    <g transform="rotate(-8 118 253)">
+      <rect x="64" y="210" width="108" height="86" rx="10" fill="#d4a373" stroke="#b08968" stroke-width="3"/>
+      <rect x="107" y="210" width="22" height="86" fill="#b08968" opacity="0.85"/>
+      <circle cx="150" cy="240" r="17" fill="#ffffff" stroke="#0891b2" stroke-width="2" stroke-dasharray="3 2.6"/>
+      <ellipse cx="150" cy="240" rx="11.5" ry="4.4" fill="none" stroke="#0891b2" stroke-width="2" transform="rotate(-32 150 240)"/>
+      <circle cx="150" cy="240" r="2.4" fill="#0891b2"/>
+      <text x="80" y="282" font-size="13" font-family="'JetBrains Mono', ui-monospace, 'PingFang SC', 'Microsoft YaHei', monospace" font-weight="700" fill="#7c4a2a">POLY</text>
+    </g>
+    <circle cx="128" cy="194" r="22" fill="#ea580c" stroke="#9a3412" stroke-width="3"/>
+    <path d="M112,184 q14,-9 28,-3" fill="none" stroke="#9a3412" stroke-width="2.5" stroke-linecap="round"/>
+    <path d="M394,254 L452,208" stroke="#ea580c" stroke-width="16" stroke-linecap="round"/>
+    <circle cx="464" cy="192" r="24" fill="#ea580c" stroke="#9a3412" stroke-width="3"/>
+    <path d="M448,180 q16,-10 32,-4" fill="none" stroke="#9a3412" stroke-width="2.5" stroke-linecap="round"/></g>
+    </svg>
+    <text x="789" y="360" text-anchor="middle" font-size="13" font-weight="700" fill="#0f172a" font-family="'JetBrains Mono', ui-monospace, 'PingFang SC', 'Microsoft YaHei', monospace">捂脸</text>
+    <text x="789" y="375" text-anchor="middle" font-size="10.5" fill="#64748b" font-family="'JetBrains Mono', ui-monospace, 'PingFang SC', 'Microsoft YaHei', monospace">covering face</text>
+  </g>
+  <g class="cell cell-tongue">
+    <rect x="880" y="214" width="162" height="128" rx="12" fill="#ffffff" stroke="#e2e8f0"/>
+    <svg x="886" y="220" width="150" height="116" viewBox="54 64 448 346" preserveAspectRatio="xMidYMid meet">
+      <g class="pax-crab">
+    <g stroke="#c2410c" stroke-width="11" stroke-linecap="round" fill="none">
+      <path d="M214,318 L182,356"/>
+      <path d="M246,338 L228,380"/>
+      <path d="M282,348 L276,388"/>
+      <path d="M386,318 L418,356"/>
+      <path d="M354,338 L372,380"/>
+      <path d="M318,348 L324,388"/>
+    </g>
+    <ellipse cx="300" cy="268" rx="110" ry="78" fill="#ea580c" stroke="#9a3412" stroke-width="3"/>
+    <ellipse cx="300" cy="292" rx="72" ry="46" fill="#fdba74" opacity="0.85"/><g class="pax-face pax-face-tongue"><ellipse cx="242" cy="300" rx="12" ry="7.5" fill="#fb7185" opacity="0.55"/><ellipse cx="358" cy="300" rx="12" ry="7.5" fill="#fb7185" opacity="0.55"/><circle cx="236" cy="154" r="17" fill="#ffffff" stroke="#9a3412" stroke-width="3"/><circle cx="240" cy="158" r="7.5" fill="#0f172a"/><path d="M348,154 Q364,142 380,154" fill="none" stroke="#9a3412" stroke-width="4.5" stroke-linecap="round"/><path d="M278,288 Q300,308 322,288 Z" fill="#7c2d12" stroke="#9a3412" stroke-width="3" stroke-linejoin="round"/><g transform="translate(300,300)"><path class="pax-tongue" d="M-8,-4 Q0,16 8,-4 Z" fill="#fb7185" stroke="#9a3412" stroke-width="2.5"/></g></g>
+    <g stroke="#9a3412" stroke-width="6" stroke-linecap="round">
+      <path d="M252,206 L238,162"/>
+      <path d="M348,206 L362,162"/>
+    </g>
+    <path d="M246,192 q0,-54 54,-54 q54,0 54,54 z" fill="#0891b2" stroke="#0e7490" stroke-width="3"/>
+    <rect x="234" y="188" width="132" height="14" rx="7" fill="#0e7490"/>
+    <circle cx="300" cy="166" r="10" fill="#fdba74" stroke="#0e7490" stroke-width="2.5"/>
+    <rect x="295.5" y="161.5" width="9" height="8.5" rx="2" fill="#9a3412"/>
+    <path d="M206,258 L148,216" stroke="#ea580c" stroke-width="16" stroke-linecap="round"/>
+    <g transform="rotate(-8 118 253)">
+      <rect x="64" y="210" width="108" height="86" rx="10" fill="#d4a373" stroke="#b08968" stroke-width="3"/>
+      <rect x="107" y="210" width="22" height="86" fill="#b08968" opacity="0.85"/>
+      <circle cx="150" cy="240" r="17" fill="#ffffff" stroke="#0891b2" stroke-width="2" stroke-dasharray="3 2.6"/>
+      <ellipse cx="150" cy="240" rx="11.5" ry="4.4" fill="none" stroke="#0891b2" stroke-width="2" transform="rotate(-32 150 240)"/>
+      <circle cx="150" cy="240" r="2.4" fill="#0891b2"/>
+      <text x="80" y="282" font-size="13" font-family="'JetBrains Mono', ui-monospace, 'PingFang SC', 'Microsoft YaHei', monospace" font-weight="700" fill="#7c4a2a">POLY</text>
+    </g>
+    <circle cx="128" cy="194" r="22" fill="#ea580c" stroke="#9a3412" stroke-width="3"/>
+    <path d="M112,184 q14,-9 28,-3" fill="none" stroke="#9a3412" stroke-width="2.5" stroke-linecap="round"/>
+    <path d="M394,254 L452,208" stroke="#ea580c" stroke-width="16" stroke-linecap="round"/>
+    <circle cx="464" cy="192" r="24" fill="#ea580c" stroke="#9a3412" stroke-width="3"/>
+    <path d="M448,180 q16,-10 32,-4" fill="none" stroke="#9a3412" stroke-width="2.5" stroke-linecap="round"/></g>
+    </svg>
+    <text x="961" y="360" text-anchor="middle" font-size="13" font-weight="700" fill="#0f172a" font-family="'JetBrains Mono', ui-monospace, 'PingFang SC', 'Microsoft YaHei', monospace">吐舌头</text>
+    <text x="961" y="375" text-anchor="middle" font-size="10.5" fill="#64748b" font-family="'JetBrains Mono', ui-monospace, 'PingFang SC', 'Microsoft YaHei', monospace">sticking tongue</text>
   </g>
 </svg>

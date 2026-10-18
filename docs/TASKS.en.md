@@ -249,7 +249,7 @@
 - Role: ui-adapters
 - Deps: T-M1-05, T-M1-11
 - Estimate: 1.5d
-- Deliverable: (1) CLI banner and build-state expression mapping (success = happy / failure = crying / exception = shocked / needs-confirmation = puzzled / idle = blinking; text-and-color fallback on terminals without graphics); (2) icon derivation pipeline: `pax-mark.svg` → PNG / ICNS / ICO generated at build time, never committed; (3) poly-gui application and window icons.
+- Deliverable: (1) CLI banner and build-state expression mapping (success = joy / failure = crying / exception = shocked / needs-confirmation = coy / idle = smile; text-and-color fallback on terminals without graphics); (2) icon derivation pipeline: `pax-mark.svg` → PNG / ICNS / ICO generated at build time, never committed; (3) poly-gui application and window icons.
 - Acceptance: MSI / DMG / deb artifact icons are Pax-derived with size assertions passing; the CLI prints the matching expression on success and failure paths (text in fallback mode); every brand asset traces to the single source `tools/build-pax.mjs`.
 
 ### T-M1-15 · ✅ `poly clean` and retention policy

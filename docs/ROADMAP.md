@@ -39,7 +39,7 @@
 4. **预算式构建**——每个目标有产物预算（体积、启动时延），超预算告警；
 5. **诚实分级**——不支持/实验性/受限，如实标注，不夸大能力边界；
 6. **插件优先**——内建目标只是「官方插件」，第三方插件与内建走同一接口；
-7. **统一形象**——Pax 是项目的唯一图标与吉祥物：凡出现「项目图标」之处（文档 favicon、生成图示的右下角角标、未来的 CLI 启动图 / GUI 应用图标 / 安装包图标）一律使用 Pax（`docs/assets/pax.svg` / `pax-mark.svg`），不引入通用占位图标；五种表情映射构建状态（成功 = 笑、失败 = 哭、异常 = 惊恐、待确认 = 疑惑、空闲 = 眨眼）。生成图片资产时默认在右下角盖 Pax 微缩角标（`--no-brand` 关闭）；未来产品侧同理——PolyPack 为商店预览图等生成图片时，在右下角标注**对应目标平台**的微缩图标（可开关，默认开启）。（落地任务：T-M1-14）
+7. **统一形象**——Pax 是项目的唯一图标与吉祥物：凡出现「项目图标」之处（文档 favicon、生成图示的右下角角标、未来的 CLI 启动图 / GUI 应用图标 / 安装包图标）一律使用 Pax（`docs/assets/pax.svg` / `pax-mark.svg`），不引入通用占位图标；十二种表情映射构建状态（成功 = 欢乐、失败 = 哭、异常 = 惊恐、待确认 = 撒娇、空闲 = 笑）。生成图片资产时默认在右下角盖 Pax 微缩角标（`--no-brand` 关闭）；未来产品侧同理——PolyPack 为商店预览图等生成图片时，在右下角标注**对应目标平台**的微缩图标（可开关，默认开启）。（落地任务：T-M1-14）
 
 ## 3. 支持矩阵与逐平台工程明细
 
@@ -549,7 +549,7 @@ CI 宿主 × 目标层矩阵：
 2. 同步 `README.md` 与 `README.en.md`（双语镜像）；
 3. 同步 `docs/ROADMAP.md` 与 `docs/ROADMAP.en.md`；任务计划同规矩（`docs/TASKS.md` / `docs/TASKS.en.md`），任务增删与估算调整须双文件同提交更新；
 4. 平台矩阵增删 = 同时更新：README 分级表（×2 语言）+ 本文件逐平台明细（×2 语言）+ 里程碑验收 + TargetSpec；
-5. Pax 由 `tools/build-pax.mjs` 单一源生成（五种表情·各自带专属动效 + 全表情循环动画版 + 项目图标 `pax-mark.svg` + 表情联系表 `pax-moods.svg` + 本地游乐场 `docs/pax.html`）；美术或表达变化时运行该脚本重新生成，并同步双 README（CI 以 `node tools/build-pax.mjs --check` 校验漂移）；
+5. Pax 由 `tools/build-pax.mjs` 单一源生成（十二种彩色表情·各自带专属动效 + 全表情循环动画版 + 项目图标 `pax-mark.svg` + 表情联系表 `pax-moods.svg` + 本地游乐场 `docs/pax.html`）；美术或表达变化时运行该脚本重新生成，并同步双 README（CI 以 `node tools/build-pax.mjs --check` 校验漂移）；
 6. 实验目标（`watchos` / `garmin`）的能力 / 缺口 / 替代方案同步 `docs/EXPERIMENTAL-TARGETS.md` 与 `docs/EXPERIMENTAL-TARGETS.en.md`（每个缺口保留替代方案或明示「无替代」；`node tools/check-experimental.mjs` 校验 TargetSpec / 文档表 / CI 三处一致）。
 
 ## 12. 术语表
