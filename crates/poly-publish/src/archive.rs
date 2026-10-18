@@ -139,6 +139,67 @@ impl Receipt {
     }
 }
 
+/// 提审去重状态 schema 版本（T-M8-10 落盘；T-M8-11 在此之上扩展提交号 / 时间戳）。
+pub const SUBMIT_SCHEMA_VERSION: u32 = 1;
+
+/// 提审去重状态。
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum SubmitStatus {
+    /// 已记录提交意图，尚无受理结果（重跑同键重发，平台 / 网关按幂等键去重）。
+    Pending,
+    /// 平台已受理（崩溃窗口后重跑不再提审，直接续轮询）。
+    Accepted,
+    /// 结果未知（超时 / 响应丢失）：重跑同键重发，平台原生去重码兜底。
+    Unknown,
+}
+
+/// 提审幂等状态（`<root>/<channel>/<回执键>.submit.json`）。
+///
+/// 落盘时机：**发送提审前**先写 `Pending`（意图），受理后改 `Accepted`。进程在
+/// 「平台已受理、回执未落盘」之间崩溃时，重跑看到 `Accepted` 即跳过提审——这是
+/// 「重复提审不产生二次提交」的本地锚点；平台侧另以幂等键 + 原生去重码兜底。
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SubmitJournal {
+    /// schema 版本（= [`SUBMIT_SCHEMA_VERSION`]）。
+    pub schema_version: u32,
+    /// 幂等键（提审请求头 `Idempotency-Key`；同键重发由平台 / 网关去重）。
+    pub key: String,
+    /// 去重状态。
+    pub status: SubmitStatus,
+    /// 到达提审阶段的执行次数（首跑 1；重跑也如实计数）。
+    pub attempts: u64,
+    /// 首次执行时刻（unix 秒）。
+    pub first_unix: u64,
+    /// 最近一次执行时刻（unix 秒）。
+    pub last_unix: u64,
+}
+
+impl SubmitJournal {
+    /// 新建（`Pending`；`attempts` 由驱动在落盘前自增）。
+    pub fn new(key: &str) -> Self {
+        let now = unix_now();
+        Self {
+            schema_version: SUBMIT_SCHEMA_VERSION,
+            key: key.to_string(),
+            status: SubmitStatus::Pending,
+            attempts: 0,
+            first_unix: now,
+            last_unix: now,
+        }
+    }
+}
+
+/// 提审幂等键：渠道 + appid + 版本 + 内容摘要的 blake3 hex（跨进程稳定）。
+pub fn submission_key(channel: &str, appid: &str, version: &str, digest: &str) -> String {
+    let mut hasher = blake3::Hasher::new();
+    for part in [channel, appid, version, digest] {
+        hasher.update(part.as_bytes());
+        hasher.update(b"\0");
+    }
+    hasher.finalize().to_hex().to_string()
+}
+
 /// 回执归档目录（`<root>/.polypack/publish`）。
 pub struct Archive {
     /// 归档根。
@@ -166,10 +227,8 @@ impl Archive {
     /// 读回执：不存在 → `Ok(None)`；存在但形态非法 / 版本陌生 → 明确报错（不静默重建）。
     pub fn load(&self, channel: &str, key: &str) -> Result<Option<Receipt>, PublishError> {
         let path = self.receipt_path(channel, key);
-        let bytes = match std::fs::read(&path) {
-            Ok(bytes) => bytes,
-            Err(err) if err.kind() == std::io::ErrorKind::NotFound => return Ok(None),
-            Err(source) => return Err(PublishError::Archive { path, source }),
+        let Some(bytes) = read_optional(&path)? else {
+            return Ok(None);
         };
         let receipt: Receipt =
             serde_json::from_slice(&bytes).map_err(|err| PublishError::Archive {
@@ -198,23 +257,102 @@ impl Archive {
     pub fn save(&self, receipt: &Receipt) -> Result<PathBuf, PublishError> {
         let key = receipt_key(&receipt.appid, &receipt.version, &receipt.digest);
         let path = self.receipt_path(&receipt.channel, &key);
-        let dir = path.parent().expect("回执路径必有父目录");
-        std::fs::create_dir_all(dir).map_err(|source| PublishError::Archive {
-            path: dir.to_path_buf(),
-            source,
-        })?;
-        let json = serde_json::to_vec_pretty(receipt).expect("回执序列化不会失败");
-        let tmp = path.with_extension("json.tmp");
-        std::fs::write(&tmp, &json).map_err(|source| PublishError::Archive {
-            path: tmp.clone(),
-            source,
-        })?;
-        std::fs::rename(&tmp, &path).map_err(|source| PublishError::Archive {
-            path: path.clone(),
-            source,
-        })?;
+        write_atomic(
+            &path,
+            &serde_json::to_vec_pretty(receipt).expect("回执序列化不会失败"),
+        )?;
         Ok(path)
     }
+
+    /// 提审去重状态路径（`<root>/<channel>/<key>.submit.json`；T-M8-11 回执归档的接口）。
+    pub fn submit_path(&self, channel: &str, key: &str) -> PathBuf {
+        self.root.join(channel).join(format!("{key}.submit.json"))
+    }
+
+    /// 读提审去重状态：不存在 → `Ok(None)`；形态 / 版本非法 → 明确报错（不静默重建）。
+    pub fn load_submit(
+        &self,
+        channel: &str,
+        key: &str,
+    ) -> Result<Option<SubmitJournal>, PublishError> {
+        let path = self.submit_path(channel, key);
+        let Some(bytes) = read_optional(&path)? else {
+            return Ok(None);
+        };
+        let journal: SubmitJournal =
+            serde_json::from_slice(&bytes).map_err(|err| PublishError::Archive {
+                path: path.clone(),
+                source: std::io::Error::new(
+                    std::io::ErrorKind::InvalidData,
+                    format!("提审去重状态 JSON 非法：{err}"),
+                ),
+            })?;
+        if journal.schema_version != SUBMIT_SCHEMA_VERSION {
+            return Err(PublishError::Archive {
+                path,
+                source: std::io::Error::new(
+                    std::io::ErrorKind::InvalidData,
+                    format!(
+                        "提审去重状态 schema 版本 {} 与本期 {} 不符（格式固定；迁移后重跑）",
+                        journal.schema_version, SUBMIT_SCHEMA_VERSION
+                    ),
+                ),
+            });
+        }
+        Ok(Some(journal))
+    }
+
+    /// 原子落盘提审去重状态（返回路径）。
+    pub fn save_submit(
+        &self,
+        channel: &str,
+        key: &str,
+        journal: &SubmitJournal,
+    ) -> Result<PathBuf, PublishError> {
+        let path = self.submit_path(channel, key);
+        write_atomic(
+            &path,
+            &serde_json::to_vec_pretty(journal).expect("去重状态序列化不会失败"),
+        )?;
+        Ok(path)
+    }
+}
+
+/// 读可选文件：不存在 → `Ok(None)`；其余 IO 失败 → [`PublishError::Archive`]。
+fn read_optional(path: &Path) -> Result<Option<Vec<u8>>, PublishError> {
+    match std::fs::read(path) {
+        Ok(bytes) => Ok(Some(bytes)),
+        Err(err) if err.kind() == std::io::ErrorKind::NotFound => Ok(None),
+        Err(source) => Err(PublishError::Archive {
+            path: path.to_path_buf(),
+            source,
+        }),
+    }
+}
+
+/// 原子落盘（同目录临时文件 + rename）。
+fn write_atomic(path: &Path, bytes: &[u8]) -> Result<(), PublishError> {
+    let dir = path.parent().expect("归档路径必有父目录");
+    std::fs::create_dir_all(dir).map_err(|source| PublishError::Archive {
+        path: dir.to_path_buf(),
+        source,
+    })?;
+    let tmp = path.with_extension(format!(
+        "{}tmp",
+        path.extension()
+            .and_then(|ext| ext.to_str())
+            .map(|ext| format!("{ext}."))
+            .unwrap_or_default()
+    ));
+    std::fs::write(&tmp, bytes).map_err(|source| PublishError::Archive {
+        path: tmp.clone(),
+        source,
+    })?;
+    std::fs::rename(&tmp, path).map_err(|source| PublishError::Archive {
+        path: path.to_path_buf(),
+        source,
+    })?;
+    Ok(())
 }
 
 /// 回执键：`{appid}-{version}-{digest 前 16 hex}`（文件名安全子集，其余字符 `-`）。

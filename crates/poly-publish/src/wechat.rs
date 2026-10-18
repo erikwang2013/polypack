@@ -16,7 +16,8 @@
 //!      body = gzip(容器)；响应 `errCode == 0` 即受理。
 //! 2. **提审** `POST https://api.weixin.qq.com/wxa/submit_audit?access_token=…`，
 //!    body `{"item_list":[…]}`——类目 1–5 项、必填且须已在账号后台配置（materials 原样给，
-//!    本客户端不猜类目）；`errcode == 0` 即受理。85009 = 已有审核中版本。
+//!    本客户端不猜类目）；`errcode == 0` 即受理。85009 = 已有审核中版本（幂等重发的
+//!    正常形态：按已受理续走，不重复提交）。请求带 `Idempotency-Key`（同键重发由网关去重）。
 //! 3. **轮询** `GET https://api.weixin.qq.com/wxa/get_latest_auditstatus?access_token=…`：
 //!    status 0 通过 / 1 拒绝 / 2 审核中 / 3 已撤回 / 4 审核延后。取「最新一次提审单」，
 //!    无需 auditid——断点续走时没有历史状态也能续。
@@ -235,12 +236,24 @@ impl Publisher for WechatPublisher {
             "{SUBMIT_URL}?access_token={}",
             transport::form_encode(&token)
         );
-        let response = transport::send(
-            self.transport.as_ref(),
-            &HttpRequest::post(url, "application/json", body),
-            &redactor,
-        )?;
+        let request = HttpRequest::post(url, "application/json", body).header(
+            transport::IDEMPOTENCY_HEADER,
+            crate::archive::submission_key(
+                Channel::Wechat.id(),
+                job.appid,
+                job.version,
+                job.package.digest(),
+            ),
+        );
+        let response = transport::send(self.transport.as_ref(), &request, &redactor)?;
         let json = transport::ok_json(&response, SUBMIT_URL, &redactor)?;
+        // 85009 = 该版本已有审核中的提审单：幂等重发（超时后重试 / 崩溃后重跑）的正常形态，
+        // 平台只受理了一次——按 Accepted 续走，不让用户把「已经提审了」当成失败。
+        if json.get("errcode").and_then(Value::as_i64) == Some(85009) {
+            return Ok(Submission {
+                raw: redactor.redact_value(&json),
+            });
+        }
         api_ok(&json, &redactor)?;
         Ok(Submission {
             raw: redactor.redact_value(&json),

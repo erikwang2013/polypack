@@ -24,6 +24,9 @@ use crate::secret::Redactor;
 const TIMEOUT: Duration = Duration::from_secs(120);
 /// 错误 reason 里保留的正文尾字符数（同 poly-sign::vault）。
 const BODY_TAIL: usize = 300;
+/// 幂等键请求头（T-M8-10）：提审重发带同一键；支持该头的网关按原响应去重，
+/// 不支持的平台会忽略它，仍由平台原生去重码（85009 / 11303 / …）兜底。
+pub const IDEMPOTENCY_HEADER: &str = "Idempotency-Key";
 
 /// 请求方法（本 crate 只用到两种）。
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -159,6 +162,7 @@ impl Transport for UreqTransport {
         };
         let mut response = result.map_err(|err| PublishError::Http {
             endpoint: endpoint_of(&request.url),
+            status: None,
             reason: format!("请求失败：{err}"),
         })?;
         let status = response.status().as_u16();
@@ -167,6 +171,7 @@ impl Transport for UreqTransport {
             .read_to_vec()
             .map_err(|err| PublishError::Http {
                 endpoint: endpoint_of(&request.url),
+                status: None,
                 reason: format!("读取响应正文失败：{err}"),
             })?;
         Ok(HttpResponse { status, body })
@@ -189,8 +194,13 @@ pub(crate) fn send(
 /// 把 [`PublishError::Http`] 的文本再过一道脱敏（其余变体原样透传）。
 pub(crate) fn redact_error(error: PublishError, redactor: &Redactor) -> PublishError {
     match error {
-        PublishError::Http { endpoint, reason } => PublishError::Http {
+        PublishError::Http {
+            endpoint,
+            status,
+            reason,
+        } => PublishError::Http {
             endpoint: redactor.redact(&endpoint),
+            status,
             reason: redactor.redact(&reason),
         },
         other => other,
@@ -206,6 +216,7 @@ pub(crate) fn ok_json(
     if !response.is_ok() {
         return Err(PublishError::Http {
             endpoint: endpoint.to_string(),
+            status: Some(response.status),
             reason: format!(
                 "HTTP {}：{}",
                 response.status,
@@ -215,6 +226,7 @@ pub(crate) fn ok_json(
     }
     serde_json::from_slice(&response.body).map_err(|err| PublishError::Http {
         endpoint: endpoint.to_string(),
+        status: Some(response.status),
         reason: format!(
             "响应非 JSON：{err}（正文尾部：{}）",
             redact_tail(redactor, &response.text())
@@ -258,6 +270,7 @@ fn system_roots() -> Result<Vec<Certificate<'static>>, PublishError> {
     if native.certs.is_empty() {
         return Err(PublishError::Http {
             endpoint: "(TLS)".to_string(),
+            status: None,
             reason: "系统信任库没有可用根证书（HTTPS 校验无从谈起）：装 ca-certificates \
                      或换有信任链的环境后重跑"
                 .to_string(),
