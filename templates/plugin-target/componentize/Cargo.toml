@@ -1,0 +1,11 @@
+[package]
+name = "polypack-plugin-componentize"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[dependencies]
+# 与 `wasm-tools component new` 同一实现（wit-component），无需全局安装 wasm-tools。
+wit-component = "=0.247.0"
+
+[workspace]

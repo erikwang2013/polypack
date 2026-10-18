@@ -1,0 +1,24 @@
+name: plugin-ci
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Rust (stable + wasm32 target)
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - name: Build plugin component
+        run: ./build.sh
+      - name: Contract test (target-spec/v1 describe/package)
+        run: cargo test -- --nocapture
+        env:
+          POLYPACK_PLUGIN_WASM: dist/plugin.wasm

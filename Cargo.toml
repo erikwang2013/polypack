@@ -13,6 +13,7 @@ repository = "https://github.com/erikwang2013/polypack"
 poly-bundle = { path = "crates/poly-bundle" }
 poly-cache = { path = "crates/poly-cache" }
 poly-core = { path = "crates/poly-core" }
+poly-plugin = { path = "crates/poly-plugin" }
 poly-publish = { path = "crates/poly-publish" }
 poly-sign = { path = "crates/poly-sign" }
 poly-targets = { path = "crates/poly-targets" }

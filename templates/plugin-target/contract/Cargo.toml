@@ -1,0 +1,15 @@
+[package]
+name = "contract"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[dependencies]
+blake3 = "1"
+# 与 PolyPack 宿主同版本同特性：契约测试按宿主的加载 / 调用路径验证插件。
+wasmtime = { version = "=49.0.3", default-features = false, features = [
+    "component-model",
+    "cranelift",
+    "runtime",
+    "std",
+] }

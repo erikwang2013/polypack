@@ -1,0 +1,24 @@
+[package]
+name = "__polypack_plugin_crate__"
+version = "0.1.0"
+edition = "2024"
+description = "PolyPack 插件目标：__polypack_plugin_name__"
+publish = false
+
+[lib]
+# 固定 lib 名：build.sh 无需知道包名即可定位 plugin.wasm。
+name = "plugin"
+crate-type = ["cdylib"]
+
+[dependencies]
+# 与宿主同一份 target-spec/v1 WIT；钉死版本（升级需同步宿主）。
+wit-bindgen = { version = "=0.57.1", default-features = false, features = ["macros", "realloc"] }
+dlmalloc = { version = "=0.2.14", features = ["global"] }
+
+[profile.release]
+# 制品不带调试符号 / 环境变量。
+strip = true
+panic = "abort"
+opt-level = "s"
+
+[workspace]

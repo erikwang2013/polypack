@@ -16,6 +16,8 @@ path = "src/main.rs"
 poly-bundle.workspace = true
 poly-cache.workspace = true
 poly-core.workspace = true
+# T-M8-04：`poly plugin digest` 复用宿主 SRI 口径（content_digest）；e2e 测试用 Sandbox。
+poly-plugin.workspace = true
 poly-publish.workspace = true
 poly-sign.workspace = true
 poly-targets.workspace = true
@@ -30,6 +32,8 @@ flate2 = "1"
 
 [dev-dependencies]
 serde_json.workspace = true
+# T-M8-04：digest 口径用宿主同一 blake3 实现独立复算。
+blake3.workspace = true
 
 [lints]
 workspace = true
