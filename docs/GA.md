@@ -279,7 +279,34 @@ GPG 操作用一次性 0700 `GNUPGHOME`；信任根只接受公钥，绝不内�
 
 ### 6.5 结论
 
-演练全程 ≤ 1 天，满足 M8 出口条件。实际插件开发约 2 分钟，总耗时由冷编译主导（约 30 分钟）；脚手架 → 自定义契约 PASS 11m32s，脚手架 → CLI 真实出包 12m23s。该结论的边界：执行者是独立上下文代理而非人类外部开发者，未做人类可用性研究；SRI 负向仅验证摘要不匹配路径，签名 / 信任根链路由单元与集成测试覆盖，未在本次演练端到端走查。
+演练全程 ≤ 1 天，满足 M8 出口条件。实际插件开发约 2 分钟，总耗时由冷编译主导（约 30 分钟）；脚手架 → 自定义契约 PASS 11m32s，脚手架 → CLI 真实出包 12m23s。该结论的边界：执行者是独立上下文代理而非人类外部开发者，未做人类可用性研究；SRI 负向仅验证摘要不匹配路径，签名 / 信任根链路由 §6.6 的补充步骤（2026-10-19，`tools/plugin-signature-drill.sh`，8/8）端到端覆盖。
+
+### 6.6 签名 / 信任根端到端步骤（2026-10-19 补跑）
+
+原演练只走了 SRI 负向。本步骤把签名 / 信任根链纳入演练，可重复执行：
+
+```bash
+tools/plugin-signature-drill.sh
+# 等价直接命令：
+CARGO_TARGET_DIR=target cargo test -p poly-plugin --test signature
+```
+
+用例使用测试进程内生成的真实 gpg 密钥对、一次性 `GNUPGHOME` 与内存凭据后端：
+
+| 用例 | 证明 |
+|---|---|
+| `valid_signature_with_matching_sri_loads_and_runs` | 有效签名 + SRI 通过并实例化调用 `describe` |
+| `tampered_bytes_with_updated_sri_fail_signature` | 篡改字节并同步更新 SRI 仍被验签拒绝（`E_PLUGIN_0009`） |
+| `missing_signature_is_rejected` | 配置要求签名但缺签名 → `E_PLUGIN_0009` |
+| `wrong_public_key_is_rejected` | 信任根为另一把公钥 → `E_PLUGIN_0009` |
+| `sri_mismatch_is_rejected_even_with_valid_signature` | SRI 先行：摘要不符 → `E_PLUGIN_0006`，不进入验签 |
+| `unavailable_trust_root_is_reported_without_host_paths` | 信任根不可用 → `E_PLUGIN_0010`，错误不含宿主路径 |
+| `errors_and_artifacts_leak_no_host_paths_or_private_material` | 错误与签名产物不泄漏宿主路径或私钥材料 |
+| `config_references_trust_root_without_inline_secrets` | `polypack.toml` 只以 `CredentialRef` 引用信任根 |
+
+预期：`test result: ok. 8 passed; 0 failed`。2026-10-19 本机实测 8/8（测试本体 5.05s，不含编译）。宿主无 gpg 或 Windows MSYS 时测试打印 SKIP，包装脚本相应输出 SKIP 而非 PASS。
+
+边界：该步骤验证宿主加载链（SRI → 验签 → 组件解析 → 实例化）；CLI 从 keyring / env 解析信任根并加载真实构建产物的路径不在本步骤内。
 
 ## 7. 已知缺口与后续
 
@@ -289,7 +316,7 @@ GPG 操作用一次性 0700 `GNUPGHOME`；信任根只接受公钥，绝不内�
 |---|---|---|
 | 无独立 `poly plugin check` | 作者需手工串 build / test / digest / build | 已修：`poly plugin check <dir>` 一条命令校验脚手架文件 / WIT 同步 / 产物摘要（产物缺失仅警告） |
 | 模板 WIT 与宿主 WIT 无自动比对 | 接口升级需手工同步模板副本 | 已修：`tools/check-docs.mjs` 新增模板 WIT ↔ 宿主 WIT 逐字比对门禁；`poly plugin check` 对工程 WIT 做同口径校验 |
-| 签名 / 信任根未在演练端到端走查 | 演练只覆盖 SRI 负向 | 单元 / 集成测试已覆盖签名链；后续演练补端到端 |
+| 签名 / 信任根未在演练端到端走查 | 演练只覆盖 SRI 负向 | 已修（2026-10-19）：§6.6 `tools/plugin-signature-drill.sh` 真跑签名链 8/8（有效 / 篡改 / 缺签名 / 错公钥 / SRI 先行 / 信任根不可用 / 无泄漏 / 配置引用）。剩余：CLI 经 keyring / env 解析信任根并加载真实构建产物未纳入该步骤 |
 | macOS 农场 IPA R3 为环境槽 SKIP | Linux 环境无 Xcode / codesign | 按 FARM-DEPLOY §9 保持开放，macOS 主机执行后替换 |
 | 真实云对象存储（S3 / OSS）未实现 | 仅共享目录 CAS | `ObjectStore` trait 接入点已留；无对象存储时本地降级 |
 | Garmin 无内建 iq 打包器 | `poly build --target garmin` package 阶段 SKIP-with-print | 已记录实验缺口；条件任务 |
@@ -300,7 +327,7 @@ GPG 操作用一次性 0700 `GNUPGHOME`；信任根只接受公钥，绝不内�
 | 动作 | 触发条件 | 验收 |
 |---|---|---|
 | 人类外部开发者试用 | GA 发布后 | 记录卡点并回写文档 |
-| 签名信任根端到端演练 | 下一次插件演练 | 覆盖签名缺失 / 不匹配 / 信任根不可用 |
+| CLI 信任根载体端到端 | 下一次涉及签名发布的演练 | keyring / env 解析信任根 + `poly build` 真实插件产物的验签通过 / 失败路径 |
 | macOS worker + IPA 真跑 | 有 macOS 主机 | FARM-DEPLOY §9 日志与产物归档 |
 | 云对象存储后端 | 需要跨机大规模缓存 | `ObjectStore` 实现 + 二跑命中 |
 | Garmin iq 打包器 | 条件任务触发 | 产物结构检查与真机实证 |

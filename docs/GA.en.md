@@ -279,7 +279,34 @@ Review conclusion: the M8 delivery surface matches the M8 tasks in [TASKS](TASKS
 
 ### 6.5 Conclusion
 
-The drill completed in ≤ 1 day, meeting the M8 exit criterion. Actual plugin development took about 2 minutes, while total time was dominated by the cold compile (about 30 minutes); scaffold → custom contract PASS took 11m32s, and scaffold → real CLI package took 12m23s. Boundary of this conclusion: the executor was an independent-context agent rather than a human external developer, and no human usability study was performed; the SRI negative case covered only the digest-mismatch path, while the signature / trust-root chain is covered by unit and integration tests and was not exercised end to end in this drill.
+The drill completed in ≤ 1 day, meeting the M8 exit criterion. Actual plugin development took about 2 minutes, while total time was dominated by the cold compile (about 30 minutes); scaffold → custom contract PASS took 11m32s, and scaffold → real CLI package took 12m23s. Boundary of this conclusion: the executor was an independent-context agent rather than a human external developer, and no human usability study was performed; the SRI negative case covered only the digest-mismatch path, while the signature / trust-root chain is covered end to end by the supplementary step in §6.6 (2026-10-19, `tools/plugin-signature-drill.sh`, 8/8).
+
+### 6.6 Signature / trust-root end-to-end step (rerun 2026-10-19)
+
+The original drill covered only the SRI negative case. This step brings the signature / trust-root chain into the drill and is reproducible:
+
+```bash
+tools/plugin-signature-drill.sh
+# equivalent direct command:
+CARGO_TARGET_DIR=target cargo test -p poly-plugin --test signature
+```
+
+The cases use a real gpg keypair generated inside the test process, a one-shot `GNUPGHOME`, and an in-memory credential backend:
+
+| Case | What it proves |
+|---|---|
+| `valid_signature_with_matching_sri_loads_and_runs` | A valid signature + SRI pass and the plugin instantiates and runs `describe` |
+| `tampered_bytes_with_updated_sri_fail_signature` | Tampered bytes with a synchronized SRI update are still rejected by signature verification (`E_PLUGIN_0009`) |
+| `missing_signature_is_rejected` | Signature required by config but absent → `E_PLUGIN_0009` |
+| `wrong_public_key_is_rejected` | Trust root holds a different public key → `E_PLUGIN_0009` |
+| `sri_mismatch_is_rejected_even_with_valid_signature` | SRI first: digest mismatch → `E_PLUGIN_0006` without entering verification |
+| `unavailable_trust_root_is_reported_without_host_paths` | Unavailable trust root → `E_PLUGIN_0010`, with no host paths in the error |
+| `errors_and_artifacts_leak_no_host_paths_or_private_material` | Errors and signature artifacts leak no host paths or private-key material |
+| `config_references_trust_root_without_inline_secrets` | `polypack.toml` references the trust root only via `CredentialRef` |
+
+Expected: `test result: ok. 8 passed; 0 failed`. Measured locally on 2026-10-19: 8/8 (test body 5.05s, excluding compilation). On a host without gpg or on Windows MSYS the tests print SKIP, and the wrapper prints SKIP instead of PASS.
+
+Boundary: this step verifies the host load chain (SRI → signature verification → component parsing → instantiation); the CLI path that resolves the trust root from keyring / env and loads a real built artifact is not part of this step.
 
 ## 7. Known gaps and follow-ups
 
@@ -289,7 +316,7 @@ The drill completed in ≤ 1 day, meeting the M8 exit criterion. Actual plugin d
 |---|---|---|
 | No standalone `poly plugin check` | Authors must manually chain build / test / digest / build | Fixed: `poly plugin check <dir>` validates scaffold files / WIT sync / artifact digest in one command (a missing artifact is a warning only) |
 | Template WIT and host WIT are not auto-compared | Interface upgrades must sync the template copy by hand | Fixed: `tools/check-docs.mjs` now byte-compares template WIT against host WIT; `poly plugin check` applies the same check to a project |
-| Signature / trust root not exercised end to end in the drill | The drill covered only the SRI negative case | Unit / integration tests cover the signature chain; add an end-to-end pass in a later drill |
+| Signature / trust root not exercised end to end in the drill | The drill covered only the SRI negative case | Fixed (2026-10-19): §6.6 `tools/plugin-signature-drill.sh` runs the chain for real, 8/8 (valid / tampered / missing / wrong key / SRI first / unavailable root / no leaks / config reference). Remaining: the CLI resolving the trust root from keyring / env and loading a real built artifact is not part of this step |
 | macOS farm IPA R3 is an environment-slot SKIP | The Linux environment has no Xcode / codesign | Kept open per FARM-DEPLOY §9; replace after running on a macOS host |
 | Real cloud object storage (S3 / OSS) not implemented | Shared-directory CAS only | `ObjectStore` trait extension point exists; local fallback when no object store |
 | Garmin has no builtin iq packager | `poly build --target garmin` SKIP-with-print at the package stage | Recorded experimental gap; conditional task |
@@ -300,7 +327,7 @@ The drill completed in ≤ 1 day, meeting the M8 exit criterion. Actual plugin d
 | Action | Trigger | Acceptance |
 |---|---|---|
 | Human external developer trial | After GA publication | Record blockers and write them back to the docs |
-| Signature trust-root end-to-end drill | Next plugin drill | Covers missing signature / mismatch / unavailable trust root |
+| CLI trust-root carrier end to end | Next drill involving signed releases | keyring / env trust-root resolution + `poly build` against a real plugin artifact, pass and fail paths |
 | macOS worker + real IPA run | A macOS host is available | FARM-DEPLOY §9 logs and artifacts archived |
 | Cloud object storage backend | Large cross-machine cache needed | `ObjectStore` implementation + second-run hit |
 | Garmin iq packager | Conditional task triggered | Artifact structure check and real-device evidence |
