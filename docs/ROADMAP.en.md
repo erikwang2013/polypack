@@ -589,5 +589,4 @@ Projected from the 2026-10-14 gap audit: the directions below **do not consume t
 
 - **License**: settled — **Apache-2.0** (the `LICENSE` file is in place); re-evaluate compatibility if GPL-family toolchain installers are ever included;
 - **Plugin marketplace**: distribution model for WASM plugins (official registry vs decentralized index);
-- **Remote farm**: self-hosted only (docs + deployment guide) or a hosted offering;
-- **English diagrams**: landed in M1 (current diagrams are labeled in Chinese; noted in README.en.md).
+- **Remote farm**: self-hosted only (docs + deployment guide) or a hosted offering.
