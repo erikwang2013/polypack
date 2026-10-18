@@ -11,6 +11,7 @@ mod mood;
 mod package;
 mod plugin_new;
 mod project;
+mod providers;
 mod publish;
 mod release;
 mod retry;

@@ -17,6 +17,7 @@ poly-bundle.workspace = true
 poly-cache.workspace = true
 poly-core.workspace = true
 # T-M8-04：`poly plugin digest` 复用宿主 SRI 口径（content_digest）；e2e 测试用 Sandbox。
+# T-M8-05：build / verify / package 经统一 ProviderRegistry 调用插件 provider。
 poly-plugin.workspace = true
 poly-publish.workspace = true
 poly-sign.workspace = true

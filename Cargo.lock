@@ -1552,6 +1552,7 @@ dependencies = [
  "blake3",
  "libc",
  "poly-core",
+ "poly-targets",
  "rustls-native-certs",
  "thiserror",
  "ureq",
