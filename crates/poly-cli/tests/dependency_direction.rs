@@ -29,7 +29,9 @@ const ALLOWED: &[(&str, &[&str])] = &[
     ("poly-bundle", &["poly-core", "poly-targets"]),
     ("poly-sign", &["poly-core"]),
     ("poly-publish", &["poly-core"]),
-    ("poly-plugin", &["poly-targets"]),
+    // T-M8-01：插件宿主需要 JobSpec / PluginGrant / Diagnostic 等核心类型；
+    // 方向仍是 core ← plugin（core 不反向依赖插件），无环。
+    ("poly-plugin", &["poly-core", "poly-targets"]),
     ("poly-targets", &[]),
     ("poly-toolchain", &[]),
     ("poly-cache", &[]),
