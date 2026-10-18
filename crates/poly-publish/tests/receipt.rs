@@ -306,9 +306,13 @@ fn poll_interruption_still_archives_terminal_receipt() {
             serde_json::json!({"errcode": 0, "errmsg": "ok"}),
         )),
         Step::Timeout, // 轮询中断（可恢复）
-        Step::Reply(common::json_ok(
-            serde_json::json!({"errcode": 0, "status": 1, "reason": "类目不符"}),
-        )),
+        // 提审响应未给单号（微信真实形态）：轮询响应里的 auditid 首次出现即补录。
+        Step::Reply(common::json_ok(serde_json::json!({
+            "errcode": 0,
+            "status": 1,
+            "reason": "类目不符",
+            "auditid": 77,
+        }))),
     ]);
     let (reference, providers) = wechat_credential("wechat-poll-interrupt");
     let archive = Archive::new(root.path());
@@ -325,6 +329,11 @@ fn poll_interruption_still_archives_terminal_receipt() {
     assert_eq!(receipt.polls.len(), 1, "失败轮不写流水；成功终态轮才落盘");
     assert_eq!(receipt.polls[0].reason.as_deref(), Some("类目不符"));
     assert!(receipt.decided_unix.is_some(), "中断不丢终态时间戳");
+    assert_eq!(
+        receipt.submission_id.as_deref(),
+        Some("77"),
+        "提交号可从轮询响应补录（提审响应未给单号）"
+    );
     assert_eq!(server.submit_requests(), 1, "中断不触发重新提审");
     let stored = archive
         .load(Channel::Wechat.id(), &receipt_key_of(&root))

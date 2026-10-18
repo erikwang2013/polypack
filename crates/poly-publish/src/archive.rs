@@ -2,8 +2,8 @@
 //!
 //! 落点固定 `<root>/.polypack/publish/<channel>/<key>.json`；R4 / ROADMAP §5.5：回执永久
 //! 保留（不清理），schema 版本固定（格式变更加版本号，读侧拒绝陌生版本）。
-//! 键 = appid + version + 代码包摘要前 16 hex——内容一致即同键：重跑要么 no-op（终态），
-//! 要么从断点续走（`uploaded` → 只提审；`submitted` / `in_review` / `delayed` → 只轮询）。
+//! 键 = appid + version + 摘要前 16 hex——同键重跑要么 no-op（终态），要么断点续走
+//! （`uploaded` → 只提审；`submitted` / `in_review` / `delayed` → 只轮询）。
 //!
 //! shortcut: 同键并发双跑按单写者假设（后写赢）——回执是证据不是锁，发布按单脚本串行跑。
 
@@ -14,9 +14,7 @@ use serde::{Deserialize, Serialize};
 use crate::error::PublishError;
 use crate::time::unix_now;
 
-/// 回执 schema 版本（格式变更即升；读侧拒绝非本版本）。
-///
-/// v2（T-M8-11）：新增提交号与提审 / 终态时间戳（可选字段；旧回执按格式变更拒绝）。
+/// 回执 schema 版本（格式变更即升；读侧拒绝非本版本）。v2 = T-M8-11 提交号 / 时间戳。
 pub const SCHEMA_VERSION: u32 = 2;
 
 /// 规范化审核状态（平台原始响应原样存 `raw`，不丢信息）。
@@ -168,11 +166,9 @@ pub enum SubmitStatus {
     Unknown,
 }
 
-/// 提审幂等状态（`<root>/<channel>/<回执键>.submit.json`）。
-///
-/// 落盘时机：**发送提审前**先写 `Pending`（意图），受理后改 `Accepted`。进程在
-/// 「平台已受理、回执未落盘」之间崩溃时，重跑看到 `Accepted` 即跳过提审——这是
-/// 「重复提审不产生二次提交」的本地锚点；平台侧另以幂等键 + 原生去重码兜底。
+/// 提审幂等状态（`<root>/<channel>/<回执键>.submit.json`）：**发送提审前**写 `Pending`，
+/// 受理后改 `Accepted`——「平台已受理、回执未落盘」间崩溃，重跑看到 `Accepted` 即跳过提审
+/// （重复提审不产生二次提交的本地锚点；平台侧另以幂等键 + 原生去重码兜底）。
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SubmitJournal {
     /// schema 版本（= [`SUBMIT_SCHEMA_VERSION`]）。

@@ -362,7 +362,7 @@ fn submission_id_of(raw: &serde_json::Value) -> Option<String> {
         "/data/audit_order_no",
     ]
     .iter()
-    .find_map(|pointer| raw.pointer(pointer))
+    .find_map(|pointer| raw.pointer(pointer).filter(|value| !value.is_null()))
     .map(|value| match value {
         serde_json::Value::String(text) => text.clone(),
         other => other.to_string(),
