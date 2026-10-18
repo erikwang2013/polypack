@@ -1,6 +1,7 @@
 # 远程农场：发起地与构建地
 
 > 配套阅读：[ROADMAP.md](ROADMAP.md) §7（安全与密钥）、§8（测试与 CI 矩阵）、§9 M2（风险 R3：Apple 系目标必须 macOS 宿主）。
+> 部署指南：[FARM-DEPLOY.md](FARM-DEPLOY.md)（拓扑 / worker 池 / 隔离 / 缓存 / 凭据 / 演练）。
 > English: [FARM.en.md](FARM.en.md)
 
 ## 为什么需要农场

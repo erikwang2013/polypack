@@ -1,6 +1,7 @@
 # Remote Farm: Origin and Build Site
 
 > Companion reading: [ROADMAP.en.md](ROADMAP.en.md) §7 (security and secrets), §8 (test and CI matrix), §9 M2 (risk R3: Apple-family targets require a macOS host).
+> Deployment guide: [FARM-DEPLOY.en.md](FARM-DEPLOY.en.md) (topology / worker pool / isolation / cache / credentials / drill).
 > 中文版: [FARM.md](FARM.md)
 
 ## Why a farm is needed
