@@ -9,6 +9,8 @@
 //!   （T-M2-06 的产物命名约定），找不到即 `poly::E_RETRY_0001`。
 //! - **`--from verify`**：不经 DAG，直接复用 [`crate::verify`] 的声明校验器通路
 //!   （同一套目标解析 / 腿分发 / SKIP 语义），供 QNX / Zephyr QEMU 冒烟失败后独立重跑。
+//! - **`--from publish`**：复用 `poly publish` 的完整通路（同一 `polypack.toml` 根下的回执
+//!   与提审去重状态）——中断后重跑同键命令只从断点续走，不产生第二次提交。
 //!
 //! 与 `poly build` 的 `sign` 阶段（[`crate::sign`]）共用派生与错误翻译：未签名 APK 查找、
 //! 凭据引用、`SignError` → 诊断都在那边，本命令只保留「不经 DAG 的独立重跑」外壳。
@@ -39,12 +41,33 @@ pub struct Args {
     /// 未签名 APK（缺省在打包暂存目录里按命名约定查找）。
     #[arg(long)]
     pub input: Option<PathBuf>,
-    /// 凭据引用覆盖（`env:变量名` / `keyring[:条目名]` / `vault[:条目名]`）。
-    #[arg(long)]
+    /// 凭据引用覆盖（`env:变量名` / `keyring[:条目名]` / `vault[:条目名]`；`--from publish` 必填）。
+    #[arg(long, required_if_eq("from", "publish"))]
     pub credential: Option<String>,
     /// 签名产物落点（缺省 `<输入名>-signed.apk`）。
     #[arg(long)]
     pub out: Option<PathBuf>,
+    /// 平台应用 id（`--from publish` 必填）。
+    #[arg(long, required_if_eq("from", "publish"))]
+    pub appid: Option<String>,
+    /// 版本号（`--from publish` 必填）。
+    #[arg(long, required_if_eq("from", "publish"))]
+    pub version: Option<String>,
+    /// 渠道 id（`--from publish` 缺省取目标声明的第一个）。
+    #[arg(long)]
+    pub channel: Option<String>,
+    /// 版本描述（`--from publish`）。
+    #[arg(long, default_value = "")]
+    pub description: String,
+    /// 代码包路径（`--from publish` 缺省按目标产物落点定位）。
+    #[arg(long)]
+    pub package: Option<PathBuf>,
+    /// 提审材料 JSON 文件（`--from publish`）。
+    #[arg(long)]
+    pub materials: Option<PathBuf>,
+    /// 平台 API 端点（`--from publish` 快应用联盟商店必填）。
+    #[arg(long, value_name = "URL")]
+    pub api_base: Option<String>,
 }
 
 /// 重跑起点。
@@ -54,6 +77,8 @@ pub enum FromStage {
     Sign,
     /// 校验阶段：按 TargetSpec.verify 重跑声明校验器（含 QNX / Zephyr QEMU 冒烟）。
     Verify,
+    /// 发布阶段：复用 `poly publish` 通路（同一回执 + 提审去重状态续走，不重复提交）。
+    Publish,
 }
 
 /// 执行 `poly retry`；返回进程退出码。
@@ -61,6 +86,43 @@ pub fn run(args: &Args, json: bool) -> Result<i32, Diagnostic> {
     match args.from {
         FromStage::Sign => sign(args, json),
         FromStage::Verify => verify(args, json),
+        FromStage::Publish => publish(args, json),
+    }
+}
+
+/// `poly retry --from publish`：复用 `poly publish` 的完整通路（同一回执 + 提审幂等状态）。
+///
+/// 中断后重跑同键命令：已受理（journal `Accepted`）→ 只续轮询，不产生第二次提交。
+fn publish(args: &Args, json: bool) -> Result<i32, Diagnostic> {
+    crate::publish::run(&publish_args(args), json)
+}
+
+/// `retry` 参数 → `poly publish` 参数（clap 已保证 `--from publish` 时必填项在场）。
+fn publish_args(args: &Args) -> crate::publish::Args {
+    crate::publish::Args {
+        config: args.config.clone(),
+        target: args
+            .target
+            .clone()
+            .unwrap_or_else(|| "quickapp".to_string()),
+        channel: args.channel.clone(),
+        appid: args
+            .appid
+            .clone()
+            .expect("clap 保证 --from publish 时 --appid 在场"),
+        version: args
+            .version
+            .clone()
+            .expect("clap 保证 --from publish 时 --version 在场"),
+        description: args.description.clone(),
+        package: args.package.clone(),
+        credential: args
+            .credential
+            .clone()
+            .expect("clap 保证 --from publish 时 --credential 在场"),
+        materials: args.materials.clone(),
+        api_base: args.api_base.clone(),
+        dry_run: false,
     }
 }
 
@@ -208,5 +270,37 @@ pub(crate) fn parse_credential(
         "keyring" => Ok((CredentialSource::Keyring, arg.map(str::to_string))),
         "vault" => Ok((CredentialSource::Vault, arg.map(str::to_string))),
         _ => Err(unknown()),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// `--from publish` 的参数映射：缺省 target 与 `poly publish` 同口径，凭据 / 材料直通。
+    #[test]
+    fn publish_rerun_maps_retry_args_to_publish_command() {
+        let args = Args {
+            from: FromStage::Publish,
+            config: PathBuf::from("polypack.toml"),
+            target: None,
+            input: None,
+            credential: Some("env:POLY_CRED".to_string()),
+            out: None,
+            appid: Some("wx1".to_string()),
+            version: Some("1.0.0".to_string()),
+            channel: Some("wechat-open-platform".to_string()),
+            description: "重跑".to_string(),
+            package: Some(PathBuf::from("dist")),
+            materials: None,
+            api_base: None,
+        };
+        let mapped = publish_args(&args);
+        assert_eq!(mapped.target, "quickapp", "缺省 target 同 poly publish");
+        assert_eq!(mapped.appid, "wx1");
+        assert_eq!(mapped.version, "1.0.0");
+        assert_eq!(mapped.channel.as_deref(), Some("wechat-open-platform"));
+        assert_eq!(mapped.credential, "env:POLY_CRED");
+        assert!(!mapped.dry_run, "重跑走真腿");
     }
 }

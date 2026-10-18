@@ -32,11 +32,11 @@ use std::sync::Arc;
 
 use base64::Engine;
 use poly_core::diagnostics::{Code, Diagnostic};
-use poly_core::{CredentialRef, codes};
+use poly_core::{BuildEvent, CredentialRef, codes};
 use poly_publish::secret::{CredentialProvider, EnvProvider, resolve_payload};
 use poly_publish::{
-    Archive, Package, PublishError, PublishFailure, PublishRequest, Publisher, Transport,
-    UreqTransport,
+    Archive, AuditState, Package, PublishError, PublishFailure, PublishRequest, Publisher,
+    Transport, UreqTransport,
 };
 use poly_targets::{Registry, TargetSpec};
 
@@ -183,6 +183,13 @@ pub fn run(args: &Args, json: bool) -> Result<i32, Diagnostic> {
             }
         };
     let receipt = &outcome.receipt;
+    // 终态通过 / 已上架 = 发布完成：事件流落 `Published{channel, submission}`（人读同一事件）。
+    if matches!(receipt.state, AuditState::Approved | AuditState::Released) {
+        project::sink(json).emit(&BuildEvent::Published {
+            channel: receipt.channel.clone(),
+            submission: published_submission(receipt),
+        });
+    }
     project::report(
         "publish",
         json,
@@ -203,6 +210,18 @@ pub fn run(args: &Args, json: bool) -> Result<i32, Diagnostic> {
         }),
     );
     Ok(0)
+}
+
+/// `Published.submission`：平台提交号；平台未给则用本地幂等键（同一提交的稳定身份，可追溯）。
+fn published_submission(receipt: &poly_publish::Receipt) -> String {
+    receipt.submission_id.clone().unwrap_or_else(|| {
+        poly_publish::submission_key(
+            &receipt.channel,
+            &receipt.appid,
+            &receipt.version,
+            &receipt.digest,
+        )
+    })
 }
 
 /// 失败事件（与构建事件流的 `Failed` 同形）：`{"event":"failed","stage","code","hint"}`。

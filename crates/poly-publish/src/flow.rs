@@ -226,12 +226,19 @@ pub fn publish_checked(
         let outcome = retry::attempt(Stage::Poll, &request.retry, || publisher.poll(&job))?;
         receipt.state = outcome.state;
         receipt.last_unix = unix_now();
+        // 提交号可能只在轮询响应里（微信 auditid / 抖音 data.audit.audit_id）：首次见到即落档。
+        if receipt.submission_id.is_none() {
+            receipt.submission_id = submission_id_of(&outcome.raw);
+        }
         receipt.polls.push(PollEntry {
             at_unix: receipt.last_unix,
             state: outcome.state,
             reason: outcome.reason,
             raw: outcome.raw,
         });
+        if outcome.state.is_terminal() {
+            receipt.decided_unix = Some(receipt.last_unix);
+        }
         let path = archive
             .save(&receipt)
             .map_err(|error| fail(Stage::Poll, error))?;
@@ -279,8 +286,15 @@ fn submit_idempotent(
 
     if journal.status == SubmitStatus::Accepted {
         // 平台已受理但回执未落盘：不再重发提审，补记 Submitted 后直接续轮询。
+        // 提交号 / 受理时刻从去重状态复原（崩溃窗口后的时间线仍可追溯）。
         receipt.state = AuditState::Submitted;
         receipt.last_unix = unix_now();
+        if receipt.submission_id.is_none() {
+            receipt.submission_id = journal.submission_id.clone();
+        }
+        if receipt.submitted_unix.is_none() {
+            receipt.submitted_unix = journal.submitted_unix;
+        }
         archive
             .save(receipt)
             .map_err(|error| fail(Stage::Submit, error))?;
@@ -296,14 +310,21 @@ fn submit_idempotent(
 
     match retry::attempt(Stage::Submit, policy, || publisher.submit(job)) {
         Ok(submission) => {
+            let now = unix_now();
             journal.status = SubmitStatus::Accepted;
-            journal.last_unix = unix_now();
+            journal.last_unix = now;
+            if journal.submission_id.is_none() {
+                journal.submission_id = submission_id_of(&submission.raw);
+            }
+            journal.submitted_unix.get_or_insert(now);
             archive
                 .save_submit(channel, key, &journal)
                 .map_err(|error| fail(Stage::Submit, error))?;
             receipt.submit = Some(submission.raw);
             receipt.state = AuditState::Submitted;
-            receipt.last_unix = unix_now();
+            receipt.last_unix = now;
+            receipt.submission_id = journal.submission_id.clone();
+            receipt.submitted_unix = journal.submitted_unix;
             archive
                 .save(receipt)
                 .map_err(|error| fail(Stage::Submit, error))?;
@@ -327,4 +348,58 @@ fn submit_idempotent(
 /// 失败归因。
 fn fail(stage: Stage, error: PublishError) -> PublishFailure {
     PublishFailure { stage, error }
+}
+
+/// 平台提交号归一：各平台字段名不同（微信 `auditid`、抖音 `data.audit.audit_id` /
+/// `data.audit_id`、支付宝 `audit_order_no`）；平台从未给过则 `None`（原始响应仍可追溯）。
+fn submission_id_of(raw: &serde_json::Value) -> Option<String> {
+    [
+        "/auditid",
+        "/audit_id",
+        "/audit_order_no",
+        "/data/audit_id",
+        "/data/audit/audit_id",
+        "/data/audit_order_no",
+    ]
+    .iter()
+    .find_map(|pointer| raw.pointer(pointer).filter(|value| !value.is_null()))
+    .map(|value| match value {
+        serde_json::Value::String(text) => text.clone(),
+        other => other.to_string(),
+    })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn submission_id_normalizes_platform_receipt_fields() {
+        assert_eq!(
+            submission_id_of(&serde_json::json!({"errcode": 0, "auditid": 42})).as_deref(),
+            Some("42"),
+            "微信提审单号"
+        );
+        assert_eq!(
+            submission_id_of(&serde_json::json!({"data": {"audit": {"audit_id": "dy-1"}}}))
+                .as_deref(),
+            Some("dy-1"),
+            "抖音轮询单号"
+        );
+        assert_eq!(
+            submission_id_of(&serde_json::json!({"data": {"audit_id": "dy-2"}})).as_deref(),
+            Some("dy-2"),
+            "抖音提审响应单号"
+        );
+        assert_eq!(
+            submission_id_of(&serde_json::json!({"audit_order_no": "ali-1"})).as_deref(),
+            Some("ali-1"),
+            "支付宝提审单号"
+        );
+        assert_eq!(
+            submission_id_of(&serde_json::json!({"errcode": 0, "errmsg": "ok"})),
+            None,
+            "平台未给单号 → 缺省，不编造"
+        );
+    }
 }
