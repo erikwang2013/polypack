@@ -149,6 +149,10 @@ fn wait_for_hello(farm: &Path, worker_id: &str) {
 /// 两个真 worker + 一次 submit：两个目标分别在两个 worker 上完成，产物合并回执。
 #[test]
 fn farm_pool_builds_two_targets_concurrently_with_two_workers() {
+    eprintln!(
+        "SKIP：跨机 / serving 网络面未覆盖（本机无真实跨机农场）——本用例以两个本地 worker \
+         子进程 + 目录信箱回路真跑并发调度、超时重试与产物合并"
+    );
     let temp = TempDir::new("concurrent");
     let (site_a, site_b) = (temp.path().join("site-a"), temp.path().join("site-b"));
     write_project(&site_a);
