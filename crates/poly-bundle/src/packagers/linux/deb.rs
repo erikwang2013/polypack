@@ -13,7 +13,7 @@ use super::{
     stage_dir, with_epoch,
 };
 use crate::arwrite::{self, TarArchive};
-use crate::error::BundleError;
+use crate::error::{BundleError, io_err};
 use crate::exec;
 use crate::fsutil;
 use crate::inputs::{BareProduct, BundleInputs};
@@ -25,8 +25,8 @@ pub struct Deb;
 /// 打包器自称的 L1 id（产物 `target` 字段用真实 `spec.id`，发行版目标不冒名）。
 const ID: &str = "linux";
 
-/// Linux 桌面运行时依赖（Debian 包名；Tauri WebView 链）。
-pub const DEB_RUNTIME_DEPENDS: &str = "libwebkit2gtk-4.1-0, libgtk-3-0, libsoup-3.0-0";
+/// Linux 桌面运行时依赖（Debian 包名；glibc + Tauri WebView 链）。
+pub const DEB_RUNTIME_DEPENDS: &str = "libc6, libwebkit2gtk-4.1-0, libgtk-3-0, libsoup-3.0-0";
 
 /// `postinst`：刷新 desktop / 图标缓存（工具缺席时静默跳过，不引硬依赖）。
 const POSTINST: &str = "#!/bin/sh\n\
@@ -123,6 +123,7 @@ impl Packager for Deb {
         // 裸产物树整体进入 deb 数据段（usr/bin、usr/lib 资源、desktop、图标、doc）。
         fsutil::copy_tree(&bare.root, &stage)?;
         write_copyright(inputs, &stage)?;
+        write_changelog(inputs, &stage)?;
         install_appstream(&stage.join("usr/share"), &inputs.product)?;
         fsutil::write_scripts(&plan)?;
         super::normalize_modes(&stage)?;
@@ -175,11 +176,13 @@ pub(crate) fn deb_path(inputs: &BundleInputs) -> std::path::PathBuf {
 fn control_file(inputs: &BundleInputs, bare: &BareProduct) -> Result<String, BundleError> {
     let product = &inputs.product;
     let installed = fsutil::tree_bytes(&bare.root)?.div_ceil(1024);
+    let maintainer = maintainer(product);
+    let synopsis = synopsis(product);
     let mut out = String::new();
     out.push_str(&format!("Package: {}\n", product.kebab_name()));
     out.push_str(&format!("Version: {}\n", product.version));
     out.push_str(&format!("Architecture: {}\n", super::deb_arch()));
-    out.push_str(&format!("Maintainer: {}\n", product.manufacturer));
+    out.push_str(&format!("Maintainer: {maintainer}\n"));
     out.push_str(&format!("Installed-Size: {installed}\n"));
     out.push_str("Section: utils\n");
     out.push_str("Priority: optional\n");
@@ -189,10 +192,37 @@ fn control_file(inputs: &BundleInputs, bare: &BareProduct) -> Result<String, Bun
     }
     // 扩展描述行（Debian 规范：续行以空格开头）：避免 lintian 的 empty-extended-description。
     out.push_str(&format!(
-        "Description: {}\n 由 PolyPack 打包的桌面应用（Tauri WebView 运行时）。\n",
-        product.description
+        "Description: {synopsis}\n {}：由 PolyPack 打包的桌面应用（Tauri WebView 运行时）。\n",
+        product.name
     ));
     Ok(out)
+}
+
+/// Debian 维护者字段：缺邮箱时补项目默认联系地址（lintian `malformed-contact`）。
+fn maintainer(product: &crate::inputs::ProductInfo) -> String {
+    if product.manufacturer.contains('<') {
+        product.manufacturer.clone()
+    } else {
+        format!("{} <noreply@polypack.dev>", product.manufacturer)
+    }
+}
+
+/// Debian 短描述：为空、过短或与包名相同时给出策略友好的兜底
+/// （lintian `description-is-pkg-name` / `description-starts-with-package-name` / `too-short`）。
+fn synopsis(product: &crate::inputs::ProductInfo) -> String {
+    let description = product.description.trim();
+    let kebab = product.kebab_name();
+    let starts_with_pkg = description.to_ascii_lowercase().starts_with(kebab.as_str());
+    if description.is_empty()
+        || description.len() < 10
+        || description.eq_ignore_ascii_case(&product.name)
+        || description.eq_ignore_ascii_case(&kebab)
+        || starts_with_pkg
+    {
+        "Desktop application packaged by PolyPack".to_string()
+    } else {
+        description.to_string()
+    }
 }
 
 /// `usr/share/doc/<name>/copyright`（lintian 无 copyright 文件为 error 级）。
@@ -209,6 +239,32 @@ fn write_copyright(inputs: &BundleInputs, stage: &Path) -> Result<(), BundleErro
             product.name
         ),
     )
+}
+
+/// `usr/share/doc/<name>/changelog.gz`（lintian `no-changelog`）。
+///
+/// 使用固定日期保证可复现；版本与包版本一致，避免 changelog 与 control 脱节。
+fn write_changelog(inputs: &BundleInputs, stage: &Path) -> Result<(), BundleError> {
+    use std::io::Write as _;
+
+    let product = &inputs.product;
+    let path = stage.join(format!(
+        "usr/share/doc/{}/changelog.gz",
+        product.kebab_name()
+    ));
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent).map_err(io_err(parent))?;
+    }
+    let text = format!(
+        "{} ({}) unstable; urgency=medium\n\n  * PolyPack build.\n\n -- {}  Thu, 01 Jan 2026 00:00:00 +0000\n",
+        product.kebab_name(),
+        product.version,
+        maintainer(product)
+    );
+    let mut encoder = flate2::write::GzEncoder::new(Vec::new(), flate2::Compression::default());
+    encoder.write_all(text.as_bytes()).map_err(io_err(&path))?;
+    let bytes = encoder.finish().map_err(io_err(&path))?;
+    std::fs::write(&path, bytes).map_err(io_err(&path))
 }
 
 /// 解析 `dpkg-deb --info` 的关键字段作为产物证据。
