@@ -20,7 +20,7 @@ use std::process::{Command, Stdio};
 use serde::Serialize;
 
 use crate::diagnostics::{Diagnostic, codes};
-use rules::{BINARY_RULES, TEXT_RULES, line_has_allow_marker};
+use rules::{ARTIFACT_RULES, BINARY_RULES, TEXT_RULES, find_sub, line_has_allow_marker};
 
 /// 白名单标记：命中行内含任一标记即视为构造样本 / 示例，不报告。
 pub const ALLOW_MARKERS: &[&str] = &[
@@ -91,6 +91,9 @@ fn scan_into(path: &str, bytes: &[u8], report: &mut ScanReport) {
             });
         }
     }
+    // T-M8-03：插件制品（`.wasm`）按字节扫宿主路径 / 环境变量痕迹 / 调试符号；
+    // 制品规则不受下方「含 NUL 跳过文本规则」影响。
+    scan_artifact(path, first, bytes, report);
     // 含 NUL 视为二进制：文本规则不适用（避免在二进制里误报）；二进制规则已在上方处理
     let window = &bytes[..bytes.len().min(TEXT_SCAN_CAP)];
     if window.contains(&0) {
@@ -117,6 +120,38 @@ fn scan_into(path: &str, bytes: &[u8], report: &mut ScanReport) {
                 break; // 一行只报优先级最高的规则
             }
         }
+    }
+}
+
+/// 插件制品扫描（T-M8-03）：`.wasm` 内的宿主绝对路径 / 环境变量痕迹 / 调试符号段。
+///
+/// 同一规则只报首次命中；excerpt 只给脱敏描述与偏移，绝不回显路径本身（§7）。
+fn scan_artifact(path: &str, first: &[u8], bytes: &[u8], report: &mut ScanReport) {
+    let is_wasm = path
+        .rsplit('.')
+        .next()
+        .is_some_and(|ext| ext.eq_ignore_ascii_case("wasm"));
+    if !is_wasm || line_has_allow_marker(first) {
+        return;
+    }
+    for rule in ARTIFACT_RULES {
+        let duplicate = report
+            .findings
+            .iter()
+            .any(|finding| finding.path == path && finding.rule == rule.id);
+        if duplicate {
+            continue;
+        }
+        let Some(offset) = find_sub(bytes, rule.needle) else {
+            continue;
+        };
+        report.findings.push(Finding {
+            rule: rule.id,
+            path: path.to_string(),
+            line: 1,
+            excerpt: format!("{}（偏移 {offset}，具体内容已隐去）", rule.label),
+            hint: rule.hint,
+        });
     }
 }
 

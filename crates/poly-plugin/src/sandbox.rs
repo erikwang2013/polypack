@@ -11,6 +11,7 @@ use wasmtime::{Config, Engine, Store, StoreLimits, StoreLimitsBuilder, Trap};
 use crate::capability::{CapabilityPolicy, MAX_RESPONSE_BYTES};
 use crate::error::PluginError;
 use crate::limits::{EPOCH_TICK, ResourceLimits};
+use crate::trust::SignaturePolicy;
 
 #[allow(missing_docs)] // bindgen 生成的绑定不参与文档门禁
 mod target_world {
@@ -163,6 +164,21 @@ impl Sandbox {
         root: &Path,
         grant: &PluginGrant,
     ) -> Result<Plugin, PluginError> {
+        self.load_signed(bytes, id, sri, None, root, grant)
+    }
+
+    /// 加载插件（T-M8-03）：SRI 校验 →（配置要求时）分离签名验签 → 组件编译 → 冻结能力策略。
+    ///
+    /// 验签先于组件编译：签名不符 / 缺失 / 信任根错误都在实例化之前拒绝。
+    pub fn load_signed(
+        &self,
+        bytes: &[u8],
+        id: &str,
+        sri: Option<&str>,
+        signature: Option<&SignaturePolicy<'_>>,
+        root: &Path,
+        grant: &PluginGrant,
+    ) -> Result<Plugin, PluginError> {
         if let Some(expected) = sri {
             let actual = content_digest(bytes);
             if expected != actual {
@@ -172,6 +188,9 @@ impl Sandbox {
                 )
                 .with_hint("重新构建插件并更新 SRI；制品被改动过的插件一律不加载"));
             }
+        }
+        if let Some(policy) = signature {
+            crate::trust::verify(id, bytes, policy)?;
         }
         let component = Component::from_binary(&self.engine, bytes).map_err(|err| {
             PluginError::new(

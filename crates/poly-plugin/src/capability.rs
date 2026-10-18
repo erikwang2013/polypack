@@ -280,6 +280,8 @@ mod tests {
             fs_read: fs_read.iter().map(|s| (*s).into()).collect(),
             fs_write: fs_write.iter().map(|s| (*s).into()).collect(),
             net: net.iter().map(|s| (*s).into()).collect(),
+            signature: None,
+            trust_root: None,
         }
     }
 

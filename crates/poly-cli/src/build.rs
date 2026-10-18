@@ -271,6 +271,8 @@ mod tests {
             fs_read: vec!["assets".to_string()],
             fs_write: vec!["out".to_string()],
             net: vec!["api.example.com".to_string()],
+            signature: None,
+            trust_root: None,
         }];
         let mut sink = Collect(Vec::new());
         emit_plugin_grants(&mut sink, &plugins);

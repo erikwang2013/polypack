@@ -173,6 +173,12 @@ pub struct PluginSection {
     /// 允许出网的域名（`host` 或 `host:port`）。
     #[serde(default)]
     pub net: Vec<String>,
+    /// 分离签名文件路径（相对工程根）；设置后加载前必须验签通过（T-M8-03）。
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub signature: Option<String>,
+    /// 签名信任根（公钥）的凭据引用；`signature` 设置时必填（T-M8-03）。
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub trust_root: Option<CredentialRef>,
 }
 
 /// `[budget]` 段（ROADMAP §2 原则 4「预算式构建」；T-M3-08 体积门禁）。
@@ -329,6 +335,21 @@ impl PolypackConfig {
             });
         }
 
+        // T-M8-03：签名与信任根必须成对配置；信任根只引用公钥（明文私钥永不进配置）。
+        for plugin in &self.plugins {
+            if plugin.signature.is_some() != plugin.trust_root.is_some() {
+                return Err(Diagnostic::error(
+                    codes::E_PLUGIN_0008,
+                    format!("插件 {} 的 signature / trust_root 必须成对配置", plugin.id),
+                )
+                .with_hint(
+                    "signature 指向分离签名文件（相对工程根），trust_root 是公钥的 CredentialRef\
+                     （keyring / vault / env）",
+                )
+                .into());
+            }
+        }
+
         Ok(JobSpec {
             id: format!(
                 "{}-{}-{}",
@@ -359,6 +380,8 @@ impl PolypackConfig {
                     fs_read: plugin.fs_read.clone(),
                     fs_write: plugin.fs_write.clone(),
                     net: plugin.net.clone(),
+                    signature: plugin.signature.clone(),
+                    trust_root: plugin.trust_root.clone(),
                 })
                 .collect(),
         })
