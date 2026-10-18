@@ -27,31 +27,10 @@ jobs:
         uses: Swatinem/rust-cache@v2
 
       # 依赖树为纯 Rust（无 *-sys / openssl 等）；以下仅为「测试真跑」所需的系统工具
-      # （T-M1-14 图标派生 / T-M1-07 deb 校验与 lintian）
+      # （T-M1-14 图标派生；lintian 在 cargo test 之后单独安装，避免污染通用构建测试）
       - name: 安装测试工具（Linux 真跑）
         if: runner.os == 'Linux'
-        run: sudo apt-get update -qq && sudo apt-get install -y -qq librsvg2-bin imagemagick desktop-file-utils lintian
-
-      # T-M1-07：AppImage 真跑。appimagetool 固定 1.9.1，按 GitHub release 发布的
-      # sha256 校验后安装（不裸下载）；extract-and-run 让 appimagetool 自身与产物都不依赖
-      # FUSE（ubuntu-latest 不保证 libfuse2）。
-      - name: 安装 appimagetool（Linux 真跑）
-        if: runner.os == 'Linux'
-        shell: bash
-        run: |
-          set -euo pipefail
-          case "$(uname -m)" in
-            x86_64)  asset=appimagetool-x86_64.AppImage
-                     sha=ed4ce84f0d9caff66f50bcca6ff6f35aae54ce8135408b3fa33abfc3cb384eb0 ;;
-            aarch64) asset=appimagetool-aarch64.AppImage
-                     sha=f0837e7448a0c1e4e650a93bb3e85802546e60654ef287576f46c71c126a9158 ;;
-            *) echo "不支持的架构：$(uname -m)" >&2; exit 1 ;;
-          esac
-          curl -fsSL --retry 3 -o /tmp/appimagetool \
-            "https://github.com/AppImage/appimagetool/releases/download/1.9.1/$asset"
-          echo "$sha  /tmp/appimagetool" | sha256sum -c -
-          sudo install -m 0755 /tmp/appimagetool /usr/local/bin/appimagetool
-          echo "APPIMAGE_EXTRACT_AND_RUN=1" >> "$GITHUB_ENV"
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq librsvg2-bin imagemagick desktop-file-utils
 
       # T-M1-05：NSIS 真编译。windows-2022 未预装 NSIS；已有 makensis 则复用，否则
       # choco 安装并把 NSIS 目录加入后续步骤 PATH。
@@ -96,6 +75,33 @@ jobs:
         # --no-fail-fast：一次看到全部失败面（cargo 默认在首个失败二进制处中止，
         # 会掩盖后续 crate 的问题；三宿主加固期需要全景）
         run: cargo test --workspace --no-fail-fast
+
+      # T-M1-07 聚焦真跑：工具只在通用 cargo test 之后安装。若提前安装，
+      # `poly build` 的 verify 会对测试用 debug deb 触发 lintian 错误，污染通用测试面。
+      # appimagetool 固定 1.9.1，按 GitHub release 发布的 sha256 校验后安装（不裸下载）；
+      # extract-and-run 让 appimagetool 自身与产物都不依赖 FUSE。
+      - name: 安装 AppImage / lintian（Linux 聚焦真跑）
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get install -y -qq lintian
+          case "$(uname -m)" in
+            x86_64)  asset=appimagetool-x86_64.AppImage
+                     sha=ed4ce84f0d9caff66f50bcca6ff6f35aae54ce8135408b3fa33abfc3cb384eb0 ;;
+            aarch64) asset=appimagetool-aarch64.AppImage
+                     sha=f0837e7448a0c1e4e650a93bb3e85802546e60654ef287576f46c71c126a9158 ;;
+            *) echo "不支持的架构：$(uname -m)" >&2; exit 1 ;;
+          esac
+          curl -fsSL --retry 3 -o /tmp/appimagetool \
+            "https://github.com/AppImage/appimagetool/releases/download/1.9.1/$asset"
+          echo "$sha  /tmp/appimagetool" | sha256sum -c -
+          sudo install -m 0755 /tmp/appimagetool /usr/local/bin/appimagetool
+          echo "APPIMAGE_EXTRACT_AND_RUN=1" >> "$GITHUB_ENV"
+
+      - name: packager 真跑（AppImage + lintian，聚焦）
+        if: runner.os == 'Linux'
+        run: cargo test -p poly-bundle --test packagers_linux -- --nocapture
 
       # UI 适配层测试（T-M2-04/05 native；T-M3-05 taro、T-M4-01 tv 同挂）：纯 node:test，
       # 无 npm install 也绿（缺依赖时 skip 不 fail）；目录未落地时跳过（前向兼容新包）
