@@ -9,6 +9,10 @@ export const CAPABILITY_MATRIX = Object.freeze({
   android: Object.freeze({ focusNav: false, safeArea: true, gestures: true }),
   ios: Object.freeze({ focusNav: false, safeArea: true, gestures: true }),
   harmonyos: Object.freeze({ focusNav: false, safeArea: true, gestures: true }),
+  // HarmonyOS TV：RNOH TV 形态（deviceTypes 含 tv）→ 遥控器无指针，focusNav 常开、无触摸手势。
+  "harmonyos-tv": Object.freeze({ focusNav: true, safeArea: true, gestures: false }),
+  // GrapheneOS：Android 手机变体（复用 RN / uniffi 链）→ 触摸 + 手势常态。
+  grapheneos: Object.freeze({ focusNav: false, safeArea: true, gestures: true }),
   // T-M4-04 Android TV / Fire TV：Android 家族 TV 形态（Leanback 遥控器恒无指针 → focusNav
   // 常开；清单强制 touchscreen=false → 无触摸手势）。host 提示仍可覆盖。
   "android-tv": Object.freeze({ focusNav: true, safeArea: true, gestures: false }),
