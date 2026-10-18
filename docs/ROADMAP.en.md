@@ -583,7 +583,7 @@ Projected from the 2026-10-14 gap audit: the directions below **do not consume t
 | E5 | **Store metadata pipeline** | versioned, multilingual management of listing copy / screenshots / keywords (publish currently only uploads and submits) | the first M2/M3 store release lands | define the metadata directory structure and its checker |
 | E6 | **GUI target-matrix view / build history** | upgrade poly-gui from "console" to a usability dashboard | the M1 Tauri pipeline lands | design the matrix view's data source (the BuildEvent stream) |
 | E7 | **Pre-release device preview matrix** | real-device/emulator matrix previews (also supplies the smoke-test devices noted in the audit) | M4 TV or M7 wearables smoke testing hits a device bottleneck | survey device-farm options and cost |
-| E8 | **Decision records (ADR)** | archive the "why" behind choices (bilingual docs, no crate split, wasm plugins, …) | can start immediately | create `docs/decisions/` with a template and backfill existing decisions |
+| E8 | **Decision records (ADR)** | archive the "why" behind choices (bilingual docs, no crate split, wasm plugins, …) | can start immediately | `docs/decisions/` exists (template + 3 backfilled records); append as needed |
 
 ## 14. Open questions (to decide)
 
