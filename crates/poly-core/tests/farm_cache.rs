@@ -9,7 +9,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use poly_cache::{CacheInputs, Digest, cache_key};
 use poly_core::farm::{CacheBackend, execute_job};
 use poly_core::pipeline::{self, InjectedStages};
-use poly_core::{BuildEvent, EventSink, JobSpec, PolypackConfig, Project, Profile, UiEngine};
+use poly_core::{BuildEvent, EventSink, JobSpec, PolypackConfig, Profile, Project, UiEngine};
 use poly_targets::{Host, Registry, TargetRequest, current_host};
 
 static COUNTER: AtomicUsize = AtomicUsize::new(0);
@@ -159,7 +159,11 @@ fn second_farm_run_hits_shared_cache_at_least_90pct() {
     )
     .expect("worker A 构建");
     assert_eq!(first.cache.hits, 0, "首跑不该命中: {:?}", first.cache);
-    assert!(first.cache.misses > 0, "首跑应写入共享后端: {:?}", first.cache);
+    assert!(
+        first.cache.misses > 0,
+        "首跑应写入共享后端: {:?}",
+        first.cache
+    );
 
     // 二跑（worker B，不同工程副本）：农场一次 submit 的逐目标任务各执行一次，
     // 统计全部任务的缓存查询（对齐 M1 口径：命中数 / cached 事件总数）

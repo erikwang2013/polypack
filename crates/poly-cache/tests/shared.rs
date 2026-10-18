@@ -74,8 +74,5 @@ fn fallback_store_degrades_on_primary_io_error() {
 
     let warnings = warnings.lock().unwrap();
     assert_eq!(warnings.len(), 1, "降级告警只报一次: {warnings:?}");
-    assert!(
-        warnings[0].contains("降级"),
-        "告警应说明降级: {warnings:?}"
-    );
+    assert!(warnings[0].contains("降级"), "告警应说明降级: {warnings:?}");
 }
