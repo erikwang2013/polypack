@@ -35,7 +35,8 @@ use poly_core::diagnostics::{Code, Diagnostic};
 use poly_core::{CredentialRef, codes};
 use poly_publish::secret::{CredentialProvider, EnvProvider, resolve_payload};
 use poly_publish::{
-    Archive, Package, PublishError, PublishRequest, Publisher, Transport, UreqTransport,
+    Archive, Package, PublishError, PublishFailure, PublishRequest, Publisher, Transport,
+    UreqTransport,
 };
 use poly_targets::{Registry, TargetSpec};
 
@@ -172,8 +173,15 @@ pub fn run(args: &Args, json: bool) -> Result<i32, Diagnostic> {
     if let Some(materials) = prepared.materials.clone() {
         request = request.with_materials(materials);
     }
-    let outcome = poly_publish::publish(publisher.as_ref(), &request, &providers, &archive)
-        .map_err(publish_error)?;
+    let outcome =
+        match poly_publish::publish_checked(publisher.as_ref(), &request, &providers, &archive) {
+            Ok(outcome) => outcome,
+            Err(failure) => {
+                // 机器可读：`{"event":"failed", stage, code, hint}`（T-M8-10 验收口径）。
+                project::report("publish", json, failure_event(&failure));
+                return Err(failure_diagnostic(&failure));
+            }
+        };
     let receipt = &outcome.receipt;
     project::report(
         "publish",
@@ -195,6 +203,28 @@ pub fn run(args: &Args, json: bool) -> Result<i32, Diagnostic> {
         }),
     );
     Ok(0)
+}
+
+/// 失败事件（与构建事件流的 `Failed` 同形）：`{"event":"failed","stage","code","hint"}`。
+fn failure_event(failure: &PublishFailure) -> serde_json::Value {
+    serde_json::to_value(poly_core::BuildEvent::Failed {
+        stage: failure.stage.to_string(),
+        code: failure.error.code().to_string(),
+        hint: failure.hint(),
+    })
+    .expect("失败事件可序列化")
+}
+
+/// 失败诊断：消息保留 `Failed{stage, code, hint}`，hint 同时进入诊断的修复提示。
+fn failure_diagnostic(failure: &PublishFailure) -> Diagnostic {
+    let mut diagnostic = Diagnostic::error(
+        Code::new(failure.error.code()),
+        format!("发布失败：{}（{}）", failure.render(), failure.error),
+    );
+    if let Some(hint) = failure.hint() {
+        diagnostic = diagnostic.with_hint(hint);
+    }
+    diagnostic
 }
 
 /// 解析输入（渠道 / 代码包 / 凭据形态 / 端点 / 材料）；dry-run 与真腿共用同一份口径。
@@ -435,7 +465,7 @@ fn publish_error(err: PublishError) -> Diagnostic {
 mod tests {
     use super::*;
     use poly_core::CredentialSource;
-    use poly_publish::MemoryProvider;
+    use poly_publish::{MemoryProvider, Stage};
 
     /// 最小工程骨架：`polypack.toml` + 空的产物落点。
     fn fixture(tag: &str) -> (PathBuf, poly_core::Project) {
@@ -683,6 +713,48 @@ mod tests {
         assert_eq!(err.code.to_string(), "poly::E_PUBLISH_0001");
         let err = payload_fields(b"IjQyIg==").expect_err("非对象必须报错"); // "42"
         assert!(err.message.contains("顶层应为对象"), "{}", err.message);
+    }
+
+    fn failed(stage: Stage) -> PublishFailure {
+        PublishFailure {
+            stage,
+            error: PublishError::Platform {
+                channel: "wechat-open-platform",
+                code: "85008".to_string(),
+                message: "类目材料不合法".to_string(),
+                hint: Some("核对 item_list".to_string()),
+            },
+        }
+    }
+
+    /// T-M8-10 验收：不可恢复失败 → 机器可读 `Failed{stage, code, hint}`。
+    #[test]
+    fn failure_event_is_machine_readable_failed_shape() {
+        let event = failure_event(&failed(Stage::Submit));
+        assert_eq!(event["event"], "failed");
+        assert_eq!(event["stage"], "submit");
+        assert_eq!(event["code"], "poly::E_PUB_0003");
+        assert_eq!(event["hint"], "核对 item_list");
+        // 码 / 提示原样透传，不重新编号。
+        assert_eq!(
+            event.as_object().expect("对象").len(),
+            4,
+            "只含 event/stage/code/hint"
+        );
+    }
+
+    #[test]
+    fn failure_diagnostic_carries_failed_shape_and_hint() {
+        let diagnostic = failure_diagnostic(&failed(Stage::Submit));
+        assert_eq!(diagnostic.code.to_string(), "poly::E_PUB_0003");
+        assert!(
+            diagnostic
+                .message
+                .contains("Failed{stage=submit, code=poly::E_PUB_0003, hint=核对 item_list}"),
+            "{}",
+            diagnostic.message
+        );
+        assert_eq!(diagnostic.hint.as_deref(), Some("核对 item_list"));
     }
 
     #[test]

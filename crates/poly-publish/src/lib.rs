@@ -49,6 +49,7 @@ pub mod douyin;
 pub mod error;
 pub mod flow;
 pub mod oem;
+pub mod retry;
 pub mod secret;
 pub mod transport;
 pub mod wechat;
@@ -59,12 +60,16 @@ mod time;
 use poly_core::CredentialRef;
 
 pub use alipay::AlipayPublisher;
-pub use archive::{Archive, AuditState, PollEntry, Receipt, SCHEMA_VERSION, receipt_key};
+pub use archive::{
+    Archive, AuditState, PollEntry, Receipt, SCHEMA_VERSION, SUBMIT_SCHEMA_VERSION, SubmitJournal,
+    SubmitStatus, receipt_key, submission_key,
+};
 pub use douyin::DouyinPublisher;
 pub use error::{PublishError, codes};
-pub use flow::{PollPolicy, PublishOutcome, PublishRequest, publish};
+pub use flow::{PollPolicy, PublishOutcome, PublishRequest, publish, publish_checked};
 pub use oem::OemPublisher;
 pub use package::Package;
+pub use retry::{PublishFailure, RetryPolicy, Stage};
 pub use secret::{CredentialProvider, EnvProvider, MemoryProvider, Redactor};
 pub use transport::{HttpRequest, HttpResponse, Method, Transport, UreqTransport};
 pub use wechat::WechatPublisher;

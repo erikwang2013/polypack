@@ -11,7 +11,8 @@
 //!    幂等：同一 `user_version` 已有版本在审核中 → 11303（本客户端按已在队列续走轮询）。
 //! 3. **提审** = 先 `GET /api/apps/v1/package_version/get_audit_hosts/` 取
 //!    `data.host_names`（平台前置要求），再 `POST /api/apps/v2/package_version/audit/`
-//!    `{host_names, ...}`；11303 视为已在提审队列（at-least-once 续走）。
+//!    `{host_names, ...}`；11303 视为已在提审队列（幂等重发续走）。提审请求带
+//!    `Idempotency-Key`（同键重发由网关去重）。
 //! 4. **轮询** = `GET /api/apps/v1/package_version/versions/`（无查询参数）→
 //!    `data.audit.status`：0 审核中 / 1 通过 / 2 不通过 / 3 撤回审核；`data.audit` 可为空
 //!    （无审核记录 → Unknown，不硬猜）。
@@ -83,12 +84,16 @@ impl DouyinPublisher {
         method: Method,
         url: &str,
         body: Option<String>,
+        idempotency_key: Option<&str>,
     ) -> Result<Value, PublishError> {
-        let request = match method {
+        let mut request = match method {
             Method::Get => HttpRequest::get(url).header(TOKEN_HEADER, &creds.access_token),
             Method::Post => HttpRequest::post(url, JSON_TYPE, body.unwrap_or_default())
                 .header(TOKEN_HEADER, &creds.access_token),
         };
+        if let Some(key) = idempotency_key {
+            request = request.header(transport::IDEMPOTENCY_HEADER, key);
+        }
         let response = transport::send(self.transport.as_ref(), &request, redactor)?;
         transport::ok_json(&response, url, redactor)
     }
@@ -144,6 +149,7 @@ impl Publisher for DouyinPublisher {
             Method::Post,
             UPLOAD_URL,
             Some(Value::Object(body).to_string()),
+            None,
         )?;
         // 11303（已有版本在审核中）= 版本已创建 → 断点续走的正常形态，按已上传续走。
         if !envelope_ok(&json) && err_no(&json) != Some(11303) {
@@ -164,7 +170,7 @@ impl Publisher for DouyinPublisher {
     /// 提审：先取可用审核域名，再提交（11303 = 已在提审队列，按 at-least-once 续走）。
     fn submit(&self, job: &Job<'_>) -> Result<Submission, PublishError> {
         let (creds, redactor) = self.credentials(job)?;
-        let hosts = self.call(&creds, &redactor, Method::Get, AUDIT_HOSTS_URL, None)?;
+        let hosts = self.call(&creds, &redactor, Method::Get, AUDIT_HOSTS_URL, None, None)?;
         douyin_ok(&hosts, &redactor)?;
         let host_names: Vec<Value> = hosts
             .pointer("/data/host_names")
@@ -190,12 +196,19 @@ impl Publisher for DouyinPublisher {
                 }
             }
         }
+        let idempotency = crate::archive::submission_key(
+            Channel::Douyin.id(),
+            job.appid,
+            job.version,
+            job.package.digest(),
+        );
         let json = self.call(
             &creds,
             &redactor,
             Method::Post,
             AUDIT_URL,
             Some(Value::Object(body).to_string()),
+            Some(&idempotency),
         )?;
         if !envelope_ok(&json) && err_no(&json) != Some(11303) {
             return Err(platform_error(&json, &redactor));
@@ -208,7 +221,7 @@ impl Publisher for DouyinPublisher {
     /// 轮询：`versions/` → `data.audit.status`（0 审核中 / 1 通过 / 2 不通过 / 3 撤回审核）。
     fn poll(&self, job: &Job<'_>) -> Result<PollOutcome, PublishError> {
         let (creds, redactor) = self.credentials(job)?;
-        let json = self.call(&creds, &redactor, Method::Get, VERSIONS_URL, None)?;
+        let json = self.call(&creds, &redactor, Method::Get, VERSIONS_URL, None, None)?;
         douyin_ok(&json, &redactor)?;
         let Some(Value::Object(audit)) = json.pointer("/data/audit") else {
             return Ok(PollOutcome {

@@ -22,7 +22,8 @@
 //!    请求版本号、`version_desc` = 请求描述、必需文本字段（`app_name` / `app_english_name` /
 //!    `app_slogan` / `app_desc` / `app_category_ids`）从 materials 取，其余文档字段透传。
 //!    `CAN_NOT_SUBMIT_WITH_AUDIT(_GRAY)`（已有审核中 / 灰度版本）视为已在提审队列——
-//!    提审边界 at-least-once 的正常形态，续走轮询。**文件类材料**（`app_logo` / 截图 /
+//!    幂等重发的正常形态，续走轮询；提审请求带 `Idempotency-Key`（同键重发由网关去重）。
+//!    **文件类材料**（`app_logo` / 截图 /
 //!    license 图等 23 个文件段，v2 SDK `getFileParams` 名单）传输未实现：materials 里给了
 //!    就**明拒**（E_PUB_0004），绝不静默漏发。
 //! 5. **轮询** `alipay.open.mini.version.detail.query` → `status`：INIT 开发中 / AUDITING
@@ -81,6 +82,7 @@ impl AlipayPublisher {
         redactor: &Redactor,
         method: &str,
         business: &[(String, String)],
+        idempotency_key: Option<&str>,
     ) -> Result<Value, PublishError> {
         let mut common: Vec<(String, String)> = vec![
             ("app_id".to_string(), creds.app_id.clone()),
@@ -104,11 +106,12 @@ impl AlipayPublisher {
 
         let url = format!("{GATEWAY_URL}?{}", encode_pairs(&common));
         let body = encode_pairs(business);
-        let response = transport::send(
-            self.transport.as_ref(),
-            &HttpRequest::post(url, FORM_TYPE, body).header("Accept", "application/json"),
-            redactor,
-        )?;
+        let mut request =
+            HttpRequest::post(url, FORM_TYPE, body).header("Accept", "application/json");
+        if let Some(key) = idempotency_key {
+            request = request.header(transport::IDEMPOTENCY_HEADER, key);
+        }
+        let response = transport::send(self.transport.as_ref(), &request, redactor)?;
         transport::ok_json(&response, GATEWAY_URL, redactor)
     }
 }
@@ -144,7 +147,7 @@ impl Publisher for AlipayPublisher {
         }
         let business = vec![("biz_content".to_string(), Value::Object(biz).to_string())];
 
-        let json = self.call(job, &creds, &redactor, METHOD_UPLOAD, &business)?;
+        let json = self.call(job, &creds, &redactor, METHOD_UPLOAD, &business, None)?;
         let node = response_node(&json, METHOD_UPLOAD)?;
         if !node_ok(node) && node_sub_code(node) != Some("VERSION_HAS_EXISTED") {
             return Err(platform_error(node, &redactor));
@@ -163,7 +166,7 @@ impl Publisher for AlipayPublisher {
         )];
         let started = Instant::now();
         loop {
-            let json = self.call(job, &creds, &redactor, METHOD_BUILD_QUERY, &business)?;
+            let json = self.call(job, &creds, &redactor, METHOD_BUILD_QUERY, &business, None)?;
             let node = response_node(&json, METHOD_BUILD_QUERY)?;
             if !node_ok(node) {
                 return Err(platform_error(node, &redactor));
@@ -265,7 +268,20 @@ impl Publisher for AlipayPublisher {
             }
         }
 
-        let json = self.call(job, &creds, &redactor, METHOD_AUDIT_APPLY, &fields)?;
+        let idempotency = crate::archive::submission_key(
+            Channel::Alipay.id(),
+            job.appid,
+            job.version,
+            job.package.digest(),
+        );
+        let json = self.call(
+            job,
+            &creds,
+            &redactor,
+            METHOD_AUDIT_APPLY,
+            &fields,
+            Some(&idempotency),
+        )?;
         let node = response_node(&json, METHOD_AUDIT_APPLY)?;
         if !node_ok(node)
             && !matches!(
@@ -296,7 +312,7 @@ impl Publisher for AlipayPublisher {
         }
         let business = vec![("biz_content".to_string(), Value::Object(biz).to_string())];
 
-        let json = self.call(job, &creds, &redactor, METHOD_DETAIL_QUERY, &business)?;
+        let json = self.call(job, &creds, &redactor, METHOD_DETAIL_QUERY, &business, None)?;
         let node = response_node(&json, METHOD_DETAIL_QUERY)?;
         if !node_ok(node) {
             return Err(platform_error(node, &redactor));
