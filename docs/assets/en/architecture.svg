@@ -1058,21 +1058,17 @@ rect.c-bg-rect { fill: var(--bg); }</style><rect class="c-bg-rect" width="100%" 
         </g>
       <g class="pax-brand" transform="translate(1332 580) scale(0.5)" opacity="0.92">
   <rect x="1.5" y="1.5" width="61" height="61" rx="14" fill="#ea580c" stroke="#9a3412" stroke-width="3"/>
-  <g stroke="#9a3412" stroke-width="5.5" stroke-linecap="round" fill="none">
-    <path d="M20,50 L13,56.5"/>
-    <path d="M27,53 L24,60"/>
-    <path d="M37,53 L40,60"/>
-    <path d="M44,50 L51,56.5"/>
-  </g>
-  <ellipse cx="32" cy="39" rx="18" ry="14" fill="#fdba74"/>
-  <path d="M17,27 a15,12.5 0 0 1 30,0 z" fill="#0e7490" stroke="#0b5e75" stroke-width="2"/>
-  <rect x="14.5" y="25" width="35" height="6" rx="3" fill="#0b5e75"/>
-  <circle cx="24" cy="36.5" r="5.6" fill="#ffffff" stroke="#7c2d12" stroke-width="2.2"/>
-  <circle cx="40" cy="36.5" r="5.6" fill="#ffffff" stroke="#7c2d12" stroke-width="2.2"/>
-  <circle cx="25.2" cy="37.8" r="2.5" fill="#0f172a"/>
-  <circle cx="38.8" cy="37.8" r="2.5" fill="#0f172a"/>
-  <ellipse cx="18.5" cy="44.5" rx="2.4" ry="1.6" fill="#fda4af" opacity="0.8"/>
-  <ellipse cx="45.5" cy="44.5" rx="2.4" ry="1.6" fill="#fda4af" opacity="0.8"/>
-  <path d="M26,45 q6,5 12,0" fill="none" stroke="#7c2d12" stroke-width="2.6" stroke-linecap="round"/>
+  <path d="M32,16 v-6" stroke="#7c2d12" stroke-width="2"/>
+  <circle cx="32" cy="8" r="3" fill="#0891b2" stroke="#0e7490" stroke-width="1.2"/>
+  <rect x="12" y="16" width="40" height="32" rx="8" fill="#f8fafc" stroke="#7c2d12" stroke-width="2.5"/>
+  <rect x="17" y="21" width="30" height="21" rx="5" fill="#0f172a" stroke="#0e7490" stroke-width="1.5"/>
+  <circle cx="26" cy="30" r="3.2" fill="#e0f2fe"/>
+  <circle cx="38" cy="30" r="3.2" fill="#e0f2fe"/>
+  <circle cx="26.5" cy="30.5" r="1.4" fill="#0f172a"/>
+  <circle cx="37.5" cy="30.5" r="1.4" fill="#0f172a"/>
+  <path d="M27,36 Q32,40 37,36" fill="none" stroke="#67e8f9" stroke-width="2" stroke-linecap="round"/>
+  <circle cx="12" cy="30" r="3" fill="#0891b2"/>
+  <circle cx="52" cy="30" r="3" fill="#0891b2"/>
+  <rect x="22" y="48" width="20" height="7" rx="2" fill="#d4a373" stroke="#7c2d12" stroke-width="1.5"/>
 </g>
 </svg>

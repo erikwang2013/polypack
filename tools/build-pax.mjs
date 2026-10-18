@@ -2,7 +2,7 @@
 /**
  * build-pax.mjs — Pax（项目宠物）单一事实源生成器
  *
- * 输入: 本文件内的共享身体图层 + 十二种彩色表情图层
+ * 输入: 本文件内的共享小机器人身体 + 十二种彩色屏幕表情
  *   （笑/欢乐/哭/沮丧/惊恐/愤怒/撒娇/卖萌/讨好/敲打/捂脸/吐舌头）
  * 输出:
  *   docs/assets/pax.svg           动态版: 空闲浮动 + 十二表情循环 (纯 CSS 动画, <img> 嵌入可播放)
@@ -34,10 +34,11 @@ const SCENE = `
     <marker id="pax-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
       <path d="M0,0 L10,5 L0,10 z" fill="#94a3b8"/>
     </marker>
+    <clipPath id="pax-screen-clip"><rect x="248" y="144" width="104" height="76" rx="12"/></clipPath>
   </defs>
-  <path d="M170,206 C 300,60 470,40 548,72" fill="none" stroke="#94a3b8" stroke-width="2" stroke-dasharray="5 6" marker-end="url(#pax-arrow)"/>
-  <path d="M482,178 C 540,140 580,124 622,128" fill="none" stroke="#94a3b8" stroke-width="2" stroke-dasharray="5 6" marker-end="url(#pax-arrow)"/>
-  <path d="M478,212 C 520,252 552,276 586,288" fill="none" stroke="#94a3b8" stroke-width="2" stroke-dasharray="5 6" marker-end="url(#pax-arrow)"/>
+  <path d="M400,210 C 450,140 500,90 548,76" fill="none" stroke="#94a3b8" stroke-width="2" stroke-dasharray="5 6" marker-end="url(#pax-arrow)"/>
+  <path d="M392,226 C 480,190 560,160 622,144" fill="none" stroke="#94a3b8" stroke-width="2" stroke-dasharray="5 6" marker-end="url(#pax-arrow)"/>
+  <path d="M372,292 C 440,318 520,315 586,300" fill="none" stroke="#94a3b8" stroke-width="2" stroke-dasharray="5 6" marker-end="url(#pax-arrow)"/>
   <g stroke="#64748b" stroke-width="3" fill="#ffffff" stroke-linejoin="round">
     <rect x="552" y="50" width="28" height="48" rx="7"/>
     <rect x="626" y="126" width="26" height="32" rx="7"/>
@@ -46,118 +47,106 @@ const SCENE = `
     <path d="M621,318 v9 M607,327 h28" fill="none"/>
   </g>
   <circle cx="566" cy="88" r="2.6" fill="#64748b" stroke="none"/>
-  <ellipse cx="300" cy="396" rx="152" ry="15" fill="#0f172a" opacity="0.06"/>`;
+  <ellipse cx="300" cy="352" rx="88" ry="9" fill="#0f172a" opacity="0.07"/>`;
 
-/* ── 共享身体: 腿 / 身 / 腹 / 眼柄 / 帽 / 臂 / 包裹 / 钳 (表情之外的全部图层) ── */
+/* ── 共享身体: 短腿 / 纸箱 / 脖子 / 屏幕头 / 耳钉 / 天线 / 手臂与包裹 ── */
 const LEGS = `
-    <g stroke="#c2410c" stroke-width="11" stroke-linecap="round" fill="none">
-      <path d="M214,318 L182,356"/>
-      <path d="M246,338 L228,380"/>
-      <path d="M282,348 L276,388"/>
-      <path d="M386,318 L418,356"/>
-      <path d="M354,338 L372,380"/>
-      <path d="M318,348 L324,388"/>
-    </g>`;
+    <g stroke="#9a3412" stroke-width="7" stroke-linecap="round" fill="none">
+      <path d="M282,318 L278,338"/>
+      <path d="M318,318 L322,338"/>
+    </g>
+    <rect x="262" y="336" width="34" height="13" rx="6.5" fill="#ea580c" stroke="#9a3412" stroke-width="2.5"/>
+    <rect x="304" y="336" width="34" height="13" rx="6.5" fill="#ea580c" stroke="#9a3412" stroke-width="2.5"/>`;
 
-const CORE = `
-    <ellipse cx="300" cy="268" rx="110" ry="78" fill="#ea580c" stroke="#9a3412" stroke-width="3"/>
-    <ellipse cx="300" cy="292" rx="72" ry="46" fill="#fdba74" opacity="0.85"/>`;
+const BODY = `
+    <rect x="252" y="244" width="96" height="76" rx="14" fill="#d4a373" stroke="#9a3412" stroke-width="3"/>
+    <rect x="292" y="244" width="16" height="76" fill="#b08968" opacity="0.85"/>
+    <rect x="262" y="256" width="44" height="30" rx="4" fill="#fffdf7" stroke="#b08968" stroke-width="1.5"/>
+    <text x="284" y="270" text-anchor="middle" font-size="8.5" font-weight="700" font-family="${FONT}" fill="#7c4a2a">POLY</text>
+    <path d="M266,276 h36 M268,280 h32 M272,284 h24" stroke="#7c4a2a" stroke-width="1.5"/>
+    <circle cx="330" cy="272" r="12" fill="#ffffff" stroke="#0891b2" stroke-width="2" stroke-dasharray="2.5 2"/>
+    <ellipse cx="330" cy="272" rx="8" ry="3.2" fill="none" stroke="#0891b2" stroke-width="1.5" transform="rotate(-30 330 272)"/>
+    <circle cx="330" cy="272" r="1.8" fill="#0891b2"/>
+    <circle cx="330" cy="300" r="3" fill="#22c55e"/>`;
 
-const BODY_TOP = LEGS + CORE;
+const NECK = `<rect x="286" y="232" width="28" height="14" rx="4" fill="#94a3b8" stroke="#475569" stroke-width="2"/>`;
 
 const HEAD = `
-    <g stroke="#9a3412" stroke-width="6" stroke-linecap="round">
-      <path d="M252,206 L238,162"/>
-      <path d="M348,206 L362,162"/>
-    </g>
-    <path d="M246,192 q0,-54 54,-54 q54,0 54,54 z" fill="#0891b2" stroke="#0e7490" stroke-width="3"/>
-    <rect x="234" y="188" width="132" height="14" rx="7" fill="#0e7490"/>
-    <circle cx="300" cy="166" r="10" fill="#fdba74" stroke="#0e7490" stroke-width="2.5"/>
-    <rect x="295.5" y="161.5" width="9" height="8.5" rx="2" fill="#9a3412"/>`;
+    <rect x="232" y="128" width="136" height="108" rx="22" fill="#f8fafc" stroke="#7c2d12" stroke-width="3"/>
+    <rect x="248" y="144" width="104" height="76" rx="12" fill="#0f172a" stroke="#0e7490" stroke-width="2.5"/>`;
+
+const BODY_TOP = LEGS + BODY + NECK + HEAD;
+
+const EARS = `<circle cx="232" cy="170" r="9" fill="#ea580c" stroke="#9a3412" stroke-width="2.5"/><circle cx="368" cy="170" r="9" fill="#ea580c" stroke="#9a3412" stroke-width="2.5"/>`;
+
+const ANTENNA = `
+    <path d="M300,128 L300,106" stroke="#9a3412" stroke-width="4" stroke-linecap="round"/>
+    <circle cx="300" cy="103" r="6" fill="#ea580c" stroke="#9a3412" stroke-width="2"/>
+    <path d="M305,100 L322,105 L305,111 Z" fill="#0891b2" stroke="#0e7490" stroke-width="1.5" stroke-linejoin="round"/>`;
 
 const ARMS = `
-    <path d="M206,258 L148,216" stroke="#ea580c" stroke-width="16" stroke-linecap="round"/>
-    <g transform="rotate(-8 118 253)">
-      <rect x="64" y="210" width="108" height="86" rx="10" fill="#d4a373" stroke="#b08968" stroke-width="3"/>
-      <rect x="107" y="210" width="22" height="86" fill="#b08968" opacity="0.85"/>
-      <circle cx="150" cy="240" r="17" fill="#ffffff" stroke="#0891b2" stroke-width="2" stroke-dasharray="3 2.6"/>
-      <ellipse cx="150" cy="240" rx="11.5" ry="4.4" fill="none" stroke="#0891b2" stroke-width="2" transform="rotate(-32 150 240)"/>
-      <circle cx="150" cy="240" r="2.4" fill="#0891b2"/>
-      <text x="80" y="282" font-size="13" font-family="${FONT}" font-weight="700" fill="#7c4a2a">POLY</text>
-    </g>
-    <circle cx="128" cy="194" r="22" fill="#ea580c" stroke="#9a3412" stroke-width="3"/>
-    <path d="M112,184 q14,-9 28,-3" fill="none" stroke="#9a3412" stroke-width="2.5" stroke-linecap="round"/>
-    <path d="M394,254 L452,208" stroke="#ea580c" stroke-width="16" stroke-linecap="round"/>
-    <circle cx="464" cy="192" r="24" fill="#ea580c" stroke="#9a3412" stroke-width="3"/>
-    <path d="M448,180 q16,-10 32,-4" fill="none" stroke="#9a3412" stroke-width="2.5" stroke-linecap="round"/>`;
+    <path d="M252,262 L224,286" stroke="#ea580c" stroke-width="9" stroke-linecap="round"/>
+    <circle cx="218" cy="292" r="11" fill="#ea580c" stroke="#9a3412" stroke-width="2.5"/>
+    <circle cx="204" cy="300" r="10" fill="#f8fafc" stroke="#9a3412" stroke-width="2.5"/>
+    <circle cx="204" cy="300" r="4" fill="#b08968"/>
+    <path d="M348,262 L378,238" stroke="#ea580c" stroke-width="9" stroke-linecap="round"/>
+    <rect x="374" y="202" width="28" height="26" rx="3" fill="#d4a373" stroke="#9a3412" stroke-width="2"/>
+    <path d="M388,202 v26 M374,212 h28" stroke="#b08968" stroke-width="3"/>
+    <circle cx="384" cy="232" r="11" fill="#ea580c" stroke="#9a3412" stroke-width="2.5"/>`;
 
-const BODY_TAIL = HEAD + ARMS;
+const BODY_TAIL = EARS + ANTENNA + ARMS;
 
-/* ── 表情零件 (眼 / 嘴 / 腮红 / 道具) ── */
-const BLUSH = `<ellipse cx="242" cy="300" rx="12" ry="7.5" fill="#fb7185" opacity="0.55"/><ellipse cx="358" cy="300" rx="12" ry="7.5" fill="#fb7185" opacity="0.55"/>`;
-const OPEN_SMILE = `<path d="M276,283 Q300,318 324,283 Z" fill="#7c2d12" stroke="#9a3412" stroke-width="3" stroke-linejoin="round"/><ellipse cx="300" cy="303" rx="11" ry="6.5" fill="#fb7185"/>`;
-const SMILE_LINE = `<path d="M282,294 Q300,306 318,294" fill="none" stroke="#9a3412" stroke-width="4" stroke-linecap="round"/>`;
-const FROWN = `<path d="M282,300 Q300,288 318,300" fill="none" stroke="#9a3412" stroke-width="4" stroke-linecap="round"/>`;
-const CRY_MOUTH = `<path d="M282,298 Q300,282 318,298" fill="none" stroke="#9a3412" stroke-width="4" stroke-linecap="round"/>`;
-const ROUND_EYES = `<circle cx="236" cy="154" r="17" fill="#ffffff" stroke="#9a3412" stroke-width="3"/><circle cx="364" cy="154" r="17" fill="#ffffff" stroke="#9a3412" stroke-width="3"/><circle cx="240" cy="158" r="7.5" fill="#0f172a"/><circle cx="360" cy="158" r="7.5" fill="#0f172a"/>`;
-const HAPPY_EYES = `<path d="M220,156 Q236,140 252,156" fill="none" stroke="#9a3412" stroke-width="4.5" stroke-linecap="round"/><path d="M348,156 Q364,140 380,156" fill="none" stroke="#9a3412" stroke-width="4.5" stroke-linecap="round"/>`;
-const DROOPY_EYES = `<path d="M220,150 Q236,166 252,150" fill="none" stroke="#9a3412" stroke-width="4.5" stroke-linecap="round"/><path d="M348,150 Q364,166 380,150" fill="none" stroke="#9a3412" stroke-width="4.5" stroke-linecap="round"/>`;
-const LASHED_EYES = `${HAPPY_EYES}<path d="M219,149 l-7,-5 M381,149 l7,-5" fill="none" stroke="#9a3412" stroke-width="3" stroke-linecap="round"/>`;
-const WINK = `<circle cx="236" cy="154" r="17" fill="#ffffff" stroke="#9a3412" stroke-width="3"/><circle cx="240" cy="158" r="7.5" fill="#0f172a"/><path d="M348,154 Q364,142 380,154" fill="none" stroke="#9a3412" stroke-width="4.5" stroke-linecap="round"/>`;
-const FOCUS_EYES = `<circle cx="236" cy="154" r="17" fill="#ffffff" stroke="#9a3412" stroke-width="3"/><circle cx="364" cy="154" r="17" fill="#ffffff" stroke="#9a3412" stroke-width="3"/><circle cx="243" cy="157" r="7.5" fill="#0f172a"/><circle cx="367" cy="157" r="7.5" fill="#0f172a"/>`;
-const PUPPY_EYES = `
-      <path d="M218,134 Q236,126 254,134" fill="none" stroke="#9a3412" stroke-width="3.5" stroke-linecap="round"/>
-      <path d="M346,134 Q364,126 382,134" fill="none" stroke="#9a3412" stroke-width="3.5" stroke-linecap="round"/>
-      <circle cx="236" cy="156" r="19" fill="#ffffff" stroke="#9a3412" stroke-width="3"/>
-      <circle cx="364" cy="156" r="19" fill="#ffffff" stroke="#9a3412" stroke-width="3"/>
-      <circle cx="239" cy="160" r="10" fill="#0f172a"/>
-      <circle cx="361" cy="160" r="10" fill="#0f172a"/>
-      <circle cx="243" cy="156" r="3.4" fill="#ffffff"/>
-      <circle cx="365" cy="156" r="3.4" fill="#ffffff"/>`;
-const ANGRY_BROWS = `<path d="M214,136 L252,150" fill="none" stroke="#9a3412" stroke-width="5.5" stroke-linecap="round"/><path d="M348,150 L386,136" fill="none" stroke="#9a3412" stroke-width="5.5" stroke-linecap="round"/>`;
-const DETERMINED_BROWS = `<path d="M218,138 L252,147" fill="none" stroke="#9a3412" stroke-width="4.5" stroke-linecap="round"/><path d="M348,147 L382,138" fill="none" stroke="#9a3412" stroke-width="4.5" stroke-linecap="round"/>`;
-const GRIT_TEETH = `<path d="M276,286 h48 v20 h-48 z" fill="#ffffff" stroke="#9a3412" stroke-width="3" stroke-linejoin="round"/><path d="M288,286 v20 M300,286 v20 M312,286 v20" stroke="#9a3412" stroke-width="2"/>`;
-const SHOUT = `<path d="M279,287 Q300,317 321,287 Z" fill="#7c2d12" stroke="#9a3412" stroke-width="3" stroke-linejoin="round"/><ellipse cx="300" cy="305" rx="9" ry="5" fill="#fb7185"/>`;
-const POUT = `<ellipse cx="300" cy="296" rx="8" ry="9" fill="#7c2d12" stroke="#9a3412" stroke-width="2.5"/><ellipse cx="300" cy="299" rx="4.5" ry="3" fill="#fb7185"/>`;
-const WAVY_MOUTH = `<path d="M276,294 q8,8 16,0 q8,-8 16,0 q8,8 16,0" fill="none" stroke="#9a3412" stroke-width="4" stroke-linecap="round"/>`;
-const TONGUE_MOUTH = `<path d="M278,288 Q300,308 322,288 Z" fill="#7c2d12" stroke="#9a3412" stroke-width="3" stroke-linejoin="round"/><g transform="translate(300,300)"><path class="pax-tongue" d="M-8,-4 Q0,16 8,-4 Z" fill="#fb7185" stroke="#9a3412" stroke-width="2.5"/></g>`;
-const TEARS = `
-      <g class="pax-tear pax-tear-a"><path d="M228,178 C233,185 233,192 228,196 C223,192 223,185 228,178 Z" fill="#7dd3fc" stroke="#0891b2" stroke-width="2"/></g>
-      <g class="pax-tear pax-tear-b"><path d="M372,178 C377,185 377,192 372,196 C367,192 367,185 372,178 Z" fill="#7dd3fc" stroke="#0891b2" stroke-width="2"/></g>`;
-const SWEAT = `<g class="pax-sweat"><path d="M398,96 C404,105 404,114 398,119 C392,114 392,105 398,96 Z" fill="#bae6fd" stroke="#0891b2" stroke-width="2"/></g>`;
+/* ── 屏幕表情零件 (眼 / 嘴 / 腮红 / 道具) ── */
+const BLUSH = `<ellipse cx="258" cy="193" rx="7" ry="4" fill="#fb7185" opacity="0.8"/><ellipse cx="342" cy="193" rx="7" ry="4" fill="#fb7185" opacity="0.8"/>`;
+const SMILE_LINE = `<path d="M290,199 Q300,207 310,199" fill="none" stroke="#e0f2fe" stroke-width="3" stroke-linecap="round"/>`;
+const CRY_MOUTH = `<path d="M290,206 Q300,195 310,206" fill="none" stroke="#e0f2fe" stroke-width="3" stroke-linecap="round"/>`;
+const FROWN = `<path d="M290,204 Q300,197 310,204" fill="none" stroke="#e0f2fe" stroke-width="3" stroke-linecap="round"/>`;
+const OPEN_SMILE = `<path d="M288,196 Q300,214 312,196 Z" fill="#67e8f9"/><ellipse cx="300" cy="209" rx="4" ry="2" fill="#fb7185"/>`;
+const POUT = `<ellipse cx="300" cy="202" rx="4.5" ry="5.5" fill="none" stroke="#e0f2fe" stroke-width="2.5"/>`;
+const GRIT_TEETH = `<rect x="288" y="196" width="24" height="9" rx="2" fill="#e0f2fe"/><path d="M296,196 v9 M304,196 v9" stroke="#0e7490" stroke-width="1.5"/>`;
+const SHOUT = `<ellipse cx="300" cy="203" rx="6.5" ry="7" fill="#67e8f9"/><ellipse cx="300" cy="206" rx="4" ry="2.5" fill="#fb7185"/>`;
+const WAVY_MOUTH = `<path d="M288,201 q4,4 8,0 q4,-4 8,0 q4,4 8,0" fill="none" stroke="#e0f2fe" stroke-width="3" stroke-linecap="round"/>`;
+const TONGUE_MOUTH = `<path d="M288,197 Q300,211 312,197 Z" fill="#67e8f9"/><path d="M296,205 q4,10 8,0 z" fill="#fb7185" stroke="#0f172a" stroke-width="1"/>`;
+const ROUND_EYES = `<circle cx="279" cy="171" r="8.5" fill="#f8fafc"/><circle cx="321" cy="171" r="8.5" fill="#f8fafc"/><circle cx="281" cy="173" r="4" fill="#0f172a"/><circle cx="319" cy="173" r="4" fill="#0f172a"/>`;
+const HAPPY_EYES = `<path d="M270,173 Q279,163 288,173" fill="none" stroke="#e0f2fe" stroke-width="3.5" stroke-linecap="round"/><path d="M312,173 Q321,163 330,173" fill="none" stroke="#e0f2fe" stroke-width="3.5" stroke-linecap="round"/>`;
+const DROOPY_EYES = `<path d="M270,169 Q279,178 288,169" fill="none" stroke="#e0f2fe" stroke-width="3.5" stroke-linecap="round"/><path d="M312,169 Q321,178 330,169" fill="none" stroke="#e0f2fe" stroke-width="3.5" stroke-linecap="round"/>`;
+const LASHED_EYES = `${HAPPY_EYES}<path d="M269,166 l-4,-4 M331,166 l4,-4" fill="none" stroke="#e0f2fe" stroke-width="2.5" stroke-linecap="round"/>`;
+const WINK = `<circle cx="279" cy="171" r="8.5" fill="#f8fafc"/><circle cx="281" cy="173" r="4" fill="#0f172a"/><path d="M312,173 Q321,163 330,173" fill="none" stroke="#e0f2fe" stroke-width="3.5" stroke-linecap="round"/>`;
+const FOCUS_EYES = `<circle cx="279" cy="171" r="8.5" fill="#f8fafc"/><circle cx="321" cy="171" r="8.5" fill="#f8fafc"/><circle cx="283" cy="173" r="4" fill="#0f172a"/><circle cx="325" cy="173" r="4" fill="#0f172a"/>`;
+const PUPPY_EYES = `<path d="M268,155 Q279,150 290,155" fill="none" stroke="#e0f2fe" stroke-width="2.5" stroke-linecap="round"/><path d="M310,155 Q321,150 332,155" fill="none" stroke="#e0f2fe" stroke-width="2.5" stroke-linecap="round"/><circle cx="279" cy="172" r="10" fill="#f8fafc"/><circle cx="321" cy="172" r="10" fill="#f8fafc"/><circle cx="281" cy="175" r="5.5" fill="#0f172a"/><circle cx="319" cy="175" r="5.5" fill="#0f172a"/><circle cx="283" cy="171" r="1.8" fill="#ffffff"/><circle cx="321" cy="171" r="1.8" fill="#ffffff"/>`;
+const HEART_EYES = `<g transform="translate(279,171)"><path d="M0,3 C-2,-4 -9,-1 -7,4 C-5,8 0,12 0,12 C0,12 5,8 7,4 C9,-1 2,-4 0,3 Z" fill="#fb7185" stroke="#fda4af" stroke-width="1"/></g><g transform="translate(321,171)"><path d="M0,3 C-2,-4 -9,-1 -7,4 C-5,8 0,12 0,12 C0,12 5,8 7,4 C9,-1 2,-4 0,3 Z" fill="#fb7185" stroke="#fda4af" stroke-width="1"/></g>`;
+const ANGRY_BROWS = `<path d="M268,157 L290,163" fill="none" stroke="#f87171" stroke-width="3.5" stroke-linecap="round"/><path d="M310,163 L332,157" fill="none" stroke="#f87171" stroke-width="3.5" stroke-linecap="round"/>`;
+const DETERMINED_BROWS = `<path d="M270,158 L290,162" fill="none" stroke="#fbbf24" stroke-width="3" stroke-linecap="round"/><path d="M310,162 L330,158" fill="none" stroke="#fbbf24" stroke-width="3" stroke-linecap="round"/>`;
+const SHOCK_EYES = `<circle cx="279" cy="170" r="10.5" fill="#f8fafc"/><circle cx="321" cy="170" r="10.5" fill="#f8fafc"/><circle cx="279" cy="169" r="2.5" fill="#0f172a"/><circle cx="321" cy="169" r="2.5" fill="#0f172a"/>`;
+const SHOCK_MOUTH = `<ellipse cx="300" cy="204" rx="5.5" ry="7" fill="none" stroke="#e0f2fe" stroke-width="3"/>`;
+const EMBARRASSED_EYES = `<path d="M268,164 L282,171 L268,178" fill="none" stroke="#e0f2fe" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><path d="M332,164 L318,171 L332,178" fill="none" stroke="#e0f2fe" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><path d="M292,201 h16" stroke="#e0f2fe" stroke-width="3" stroke-linecap="round"/>`;
+const TEARS = `<g class="pax-tear pax-tear-a"><path d="M267,181 C270,185 270,189 267,191 C264,189 264,185 267,181 Z" fill="#7dd3fc"/></g><g class="pax-tear pax-tear-b"><path d="M333,181 C336,185 336,189 333,191 C330,189 330,185 333,181 Z" fill="#7dd3fc"/></g>`;
+const SWEAT = `<g class="pax-sweat"><path d="M382,140 C386,146 386,152 382,155 C378,152 378,146 382,140 Z" fill="#bae6fd" stroke="#0891b2" stroke-width="1.5"/></g>`;
 const SPARKLES = `
-      <g transform="translate(198,120)"><path class="pax-sparkle" d="M0,-9 L2.4,-2.4 L9,0 L2.4,2.4 L0,9 L-2.4,2.4 L-9,0 L-2.4,-2.4 Z" fill="#fbbf24"/></g>
-      <g transform="translate(410,104)"><path class="pax-sparkle pax-sparkle-b" d="M0,-8 L2.1,-2.1 L8,0 L2.1,2.1 L0,8 L-2.1,2.1 L-8,0 L-2.1,-2.1 Z" fill="#f59e0b"/></g>
-      <g transform="translate(424,236)"><path class="pax-sparkle pax-sparkle-c" d="M0,-7 L1.9,-1.9 L7,0 L1.9,1.9 L0,7 L-1.9,1.9 L-7,0 L-1.9,-1.9 Z" fill="#fbbf24"/></g>`;
+      <g transform="translate(212,118)"><path class="pax-sparkle" d="M0,-8 L2.1,-2.1 L8,0 L2.1,2.1 L0,8 L-2.1,2.1 L-8,0 L-2.1,-2.1 Z" fill="#fbbf24"/></g>
+      <g transform="translate(392,108)"><path class="pax-sparkle pax-sparkle-b" d="M0,-7 L1.9,-1.9 L7,0 L1.9,1.9 L0,7 L-1.9,1.9 L-7,0 L-1.9,-1.9 Z" fill="#f59e0b"/></g>
+      <g transform="translate(404,254)"><path class="pax-sparkle pax-sparkle-c" d="M0,-6 L1.6,-1.6 L6,0 L1.6,1.6 L0,6 L-1.6,1.6 L-6,0 L-1.6,-1.6 Z" fill="#fbbf24"/></g>`;
 const HEARTS = `
-      <g transform="translate(400,112)"><path class="pax-heart pax-heart-a" d="M0,4 C-3,-3 -11,0 -8,6 C-6,10 0,15 0,15 C0,15 6,10 8,6 C11,0 3,-3 0,4 Z" fill="#fb7185" stroke="#f43f5e" stroke-width="1.5"/></g>
-      <g transform="translate(424,146)"><path class="pax-heart pax-heart-b" d="M0,3 C-2,-2 -8,0 -6,4 C-4,7 0,11 0,11 C0,11 4,7 6,4 C8,0 2,-2 0,3 Z" fill="#fda4af"/></g>`;
-const HEART_EYES = `
-      <g transform="translate(236,154)"><g class="pax-heart-eye"><path d="M0,4 C-4,-5 -15,-1 -11,7 C-8,13 0,19 0,19 C0,19 8,13 11,7 C15,-1 4,-5 0,4 Z" fill="#fb7185" stroke="#9a3412" stroke-width="2.5"/></g></g>
-      <g transform="translate(364,154)"><g class="pax-heart-eye"><path d="M0,4 C-4,-5 -15,-1 -11,7 C-8,13 0,19 0,19 C0,19 8,13 11,7 C15,-1 4,-5 0,4 Z" fill="#fb7185" stroke="#9a3412" stroke-width="2.5"/></g></g>`;
-const SIGH = `<g transform="translate(348,248)"><g class="pax-sigh" fill="#cbd5e1"><ellipse cx="0" cy="0" rx="13" ry="7"/><ellipse cx="10" cy="-6" rx="8" ry="6"/><ellipse cx="-9" cy="-5" rx="7" ry="5"/></g></g>`;
-const VEIN = `<g transform="translate(300,116)"><g class="pax-vein" stroke="#dc2626" stroke-width="5" stroke-linecap="round"><path d="M-9,-9 L9,9 M9,-9 L-9,9"/></g></g>`;
+      <g transform="translate(362,104)"><path class="pax-heart pax-heart-a" d="M0,4 C-3,-3 -11,0 -8,6 C-6,10 0,15 0,15 C0,15 6,10 8,6 C11,0 3,-3 0,4 Z" fill="#fb7185" stroke="#f43f5e" stroke-width="1.5"/></g>
+      <g transform="translate(384,122)"><path class="pax-heart pax-heart-b" d="M0,3 C-2,-2 -8,0 -6,4 C-4,7 0,11 0,11 C0,11 4,7 6,4 C8,0 2,-2 0,3 Z" fill="#fda4af"/></g>`;
+const SIGH = `<g transform="translate(232,110)"><g class="pax-sigh" fill="#cbd5e1"><ellipse cx="0" cy="0" rx="11" ry="6"/><ellipse cx="9" cy="-5" rx="7" ry="5"/><ellipse cx="-8" cy="-4" rx="6" ry="4"/></g></g>`;
+const VEIN = `<g transform="translate(342,112)"><g class="pax-vein" stroke="#dc2626" stroke-width="4" stroke-linecap="round"><path d="M-7,-7 L7,7 M7,-7 L-7,7"/></g></g>`;
 const STEAM = `
-      <g transform="translate(202,120)"><g class="pax-steam" fill="#e2e8f0" stroke="#94a3b8" stroke-width="2"><circle cx="0" cy="0" r="7"/><circle cx="9" cy="-7" r="5.5"/><circle cx="-8" cy="-6" r="5"/></g></g>
-      <g transform="translate(398,120)"><g class="pax-steam pax-steam-b" fill="#e2e8f0" stroke="#94a3b8" stroke-width="2"><circle cx="0" cy="0" r="7"/><circle cx="9" cy="-7" r="5.5"/><circle cx="-8" cy="-6" r="5"/></g></g>`;
-const IMPACT = `<g transform="translate(464,192)"><g class="pax-impact" stroke="#f59e0b" stroke-width="5" stroke-linecap="round"><path d="M18,-18 L24,-24"/><path d="M26,0 L34,0"/><path d="M18,18 L24,24"/></g></g>`;
-const COVER_CLAWS = `
-      <circle cx="236" cy="154" r="26" fill="#ea580c" stroke="#9a3412" stroke-width="3"/>
-      <circle cx="364" cy="154" r="26" fill="#ea580c" stroke="#9a3412" stroke-width="3"/>
-      <path d="M218,146 q18,-11 36,-2" fill="none" stroke="#9a3412" stroke-width="2.5" stroke-linecap="round"/>
-      <path d="M346,146 q18,-11 36,-2" fill="none" stroke="#9a3412" stroke-width="2.5" stroke-linecap="round"/>`;
+      <g transform="translate(214,140)"><g class="pax-steam" fill="#e2e8f0" stroke="#94a3b8" stroke-width="2"><circle cx="0" cy="0" r="6"/><circle cx="8" cy="-6" r="4.5"/><circle cx="-7" cy="-5" r="4"/></g></g>
+      <g transform="translate(386,140)"><g class="pax-steam pax-steam-b" fill="#e2e8f0" stroke="#94a3b8" stroke-width="2"><circle cx="0" cy="0" r="6"/><circle cx="8" cy="-6" r="4.5"/><circle cx="-7" cy="-5" r="4"/></g></g>`;
+const IMPACT = `<g transform="translate(400,216)"><g class="pax-impact" stroke="#f59e0b" stroke-width="4" stroke-linecap="round"><path d="M10,-12 L16,-18"/><path d="M14,0 L22,0"/><path d="M10,12 L16,18"/></g></g>`;
 
 /* ── 关键帧: 身体动作与表情道具 ── */
 const KF = {
-  bob: '@keyframes pax-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }',
-  bounce: '@keyframes pax-bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }',
-  sway: '@keyframes pax-sway { 0%, 100% { transform: rotate(-2.5deg); } 50% { transform: rotate(2.5deg); } }',
-  droop: '@keyframes pax-droop { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(6px); } }',
-  shiver: '@keyframes pax-shiver { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-1.6px); } 75% { transform: translateX(1.6px); } }',
-  rage: '@keyframes pax-rage { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-2.4px); } 75% { transform: translateX(2.4px); } }',
-  tap: '@keyframes pax-tap { 0%, 100% { transform: translateX(0); } 30% { transform: translateX(6px); } 55% { transform: translateX(-1px); } }',
-  tear: '@keyframes pax-tear { 0% { transform: translateY(0); opacity: 0; } 15% { opacity: 1; } 100% { transform: translateY(30px); opacity: 0; } }',
-  drip: '@keyframes pax-drip { 0% { transform: translateY(0); opacity: 0.3; } 40% { opacity: 1; } 100% { transform: translateY(12px); opacity: 0; } }',
+  bob: '@keyframes pax-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }',
+  bounce: '@keyframes pax-bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }',
+  sway: '@keyframes pax-sway { 0%, 100% { transform: rotate(-1.8deg); } 50% { transform: rotate(1.8deg); } }',
+  droop: '@keyframes pax-droop { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(4px); } }',
+  shiver: '@keyframes pax-shiver { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-1.2px); } 75% { transform: translateX(1.2px); } }',
+  rage: '@keyframes pax-rage { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-2px); } 75% { transform: translateX(2px); } }',
+  tap: '@keyframes pax-tap { 0%, 100% { transform: translateX(0); } 30% { transform: translateX(4px); } 55% { transform: translateX(-1px); } }',
+  tear: '@keyframes pax-tear { 0% { transform: translateY(0); opacity: 0; } 15% { opacity: 1; } 100% { transform: translateY(12px); opacity: 0; } }',
+  drip: '@keyframes pax-drip { 0% { transform: translateY(0); opacity: 0.3; } 40% { opacity: 1; } 100% { transform: translateY(9px); opacity: 0; } }',
   sparkle: '@keyframes pax-sparkle { 0%, 100% { opacity: 0.25; transform: scale(0.72); } 50% { opacity: 1; transform: scale(1.18); } }',
   heart: '@keyframes pax-heart { 0% { opacity: 0; transform: translateY(8px) scale(0.7); } 25% { opacity: 1; } 100% { opacity: 0; transform: translateY(-22px) scale(1.05); } }',
   heartEye: '@keyframes pax-heart-eye { 0%, 100% { transform: scale(0.92); } 50% { transform: scale(1.08); } }',
@@ -168,78 +157,78 @@ const KF = {
   sigh: '@keyframes pax-sigh { 0% { opacity: 0; transform: translateX(0) scale(0.85); } 30% { opacity: 1; } 100% { opacity: 0; transform: translateX(14px) scale(1.05); } }',
 };
 
-/* ── 十二种彩色表情: 图层 + 专属动效 (单文件与联系表共用同一份定义) ── */
+/* ── 十二种彩色屏幕表情: 图层 + 专属动效 (单文件与联系表共用同一份定义) ── */
 const MOODS = {
   smile: {
     zh: '笑', en: 'smile', src: 'pax-smile.svg',
-    face: `<g class="pax-face pax-face-smile">${BLUSH}${SMILE_LINE}${ROUND_EYES}</g>`,
-    motion: [['.pax-crab', 'animation: pax-bob 3s ease-in-out infinite;']],
+    face: `<g class="pax-face pax-face-smile"><g clip-path="url(#pax-screen-clip)">${BLUSH}${SMILE_LINE}${ROUND_EYES}</g></g>`,
+    motion: [['.pax-bot', 'animation: pax-bob 3s ease-in-out infinite;']],
     kf: ['bob'],
   },
   joy: {
     zh: '欢乐', en: 'joy', src: 'pax-joy.svg',
-    face: `<g class="pax-face pax-face-joy">${BLUSH}${OPEN_SMILE}${HAPPY_EYES}${SPARKLES}</g>`,
-    motion: [['.pax-crab', 'animation: pax-bounce 1.7s ease-in-out infinite;'], ['.pax-sparkle', 'animation: pax-sparkle 1.4s ease-in-out infinite;'], ['.pax-sparkle-b', 'animation-delay: -0.45s;'], ['.pax-sparkle-c', 'animation-delay: -0.9s;']],
+    face: `<g class="pax-face pax-face-joy"><g clip-path="url(#pax-screen-clip)">${BLUSH}${OPEN_SMILE}${HAPPY_EYES}</g>${SPARKLES}</g>`,
+    motion: [['.pax-bot', 'animation: pax-bounce 1.7s ease-in-out infinite;'], ['.pax-sparkle', 'animation: pax-sparkle 1.4s ease-in-out infinite;'], ['.pax-sparkle-b', 'animation-delay: -0.45s;'], ['.pax-sparkle-c', 'animation-delay: -0.9s;']],
     kf: ['bounce', 'sparkle'],
   },
   cry: {
     zh: '哭', en: 'crying', src: 'pax-cry.svg',
-    face: `<g class="pax-face pax-face-cry">${CRY_MOUTH}${ROUND_EYES}${TEARS}</g>`,
-    motion: [['.pax-crab', 'animation: pax-bob 4s ease-in-out infinite;'], ['.pax-tear-a', 'animation: pax-tear 1.15s ease-in infinite;'], ['.pax-tear-b', 'animation: pax-tear 1.15s ease-in 0.2s infinite;']],
+    face: `<g class="pax-face pax-face-cry"><g clip-path="url(#pax-screen-clip)">${CRY_MOUTH}${ROUND_EYES}${TEARS}</g></g>`,
+    motion: [['.pax-bot', 'animation: pax-bob 4s ease-in-out infinite;'], ['.pax-tear-a', 'animation: pax-tear 1.15s ease-in infinite;'], ['.pax-tear-b', 'animation: pax-tear 1.15s ease-in 0.2s infinite;']],
     kf: ['bob', 'tear'],
   },
   dejected: {
     zh: '沮丧', en: 'dejected', src: 'pax-dejected.svg',
-    face: `<g class="pax-face pax-face-dejected">${DROOPY_EYES}${FROWN}${SIGH}</g>`,
-    motion: [['.pax-crab', 'animation: pax-droop 4.5s ease-in-out infinite;'], ['.pax-sigh', 'animation: pax-sigh 3s ease-out infinite;']],
+    face: `<g class="pax-face pax-face-dejected"><g clip-path="url(#pax-screen-clip)">${DROOPY_EYES}${FROWN}</g>${SIGH}</g>`,
+    motion: [['.pax-bot', 'animation: pax-droop 4.5s ease-in-out infinite;'], ['.pax-sigh', 'animation: pax-sigh 3s ease-out infinite;']],
     kf: ['droop', 'sigh'],
   },
   shock: {
     zh: '惊恐', en: 'shocked', src: 'pax-shock.svg',
-    face: `<g class="pax-face pax-face-shock"><circle cx="234" cy="152" r="21" fill="#ffffff" stroke="#9a3412" stroke-width="3"/><circle cx="366" cy="152" r="21" fill="#ffffff" stroke="#9a3412" stroke-width="3"/><circle cx="237" cy="148" r="4.2" fill="#0f172a"/><circle cx="363" cy="148" r="4.2" fill="#0f172a"/><ellipse cx="300" cy="294" rx="11" ry="14" fill="#7c2d12" stroke="#9a3412" stroke-width="3"/>${SWEAT}</g>`,
-    motion: [['.pax-crab', 'animation: pax-shiver 0.16s linear infinite;'], ['.pax-sweat', 'animation: pax-drip 1.4s ease-in infinite;']],
+    face: `<g class="pax-face pax-face-shock"><g clip-path="url(#pax-screen-clip)">${SHOCK_EYES}${SHOCK_MOUTH}</g>${SWEAT}</g>`,
+    motion: [['.pax-bot', 'animation: pax-shiver 0.16s linear infinite;'], ['.pax-sweat', 'animation: pax-drip 1.4s ease-in infinite;']],
     kf: ['shiver', 'drip'],
   },
   angry: {
     zh: '愤怒', en: 'angry', src: 'pax-angry.svg',
-    face: `<g class="pax-face pax-face-angry">${ROUND_EYES}${ANGRY_BROWS}${GRIT_TEETH}${VEIN}${STEAM}</g>`,
-    motion: [['.pax-crab', 'animation: pax-rage 0.32s linear infinite;'], ['.pax-vein', 'animation: pax-vein 0.7s ease-in-out infinite;'], ['.pax-steam', 'animation: pax-steam 1.3s ease-out infinite;'], ['.pax-steam-b', 'animation-delay: -0.65s;']],
+    face: `<g class="pax-face pax-face-angry"><g clip-path="url(#pax-screen-clip)">${ROUND_EYES}${ANGRY_BROWS}${GRIT_TEETH}</g>${VEIN}${STEAM}</g>`,
+    motion: [['.pax-bot', 'animation: pax-rage 0.32s linear infinite;'], ['.pax-vein', 'animation: pax-vein 0.7s ease-in-out infinite;'], ['.pax-steam', 'animation: pax-steam 1.3s ease-out infinite;'], ['.pax-steam-b', 'animation-delay: -0.65s;']],
     kf: ['rage', 'vein', 'steam'],
   },
   coquettish: {
     zh: '撒娇', en: 'coy', src: 'pax-coquettish.svg',
-    face: `<g class="pax-face pax-face-coquettish">${BLUSH}${LASHED_EYES}${POUT}${HEARTS}</g>`,
-    motion: [['.pax-crab', 'transform-origin: 300px 300px; animation: pax-sway 3s ease-in-out infinite;'], ['.pax-heart-a', 'animation: pax-heart 2.4s ease-out infinite;'], ['.pax-heart-b', 'animation: pax-heart 2.4s ease-out 1.2s infinite;']],
+    face: `<g class="pax-face pax-face-coquettish"><g clip-path="url(#pax-screen-clip)">${BLUSH}${LASHED_EYES}${POUT}</g>${HEARTS}</g>`,
+    motion: [['.pax-bot', 'transform-origin: 300px 300px; animation: pax-sway 3s ease-in-out infinite;'], ['.pax-heart-a', 'animation: pax-heart 2.4s ease-out infinite;'], ['.pax-heart-b', 'animation: pax-heart 2.4s ease-out 1.2s infinite;']],
     kf: ['sway', 'heart'],
   },
   cute: {
     zh: '卖萌', en: 'cute', src: 'pax-cute.svg',
-    face: `<g class="pax-face pax-face-cute">${BLUSH}${OPEN_SMILE}${HEART_EYES}${SPARKLES}</g>`,
-    motion: [['.pax-crab', 'animation: pax-bounce 1.5s ease-in-out infinite;'], ['.pax-heart-eye', 'transform-origin: 0 8px; animation: pax-heart-eye 1.4s ease-in-out infinite;'], ['.pax-sparkle', 'animation: pax-sparkle 1.2s ease-in-out infinite;'], ['.pax-sparkle-b', 'animation-delay: -0.4s;'], ['.pax-sparkle-c', 'animation-delay: -0.8s;']],
+    face: `<g class="pax-face pax-face-cute"><g clip-path="url(#pax-screen-clip)">${BLUSH}${OPEN_SMILE}${HEART_EYES}</g>${SPARKLES}</g>`,
+    motion: [['.pax-bot', 'animation: pax-bounce 1.5s ease-in-out infinite;'], ['.pax-heart-eye', 'transform-origin: 0 8px; animation: pax-heart-eye 1.4s ease-in-out infinite;'], ['.pax-sparkle', 'animation: pax-sparkle 1.2s ease-in-out infinite;'], ['.pax-sparkle-b', 'animation-delay: -0.4s;'], ['.pax-sparkle-c', 'animation-delay: -0.8s;']],
     kf: ['bounce', 'heartEye', 'sparkle'],
   },
   ingratiating: {
     zh: '讨好', en: 'ingratiating', src: 'pax-ingratiating.svg',
-    face: `<g class="pax-face pax-face-ingratiating">${BLUSH}${PUPPY_EYES}${SMILE_LINE}${SPARKLES}</g>`,
-    motion: [['.pax-crab', 'animation: pax-bounce 2.1s ease-in-out infinite;'], ['.pax-sparkle', 'animation: pax-sparkle 1.6s ease-in-out infinite;'], ['.pax-sparkle-b', 'animation-delay: -0.5s;'], ['.pax-sparkle-c', 'animation-delay: -1s;']],
+    face: `<g class="pax-face pax-face-ingratiating"><g clip-path="url(#pax-screen-clip)">${BLUSH}${PUPPY_EYES}${SMILE_LINE}</g>${SPARKLES}</g>`,
+    motion: [['.pax-bot', 'animation: pax-bounce 2.1s ease-in-out infinite;'], ['.pax-sparkle', 'animation: pax-sparkle 1.6s ease-in-out infinite;'], ['.pax-sparkle-b', 'animation-delay: -0.5s;'], ['.pax-sparkle-c', 'animation-delay: -1s;']],
     kf: ['bounce', 'sparkle'],
   },
   knock: {
     zh: '敲打', en: 'knocking', src: 'pax-knock.svg',
-    face: `<g class="pax-face pax-face-knock">${FOCUS_EYES}${DETERMINED_BROWS}${SHOUT}${IMPACT}</g>`,
-    motion: [['.pax-crab', 'animation: pax-tap 0.9s ease-in-out infinite;'], ['.pax-impact', 'animation: pax-impact 0.9s ease-out infinite;']],
+    face: `<g class="pax-face pax-face-knock"><g clip-path="url(#pax-screen-clip)">${FOCUS_EYES}${DETERMINED_BROWS}${SHOUT}</g>${IMPACT}</g>`,
+    motion: [['.pax-bot', 'animation: pax-tap 0.9s ease-in-out infinite;'], ['.pax-impact', 'animation: pax-impact 0.9s ease-out infinite;']],
     kf: ['tap', 'impact'],
   },
   facepalm: {
     zh: '捂脸', en: 'covering face', src: 'pax-facepalm.svg',
-    face: `<g class="pax-face pax-face-facepalm">${BLUSH}${WAVY_MOUTH}${SWEAT}${COVER_CLAWS}</g>`,
-    motion: [['.pax-crab', 'transform-origin: 300px 300px; animation: pax-sway 3.2s ease-in-out infinite;'], ['.pax-sweat', 'animation: pax-drip 2s ease-in infinite;']],
+    face: `<g class="pax-face pax-face-facepalm"><g clip-path="url(#pax-screen-clip)">${BLUSH}${EMBARRASSED_EYES}</g>${SWEAT}</g>`,
+    motion: [['.pax-bot', 'transform-origin: 300px 300px; animation: pax-sway 3.2s ease-in-out infinite;'], ['.pax-sweat', 'animation: pax-drip 2s ease-in infinite;']],
     kf: ['sway', 'drip'],
   },
   tongue: {
     zh: '吐舌头', en: 'sticking tongue', src: 'pax-tongue.svg',
-    face: `<g class="pax-face pax-face-tongue">${BLUSH}${WINK}${TONGUE_MOUTH}</g>`,
-    motion: [['.pax-crab', 'animation: pax-bob 2.6s ease-in-out infinite;'], ['.pax-tongue', 'animation: pax-tongue 0.9s ease-in-out infinite;']],
+    face: `<g class="pax-face pax-face-tongue"><g clip-path="url(#pax-screen-clip)">${BLUSH}${WINK}${TONGUE_MOUTH}</g></g>`,
+    motion: [['.pax-bot', 'animation: pax-bob 2.6s ease-in-out infinite;'], ['.pax-tongue', 'animation: pax-tongue 0.9s ease-in-out infinite;']],
     kf: ['bob', 'tongue'],
   },
 };
@@ -270,7 +259,7 @@ function cycleCss() {
   const accessory = [];
   for (const mood of Object.values(MOODS)) {
     for (const [sel, decl] of mood.motion) {
-      if (sel === '.pax-crab' || seen.has(sel)) continue;
+      if (sel === '.pax-bot' || seen.has(sel)) continue;
       seen.add(sel);
       accessory.push(`${sel} { ${decl} }`);
     }
@@ -280,7 +269,7 @@ function cycleCss() {
   return `.pax-face { opacity: 0; }
   .pax-face-${ids[0]} { opacity: 1; }
   @media (prefers-reduced-motion: no-preference) {
-    .pax-crab { animation: pax-bob 3.4s ease-in-out infinite; }
+    .pax-bot { animation: pax-bob 3.4s ease-in-out infinite; }
     ${faceRules}
     ${accessory.join('\n    ')}
   }
@@ -291,54 +280,49 @@ function cycleCss() {
 /* ── SVG 组装 ── */
 function svg({ title, desc, faces, animated, css = cycleCss() }) {
   const style = animated ? `\n  <style>${css}\n  </style>` : '';
-  const crabOpen = animated ? '<g class="pax-crab">' : '<g>';
+  const botOpen = animated ? '<g class="pax-bot">' : '<g>';
   return `<svg width="${WIDTH}" height="${HEIGHT}" viewBox="${VIEWBOX}" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="pax-t pax-d">
   <title id="pax-t">${title}</title>
   <desc id="pax-d">${desc}</desc>${style}
 ${SCENE}
-  ${crabOpen}${BODY_TOP}
+  ${botOpen}${BODY_TOP}
 ${faces}${BODY_TAIL}
   </g>
 </svg>
 `;
 }
 
-/* ── 项目图标 pax-mark: 64×64 微缩芯片 (favicon / 图示右下角角标 / 未来应用图标母版) ──
-   内部标记单独导出为 MARK_INNER, 供图示流水线盖章复用 (单一事实源) */
+/* ── 项目图标 pax-mark: 64×64 微缩机器人头 (favicon / 图示右下角角标 / 未来应用图标母版) ── */
 const MARK_INNER = `
   <rect x="1.5" y="1.5" width="61" height="61" rx="14" fill="#ea580c" stroke="#9a3412" stroke-width="3"/>
-  <g stroke="#9a3412" stroke-width="5.5" stroke-linecap="round" fill="none">
-    <path d="M20,50 L13,56.5"/>
-    <path d="M27,53 L24,60"/>
-    <path d="M37,53 L40,60"/>
-    <path d="M44,50 L51,56.5"/>
-  </g>
-  <ellipse cx="32" cy="39" rx="18" ry="14" fill="#fdba74"/>
-  <path d="M17,27 a15,12.5 0 0 1 30,0 z" fill="#0e7490" stroke="#0b5e75" stroke-width="2"/>
-  <rect x="14.5" y="25" width="35" height="6" rx="3" fill="#0b5e75"/>
-  <circle cx="24" cy="36.5" r="5.6" fill="#ffffff" stroke="#7c2d12" stroke-width="2.2"/>
-  <circle cx="40" cy="36.5" r="5.6" fill="#ffffff" stroke="#7c2d12" stroke-width="2.2"/>
-  <circle cx="25.2" cy="37.8" r="2.5" fill="#0f172a"/>
-  <circle cx="38.8" cy="37.8" r="2.5" fill="#0f172a"/>
-  <ellipse cx="18.5" cy="44.5" rx="2.4" ry="1.6" fill="#fda4af" opacity="0.8"/>
-  <ellipse cx="45.5" cy="44.5" rx="2.4" ry="1.6" fill="#fda4af" opacity="0.8"/>
-  <path d="M26,45 q6,5 12,0" fill="none" stroke="#7c2d12" stroke-width="2.6" stroke-linecap="round"/>`;
+  <path d="M32,16 v-6" stroke="#7c2d12" stroke-width="2"/>
+  <circle cx="32" cy="8" r="3" fill="#0891b2" stroke="#0e7490" stroke-width="1.2"/>
+  <rect x="12" y="16" width="40" height="32" rx="8" fill="#f8fafc" stroke="#7c2d12" stroke-width="2.5"/>
+  <rect x="17" y="21" width="30" height="21" rx="5" fill="#0f172a" stroke="#0e7490" stroke-width="1.5"/>
+  <circle cx="26" cy="30" r="3.2" fill="#e0f2fe"/>
+  <circle cx="38" cy="30" r="3.2" fill="#e0f2fe"/>
+  <circle cx="26.5" cy="30.5" r="1.4" fill="#0f172a"/>
+  <circle cx="37.5" cy="30.5" r="1.4" fill="#0f172a"/>
+  <path d="M27,36 Q32,40 37,36" fill="none" stroke="#67e8f9" stroke-width="2" stroke-linecap="round"/>
+  <circle cx="12" cy="30" r="3" fill="#0891b2"/>
+  <circle cx="52" cy="30" r="3" fill="#0891b2"/>
+  <rect x="22" y="48" width="20" height="7" rx="2" fill="#d4a373" stroke="#7c2d12" stroke-width="1.5"/>`;
 
 const MARK_SVG = `<svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="pax-mark-t pax-mark-d">
   <title id="pax-mark-t">Pax — PolyPack 项目图标</title>
-  <desc id="pax-mark-d">橙底圆角芯片上的邮差蟹 Pax 徽章：青色邮政帽、双眼、微笑与四条蟹腿。</desc>${MARK_INNER}
+  <desc id="pax-mark-d">橙底圆角芯片上的打包机器人 Pax 徽章：白色头部、深色屏幕脸、青色天线与纸箱色胸甲。</desc>${MARK_INNER}
 </svg>
 `;
 
-/* ── 表情联系表 pax-moods: 十二个全身像 (6×2, 含腿与钳) + 中英标签 ── */
-const SHEET_VIEWBOX = '54 64 448 346'; // 全身裁剪窗 (包裹左缘 58.5 起, 含地面投影)
+/* ── 表情联系表 pax-moods: 十二个全身像 (6×2, 含短腿与包裹) + 中英标签 ── */
+const SHEET_VIEWBOX = '150 92 280 272'; // 全身裁剪窗 (包裹与敲打火星都在内)
 const SHEET_COLS = 6;
-const SHEET_ART_W = 150;
-const SHEET_ART_H = Math.round((SHEET_ART_W * 346) / 448); // 116
-const SHEET_CELL_W = 162;
+const SHEET_ART_W = 130;
+const SHEET_ART_H = Math.round((SHEET_ART_W * 272) / 280); // 126
+const SHEET_CELL_W = 150;
 const SHEET_GAP = 10;
 const SHEET_MARGIN = 20;
-const SHEET_CELL_H = SHEET_ART_H + 74; // 190 (含两行标签)
+const SHEET_CELL_H = SHEET_ART_H + 74; // 200 (含两行标签)
 
 function moodSheet() {
   const entries = Object.entries(MOODS);
@@ -349,11 +333,11 @@ function moodSheet() {
       const y = Math.floor(i / SHEET_COLS) * (SHEET_CELL_H + SHEET_GAP);
       const x = SHEET_MARGIN + col * (SHEET_CELL_W + SHEET_GAP);
       const cx = x + SHEET_CELL_W / 2;
-      const art = `${BODY_TOP}${mood.face}${BODY_TAIL}`; // 全身: 腿 + 身 + 表情 + 帽 + 钳与包裹
+      const art = `${BODY_TOP}${mood.face}${BODY_TAIL}`; // 全身: 腿 + 身体 + 表情 + 头饰与手臂
       return `  <g class="cell cell-${id}">
     <rect x="${x}" y="${14 + y}" width="${SHEET_CELL_W}" height="${SHEET_ART_H + 12}" rx="12" fill="#ffffff" stroke="#e2e8f0"/>
-    <svg x="${x + 6}" y="${20 + y}" width="${SHEET_ART_W}" height="${SHEET_ART_H}" viewBox="${SHEET_VIEWBOX}" preserveAspectRatio="xMidYMid meet">
-      <g class="pax-crab">${art}</g>
+    <svg x="${x + 10}" y="${20 + y}" width="${SHEET_ART_W}" height="${SHEET_ART_H}" viewBox="${SHEET_VIEWBOX}" preserveAspectRatio="xMidYMid meet">
+      <g class="pax-bot">${art}</g>
     </svg>
     <text x="${cx}" y="${SHEET_ART_H + 44 + y}" text-anchor="middle" font-size="13" font-weight="700" fill="#0f172a" font-family="${FONT}">${mood.zh}</text>
     <text x="${cx}" y="${SHEET_ART_H + 59 + y}" text-anchor="middle" font-size="10.5" fill="#64748b" font-family="${FONT}">${mood.en}</text>
@@ -363,7 +347,7 @@ function moodSheet() {
   const motion = entries
     .flatMap(([id, mood], i) =>
       mood.motion.map(([sel, decl]) => {
-        const delay = sel === '.pax-crab' ? ` animation-delay: ${(-i * 0.45).toFixed(2)}s;` : '';
+        const delay = sel === '.pax-bot' ? ` animation-delay: ${(-i * 0.45).toFixed(2)}s;` : '';
         return `.cell-${id} ${sel} { ${decl}${delay} }`;
       }),
     )
@@ -378,7 +362,7 @@ function moodSheet() {
   const height = rows * SHEET_CELL_H + (rows - 1) * SHEET_GAP;
   return `<svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="pax-moods-t pax-moods-d">
   <title id="pax-moods-t">Pax 的十二种彩色表情（各自带动态）— 笑 / 欢乐 / 哭 / 沮丧 / 惊恐 / 愤怒 / 撒娇 / 卖萌 / 讨好 / 敲打 / 捂脸 / 吐舌头</title>
-  <desc id="pax-moods-d">邮差蟹 Pax 的全身联系表：十二种彩色表情（含蟹腿与钳子）及中英文标签，每个形态各自带有专属动效（笑=浮动、欢乐=弹跳加星光、哭=泪滴、沮丧=叹气下沉、惊恐=发抖加汗滴、愤怒=怒纹加蒸汽、撒娇=爱心上浮、卖萌=爱心眼、讨好=星星眼、敲打=钳击火星、捂脸=捂眼、吐舌头=舌头摆动）。</desc>
+  <desc id="pax-moods-d">小打包机器人 Pax 的全身联系表：十二种彩色屏幕表情（含纸箱身体、短腿与小包裹）及中英文标签，每个形态各自带有专属动效（笑=浮动、欢乐=弹跳加星光、哭=屏幕泪滴、沮丧=叹气下沉、惊恐=发抖加汗滴、愤怒=怒纹加蒸汽、撒娇=爱心上浮、卖萌=爱心眼、讨好=星星眼、敲打=包裹敲击火星、捂脸=屏幕 >_&lt; 、吐舌头=舌头摆动）。</desc>
   <style>${css}</style>
   <rect width="${width}" height="${height}" fill="#f8fafc"/>
 ${cells}
@@ -391,8 +375,8 @@ const files = new Map();
 files.set(
   path.join(ASSETS, 'pax.svg'),
   svg({
-    title: 'Pax · 邮差蟹 — 十二种彩色表情循环',
-    desc: '戴着邮政帽的 Rust 橙螃蟹 Pax：空闲浮动，彩色表情依次循环 笑 → 欢乐 → 哭 → 沮丧 → 惊恐 → 愤怒 → 撒娇 → 卖萌 → 讨好 → 敲打 → 捂脸 → 吐舌头。纯 CSS 动画，无脚本。',
+    title: 'Pax · 打包机器人 — 十二种彩色表情循环',
+    desc: 'PolyPack 项目宠物 Pax——一只巴掌大的打包机器人：纸箱身体、屏幕脸、手持小包裹，彩色表情依次循环 笑 → 欢乐 → 哭 → 沮丧 → 惊恐 → 愤怒 → 撒娇 → 卖萌 → 讨好 → 敲打 → 捂脸 → 吐舌头。纯 CSS 动画，无脚本。',
     faces: Object.values(MOODS).map((m) => m.face).join(''),
     animated: true,
   }),
@@ -402,7 +386,7 @@ for (const [id, mood] of Object.entries(MOODS)) {
   files.set(
     path.join(ASSETS, mood.src),
     svg({
-      title: `Pax · 邮差蟹 — ${mood.zh}表情（动态）`,
+      title: `Pax · 打包机器人 — ${mood.zh}表情（动态）`,
       desc: `PolyPack 项目宠物 Pax 的${mood.zh}表情（${mood.en}），带该表情专属的 CSS 动效；减弱动态效果时定格为静态形态。`,
       faces: mood.face,
       animated: true,
@@ -429,7 +413,7 @@ files.set(
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="icon" type="image/svg+xml" href="assets/pax-mark.svg">
-<title>Pax · 邮差蟹 — PolyPack 游乐场</title>
+<title>Pax · 打包机器人 — PolyPack 游乐场</title>
 <style>
   :root { color-scheme: light; }
   body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #f8fafc;
@@ -451,7 +435,7 @@ files.set(
 </head>
 <body>
 <main>
-  <h1>Pax · 邮差蟹</h1>
+  <h1>Pax · 打包机器人</h1>
   <p class="sub">PolyPack 项目宠物 · 十二形态彩色表情游乐场</p>
   <div class="stage"><img id="stage" src="assets/pax.svg" alt="Pax 的表情预览" width="640" height="384"></div>
   <div class="moods" role="group" aria-label="切换 Pax 的表情">

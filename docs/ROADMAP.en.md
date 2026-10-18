@@ -5,7 +5,7 @@
 
 - Project status: **planning phase (documentation baseline v1.0.0)**
 - Plan date: 2026-10-14; revision: 2026-10-14 (per-platform detail; gap audit & extension incubation)
-- Name: PolyPack (CLI command `poly`); project pet: Pax the postcrab
+- Name: PolyPack (CLI command `poly`); project pet: Pax the packing robot
 - Scheduling assumption: 1–2 engineers fluent in Rust (milestone estimates assume 1.5 FTE)
 
 ---

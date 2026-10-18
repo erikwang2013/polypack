@@ -14,9 +14,9 @@
 
 ![Pax's animated expression loop: smile → joy → crying → dejected → shocked → angry → coy → cute → ingratiating → knocking → covering face → sticking tongue](docs/assets/pax.svg)
 
-**Pax** is the PolyPack project pet — a postcrab. The rust-orange shell is a nod to Ferris; the postal cap on its head is its job: it packs your app into a parcel, sticks a React-orbit stamp on it, and delivers it claw by claw to phones, watches, and TVs. The parcel it carries is your one codebase, compiled into dozens of artifacts.
+**Pax** is the PolyPack project pet — a pocket-sized packing robot. Its rust-orange shell is a nod to Rust; its cyan screen face and orbit stamp echo React. It packs your one codebase into a little parcel, sticks a shipping label on it, and delivers it to phones, watches, and TVs. A rounded cardboard-box body, stubby arms and legs, and a tiny antenna make it look like a cartoon courier on the job.
 
-Pax is animated and multi-form: it idly bobs and cycles through twelve colorful expressions — **smile / joy / crying / dejected / shocked / angry / coy / cute / ingratiating / knocking / covering face / sticking tongue**; every individual expression carries its own motion too — crying drips tears, shock shivers and sweats, anger throbs and steams, coy floats hearts, knocking taps with a claw, dejection sighs and sinks, sticking tongue wiggles... All pure CSS, no scripts; with "reduce motion" enabled every form settles into its static pose. All twelve at a glance (every one in the grid is moving):
+Pax is animated and multi-form: it idly bobs and cycles through twelve colorful expressions — **smile / joy / crying / dejected / shocked / angry / coy / cute / ingratiating / knocking / covering face / sticking tongue**; every individual expression carries its own motion too — crying drips tears, shock shivers and sweats, anger throbs and steams, coy floats hearts, knocking taps with its parcel, dejection sighs and sinks, sticking tongue wiggles... All pure CSS, no scripts; with "reduce motion" enabled every form settles into its static pose. All twelve at a glance (every one in the grid is moving):
 
 ![Pax's twelve colorful expressions, each animated: smile / joy / crying / dejected / shocked / angry / coy / cute / ingratiating / knocking / covering face / sticking tongue](docs/assets/pax-moods.svg)
 
