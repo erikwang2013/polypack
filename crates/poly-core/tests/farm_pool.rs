@@ -409,7 +409,9 @@ fn retry_after_timeout_succeeds_on_another_worker() {
     let results = pool.submit_jobs(
         vec![pool_job("job-retry", "web", temp.path())],
         &PoolOptions {
-            timeout: Duration::from_millis(120),
+            // 每次尝试各自计 2s：macOS 上首次超时（a-lost）后线程调度 + 信箱轮询
+            // 可能超过 120ms，重试到 b-good 的窗口必须留足（原 120ms 在 macos-14 假红）。
+            timeout: Duration::from_secs(2),
             retries: 1,
         },
         &mut events,

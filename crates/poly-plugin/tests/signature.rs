@@ -7,7 +7,6 @@
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::time::{SystemTime, UNIX_EPOCH};
 
 use base64::Engine as _;
 use base64::engine::general_purpose::STANDARD as B64;
@@ -27,12 +26,14 @@ struct TempDir(PathBuf);
 impl TempDir {
     fn new(tag: &str) -> Self {
         static SEQ: AtomicU64 = AtomicU64::new(0);
-        let nanos = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .expect("时钟可用")
-            .as_nanos();
-        let path = std::env::temp_dir().join(format!(
-            "polypack-plugin-sign-{tag}-{}-{nanos}-{}",
+        // macOS 的 std::env::temp_dir() 是 /var/folders/... 长路径；gpg-agent 的
+        // unix socket 路径上限 ~104 字节，超长会报 "File name too long"。
+        #[cfg(unix)]
+        let base = PathBuf::from("/tmp");
+        #[cfg(not(unix))]
+        let base = std::env::temp_dir();
+        let path = base.join(format!(
+            "pp-sign-{tag}-{}-{}",
             std::process::id(),
             SEQ.fetch_add(1, Ordering::Relaxed)
         ));
