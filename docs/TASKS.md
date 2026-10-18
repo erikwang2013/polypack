@@ -3,7 +3,7 @@
 > 派生自 [ROADMAP.md](ROADMAP.md) §9 的里程碑分解；由 4 人规划小组并行产出、交叉对账后合并：**116 个任务**，跨里程碑引用经「存在性 + 描述匹配」两轮校验零悬空，中英任务 ID 逐一对齐。
 > 英文版：[TASKS.en.md](TASKS.en.md)。本文件受「文档同步约定」管辖（见 ROADMAP §11）：任务增删须双文件同一次提交更新，并由 T-M0-10 的结构级校验器在 CI 拦截漂移。
 > 扩展方向（E1–E8）已立项孵化，不占本任务表：见 [ROADMAP.md](ROADMAP.md) §13。
-> 进度（2026-10-17）：**M0 11/11** · **M1 已交付 15/15**（11 项 ✅；T-M1-02/05/06/07 的对应 CI 腿已全绿，余下工具级注记见任务条目）· **M2 已交付 15/15**（8 项 ✅：T-M2-02/06/07/08/09/11/14/15；T-M2-01/03/04/05/10/12/13 带宿主/阶段/设置注记，逐项见任务条目）· **CI 三宿主全绿**（rust-ci#38654820649）+ M2 新增四工作流（secret-scan 三宿主 / mobile-contract mock+夜跑真列 / bridge 夜跑真跑）· **M3 已交付 12/12**（7 项 ✅：T-M3-05/06/07/08/09/10/11；T-M3-01/02/03/04/12 带宿主/环境/联调注记，逐项见任务条目）+ M3 新增一工作流（miniprogram-contract mock+夜跑真列）· **M4 已交付 14/15**（T-M4-15 条件任务未触发：（决策=继续受限档，真机侧载为触发前置）；T-M4-01/06/11/13 等带设备/宿主/联调注记，逐项见任务条目）+ M4 新增一工作流（tv-smoke mock+夜跑真列）· **M5 已交付 11/11**（T-M5-07 的 OpenBSD 安装冒烟与 T-M5-08 的 NetBSD `bmake` 真跑按环境槽 SKIP-with-print（镜像带宽 / 宿主缺席），由 bsd-ci 每夜裁决；T-M5-11 多目标真跑受单全局 `--credential` 契约限制，以 dry-run 双事件验证，按 target 分凭据留 M6）+ M5 新增一工作流（bsd-ci 夜跑 BSD 原生构建与安装冒烟）· **M6 已交付 13/13**（no_std 引擎层 + C ABI、QNX/AUTOSAR/VxWorks/Zephyr/FreeRTOS 五目标、AAOS、CI 矩阵与 QEMU 冒烟、状态表与预算/标注校验；QNX SDP / wr-cc / Xcode 类环境槽按 SKIP-with-print，模型与串口证据见各任务条目）+ M6 新增一工作流（embedded-ci：tier-6 矩阵从 TargetSpec 派生 + QEMU 冒烟，夜跑 19:27）· **M7 已交付 11/11**（adapter-wear + Wear OS 双冒烟 + watchOS 模板/打包链 + Fitbit/Zepp + Garmin spike + 实验目标三段式文档 + 穿戴契约；xcodebuild / codesign / Wear 设备类环境槽按 SKIP-with-print，garmin 的 iq 打包器为已记录实验缺口）+ M7 新增两工作流（wear-smoke 夜跑表单冒烟 / wear-release-smoke 发版门）。
+> 进度（2026-10-17）：**M0 11/11** · **M1 已交付 15/15**（11 项 ✅；T-M1-02/05/06/07 的对应 CI 腿已全绿，余下工具级注记见任务条目）· **M2 已交付 15/15**（8 项 ✅：T-M2-02/06/07/08/09/11/14/15；T-M2-01/03/04/05/10/12/13 带宿主/阶段/设置注记，逐项见任务条目）· **CI 三宿主全绿**（rust-ci#38654820649）+ M2 新增四工作流（secret-scan 三宿主 / mobile-contract mock+夜跑真列 / bridge 夜跑真跑）· **M3 已交付 12/12**（7 项 ✅：T-M3-05/06/07/08/09/10/11；T-M3-01/02/03/04/12 带宿主/环境/联调注记，逐项见任务条目）+ M3 新增一工作流（miniprogram-contract mock+夜跑真列）· **M4 已交付 14/15**（T-M4-15 条件任务未触发：（决策=继续受限档，真机侧载为触发前置）；T-M4-01/06/11/13 等带设备/宿主/联调注记，逐项见任务条目）+ M4 新增一工作流（tv-smoke mock+夜跑真列）· **M5 已交付 11/11**（T-M5-07 的 OpenBSD 安装冒烟与 T-M5-08 的 NetBSD `bmake` 真跑按环境槽 SKIP-with-print（镜像带宽 / 宿主缺席），由 bsd-ci 每夜裁决；T-M5-11 多目标真跑受单全局 `--credential` 契约限制，以 dry-run 双事件验证，按 target 分凭据留 M6）+ M5 新增一工作流（bsd-ci 夜跑 BSD 原生构建与安装冒烟）· **M6 已交付 13/13**（no_std 引擎层 + C ABI、QNX/AUTOSAR/VxWorks/Zephyr/FreeRTOS 五目标、AAOS、CI 矩阵与 QEMU 冒烟、状态表与预算/标注校验；QNX SDP / wr-cc / Xcode 类环境槽按 SKIP-with-print，模型与串口证据见各任务条目）+ M6 新增一工作流（embedded-ci：tier-6 矩阵从 TargetSpec 派生 + QEMU 冒烟，夜跑 19:27）· **M7 已交付 11/11**（adapter-wear + Wear OS 双冒烟 + watchOS 模板/打包链 + Fitbit/Zepp + Garmin spike + 实验目标三段式文档 + 穿戴契约；xcodebuild / codesign / Wear 设备类环境槽按 SKIP-with-print，garmin 的 iq 打包器为已记录实验缺口）+ M7 新增两工作流（wear-smoke 夜跑表单冒烟 / wear-release-smoke 发版门）。 · **M8 已交付 13/13**（插件沙箱 + WIT world、SRI/签名链、模板/脚手架、内建统一 provider、农场 v1、发布 GA、49 目标表、双语 GA 文档/技术审查/1 天演练（38min）；M8 未新增仓库工作流（模板 CI 位于 templates/），环境槽注记见各任务条目）。
 
 ## 团队编制与角色
 
@@ -881,91 +881,91 @@
 ## M8 生态 GA（6 周）
 > 前置依赖: M0（TargetSpec schema）、M2（远程农场协议 v0、Apple 签名链）、M6 / M7（L6 目标声明齐备）｜出口条件: 第三方开发者按文档在 1 天内新增一个自定义目标并出包
 
-### T-M8-01 · `poly-plugin` 沙箱能力模型（wasmtime）
+### T-M8-01 · ✅ `poly-plugin` 沙箱能力模型（wasmtime 默认拒绝 fs/net，目录/域名显式授权 + O_NOFOLLOW；fuel/epoch/内存三道上限；JobSpec.plugins + `plugin_granted` 事件；5 单元 + 16 集成与逃逸负向集全绿，3 个 wasm 夹具无宿主路径/环境/调试符号）
 - 角色: core
 - 依赖: —
 - 估算: 3d
 - 交付物: wasmtime 宿主的能力模型落地：默认无网络、无文件系统，读写目录与出网域名按需显式授权（§4.5 capability 模型）。
 - 验收: 未授权的网络 / 文件系统访问被拒绝并返回稳定错误码；授权清单进入 JobSpec 且出现在 `poly build --json` 事件流中；沙箱逃逸负向测试集全绿。
 
-### T-M8-02 · WIT world `polypack-target` 定稿与 `target-spec/v1` 版本化
+### T-M8-02 · ✅ WIT world `polypack-target` 定稿与 `target-spec/v1`（import inputs / export describe / export %package + sandboxed world；非 v1 → E_PLUGIN_0005 + 迁移提示；check-roadmap.sh 与 §4.5 逐行一致 OK；参考插件 describe/package 真跑）
 - 角色: core
 - 依赖: T-M8-01
 - 估算: 3d
 - 交付物: `world polypack-target`（`import inputs`、`export describe`、`export package`）定稿 + `target-spec/v1` 版本化方案（破坏性变更走新版本号）+ wit-bindgen 生成的 Rust 侧骨架。
 - 验收: 参考插件用该 world 编译、实例化后成功完成 `describe` + `package`；非 v1 版本被拒绝并给出迁移提示；world 定义与 §4.5 逐行一致（脚本比对）。
 
-### T-M8-03 · 插件 SRI 校验与签名制品
+### T-M8-03 · ✅ 插件 SRI 校验与签名制品（SRI 先行 + GPG 分离签名/一次性 0700 GNUPGHOME + CredentialRef 信任根，验签先于实例化；E_PLUGIN_0009/0010；poly scan 覆盖 wasm 宿主路径/env/调试段且脱敏；8 签名 + 11 scan 测试全绿；宿主 providers 已消费 sri/signature/trust_root）
 - 角色: release-sec
 - 依赖: T-M8-02
 - 估算: 3d
 - 交付物: 插件制品的内容摘要（SRI）校验 + 插件发布签名链（密钥以引用形式），secret-scan 规则覆盖插件制品。
 - 验收: 摘要不符的插件拒绝加载；签名验证失败拒绝实例化；插件制品不含绝对路径、环境变量与调试符号（§7 脱敏检查通过）。
 
-### T-M8-04 · 插件模板仓库与脚手架
+### T-M8-04 · ✅ 插件模板仓库与脚手架（templates/plugin-target 独立 [workspace] + WIT/componentize/契约测试/自带 CI；poly plugin new/digest；生成→build.sh→沙箱 SRI 加载→describe/package 真跑 14.4min ≤ 30min；模板契约 272s 绿；actionlint 绿；远端模板 CI SKIP-with-print）
 - 角色: core
 - 依赖: T-M8-02
 - 估算: 3d
 - 交付物: `poly plugin new <id>` 脚手架 + 独立模板仓库（Rust + WIT 起手式、`describe` / `package` 示例、自带 CI）。
 - 验收: 从空仓库到「插件被 `poly` 加载并完成一次打包」≤ 30 min（不含依赖下载）；模板 CI 自带契约测试并在模板仓库内绿。
 
-### T-M8-05 · 内建目标与插件走同一接口（原则 6）
+### T-M8-05 · ✅ 内建目标与插件走同一接口（no_std TargetProvider + ProviderRegistry；BuiltinProvider 委托未改动的 packagers，PluginProvider 桥接 wasm；CLI build/verify/package 统一路径、无 builtin 特判；同一契约测试两类全绿；Tizen 统一入口字节 == 直接打包器，sha256 基线 626f4a59…；L1–L5 打包器源码零改动）
 - 角色: core
 - 依赖: T-M8-02
 - 估算: 3d
 - 交付物: 内建目标统一经 `describe` / `package` 接口注册（内建即官方插件），注册表移除旁路分支。
 - 验收: 内建目标与第三方插件走同一注册与调用路径（代码中无 `if builtin` 式分支）；同一套契约测试对两类目标全绿；既有 L1–L5 目标的打包结果与改造前字节一致（除签名与时间戳）。
 
-### T-M8-06 · 远程农场 v1：并发与 worker 池
+### T-M8-06 · ✅ 远程农场 v1（协议 v1 + FarmPool 并发/worker 池/超时重试，v0 worker 兼容；E_FARM_0004/0005 带 hint）
 - 角色: core
 - 依赖: —
 - 估算: 3d
 - 交付物: 农场协议 v0 → v1（并发调度、worker 池、任务超时与重试），JobSpec 序列化保持对 v0 worker 的向后兼容。
 - 验收: 多目标并发构建经农场完成；v0 worker 仍可接入（版本协商成功）；任务超时 / 失联时输出带 hint 的 `Failed` 事件。
 
-### T-M8-07 · 农场隔离与凭据内存注入
+### T-M8-07 · ✅ 农场隔离与凭据内存注入（0700 一次性工作目录、TaskScope/CredentialScope、结束即销毁；磁盘/日志零明文断言；E_FARM_0006）
 - 角色: release-sec
 - 依赖: T-M8-06
 - 估算: 3d
 - 交付物: worker 侧隔离（容器 / 进程边界 + 一次性工作目录）与凭据只进内存的下发通道（§7）。
 - 验收: worker 磁盘与日志中不存在明文凭据（扫描断言）；任务结束即销毁凭据与工作目录；跨任务无残留（隔离负向测试集全绿）。
 
-### T-M8-08 · 农场缓存共享（CAS 对象存储后端）
+### T-M8-08 · ✅ 农场缓存共享（DirSharedStore 共享目录 CAS + FallbackStore 降级；跨 worker 同键、二跑命中 100%；无对象存储时本地降级告警不红）
 - 角色: infra
 - 依赖: T-M8-06
 - 估算: 3d
 - 交付物: `poly-cache` 对象存储后端在生产形态落地，多 worker 共享 CAS，实现 §5.2 的三级缓存跨机复用。
 - 验收: 农场内二跑缓存命中 ≥ 90%（对齐 M1 验收口径）；同输入在不同 worker 上产生同一缓存键；后端仍为 trait 且本地文件系统默认可用（无对象存储时农场降级而非失败）。
 
-### T-M8-09 · 远程农场部署指南
+### T-M8-09 · ✅ 远程农场部署指南（双语 FARM-DEPLOY + farm-drill.sh Linux 双 worker 演练；并发/共享缓存二跑命中/凭据内存注入/降级；macOS IPA R3 槽位 SKIP-with-print）
 - 角色: docs
 - 依赖: T-M8-06, T-M8-07, T-M8-08
 - 估算: 2.5d
 - 交付物: 远程农场部署指南（拓扑、worker 池、隔离参数、缓存后端、密钥库接入），双语。
 - 验收: 照指南从零部署一套 macOS worker 池，并从 Linux 宿主完成一次 IPA 构建（R3 路径）；指南命令逐条可复制执行且全部出现在 CI 演练日志中。
 
-### T-M8-10 · 商店发布流水线 GA：重试与退避
+### T-M8-10 · ✅ 商店发布流水线 GA（指数退避 + Idempotency-Key + SubmitJournal，85009=accepted；PublishFailure / Failed{stage,code,hint}；503/429/超时/accept-then-timeout 注入后最终成功且无重复提交）
 - 角色: core
 - 依赖: —
 - 估算: 3d
 - 交付物: `publish` 阶段成熟化：指数退避重试、幂等提交（重复提审不产生二次提交）、平台限流处理（对策 R4）。
 - 验收: 注入 5xx / 超时 / 限流故障后提交最终成功且无重复提交记录；不可恢复失败输出 `Failed{stage, code, hint}` 且机器可读；自动化止步于「提审」，不承诺自动过审。
 
-### T-M8-11 · 提审回执归档与审核状态轮询
+### T-M8-11 · ✅ 提审回执归档与轮询（receipt v2 + Published{submission} + poly retry --from publish；崩溃窗口恢复零重复提交；提交号规范化）
 - 角色: release-sec
 - 依赖: T-M8-10
 - 估算: 2.5d
 - 交付物: 提审回执归档（§5.2 提审级缓存）与审核状态轮询，落地 `Published{channel, submission}` 事件。
 - 验收: 轮询到终态后回执落盘且含提交号与时间戳、可追溯；中断后 `poly retry --from publish` 续跑不产生重复提交。
 
-### T-M8-12 · 49 目标现状表（由 TargetSpec 派生）
+### T-M8-12 · ✅ 49 目标现状表（gen-status-table 从 TargetSpec 生成 49 行，双语 README/ROADMAP 同步；L1–L7=7/9/9/4/7/10/3 与平台矩阵一致；--check 漂移门禁接入 docs-check）
 - 角色: docs
 - 依赖: —
 - 估算: 3d
 - 交付物: 由 TargetSpec 生成的 49 目标现状表（等级、运行时、桥、产物、签名、校验、渠道、`experimental`、`notes`），同步进 README / ROADMAP 双语。
 - 验收: 表格与 TargetSpec 逐字段一致（生成式，无双份手写）；平台矩阵增删时 CI 依 §11 第 4 条提示待更新项；49 行完整且 L1–L7 分级计数与 README 相符。
 
-### T-M8-13 · GA 文档、技术审查与「1 天新增目标」演练
+### T-M8-13 · ✅ GA 文档、技术审查与「1 天新增目标」演练（双语 [GA 文档](GA.md) 7 节 + 技术审查；独立上下文开发者代理演练 pocket-notes：总墙钟 38min（冷编译 30min、开发 2min），脚手架→自定义出包 12m23s，`poly build --target` 真实加载+出包 92B，SRI 负向 E_PLUGIN_0006；卡点回写并修复模板契约单一来源/SRI 示例/最小宿主文档；docs-check 七对全绿）
 - 角色: docs
 - 依赖: T-M8-02, T-M8-04, T-M8-05, T-M8-09, T-M8-12
 - 估算: 3d

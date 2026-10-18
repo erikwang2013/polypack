@@ -103,7 +103,7 @@ poly build --config <app>/polypack.toml --target pocket-notes
 
 ### 2.5 模板契约断言的单一来源
 
-模板的契约测试在 `contract/src/lib.rs` 顶部只保留两个断言常量：`EXPECTED_FORMAT` 与 `EXPECTED_PACKAGE`。修改插件 `describe` / `package` 后同步这两个常量即可；忘记同步会让 `cargo test` 以退出码 101 失败（本次演练的实际卡点，见 §6.4）。模板 WIT 与宿主 WIT 由模板测试逐字比对，二者必须同时更新。
+模板的契约测试在 `contract/src/lib.rs` 顶部只保留两个断言常量：`EXPECTED_FORMAT` 与 `EXPECTED_PACKAGE`。修改插件 `describe` / `package` 后同步这两个常量即可；忘记同步会让 `cargo test` 以退出码 101 失败（本次演练的实际卡点，见 §6.4）。模板 WIT 是宿主 `crates/poly-plugin/wit/polypack-target.wit` 的副本，升级接口时需手工同步两处；当前无自动比对门禁（见 §7 已知缺口）。
 
 ## 3. 安全模型
 
@@ -115,7 +115,7 @@ poly build --config <app>/polypack.toml --target pocket-notes
 | 文件系统写 | 拒绝 | `fs_write = ["<相对目录>"]` |
 | 出网 | 拒绝 | `net = ["<host 或 host:port>"]` |
 
-授权路径按工程根解析并规范化；越界、路径穿越、符号链接逃逸均返回 `poly::E_PLUGIN_0001`（写操作额外要求写权限）。出网只放行显式白名单，重定向目标越出白名单返回 `poly::E_PLUGIN_0002`。未授权调用不会获得宿主文件系统或网络句柄。
+授权路径按工程根解析并规范化；越界、路径穿越、符号链接逃逸均返回 `poly::E_PLUGIN_0001`（写操作额外要求写权限）。出网只放行显式白名单；重定向一律不跟随（`max_redirects = 0`），非 2xx 响应返回 `E_PLUGIN_0007`。未授权调用不会获得宿主文件系统或网络句柄。
 
 ### 3.2 制品完整性与签名链
 
@@ -142,7 +142,7 @@ GPG 操作用一次性 0700 `GNUPGHOME`；信任根只接受公钥，绝不内�
 | 错误码 | 含义 |
 |---|---|
 | `E_PLUGIN_0001` | 能力拒绝：路径越出授权目录（穿越 / 符号链接逃逸 / 无写权限） |
-| `E_PLUGIN_0002` | 出网域名未授权，或重定向目标越出白名单 |
+| `E_PLUGIN_0002` | 出网域名未授权 |
 | `E_PLUGIN_0003` | 资源上限耗尽（fuel / epoch 超时） |
 | `E_PLUGIN_0004` | 内存超限（`memory.grow` 被宿主上限拒绝） |
 | `E_PLUGIN_0005` | 插件接口版本不受支持（非 `target-spec/v1`） |
@@ -287,6 +287,7 @@ GPG 操作用一次性 0700 `GNUPGHOME`；信任根只接受公钥，绝不内�
 | 缺口 | 影响 | 处置 / 后续 |
 |---|---|---|
 | 无独立 `poly plugin check` | 作者需手工串 build / test / digest / build | 文档给出等价验证法；后续评估 CLI 子命令 |
+| 模板 WIT 与宿主 WIT 无自动比对 | 接口升级需手工同步模板副本 | 当前由评审兜底；后续加生成 / 比对门禁 |
 | 签名 / 信任根未在演练端到端走查 | 演练只覆盖 SRI 负向 | 单元 / 集成测试已覆盖签名链；后续演练补端到端 |
 | macOS 农场 IPA R3 为环境槽 SKIP | Linux 环境无 Xcode / codesign | 按 FARM-DEPLOY §9 保持开放，macOS 主机执行后替换 |
 | 真实云对象存储（S3 / OSS）未实现 | 仅共享目录 CAS | `ObjectStore` trait 接入点已留；无对象存储时本地降级 |

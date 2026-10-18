@@ -103,7 +103,7 @@ poly build --config <app>/polypack.toml --target pocket-notes
 
 ### 2.5 Single source of template contract assertions
 
-The template contract test keeps only two assertion constants at the top of `contract/src/lib.rs`: `EXPECTED_FORMAT` and `EXPECTED_PACKAGE`. After changing the plugin's `describe` / `package`, update these two constants; forgetting to do so makes `cargo test` fail with exit code 101 (the actual blocker in this drill, see §6.4). The template WIT and host WIT are compared byte for byte by a template test, so both must be updated together.
+The template contract test keeps only two assertion constants at the top of `contract/src/lib.rs`: `EXPECTED_FORMAT` and `EXPECTED_PACKAGE`. After changing the plugin's `describe` / `package`, update these two constants; forgetting to do so makes `cargo test` fail with exit code 101 (the actual blocker in this drill, see §6.4). The template WIT is a copy of the host's `crates/poly-plugin/wit/polypack-target.wit`; interface upgrades must update both by hand, and there is no automatic comparison gate yet (see §7 known gaps).
 
 ## 3. Security model
 
@@ -115,7 +115,7 @@ The template contract test keeps only two assertion constants at the top of `con
 | Filesystem write | Denied | `fs_write = ["<relative directory>"]` |
 | Network egress | Denied | `net = ["<host or host:port>"]` |
 
-Granted paths are resolved against the project root and canonicalized; escapes, path traversal and symlink escapes all return `poly::E_PLUGIN_0001` (writes additionally require write permission). Egress only allows explicit allowlist entries; a redirect target outside the allowlist returns `poly::E_PLUGIN_0002`. Unauthorized calls never receive host filesystem or network handles.
+Granted paths are resolved against the project root and canonicalized; escapes, path traversal and symlink escapes all return `poly::E_PLUGIN_0001` (writes additionally require write permission). Egress only allows explicit allowlist entries; redirects are never followed (`max_redirects = 0`) and non-2xx responses return `E_PLUGIN_0007`. Unauthorized calls never receive host filesystem or network handles.
 
 ### 3.2 Artifact integrity and signature chain
 
@@ -142,7 +142,7 @@ Configuration can only tighten, never loosen: zero or anything above the hard ca
 | Error code | Meaning |
 |---|---|
 | `E_PLUGIN_0001` | Capability denied: path outside the granted directories (traversal / symlink escape / no write permission) |
-| `E_PLUGIN_0002` | Egress domain not granted, or a redirect target outside the allowlist |
+| `E_PLUGIN_0002` | Egress domain not granted |
 | `E_PLUGIN_0003` | Resource limit exhausted (fuel / epoch timeout) |
 | `E_PLUGIN_0004` | Memory limit exceeded (`memory.grow` rejected by the host cap) |
 | `E_PLUGIN_0005` | Unsupported plugin interface version (not `target-spec/v1`) |
@@ -287,6 +287,7 @@ The drill completed in ≤ 1 day, meeting the M8 exit criterion. Actual plugin d
 | Gap | Impact | Handling / follow-up |
 |---|---|---|
 | No standalone `poly plugin check` | Authors must manually chain build / test / digest / build | Docs provide an equivalent verification path; evaluate a CLI subcommand later |
+| Template WIT and host WIT are not auto-compared | Interface upgrades must sync the template copy by hand | Review catches it today; add a generate / compare gate later |
 | Signature / trust root not exercised end to end in the drill | The drill covered only the SRI negative case | Unit / integration tests cover the signature chain; add an end-to-end pass in a later drill |
 | macOS farm IPA R3 is an environment-slot SKIP | The Linux environment has no Xcode / codesign | Kept open per FARM-DEPLOY §9; replace after running on a macOS host |
 | Real cloud object storage (S3 / OSS) not implemented | Shared-directory CAS only | `ObjectStore` trait extension point exists; local fallback when no object store |

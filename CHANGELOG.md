@@ -6,6 +6,18 @@ Notable changes are recorded here; since v1.0.0, tags and releases follow `vX.Y.
 
 ## [Unreleased]
 
+## [1.10.0] — 2026-10-18
+
+### Added
+- **M8 生态 GA 交付**（2026-10-18，13/13）：wasmtime 插件沙箱（默认无文件系统/网络，目录与出网域名显式授权，fuel/epoch/内存三道上限，逃逸负向集全绿）；WIT world `polypack-target` 与 `target-spec/v1` 版本协商（非 v1 拒绝并给迁移提示）；插件 SRI 校验 + GPG 分离签名链（`CredentialRef` 信任根、验签先于实例化，`E_PLUGIN_0009/0010`）与 `poly scan` 的 wasm 制品脱敏规则；独立模板仓库 `templates/plugin-target`（WIT/componentize/契约测试/自带 CI）与 `poly plugin new|digest`（生成→构建→沙箱加载→describe/package 端到端 14.4 min ≤ 30 min）；内建目标统一 `TargetProvider`/`ProviderRegistry`（内建即官方插件，无 `if builtin` 特判，L1–L5 打包器源码零改动、Tizen 统一入口字节 == 基线）；农场 v1（并发调度/worker 池/超时重试 + v0 worker 兼容、0700 一次性工作目录、凭据仅内存注入、共享目录 CAS 与无可选后端降级）；发布流水线 GA（指数退避、Idempotency-Key、SubmitJournal、85009=accepted、回执 v2、`poly retry --from publish`）；49 目标现状表生成与漂移门禁；双语 GA 文档、技术审查报告与「1 天新增目标」演练（独立开发者代理，38 min 完成脚手架→自定义出包，SRI 负向 `E_PLUGIN_0006`）。
+
+*M8 ecosystem GA delivery (13/13): the wasmtime plugin sandbox (no filesystem/network by default, explicit directory/domain grants, fuel/epoch/memory limits, escape-negative suite green); the `polypack-target` WIT world with `target-spec/v1` negotiation (non-v1 rejected with a migration hint); plugin SRI verification plus a GPG detached-signature chain (`CredentialRef` trust root, verification before instantiation, `E_PLUGIN_0009/0010`) and redacted wasm-artifact rules in `poly scan`; the standalone `templates/plugin-target` repo (WIT/componentize/contract test/own CI) and `poly plugin new|digest` (generate→build→sandbox load→describe/package end to end in 14.4 min ≤ 30 min); built-in targets unified behind `TargetProvider`/`ProviderRegistry` (built-ins are official plugins, no `if builtin` special-casing, L1–L5 packager sources untouched, unified Tizen entry bytes == baseline); farm v1 (concurrent scheduling/worker pool/timeout retries + v0-worker compatibility, 0700 one-shot work directories, in-memory-only credentials, shared-directory CAS with degradation when no optional backend exists); the publishing GA (exponential backoff, Idempotency-Key, SubmitJournal, 85009=accepted, receipt v2, `poly retry --from publish`); the generated 49-target status table with a drift gate; and the bilingual GA docs, technical review and "add a target in one day" rehearsal (an independent developer agent completed scaffolding→custom packaging in 38 min; negative SRI yields `E_PLUGIN_0006`).*
+
+### Fixed
+- M8 集成期真跑修复：Windows 农场隔离测试字段 dead_code（`-D warnings`）；cargo-deny 放行 wasmtime 全系 `Apache-2.0 WITH LLVM-exception`；依赖方向白名单加入 `poly-plugin → poly-core/poly-sign/poly-targets`（无环）；macOS gpg-agent socket 104 字节上限（签名测试改用短 `/tmp` GNUPGHOME）；macOS 农场超时重试窗口 120 ms→2 s；Windows WGT zip 元数据差异（基线哈希按平台）；宿主 `providers` 消费 `[[plugins]].sri/signature/trust_root` 并拒绝验签失败插件；模板契约断言单一来源（`EXPECTED_FORMAT`/`EXPECTED_PACKAGE`），README 与 `poly plugin new` 输出补齐 SRI、产物复制与最小宿主工程说明。
+
+*Fixed during M8 integration across real runs: the Windows dead_code in the farm-isolation test under `-D warnings`; cargo-deny allowance for wasmtime's `Apache-2.0 WITH LLVM-exception`; the dependency-direction whitelist for `poly-plugin → poly-core/poly-sign/poly-targets` (acyclic); the 104-byte gpg-agent socket limit on macOS (signature tests now use a short `/tmp` GNUPGHOME); the macOS farm retry window (120 ms → 2 s); Windows WGT zip-metadata differences (per-platform baseline hashes); host `providers` now consuming `[[plugins]].sri/signature/trust_root` and refusing failed signatures; and the template contract's single-source assertions (`EXPECTED_FORMAT`/`EXPECTED_PACKAGE`) with README/`poly plugin new` guidance for SRI, artifact copying and the minimal host project.*
+
 ## [1.9.0] — 2026-10-18
 
 ### Added

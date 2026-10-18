@@ -3,7 +3,7 @@
 > Derived from the milestone breakdown in [ROADMAP.en.md](ROADMAP.en.md) §9; produced in parallel by a four-person planning group and merged after cross-reconciliation: **116 tasks**, all cross-milestone references verified in two passes (existence + description match, zero dangling), Chinese/English task IDs aligned one-to-one.
 > Chinese original: [TASKS.md](TASKS.md). This file falls under the documentation sync convention (ROADMAP §11): task additions/removals must land in both files in the same commit, and drift is caught in CI by the structural checker delivered in T-M0-10.
 > Extension directions (E1–E8) are incubated and intentionally absent from this task table — see [ROADMAP.en.md](ROADMAP.en.md) §13.
-> Progress (2026-10-17): **M0 11/11** · **M1 delivered 15/15** (11 ✅; the matching CI legs for T-M1-02/05/06/07 are green — remaining tool-level notes live in the task entries) · **M2 delivered 15/15** (8 ✅: T-M2-02/06/07/08/09/11/14/15; T-M2-01/03/04/05/10/12/13 carry host/stage/settings notes — see each entry) · **CI green on all three hosts** (rust-ci#38654820649) plus four new M2 workflows (secret-scan ×3 hosts / mobile-contract mock-per-push + nightly real / bridge nightly real) · **M3 delivered 12/12** (7 ✅: T-M3-05/06/07/08/09/10/11; T-M3-01/02/03/04/12 carry host/environment/interop notes — see each entry) plus one new M3 workflow (miniprogram-contract mock-per-push + nightly real) · **M4 delivered 14/15** (conditional T-M4-15 not triggered — decision: continue in constrained mode, on-device sideload is its prerequisite; T-M4-01/06/11/13 etc. carry device/host/interop notes — see each entry) plus one new M4 workflow (tv-smoke mock-per-push + nightly real) · **M5 delivered 11/11** (T-M5-07 OpenBSD install smoke and T-M5-08 NetBSD `bmake` real run are SKIP-with-print per environment slot (image bandwidth / host absent), arbitrated by the first bsd-ci night; the multi-target true run is limited by the single global `--credential` contract and verified via dry-run dual events, per-target credentials deferred to M6) plus one new M5 workflow (bsd-ci nightly BSD native builds + install smoke) · **M6 delivered 13/13** (the no_std engine layer + C ABI, the QNX / AUTOSAR / VxWorks / Zephyr / FreeRTOS targets, AAOS, the CI matrix and QEMU smokes, and the status-table / budget / labeling validators; QNX SDP / wr-cc / Xcode-class environment slots record SKIP-with-print, with model and serial evidence in each task entry) plus one new M6 workflow (embedded-ci: tier-6 matrix derived from TargetSpec + QEMU smokes, nightly 19:27) · **M7 delivered 11/11** (adapter-wear + the Wear OS dual smoke + the watchOS template/packaging chain + Fitbit/Zepp + the Garmin spike + the experimental-target three-section docs + wearable contracts; xcodebuild / codesign / Wear-device environment slots record SKIP-with-print, and the Garmin iq packager is a recorded experimental gap) plus two new M7 workflows (wear-smoke nightly form smoke / wear-release-smoke release gate).
+> Progress (2026-10-17): **M0 11/11** · **M1 delivered 15/15** (11 ✅; the matching CI legs for T-M1-02/05/06/07 are green — remaining tool-level notes live in the task entries) · **M2 delivered 15/15** (8 ✅: T-M2-02/06/07/08/09/11/14/15; T-M2-01/03/04/05/10/12/13 carry host/stage/settings notes — see each entry) · **CI green on all three hosts** (rust-ci#38654820649) plus four new M2 workflows (secret-scan ×3 hosts / mobile-contract mock-per-push + nightly real / bridge nightly real) · **M3 delivered 12/12** (7 ✅: T-M3-05/06/07/08/09/10/11; T-M3-01/02/03/04/12 carry host/environment/interop notes — see each entry) plus one new M3 workflow (miniprogram-contract mock-per-push + nightly real) · **M4 delivered 14/15** (conditional T-M4-15 not triggered — decision: continue in constrained mode, on-device sideload is its prerequisite; T-M4-01/06/11/13 etc. carry device/host/interop notes — see each entry) plus one new M4 workflow (tv-smoke mock-per-push + nightly real) · **M5 delivered 11/11** (T-M5-07 OpenBSD install smoke and T-M5-08 NetBSD `bmake` real run are SKIP-with-print per environment slot (image bandwidth / host absent), arbitrated by the first bsd-ci night; the multi-target true run is limited by the single global `--credential` contract and verified via dry-run dual events, per-target credentials deferred to M6) plus one new M5 workflow (bsd-ci nightly BSD native builds + install smoke) · **M6 delivered 13/13** (the no_std engine layer + C ABI, the QNX / AUTOSAR / VxWorks / Zephyr / FreeRTOS targets, AAOS, the CI matrix and QEMU smokes, and the status-table / budget / labeling validators; QNX SDP / wr-cc / Xcode-class environment slots record SKIP-with-print, with model and serial evidence in each task entry) plus one new M6 workflow (embedded-ci: tier-6 matrix derived from TargetSpec + QEMU smokes, nightly 19:27) · **M7 delivered 11/11** (adapter-wear + the Wear OS dual smoke + the watchOS template/packaging chain + Fitbit/Zepp + the Garmin spike + the experimental-target three-section docs + wearable contracts; xcodebuild / codesign / Wear-device environment slots record SKIP-with-print, and the Garmin iq packager is a recorded experimental gap) plus two new M7 workflows (wear-smoke nightly form smoke / wear-release-smoke release gate). · **M8 delivered 13/13** (plugin sandbox + WIT world, SRI/signature chain, template/scaffolding, unified built-in providers, farm v1, publishing GA, 49-target table, bilingual GA docs/technical review/one-day rehearsal (38 min); M8 adds no repository workflows (the template CI lives under templates/); environment-slot notes live in each task entry).
 
 ## Team roster
 
@@ -881,91 +881,91 @@
 ## M8 ecosystem GA (6 weeks)
 > Prerequisites: M0 (TargetSpec schema), M2 (remote-farm protocol v0, Apple signing chain), M6 / M7 (all L6 target declarations in place) | Exit criteria: a third-party developer adds a custom target and ships a package in under a day, following the docs
 
-### T-M8-01 · `poly-plugin` sandbox capability model (wasmtime)
+### T-M8-01 · ✅ `poly-plugin` sandbox capability model (wasmtime; default-deny fs/net, explicit directory/domain grants + O_NOFOLLOW; fuel/epoch/memory limits; JobSpec.plugins + `plugin_granted` events; 5 unit + 16 integration and escape-negative tests green; 3 wasm fixtures free of host paths/env/debug symbols)
 - Role: core
 - Deps: —
 - Estimate: 3d
 - Deliverable: the wasmtime-host capability model in place: no network and no filesystem by default, with read/write directories and outbound domains granted explicitly per need (the §4.5 capability model).
 - Acceptance: unauthorized network / filesystem access is denied with a stable error code; the grant list travels in the JobSpec and appears in the `poly build --json` event stream; the sandbox-escape negative test suite is green.
 
-### T-M8-02 · Finalize the `polypack-target` WIT world and `target-spec/v1` versioning
+### T-M8-02 · ✅ Finalize the `polypack-target` WIT world and `target-spec/v1` (import inputs / export describe / export %package + sandboxed world; non-v1 → E_PLUGIN_0005 with migration hint; check-roadmap.sh matches §4.5 line by line; reference plugin describe/package runs for real)
 - Role: core
 - Deps: T-M8-01
 - Estimate: 3d
 - Deliverable: the finalized `world polypack-target` (`import inputs`, `export describe`, `export package`) plus the `target-spec/v1` versioning scheme (breaking changes go to a new version number) and the wit-bindgen-generated Rust skeleton.
 - Acceptance: a reference plugin compiles against that world, instantiates and completes `describe` + `package`; non-v1 versions are rejected with a migration hint; the world definition matches §4.5 line by line (script-compared).
 
-### T-M8-03 · Plugin SRI verification and signed artifacts
+### T-M8-03 · ✅ Plugin SRI verification and signed artifacts (SRI first + GPG detached signature in a one-shot 0700 GNUPGHOME + CredentialRef trust root, verification before instantiation; E_PLUGIN_0009/0010; poly scan covers wasm host paths/env/debug sections with redaction; 8 signature + 11 scan tests green; host providers consume sri/signature/trust_root)
 - Role: release-sec
 - Deps: T-M8-02
 - Estimate: 3d
 - Deliverable: content-digest (SRI) verification for plugin artifacts plus a plugin release signing chain (keys as references), with secret-scan rules covering plugin artifacts.
 - Acceptance: a digest mismatch refuses to load the plugin; a failed signature refuses instantiation; plugin artifacts carry no absolute paths, environment variables or debug symbols (§7 sanitization passes).
 
-### T-M8-04 · Plugin template repo and scaffolding
+### T-M8-04 · ✅ Plugin template repo and scaffolding (standalone templates/plugin-target [workspace] + WIT/componentize/contract test/own CI; poly plugin new/digest; generate→build.sh→sandbox SRI load→describe/package real run in 14.4 min ≤ 30 min; template contract green in 272 s; actionlint green; remote template CI SKIP-with-print)
 - Role: core
 - Deps: T-M8-02
 - Estimate: 3d
 - Deliverable: a `poly plugin new <id>` scaffolder plus a standalone template repository (Rust + WIT starter, `describe` / `package` examples, its own CI).
 - Acceptance: from an empty repo to "plugin loaded by `poly` and completing one package run" takes ≤ 30 min (excluding dependency download); the template CI ships its own contract test and is green inside the template repo.
 
-### T-M8-05 · Built-in targets and plugins share one interface (principle 6)
+### T-M8-05 · ✅ Built-in targets and plugins share one interface (no_std TargetProvider + ProviderRegistry; BuiltinProvider delegates the untouched packagers, PluginProvider bridges wasm; CLI build/verify/package use one path with no builtin special-casing; the same contract tests are green for both; unified Tizen entry bytes == direct packager, sha256 baseline 626f4a59…; L1–L5 packager sources untouched)
 - Role: core
 - Deps: T-M8-02
 - Estimate: 3d
 - Deliverable: built-in targets registered through the same `describe` / `package` interface (built-ins are official plugins), removing bypass branches from the registry.
 - Acceptance: built-ins and third-party plugins go through one registration and invocation path (no `if builtin`-style branch in the code); the same contract-test suite is green for both classes; existing L1–L5 targets package byte-identically to before (signatures and timestamps excepted).
 
-### T-M8-06 · Remote farm v1: concurrency and worker pool
+### T-M8-06 · ✅ Remote farm v1 (protocol v1 + FarmPool concurrency/worker pool/timeout retry, v0-worker compatible; E_FARM_0004/0005 with hints)
 - Role: core
 - Deps: —
 - Estimate: 3d
 - Deliverable: the farm protocol v0 → v1 (concurrent scheduling, worker pool, task timeouts and retries) with JobSpec serialization keeping v0 workers interoperable.
 - Acceptance: a multi-target concurrent build completes through the farm; a v0 worker can still join (version negotiation succeeds); task timeouts / disconnects emit a `Failed` event carrying a hint.
 
-### T-M8-07 · Farm isolation and in-memory credential injection
+### T-M8-07 · ✅ Farm isolation and in-memory credential injection (0700 one-shot work dirs, TaskScope/CredentialScope, destroyed at task end; zero-plaintext disk/log assertions; E_FARM_0006)
 - Role: release-sec
 - Deps: T-M8-06
 - Estimate: 3d
 - Deliverable: worker-side isolation (container / process boundary plus a one-shot working directory) and a credential delivery channel that only ever touches memory (§7).
 - Acceptance: no plaintext credentials exist on worker disk or in logs (scan assertions); credentials and the working directory are destroyed at task end; nothing survives across tasks (isolation negative suite green).
 
-### T-M8-08 · Farm cache sharing (CAS object-storage backend)
+### T-M8-08 · ✅ Farm cache sharing (DirSharedStore shared-directory CAS + FallbackStore degradation; same key across workers, 100% second-run hit; local degrade warns instead of failing without object storage)
 - Role: infra
 - Deps: T-M8-06
 - Estimate: 3d
 - Deliverable: the `poly-cache` object-storage backend shipped in its production shape, with multiple workers sharing one CAS and the §5.2 three-level cache reused across machines.
 - Acceptance: second-run cache hit ≥ 90% inside the farm (matching the M1 acceptance wording); the same input yields the same cache key on different workers; the backend stays a trait and the local filesystem default still works (the farm degrades rather than fails without object storage).
 
-### T-M8-09 · Remote farm deployment guide
+### T-M8-09 · ✅ Remote farm deployment guide (bilingual FARM-DEPLOY + farm-drill.sh dual-worker Linux rehearsal; concurrency/shared-cache second-run hit/in-memory credentials/degradation; macOS IPA R3 slot SKIP-with-print)
 - Role: docs
 - Deps: T-M8-06, T-M8-07, T-M8-08
 - Estimate: 2.5d
 - Deliverable: a remote-farm deployment guide (topology, worker pool, isolation parameters, cache backend, vault integration), bilingual.
 - Acceptance: following the guide, a macOS worker pool is deployed from scratch and one IPA is built from a Linux host (the R3 path); every command in the guide is copy-pasteable and appears in the CI rehearsal log.
 
-### T-M8-10 · Store publishing pipeline GA: retries and backoff
+### T-M8-10 · ✅ Store publishing pipeline GA (exponential backoff + Idempotency-Key + SubmitJournal, 85009=accepted; PublishFailure / Failed{stage,code,hint}; 503/429/timeout/accept-then-timeout injection ends in success with no duplicate submission)
 - Role: core
 - Deps: —
 - Estimate: 3d
 - Deliverable: the `publish` stage maturing: exponential-backoff retries, idempotent submission (re-submitting does not create a second submission) and platform rate-limit handling (mitigating R4).
 - Acceptance: after injecting 5xx / timeout / rate-limit faults, the submission eventually succeeds with no duplicate submission record; unrecoverable failures emit a machine-readable `Failed{stage, code, hint}`; automation stops at "submit" and never promises automatic approval.
 
-### T-M8-11 · Submission receipt archival and review-status polling
+### T-M8-11 · ✅ Submission receipt archival and review-status polling (receipt v2 + Published{submission} + poly retry --from publish; crash-window recovery with zero duplicate submissions; submission-id normalization)
 - Role: release-sec
 - Deps: T-M8-10
 - Estimate: 2.5d
 - Deliverable: submission receipt archival (the §5.2 submission level of the cache) and review-status polling, landing the `Published{channel, submission}` event.
 - Acceptance: once polling reaches a terminal state the receipt is persisted with submission ID and timestamp and is traceable; after an interruption `poly retry --from publish` resumes without creating a duplicate submission.
 
-### T-M8-12 · 49-target status table (derived from TargetSpec)
+### T-M8-12 · ✅ 49-target status table (gen-status-table derives 49 rows from TargetSpec, synced into bilingual README/ROADMAP; L1–L7=7/9/9/4/7/10/3 matches the platform matrix; --check drift gate wired into docs-check)
 - Role: docs
 - Deps: —
 - Estimate: 3d
 - Deliverable: a status table for all 49 targets generated from TargetSpec (tier, runtime, bridge, artifacts, signing, verification, channel, `experimental`, `notes`), synced into the bilingual README / ROADMAP.
 - Acceptance: the table matches TargetSpec field by field (generated, not hand-written twice); adding or removing a platform makes CI flag the pending updates per §11 item 4; all 49 rows are present and the L1–L7 tier counts match the README.
 
-### T-M8-13 · GA docs, technical review and the "add a target in one day" rehearsal
+### T-M8-13 · ✅ GA docs, technical review and the "add a target in one day" rehearsal (bilingual [GA docs](GA.en.md) in 7 sections + technical review; an independent-context developer agent drilled `pocket-notes`: ~38 min wall clock (30 min cold build, 2 min development), scaffolding→custom package in 12m23s, a real `poly build --target` load+package of 92 B, negative SRI yields E_PLUGIN_0006; blockers written back and fixed via single-source template assertions/SRI examples/minimal host docs; docs-check green across seven pairs)
 - Role: docs
 - Deps: T-M8-02, T-M8-04, T-M8-05, T-M8-09, T-M8-12
 - Estimate: 3d
