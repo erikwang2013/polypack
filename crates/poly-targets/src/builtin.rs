@@ -613,6 +613,35 @@ pub fn builtin() -> Vec<TargetSpec> {
                     .to_string(),
             ),
         },
+        // ---- L4 移动系统变体：KaiOS web 栈（react-dom → zip + manifest.webapp）----
+        // 复用 Web 侧 UI dist 载荷与确定性 zip 写法；KaiOS 清单由产品元数据生成（name /
+        // version / launch_path），结构自检与 verify 腿 `kaios-structure-check` 同一实现。
+        // 普通应用本地不签名（提审 / 平台侧签名归 KaiStore）；poly-publish 无 kaistore 客户端，
+        // publish 留空并在 notes 说明——绝不编造渠道。
+        TargetSpec {
+            id: "kaios".to_string(),
+            tier: 4,
+            hosts: vec![Host::Win, Host::Linux, Host::Macos],
+            runtime: Runtime::Wasm,
+            bridge: Bridge::WasmBindgen,
+            ui: vec!["react-dom".to_string()],
+            package: PackageSpec {
+                format: "zip".to_string(),
+                builder: "kaios-webapp".to_string(),
+            },
+            signing: None,
+            verify: vec!["kaios-structure-check".to_string()],
+            publish: Vec::new(),
+            experimental: false,
+            notes: Some(
+                "react-dom web 栈（wasm · wasm-bindgen）→ 打包应用 zip（manifest.webapp + UI \
+                 dist，确定性归档）；结构自检（清单 / 入口 / 条目）与 verify 腿 \
+                 kaios-structure-check 同一实现。普通应用本地不签名，提审与平台侧签名归 \
+                 KaiStore；poly-publish 无 kaistore 客户端，publish 留空；本机无 KaiOS 设备 / \
+                 模拟器与商店凭据——设备 / 商店腿 SKIP-with-print"
+                    .to_string(),
+            ),
+        },
         // ---- L5 BSD 家族（T-M5-06，ROADMAP §3.6）：FreeBSD pkg ----
         // hosts = Linux 是**交叉发起面**：Linux 宿主生成 pkg 暂存树 + manifest 并做结构自检；
         // `pkg create` / `pkg install` / `pkg check` 真跑需 FreeBSD 用户态（T-M5-09 VM），缺

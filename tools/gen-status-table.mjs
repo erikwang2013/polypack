@@ -124,20 +124,9 @@ const PLATFORMS = [
   declaredRow(3, 'Vizio SmartCast', 'Vizio SmartCast', 'smartcast-tv'),
   declaredRow(3, 'Hisense VIDAA', 'Hisense VIDAA', 'vidaa-tv'),
 
-  // ── L4 移动系统变体（4）：GrapheneOS 已声明，其余三为规划平台 ──
+  // ── L4 移动系统变体（4）：GrapheneOS / KaiOS 已声明，其余二为规划平台 ──
   declaredRow(4, 'GrapheneOS', 'GrapheneOS', 'grapheneos'),
-  plannedRow(4, 'KaiOS', 'KaiOS', {
-    runtime: bi('wasm', 'wasm'),
-    bridge: bi('wasm-bindgen', 'wasm-bindgen'),
-    artifact: bi('zip + manifest', 'zip + manifest'),
-    signing: bi('平台侧', 'platform-side'),
-    verify: bi('开发者工具自检', 'devtools self-check'),
-    publish: bi('KaiStore', 'KaiStore'),
-    notes: bi(
-      '规划中：react-dom web 栈（wasm · wasm-bindgen），zip + manifest 投 KaiStore；尚未声明 TargetSpec。',
-      'Planned: react-dom web stack (wasm · wasm-bindgen), zip + manifest to KaiStore; no TargetSpec yet.',
-    ),
-  }),
+  declaredRow(4, 'KaiOS', 'KaiOS', 'kaios'),
   plannedRow(4, 'Sailfish OS', 'Sailfish OS', {
     runtime: bi('native', 'native'),
     bridge: bi('cffi', 'cffi'),
@@ -146,8 +135,8 @@ const PLATFORMS = [
     verify: bi('rpmlint', 'rpmlint'),
     publish: bi('Jolla Store', 'Jolla Store'),
     notes: bi(
-      '规划中：native .so + Qt / Silica 壳，RPM 投 Jolla Store；尚未声明 TargetSpec。',
-      'Planned: native .so + Qt / Silica shell, RPM to Jolla Store; no TargetSpec yet.',
+      '规划中：现有 linux-rpm 链只出桌面 Tauri RPM（裸产物 + .desktop），缺 Qt / Silica QML 宿主、Sailfish SDK 交叉工具链（armv7hl / aarch64）与 harbour 打包 / 签名；尚未声明 TargetSpec。',
+      'Planned: the existing linux-rpm chain only emits a desktop Tauri RPM (bare product + .desktop); missing the Qt / Silica QML host, the Sailfish SDK cross toolchain (armv7hl / aarch64), and harbour packaging / signing; no TargetSpec yet.',
     ),
   }),
   plannedRow(4, 'Ubuntu Touch', 'Ubuntu Touch', {
@@ -158,8 +147,8 @@ const PLATFORMS = [
     verify: bi('Clickable 构建检查', 'Clickable build check'),
     publish: bi('OpenStore', 'OpenStore'),
     notes: bi(
-      '规划中：native .so + WebView 壳，.click（Clickable）投 OpenStore；尚未声明 TargetSpec。',
-      'Planned: native .so + WebView shell, .click (Clickable) to OpenStore; no TargetSpec yet.',
+      '规划中：现有 Linux deb 链不能产出 .click（格式 / AppArmor / click 清单均不同），缺 Clickable / Ubuntu Touch SDK 与 WebView 壳；尚未声明 TargetSpec。',
+      'Planned: the existing Linux deb chain cannot produce .click (different format / AppArmor / click manifest); missing Clickable / Ubuntu Touch SDK and the WebView shell; no TargetSpec yet.',
     ),
   }),
 

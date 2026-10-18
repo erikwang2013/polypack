@@ -57,7 +57,7 @@
 
 ### 3.1.1 49-target status table (generated)
 
-The table below is the single source of truth for the status of all 49 platforms: 38 rows are generated field by field from `TargetSpec` (40 declared targets; the RTOS and Chrome OS rows each merge two; `notes` keeps the declaration's original Chinese text), and 11 planned platforms are explicitly marked "planned" with fields taken from the declarative manifest in `tools/gen-status-table.mjs`. Do not edit it by hand: regenerate with `node tools/gen-status-table.mjs`; `--check` fails on drift. Platform matrix additions/removals follow §11 item 4.
+The table below is the single source of truth for the status of all 49 platforms: 39 rows are generated field by field from `TargetSpec` (41 declared targets; the RTOS and Chrome OS rows each merge two; `notes` keeps the declaration's original Chinese text), and 10 planned platforms are explicitly marked "planned" with fields taken from the declarative manifest in `tools/gen-status-table.mjs`. Do not edit it by hand: regenerate with `node tools/gen-status-table.mjs`; `--check` fails on drift. Platform matrix additions/removals follow §11 item 4.
 
 <!-- BEGIN GENERATED: status-49 -->
 | Tier | Platform | Runtime | Bridge | Packager & artifact | Signing | Artifact verification | Publishing channel | experimental | notes |
@@ -88,9 +88,9 @@ The table below is the single source of truth for the status of all 49 platforms
 | L3 | Vizio SmartCast (`smartcast-tv`) | `wasm` | `wasm-bindgen` | `web-app` · `smartcast-web-app` | none | `sandbox-selfcheck` | `vizio-platform` | `false` | web 运行时（Vizio SmartCast，远程托管）；无签名、无推送——只出沙箱自检包（入口 / 清单字段 / 体积），提报与安装归平台侧 |
 | L3 | Hisense VIDAA (`vidaa-tv`) | `wasm` | `wasm-bindgen` | `web-app` · `vidaa-web-app` | none | `sandbox-selfcheck` | `vidaa-store` | `false` | web 运行时（海信 VIDAA）；无签名、无推送——只出沙箱自检包（入口 / 清单字段 / 体积），提审与安装归平台商店侧 |
 | L4 | GrapheneOS (`grapheneos`) | `native` | `uniffi` | `apk` · `android-aapt2` | `android-keystore` | `apksigner-verify`, `bundletool-validate` | `self-hosted` | `false` | 复用 Android APK 链（同 aapt2 / keystore / 校验）；无独立无 GMS 打包档（GMS 剔除归应用侧）；发布走自托管（`self-hosted`；无 F-Droid 客户端 id）；可复现性走 `poly verify --reproducible`（同输入二跑，未实现上游构建对拍） |
-| L4 | KaiOS (planned) | wasm | wasm-bindgen | zip + manifest | platform-side | devtools self-check | KaiStore | none | Planned: react-dom web stack (wasm · wasm-bindgen), zip + manifest to KaiStore; no TargetSpec yet. |
-| L4 | Sailfish OS (planned) | native | cffi | rpm | RPM GPG | rpmlint | Jolla Store | none | Planned: native .so + Qt / Silica shell, RPM to Jolla Store; no TargetSpec yet. |
-| L4 | Ubuntu Touch (planned) | native | cffi | .click (Clickable) | Clickable packaging | Clickable build check | OpenStore | none | Planned: native .so + WebView shell, .click (Clickable) to OpenStore; no TargetSpec yet. |
+| L4 | KaiOS (`kaios`) | `wasm` | `wasm-bindgen` | `zip` · `kaios-webapp` | none | `kaios-structure-check` | none | `false` | react-dom web 栈（wasm · wasm-bindgen）→ 打包应用 zip（manifest.webapp + UI dist，确定性归档）；结构自检（清单 / 入口 / 条目）与 verify 腿 kaios-structure-check 同一实现。普通应用本地不签名，提审与平台侧签名归 KaiStore；poly-publish 无 kaistore 客户端，publish 留空；本机无 KaiOS 设备 / 模拟器与商店凭据——设备 / 商店腿 SKIP-with-print |
+| L4 | Sailfish OS (planned) | native | cffi | rpm | RPM GPG | rpmlint | Jolla Store | none | Planned: the existing linux-rpm chain only emits a desktop Tauri RPM (bare product + .desktop); missing the Qt / Silica QML host, the Sailfish SDK cross toolchain (armv7hl / aarch64), and harbour packaging / signing; no TargetSpec yet. |
+| L4 | Ubuntu Touch (planned) | native | cffi | .click (Clickable) | Clickable packaging | Clickable build check | OpenStore | none | Planned: the existing Linux deb chain cannot produce .click (different format / AppArmor / click manifest); missing Clickable / Ubuntu Touch SDK and the WebView shell; no TargetSpec yet. |
 | L5 | Ubuntu (`ubuntu`) | `native` | `tauri-ipc` | `deb` · `linux-deb` | `linux-repo-gpg` | `lintian`, `appstream-validate`, `flatpak-lint`, `snap-lint` | `flathub`, `snapcraft`, `self-hosted` | `false` | L5 发行版：deb 主档；Flatpak 权限恰为 [--share=ipc, --socket=wayland, --socket=fallback-x11, --device=dri]，Snap plugs 恰为 [desktop, wayland, x11, opengl]（与打包器常量同源，T-M5-02/03） |
 | L5 | Fedora (`fedora`) | `native` | `tauri-ipc` | `rpm` · `linux-rpm` | `linux-repo-gpg` | `rpmlint`, `appstream-validate`, `flatpak-lint` | `flathub`, `self-hosted` | `false` | L5 发行版：rpm 主档；Flatpak 权限恰为 [--share=ipc, --socket=wayland, --socket=fallback-x11, --device=dri]（与打包器常量同源，T-M5-02） |
 | L5 | Linux Mint (`mint`) | `native` | `tauri-ipc` | `deb` · `linux-deb` | `linux-repo-gpg` | `lintian`, `appstream-validate`, `flatpak-lint` | `flathub`, `self-hosted` | `false` | L5 发行版：deb 主档（Linux Mint 兼容 Ubuntu 仓库）；Flatpak 权限恰为 [--share=ipc, --socket=wayland, --socket=fallback-x11, --device=dri]（与打包器常量同源，T-M5-02） |
@@ -158,9 +158,9 @@ The table below is the single source of truth for the status of all 49 platforms
 | Platform | Core runtime · bridge | Packager and artifacts | Signing | Artifact verification | Publishing channel | Notes |
 |---|---|---|---|---|---|---|
 | GrapheneOS | native · uniffi | APK (reuses Android APK chain) | apksigner / community keys (android-keystore) | apksigner verify + `poly verify --reproducible` (same-input two-run) | self-hosted (`self-hosted`; poly-publish has no F-Droid client) | no separate no-GMS flavor — GMS removal is an app-level concern; upstream-build diff not implemented |
-| KaiOS | wasm · wasm-bindgen | zip + manifest | platform-side | devtools self-check | KaiStore | web runtime |
-| Sailfish OS | native `.so` + Qt/Silica shell | RPM | RPM GPG | rpmlint | Jolla Store | |
-| Ubuntu Touch | native `.so` + WebView shell | `.click` (Clickable) | Clickable packaging | Clickable build check | OpenStore | |
+| KaiOS | wasm · wasm-bindgen | zip (`manifest.webapp` + UI dist, deterministic archive; `kaios-webapp`) | none (ordinary apps are not signed locally; platform-side signing is KaiStore's) | `kaios-structure-check` (manifest / entry / entries; same implementation as the packager) | none — poly-publish has no kaistore client; KaiStore review | react-dom web stack; device / store legs SKIP-with-print |
+| Sailfish OS | native `.so` + Qt/Silica shell (planned) | RPM (planned) | RPM GPG (planned) | rpmlint (planned) | Jolla Store (planned) | the existing linux-rpm chain only emits a desktop Tauri RPM; missing the Qt / Silica QML host, the Sailfish SDK cross toolchain (armv7hl / aarch64), and harbour packaging / signing |
+| Ubuntu Touch | native `.so` + WebView shell (planned) | `.click` (Clickable, planned) | Clickable packaging (planned) | Clickable build check (planned) | OpenStore (planned) | the existing Linux deb chain cannot produce `.click` (different format / AppArmor / click manifest); missing Clickable / Ubuntu Touch SDK and the WebView shell |
 
 ### 3.6 L5 per-platform detail (7)
 

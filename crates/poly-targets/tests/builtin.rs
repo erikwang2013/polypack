@@ -98,11 +98,11 @@ fn builtin_has_seven_valid_targets() {
     );
     assert_eq!(
         registry.all().count(),
-        40,
+        41,
         "M7 起内建 = L1 七 + L2 小程序族四（wechat / alipay / douyin / quickapp）+ \
          L3 电视族九（tvos + android-tv / fire-tv + tizen-tv / webos-tv / vidaa-tv / smartcast-tv \
-         + roku※实验，T-M4-04/07/08/09/10/12 + harmonyos-tv，T-M4-14）+ L4 GrapheneOS \
-         （grapheneos）+ L5 OpenBSD / FreeBSD / NetBSD（T-M5-07/06/08）+\
+         + roku※实验，T-M4-04/07/08/09/10/12 + harmonyos-tv，T-M4-14）+ L4 GrapheneOS / KaiOS \
+         （grapheneos；kaios）+ L5 OpenBSD / FreeBSD / NetBSD（T-M5-07/06/08）+\
          发行版三（ubuntu / fedora / mint，T-M5-01）+ ChromeOS 双轨（chromeos / chromeos-pwa，\
          T-M5-10）+ L6 车机 / 嵌入式 / 穿戴十一目标（android-automotive，T-M6-11；qnx / autosar，\
          T-M6-03/04；vxworks / zephyr，T-M6-05/06；freertos，T-M6-07；garmin※实验，T-M7-09；\
@@ -178,8 +178,8 @@ fn builtin_ids_are_the_l1_set() {
         .collect();
     assert_eq!(
         l4,
-        BTreeSet::from(["grapheneos".to_string()]),
-        "L4 已声明目标仅 GrapheneOS（复用 Android 普通 APK 链）"
+        BTreeSet::from(["grapheneos".to_string(), "kaios".to_string()]),
+        "L4 已声明目标 = GrapheneOS（复用 Android 普通 APK 链）+ KaiOS（web 栈 zip）"
     );
 
     let l5: BTreeSet<String> = registry
@@ -229,7 +229,17 @@ fn builtin_matches_roadmap_3_2_columns() {
 fn every_l1_target_has_verifier_and_publisher() {
     for spec in Registry::builtin().all() {
         assert!(!spec.verify.is_empty(), "{} 缺少产物校验器", spec.id);
-        assert!(!spec.publish.is_empty(), "{} 缺少发布渠道", spec.id);
+        if spec.publish.is_empty() {
+            // 唯一例外：KaiStore 尚无 poly-publish 客户端（Channel 枚举不含 kaistore），
+            // 空 publish 必须在 notes 如实说明，绝不编造渠道。
+            assert_eq!(spec.id, "kaios", "{} 缺少发布渠道", spec.id);
+            let notes = spec.notes.as_deref().unwrap_or_default();
+            assert!(
+                notes.contains("KaiStore") && notes.contains("poly-publish"),
+                "kaios: 空 publish 须在 notes 说明缺失的客户端：{notes}"
+            );
+            continue;
+        }
         if let Some(signing) = &spec.signing {
             assert!(
                 poly_targets::spec::id_is_valid(signing),
@@ -292,14 +302,18 @@ fn linux_host_resolves_four_l1_targets_from_all() {
         ]),
         "电视三目标 + web 系 TV 四目标 + roku（三宿主声明）应全部入选"
     );
-    // L4 GrapheneOS 声明三宿主（复用 Android APK 链）→ Linux 宿主下入选
+    // L4 GrapheneOS / KaiOS 均声明三宿主（APK 链 / web 栈）→ Linux 宿主下入选
     let l4: BTreeSet<&str> = resolved
         .selected
         .iter()
         .filter(|s| s.tier == 4)
         .map(|s| s.id.as_str())
         .collect();
-    assert_eq!(l4, BTreeSet::from(["grapheneos"]), "GrapheneOS 应入选");
+    assert_eq!(
+        l4,
+        BTreeSet::from(["grapheneos", "kaios"]),
+        "GrapheneOS / KaiOS 应入选"
+    );
     // L5：openbsd / freebsd / netbsd、发行版三与 ChromeOS deb 轨声明 Linux 宿主；
     // chromeos-pwa 声明三宿主（web 运行时）→ 全部入选
     let l5: BTreeSet<&str> = resolved
@@ -607,6 +621,36 @@ fn builtin_matches_harmonyos_tv_and_grapheneos_reuse_specs() {
     assert!(
         notes.contains("GMS") && notes.contains("reproducible") && notes.contains("self-hosted"),
         "grapheneos: {notes}"
+    );
+}
+
+/// KaiOS 验收（声明侧）：react-dom web 栈 → `manifest.webapp` + UI dist 的确定性 zip，
+/// 结构自检与 verify 腿同名；无 poly-publish KaiStore 客户端，publish 留空并在 notes 说明。
+#[test]
+fn builtin_matches_kaios_webapp_spec() {
+    let registry = Registry::builtin();
+    let kaios = registry.get("kaios").expect("内建 kaios 目标");
+    assert_eq!(kaios.tier, 4, "kaios: L4 移动系统");
+    assert_eq!(kaios.hosts, vec![Host::Win, Host::Linux, Host::Macos]);
+    assert_eq!(kaios.runtime, Runtime::Wasm);
+    assert_eq!(kaios.bridge, Bridge::WasmBindgen);
+    assert_eq!(kaios.ui, ["react-dom"]);
+    assert_eq!(kaios.package.format, "zip");
+    assert_eq!(kaios.package.builder, "kaios-webapp");
+    assert_eq!(kaios.signing, None);
+    assert_eq!(kaios.verify, ["kaios-structure-check"].map(String::from));
+    assert!(
+        kaios.publish.is_empty(),
+        "KaiStore 尚无 poly-publish 客户端"
+    );
+    assert!(!kaios.experimental, "包结构真实且有测试，不应标实验");
+    let notes = kaios.notes.as_deref().expect("kaios 缺 notes");
+    assert!(
+        notes.contains("manifest.webapp")
+            && notes.contains("KaiStore")
+            && notes.contains("poly-publish")
+            && notes.contains("SKIP"),
+        "kaios: {notes}"
     );
 }
 

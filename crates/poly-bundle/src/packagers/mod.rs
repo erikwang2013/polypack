@@ -4,6 +4,7 @@
 //! - [`dmg`]：macOS DMG（T-M1-06，hdiutil 组装 + 拖拽安装布局）
 //! - [`linux`]：deb / AppImage / rpm / Flatpak / Snap（T-M1-07、T-M5-01..04）
 //! - [`web`]：Web 静态站点（T-M1-08，含 SRI 清单）
+//! - [`kaios`]：KaiOS 打包应用 zip（manifest.webapp + UI dist，确定性归档 + 结构自检）
 //! - [`android`]：AAB 与 TV / AAOS / Wear 变体（T-M2-06 / T-M2-07 / T-M4-04 / T-M6-11 / T-M7-02，AAPT2 免 Gradle + bundletool）
 //! - [`ios`]：IPA（T-M2-03 / T-M2-08，XCFramework 绑定 + xcodebuild archive / 归档 Payload 直压）
 //! - [`harmony`]：HAP（T-M3-03，工程配置生成 + hvigor 调用 + 结构检查）
@@ -34,6 +35,7 @@ pub mod freebsd;
 pub mod freertos;
 pub mod harmony;
 pub mod ios;
+pub mod kaios;
 pub mod linux;
 pub mod miniapp;
 pub mod openbsd;

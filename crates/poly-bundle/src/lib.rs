@@ -47,6 +47,7 @@ pub use packagers::fitbit::{FitbitStructure, check_fitbit_structure};
 pub use packagers::freebsd::{PkgStructure, check_pkg_structure};
 pub use packagers::freertos::{FreeRtosStructure, check_freertos_structure};
 pub use packagers::harmony::{HapStructure, check_hap_structure};
+pub use packagers::kaios::{KaiosStructure, check_kaios_structure};
 pub use packagers::linux::{
     AppdirStructure, DebStructure, FlatpakStructure, RpmStructure, SnapStructure,
     check_appdir_structure, check_deb_structure, check_flatpak_structure, check_rpm_structure,

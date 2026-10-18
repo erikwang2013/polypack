@@ -57,7 +57,7 @@
 
 ### 3.1.1 49 目标现状表（生成）
 
-下表是 49 个平台现状的单一事实源：38 行由 `TargetSpec` 逐字段生成（40 个已声明目标；RTOS、Chrome OS 行各合并两个），11 行规划平台显式标注「规划中」，字段来自 `tools/gen-status-table.mjs` 的声明清单。请勿手改：`node tools/gen-status-table.mjs` 生成；`--check` 在漂移时失败。平台矩阵增删按第 11 节第 4 条同步。
+下表是 49 个平台现状的单一事实源：39 行由 `TargetSpec` 逐字段生成（41 个已声明目标；RTOS、Chrome OS 行各合并两个），10 行规划平台显式标注「规划中」，字段来自 `tools/gen-status-table.mjs` 的声明清单。请勿手改：`node tools/gen-status-table.mjs` 生成；`--check` 在漂移时失败。平台矩阵增删按第 11 节第 4 条同步。
 
 <!-- BEGIN GENERATED: status-49 -->
 | 等级 | 平台 | 运行时 | 桥 | 打包器与产物 | 签名 | 产物校验 | 发布渠道 | experimental | notes |
@@ -88,9 +88,9 @@
 | L3 | Vizio SmartCast（`smartcast-tv`） | `wasm` | `wasm-bindgen` | `web-app` · `smartcast-web-app` | — | `sandbox-selfcheck` | `vizio-platform` | `false` | web 运行时（Vizio SmartCast，远程托管）；无签名、无推送——只出沙箱自检包（入口 / 清单字段 / 体积），提报与安装归平台侧 |
 | L3 | Hisense VIDAA（`vidaa-tv`） | `wasm` | `wasm-bindgen` | `web-app` · `vidaa-web-app` | — | `sandbox-selfcheck` | `vidaa-store` | `false` | web 运行时（海信 VIDAA）；无签名、无推送——只出沙箱自检包（入口 / 清单字段 / 体积），提审与安装归平台商店侧 |
 | L4 | GrapheneOS（`grapheneos`） | `native` | `uniffi` | `apk` · `android-aapt2` | `android-keystore` | `apksigner-verify`, `bundletool-validate` | `self-hosted` | `false` | 复用 Android APK 链（同 aapt2 / keystore / 校验）；无独立无 GMS 打包档（GMS 剔除归应用侧）；发布走自托管（`self-hosted`；无 F-Droid 客户端 id）；可复现性走 `poly verify --reproducible`（同输入二跑，未实现上游构建对拍） |
-| L4 | KaiOS（规划中） | wasm | wasm-bindgen | zip + manifest | 平台侧 | 开发者工具自检 | KaiStore | — | 规划中：react-dom web 栈（wasm · wasm-bindgen），zip + manifest 投 KaiStore；尚未声明 TargetSpec。 |
-| L4 | Sailfish OS（规划中） | native | cffi | rpm | RPM GPG | rpmlint | Jolla Store | — | 规划中：native .so + Qt / Silica 壳，RPM 投 Jolla Store；尚未声明 TargetSpec。 |
-| L4 | Ubuntu Touch（规划中） | native | cffi | .click（Clickable） | Clickable 打包 | Clickable 构建检查 | OpenStore | — | 规划中：native .so + WebView 壳，.click（Clickable）投 OpenStore；尚未声明 TargetSpec。 |
+| L4 | KaiOS（`kaios`） | `wasm` | `wasm-bindgen` | `zip` · `kaios-webapp` | — | `kaios-structure-check` | — | `false` | react-dom web 栈（wasm · wasm-bindgen）→ 打包应用 zip（manifest.webapp + UI dist，确定性归档）；结构自检（清单 / 入口 / 条目）与 verify 腿 kaios-structure-check 同一实现。普通应用本地不签名，提审与平台侧签名归 KaiStore；poly-publish 无 kaistore 客户端，publish 留空；本机无 KaiOS 设备 / 模拟器与商店凭据——设备 / 商店腿 SKIP-with-print |
+| L4 | Sailfish OS（规划中） | native | cffi | rpm | RPM GPG | rpmlint | Jolla Store | — | 规划中：现有 linux-rpm 链只出桌面 Tauri RPM（裸产物 + .desktop），缺 Qt / Silica QML 宿主、Sailfish SDK 交叉工具链（armv7hl / aarch64）与 harbour 打包 / 签名；尚未声明 TargetSpec。 |
+| L4 | Ubuntu Touch（规划中） | native | cffi | .click（Clickable） | Clickable 打包 | Clickable 构建检查 | OpenStore | — | 规划中：现有 Linux deb 链不能产出 .click（格式 / AppArmor / click 清单均不同），缺 Clickable / Ubuntu Touch SDK 与 WebView 壳；尚未声明 TargetSpec。 |
 | L5 | Ubuntu（`ubuntu`） | `native` | `tauri-ipc` | `deb` · `linux-deb` | `linux-repo-gpg` | `lintian`, `appstream-validate`, `flatpak-lint`, `snap-lint` | `flathub`, `snapcraft`, `self-hosted` | `false` | L5 发行版：deb 主档；Flatpak 权限恰为 [--share=ipc, --socket=wayland, --socket=fallback-x11, --device=dri]，Snap plugs 恰为 [desktop, wayland, x11, opengl]（与打包器常量同源，T-M5-02/03） |
 | L5 | Fedora（`fedora`） | `native` | `tauri-ipc` | `rpm` · `linux-rpm` | `linux-repo-gpg` | `rpmlint`, `appstream-validate`, `flatpak-lint` | `flathub`, `self-hosted` | `false` | L5 发行版：rpm 主档；Flatpak 权限恰为 [--share=ipc, --socket=wayland, --socket=fallback-x11, --device=dri]（与打包器常量同源，T-M5-02） |
 | L5 | Linux Mint（`mint`） | `native` | `tauri-ipc` | `deb` · `linux-deb` | `linux-repo-gpg` | `lintian`, `appstream-validate`, `flatpak-lint` | `flathub`, `self-hosted` | `false` | L5 发行版：deb 主档（Linux Mint 兼容 Ubuntu 仓库）；Flatpak 权限恰为 [--share=ipc, --socket=wayland, --socket=fallback-x11, --device=dri]（与打包器常量同源，T-M5-02） |
@@ -158,9 +158,9 @@
 | 平台 | 核心运行时 · 桥 | 打包器与产物 | 签名 | 产物校验 | 发布渠道 | 备注 |
 |---|---|---|---|---|---|---|
 | GrapheneOS | native · uniffi | APK（复用 Android APK 链） | apksigner / 社区密钥（android-keystore） | apksigner verify + `poly verify --reproducible`（同输入二跑） | 自托管（`self-hosted`；poly-publish 无 F-Droid 客户端） | 无独立无 GMS 打包档——GMS 剔除归应用侧；未实现上游构建对拍 |
-| KaiOS | wasm · wasm-bindgen | zip + manifest | 平台侧 | 开发者工具自检 | KaiStore | web 运行时 |
-| Sailfish OS | native `.so` + Qt/Silica 壳 | RPM | RPM GPG | rpmlint | Jolla Store | |
-| Ubuntu Touch | native `.so` + WebView 壳 | `.click`（Clickable） | Clickable 打包 | Clickable 构建检查 | OpenStore | |
+| KaiOS | wasm · wasm-bindgen | zip（`manifest.webapp` + UI dist，确定性归档；`kaios-webapp`） | 无（普通应用本地不签名；平台侧签名归 KaiStore） | `kaios-structure-check`（清单 / 入口 / 条目；与打包器同一实现） | 无——poly-publish 无 kaistore 客户端；KaiStore 提审 | react-dom web 栈；设备 / 商店腿 SKIP-with-print |
+| Sailfish OS | native `.so` + Qt/Silica 壳（规划） | RPM（规划） | RPM GPG（规划） | rpmlint（规划） | Jolla Store（规划） | 现有 linux-rpm 链只出桌面 Tauri RPM；缺 Qt / Silica QML 宿主、Sailfish SDK 交叉工具链（armv7hl / aarch64）与 harbour 打包 / 签名 |
+| Ubuntu Touch | native `.so` + WebView 壳（规划） | `.click`（Clickable，规划） | Clickable 打包（规划） | Clickable 构建检查（规划） | OpenStore（规划） | 现有 Linux deb 链不能产出 `.click`（格式 / AppArmor / click 清单均不同）；缺 Clickable / Ubuntu Touch SDK 与 WebView 壳 |
 
 ### 3.6 L5 逐平台明细（7）
 
