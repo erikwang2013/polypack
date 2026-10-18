@@ -161,32 +161,37 @@ fn second_farm_run_hits_shared_cache_at_least_90pct() {
     assert_eq!(first.cache.hits, 0, "首跑不该命中: {:?}", first.cache);
     assert!(first.cache.misses > 0, "首跑应写入共享后端: {:?}", first.cache);
 
-    // 二跑（worker B，不同工程副本）：共享 CAS 全命中
-    let second = execute_job(
-        &site_b,
-        &spec,
-        &CacheBackend::Shared(shared),
-        InjectedStages::default(),
-        &mut events,
-    )
-    .expect("worker B 构建");
-    let total = second.cache.hits + second.cache.misses;
-    assert!(total > 0, "二跑应有缓存查询: {:?}", second.cache);
+    // 二跑（worker B，不同工程副本）：农场一次 submit 的逐目标任务各执行一次，
+    // 统计全部任务的缓存查询（对齐 M1 口径：命中数 / cached 事件总数）
+    let backend = CacheBackend::Shared(shared);
+    let (mut hits, mut misses) = (0u64, 0u64);
+    for target in ["web", "chromeos-pwa", "vidaa-tv"] {
+        let outcome = execute_job(
+            &site_b,
+            &job_spec(&[host()], &[target]),
+            &backend,
+            InjectedStages::default(),
+            &mut events,
+        )
+        .unwrap_or_else(|err| panic!("worker B 构建 {target}: {err:?}"));
+        assert_eq!(
+            outcome.artifacts, first.artifacts,
+            "同一输入 → 同一产物摘要（跨 worker 对账）"
+        );
+        hits += outcome.cache.hits;
+        misses += outcome.cache.misses;
+    }
+    let total = hits + misses;
+    assert!(total >= 3, "二跑应有逐任务缓存查询: {hits} / {total}");
     assert!(
-        second.cache.hit_rate() >= 0.9,
-        "农场二跑命中率 {:.3} < 0.90（{} / {}）",
-        second.cache.hit_rate(),
-        second.cache.hits,
-        total
+        hits as f64 / total as f64 >= 0.9,
+        "农场二跑命中率 {:.3} < 0.90（{hits} / {total}）",
+        hits as f64 / total as f64
     );
-    assert_eq!(second.cache.misses, 0, "全部查询都应命中: {:?}", second.cache);
+    assert_eq!(misses, 0, "全部任务的查询都应命中: {hits} / {total}");
     assert!(
         site_b.join("dist").join("index.html").is_file(),
         "命中即还原产物到新构建地"
-    );
-    assert_eq!(
-        first.artifacts, second.artifacts,
-        "同一输入 → 同一产物摘要（跨 worker 对账）"
     );
 }
 
