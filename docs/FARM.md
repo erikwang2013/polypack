@@ -53,7 +53,7 @@ poly farm submit --dir /srv/polypack-farm --config /srv/proj/polypack.toml --tar
 
 显式 `--target <id>` 不做发起地可达性过滤——按注册表中各目标声明的宿主解析，因此 Linux 上也能投递 `ios` 去等一台 macOS worker；缺省 `--target all` 与 `poly build` 一致，只取发起地可达的子集（跨宿主投递请显式列出目标 id）。主端先等 `hello`，按任务目标的**声明宿主**做注册准入（宿主不在目标任务声明的宿主内、或 worker 未声明可构建全部任务目标 → `hello_ack accepted=false` + `poly::E_FARM_0002`）；准入通过后投递 `job` 并等 `result`（超时 → `poly::E_FARM_0003`）。worker 端失败不吞错：远端错误码与修复提示经 `RemoteDiagnostic` 完整回传，主端以 `poly::E_FARM_0003` 包装上抛并退出码 1。
 
-5. **跨机缓存**：`--cache local` 用工程本地 CAS（`<工程根>/.polypack/cache`，默认）；`--cache <共享目录>` 换成共享对象存储后端。缓存键公式不含绝对路径（ROADMAP §5.2），因此同一工程在两个构建地之间可直接命中；命中情况在任务完成事件里如实报告（`缓存命中 N/M`）。
+5. **跨机缓存**：`--cache local` 用工程本地 CAS（`<工程根>/.polypack/cache`，默认）；`--cache <共享目录>` 换成共享目录后端；`--cache s3://<bucket>[/<prefix>]` 换成 S3 / OSS 兼容对象存储（AWS SigV4；端点与凭据经 `POLYPACK_S3_*` / `AWS_*` 环境变量，OSS 兼容模式设 `POLYPACK_S3_OSS_COMPAT=1`，详见 FARM-DEPLOY §6.2）。缓存键公式不含绝对路径（ROADMAP §5.2），因此同一工程在两个构建地之间可直接命中；命中情况在任务完成事件里如实报告（`缓存命中 N/M`）。后端不可达时告警一次并降级到工程本地 CAS，构建继续。
 
 ## 凭据模型（只在构建地按需拉取）
 

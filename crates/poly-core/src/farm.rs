@@ -9,8 +9,9 @@
 //!   v1 worker 池为每 worker 一个信箱对（`<dir>/v1/<worker_id>/`），v0 worker 沿用根信箱；
 //! - **执行**：worker 与本地 `poly build` 共用同一 DAG 实现与同一缓存键公式，共享入口
 //!   即 [`execute_job`]（内部走 `crate::pipeline::plan_with_stages`）；
-//! - **跨机缓存**：[`CacheBackend`] 只换 `ObjectStore` 后端（共享目录后端 =
-//!   [`poly_cache::DirSharedStore`]，本地文件系统为默认；云对象存储为后续接入点）；
+//! - **跨机缓存**：[`CacheBackend`] 只换 `ObjectStore` 后端（本地文件系统为默认；
+//!   共享目录 = [`poly_cache::DirSharedStore`；S3 / OSS 兼容 = [`poly_cache::S3Store`]）；
+//!   远端不可用 / 运行中掉线时经 [`FallbackStore`] 降级到工程本地 CAS，构建不失败；
 //! - **凭据边界**（T-M2-11 同模型）：`JobSpec.secrets` 只传 `crate::job::CredentialRef` 引用，
 //!   绝不内联明文，凭据在构建地（worker）按需拉取；
 //! - **隔离**（T-M8-07）：worker 进程边界之内，每任务一个 0700 一次性工作目录，任务结束
@@ -28,7 +29,7 @@ mod worker;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
-use poly_cache::{Cache, Digest, DirSharedStore, FallbackStore, LocalStore};
+use poly_cache::{Cache, Digest, DirSharedStore, FallbackStore, LocalStore, S3Config, S3Store};
 use poly_targets::{Host, current_host};
 use serde::{Deserialize, Serialize};
 
@@ -342,6 +343,10 @@ pub enum CacheBackend {
     Local,
     /// 跨机共享对象存储：多构建地共用同一后端根目录（挂载共享盘即可）。
     Shared(PathBuf),
+    /// S3 / OSS 兼容对象存储（SigV4；环境值已由调用方解析进配置）。
+    ///
+    /// 构造期探针失败或运行中读写失败都降级到工程本地 CAS，缓存错误不使构建失败。
+    S3(S3Config),
 }
 
 impl CacheBackend {
@@ -373,6 +378,26 @@ impl CacheBackend {
                     return Cache::new(local());
                 }
                 Cache::new(FallbackStore::new(shared, local(), warn))
+            }
+            Self::S3(config) => {
+                // 构造 / 探针失败 = 配置或可达性问题：告警一次后直接本地，构建继续
+                let store = match S3Store::new(config) {
+                    Ok(store) => store,
+                    Err(err) => {
+                        warn(&format!(
+                            "S3 兼容对象存储不可用（{config}），已降级为工程本地缓存（构建继续）: {err}"
+                        ));
+                        return Cache::new(local());
+                    }
+                };
+                if let Err(err) = store.ensure_ready() {
+                    warn(&format!(
+                        "S3 兼容对象存储不可用（{config}），已降级为工程本地缓存（构建继续）: {err}"
+                    ));
+                    return Cache::new(local());
+                }
+                // 运行期错误（掉线 / 权限 / 5xx）经 FallbackStore 再告警一次并落本地
+                Cache::new(FallbackStore::new(store, local(), warn))
             }
         }
     }

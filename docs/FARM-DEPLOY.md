@@ -121,7 +121,7 @@ spctl --assess --type execute --verbose=4 "/tmp/ipa/Payload/Pax Notes.app"
 | `--target <ID>` | 声明可构建目标，可重复；缺省 = 本机宿主可达的全部已声明目标 | 本机可达集合 |
 | `--jobs <N>` | 本次会话最多接多少个任务；`0` = 不限，直到 `goodbye` 或空闲超时 | `0` |
 | `--idle <SECS>` | 注册 / 空闲等待上限；超时正常退出（无任务可做不是失败，但等不到注册帧是 `E_FARM_0002`） | `60` |
-| `--cache <PATH>` | `local`（工程本地 CAS）或共享目录（跨 worker / 跨机复用） | `local` |
+| `--cache <PATH>` | `local`（工程本地 CAS）、共享目录（跨 worker / 跨机复用）或 `s3://<bucket>[/<prefix>]`（S3 / OSS 兼容，环境变量见 §6.2） | `local` |
 | `--work-dir <PATH>` | 一次性任务工作目录的父目录；每任务其下一个 0700 私有目录，任务结束即删 | 系统临时目录 |
 | `--credential <NAME=env:VAR>` | 凭据档案名 → 环境变量名；可重复；只接受 `env:` 来源 | 无 |
 
@@ -177,14 +177,62 @@ POLYPACK-FARM-OBJECT v0               # 头行（格式版本）
 
 写入先落到**同目录**的 `.` 前缀临时文件（`.<hex>.tmp-<pid>-<序号>`，不会被当作对象），再 `rename(2)` 原子改名；同名键的多进程并发写不会互相截断。读取校验头行与摘要，不符视为未命中并删除损坏条目。因此共享文件系统必须提供**同目录原子 rename**；NFS 部署前确认导出语义，SMB / 同步盘若破坏 rename 语义则不要用作共享 CAS。
 
-### 6.2 降级
+### 6.2 S3 / OSS 兼容对象存储
 
-缓存是优化面，不是构建前置。共享目录缺席 / 不可写 / 运行中掉线时，worker 告警一次并降级到工程本地 CAS，构建继续：
+`--cache s3://<bucket>[/<prefix>]` 直连 S3 兼容对象存储（AWS SigV4，纯 Rust 实现，无 AWS SDK）。OSS 走 S3 兼容模式（`x-oss-s3-compat`）；原生 OSS4 签名不在支持范围内。对象布局与共享目录完全一致（`<prefix>/<hex 前 2 位>/<hex>`，信封 `POLYPACK-FARM-OBJECT v0`），所以可以用 `aws s3 sync` 在旧共享目录与新桶之间迁移对象而无需重算缓存。
 
-- 构造期不可用（未挂载 / 路径被文件占用 / 权限不足）：`共享缓存目录不可用（<路径>），已降级为工程本地缓存（构建继续）: <原因>`（阶段 `cache`）。
-- 运行期 IO 失败：`对象存储后端不可用，已降级到后备缓存: <原因>`，写操作继续落本地，保证本机下次仍可命中。
+环境变量（`POLYPACK_*` 优先，`AWS_*` 回退）：
 
-命中统计仍如实累计（任务完成事件里的 `缓存命中 N/M`）。真实云对象存储（S3 / OSS）尚未实现；接入点是实现 `ObjectStore` trait 并在 `CacheBackend` 构造点替换后端。
+| 变量 | 含义 | 缺省 |
+|---|---|---|
+| `POLYPACK_S3_ENDPOINT` | `http(s)://host[:port]`（MinIO / OSS / 其他兼容端点） | AWS 官方端点 |
+| `POLYPACK_S3_REGION` | 签名 region；回退 `AWS_REGION` / `AWS_DEFAULT_REGION` | `us-east-1` |
+| `POLYPACK_S3_ACCESS_KEY_ID` | Access Key ID；回退 `AWS_ACCESS_KEY_ID` | 必填 |
+| `POLYPACK_S3_SECRET_ACCESS_KEY` | Secret Access Key；回退 `AWS_SECRET_ACCESS_KEY` | 必填 |
+| `POLYPACK_S3_SESSION_TOKEN` | 临时凭据会话令牌；回退 `AWS_SESSION_TOKEN` | 无 |
+| `POLYPACK_S3_PATH_STYLE` | `1`/`true` = path-style；`0`/`false` = virtual-host | 设置 endpoint 时为 `1`，否则 `0` |
+| `POLYPACK_S3_OSS_COMPAT` | `1` = 请求带 `x-oss-s3-compat: true`（OSS S3 兼容模式） | `0` |
+
+不支持 profile / 实例元数据（IMDS）/ STS：凭据只来自环境变量，绝不进入 argv、日志或诊断。远端错误只保留端点、HTTP 状态与 S3 `<Code>`；Authorization、密钥与会话令牌不落日志。配置错误（URI 非法 / 缺凭据）在 worker 启动前以 `poly::E_CACHE_0001` 硬失败；可达性 / 运行期错误按 §6.3 降级。
+
+IAM 最小权限（`<prefix>` 换成实际前缀；桶级列表 + 前缀内对象读写删）：
+
+```json
+[
+  {
+    "Effect": "Allow",
+    "Action": ["s3:ListBucket"],
+    "Resource": "arn:aws:s3:::<bucket>",
+    "Condition": {"StringLike": {"s3:prefix": ["<prefix>/*"]}}
+  },
+  {
+    "Effect": "Allow",
+    "Action": ["s3:GetObject", "s3:PutObject", "s3:DeleteObject"],
+    "Resource": "arn:aws:s3:::<bucket>/<prefix>/*"
+  }
+]
+```
+
+OSS 兼容模式对应 RAM 权限 `oss:ListObjects` / `oss:GetObject` / `oss:PutObject` / `oss:DeleteObject`，资源为 `acs:oss:*:*:<bucket>/<prefix>/*`。
+
+MinIO 示例：
+
+```bash
+export POLYPACK_S3_ENDPOINT=http://127.0.0.1:9000 POLYPACK_S3_REGION=us-east-1
+export POLYPACK_S3_ACCESS_KEY_ID=... POLYPACK_S3_SECRET_ACCESS_KEY=...
+poly farm worker --cache s3://build-cache/polypack --work-dir /var/tmp/polypack-work
+```
+
+AWS 用 `--cache s3://<bucket>/<prefix>` 并保留常规 `AWS_*` 变量即可（或显式给 `POLYPACK_S3_*`）。
+
+### 6.3 降级
+
+缓存是优化面，不是构建前置。共享目录或 S3 兼容后端缺席 / 不可写 / 运行中掉线时，worker 告警一次并降级到工程本地 CAS，构建继续：
+
+- 构造期不可用（共享目录未挂载 / 路径被文件占用 / 权限不足；S3 配置合法但 `ListObjectsV2` 探针失败）：`共享缓存目录不可用（<路径>），已降级为工程本地缓存（构建继续）: <原因>` 或 `S3 兼容对象存储不可用（s3://<bucket>/<prefix> ...），已降级为工程本地缓存（构建继续）: <原因>`（阶段 `cache`）。
+- 运行期错误（IO / 权限 / 5xx / 签名被拒 / 连接失败）：`对象存储后端不可用，已降级到后备缓存: <原因>`，写操作继续落本地，保证本机下次仍可命中。
+
+命中统计仍如实累计（任务完成事件里的 `缓存命中 N/M`）。
 
 ## 7. 密钥库接入
 
@@ -296,13 +344,15 @@ poly farm submit --dir /srv/polypack-farm --config /srv/proj/polypack.toml \
 | `poly::E_FARM_0005` | worker 失联 / 无可用 worker | 检查农场目录权限与 worker 进程；启动声明对应目标的 worker |
 | `poly::E_FARM_0006` | 工作根 / 任务工作目录创建或删除失败 | 检查 `--work-dir` 权限；用 worker 私有可写目录；人工清理 `polypack-farm-work-*` 残留 |
 
-农场目录 IO 失败报 `poly::E_IO_0001`（检查目录存在性与两端权限）。共享缓存告警（§6.2）不是构建失败；若持续出现，先修好挂载 / 权限再看命中率。
+农场目录 IO 失败报 `poly::E_IO_0001`（检查目录存在性与两端权限）。共享缓存 / S3 告警（§6.3）不是构建失败；若持续出现，先修好挂载 / 权限 / 端点与凭据再看命中率。
 
 ## 11. 参考
 
 - [FARM.md](FARM.md)：协议帧、发起地 / 构建地模型、签名验证指引。
 - `crates/poly-cli/src/farm.rs`：`worker` / `submit` 参数与调度入口。
 - `crates/poly-core/src/farm/`：协议、池调度、一次性工作目录。
-- `crates/poly-cache/src/store.rs`：共享目录 CAS 与降级后端。
+- `crates/poly-cache/src/store.rs`：共享目录 CAS、共享对象信封与降级后端。
+- `crates/poly-cache/src/s3.rs`、`crates/poly-cache/src/s3/sigv4.rs`：S3 / OSS 兼容后端与 SigV4 签名。
+- `crates/poly-cache/tests/s3_contract.rs`：mock S3 网络契约（独立重算 SigV4）；`tests/s3_real.rs` 为真实云环境槽（`POLYPACK_S3_REAL=1`）。
 - `crates/poly-sign/src/secret.rs`、`crates/poly-sign/src/inject.rs`：凭据后端契约与内存注入。
 - `tools/farm-drill.sh`：§8 的可执行演练。

@@ -173,7 +173,7 @@ Farm protocol v1 (`farm/v1`) adds concurrent scheduling, a worker pool, and task
 - Each task runs inside a worker process; under `--work-dir` every task gets a one-shot 0700 directory whose name contains only pid + in-process sequence, removed with `remove_dir_all` when the task ends, and the work root is deleted when the worker exits; failure returns `E_FARM_0006`.
 - Credentials are injected into memory only via `--credential <profile>=env:<variable>` and cleared with the `CredentialScope` when the task ends; neither arguments nor values enter argv, logs or disk. Zero plaintext on disk / logs is asserted by the drill script (Round 3).
 - `--cache <shared directory>` uses the `DirSharedStore` shared-directory CAS: the same input produces the same cache key on different workers, with a 100% second-run hit; object writes use a same-directory temporary file plus atomic rename. When the shared directory is unavailable, the worker warns and degrades to the project-local CAS while the build continues.
-- Real cloud object storage (S3 / OSS) is not implemented yet; the extension point is implementing the `ObjectStore` trait and replacing the `CacheBackend` backend (see FARM-DEPLOY §6.2).
+- `--cache s3://<bucket>[/<prefix>]` uses the S3 / OSS-compatible backend (AWS SigV4; `x-oss-s3-compat` covers OSS S3-compatible mode). Configuration / IAM is in FARM-DEPLOY §6.2; the object layout matches the shared directory (`aws s3 sync` can migrate it). Wire-contract verified against an in-process mock S3 (the server independently recomputes signatures); the real-cloud environment slot `POLYPACK_S3_REAL=1` has not run yet, so no real-cloud verification is claimed. When unreachable it likewise warns once and degrades to the project-local CAS.
 
 ### 4.3 Publish pipeline
 
@@ -234,7 +234,7 @@ Dependency direction is one-way: `poly-plugin` depends on core / sign / targets,
 | `secret-scan` | Full-history scan on three hosts; any hit exits with code 1 |
 | `docs-check` | Pax assets, diagram drift (when archify is available), bilingual structure, SVG XML |
 
-Review conclusion: the M8 delivery surface matches the M8 tasks in [TASKS](TASKS.md); the plugin boundary (zero capabilities, SRI, signature, resource caps) has negative tests; provider unification did not change L1–L5 packager sources; real-run evidence for the farm and publish chains comes from the local Linux drill and fault-injection tests, while macOS IPA R3 and real cloud object storage remain environment slots / follow-ups (see §7).
+Review conclusion: the M8 delivery surface matches the M8 tasks in [TASKS](TASKS.md); the plugin boundary (zero capabilities, SRI, signature, resource caps) has negative tests; provider unification did not change L1–L5 packager sources; real-run evidence for the farm and publish chains comes from the local Linux drill and fault-injection tests, while macOS IPA R3 and real-cloud object-storage runs remain environment slots / follow-ups (the S3-compatible backend is implemented and mock-verified, see §7).
 
 ## 6. "One-day new target" drill record
 
@@ -318,7 +318,7 @@ Boundary: this step verifies the host load chain (SRI → signature verification
 | Template WIT and host WIT are not auto-compared | Interface upgrades must sync the template copy by hand | Fixed: `tools/check-docs.mjs` now byte-compares template WIT against host WIT; `poly plugin check` applies the same check to a project |
 | Signature / trust root not exercised end to end in the drill | The drill covered only the SRI negative case | Fixed (2026-10-19): §6.6 `tools/plugin-signature-drill.sh` runs the chain for real, 8/8 (valid / tampered / missing / wrong key / SRI first / unavailable root / no leaks / config reference). Remaining: the CLI resolving the trust root from keyring / env and loading a real built artifact is not part of this step |
 | macOS farm IPA R3 is an environment-slot SKIP | The Linux environment has no Xcode / codesign | Kept open per FARM-DEPLOY §9; replace after running on a macOS host |
-| Real cloud object storage (S3 / OSS) not implemented | Shared-directory CAS only | `ObjectStore` trait extension point exists; local fallback when no object store |
+| Real cloud object storage (S3 / OSS) not run against a real cloud yet | S3-compatible backend implemented (SigV4 + OSS `x-oss-s3-compat`), mock contract verified | Implemented, mock-verified; the real-cloud environment slot (`POLYPACK_S3_REAL=1` + `POLYPACK_S3_TEST_URI`) stays open — no real-cloud verification is claimed before it runs |
 | Garmin has no builtin iq packager | `poly build --target garmin` SKIP-with-print at the package stage | Recorded experimental gap; conditional task |
 | 13 planned platforms have no TargetSpec yet | Marked "planned" in the 49-target table | Advance per ROADMAP; the generated table follows the registry |
 
@@ -329,7 +329,7 @@ Boundary: this step verifies the host load chain (SRI → signature verification
 | Human external developer trial | After GA publication | Record blockers and write them back to the docs |
 | CLI trust-root carrier end to end | Next drill involving signed releases | keyring / env trust-root resolution + `poly build` against a real plugin artifact, pass and fail paths |
 | macOS worker + real IPA run | A macOS host is available | FARM-DEPLOY §9 logs and artifacts archived |
-| Cloud object storage backend | Large cross-machine cache needed | `ObjectStore` implementation + second-run hit |
+| Real-cloud object storage second-run hit | An S3 / OSS bucket and credentials are available | Set `POLYPACK_S3_REAL=1` + `POLYPACK_S3_TEST_URI` and run `tests/s3_real.rs`, then a two-worker second-run hit |
 | Garmin iq packager | Conditional task triggered | Artifact structure check and real-device evidence |
 
 References: [README](../README.md) · [ROADMAP](ROADMAP.md) · [TASKS](TASKS.md) · [FARM-DEPLOY](FARM-DEPLOY.md) · [EXPERIMENTAL-TARGETS](EXPERIMENTAL-TARGETS.md) · 中文: [GA.md](GA.md)

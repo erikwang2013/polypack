@@ -121,7 +121,7 @@ Paths and product names vary per project; the example uses the repository sample
 | `--target <ID>` | Declares buildable targets, repeatable; default = every declared target reachable by this host | host-reachable set |
 | `--jobs <N>` | Max jobs in this session; `0` = unlimited until `goodbye` or idle timeout | `0` |
 | `--idle <SECS>` | Registration / idle wait limit; idle exit is normal (no work is not a failure, but no registration frame is `E_FARM_0002`) | `60` |
-| `--cache <PATH>` | `local` (project-local CAS) or a shared directory (cross-worker / cross-machine reuse) | `local` |
+| `--cache <PATH>` | `local` (project-local CAS), a shared directory (cross-worker / cross-machine reuse), or `s3://<bucket>[/<prefix>]` (S3 / OSS-compatible; environment variables in §6.2) | `local` |
 | `--work-dir <PATH>` | Parent for one-shot task work directories; each task gets a 0700 private child removed at task end | system temp |
 | `--credential <NAME=env:VAR>` | Credential profile name → environment variable; repeatable; only `env:` sources | none |
 
@@ -177,14 +177,62 @@ POLYPACK-FARM-OBJECT v0               # header line (format version)
 
 Writes first land in a **same-directory** dot-prefixed temp file (`.<hex>.tmp-<pid>-<seq>`, never treated as an object), then `rename(2)` atomically. Concurrent writers of the same key cannot truncate each other. Reads verify the header and digest; a mismatch is a miss and the corrupt entry is removed. The shared filesystem must therefore provide **same-directory atomic rename**; verify NFS export semantics, and do not use SMB / sync drives that break rename as the shared CAS.
 
-### 6.2 Degradation
+### 6.2 S3 / OSS-compatible object storage
 
-The cache is an optimization, not a build prerequisite. When the shared directory is absent / unwritable / goes offline, the worker warns once and falls back to the project-local CAS while the build continues:
+`--cache s3://<bucket>[/<prefix>]` talks directly to S3-compatible object storage (AWS SigV4, pure Rust, no AWS SDK). OSS uses S3-compatible mode (`x-oss-s3-compat`); native OSS4 signatures are out of scope. The object layout is identical to the shared directory (`<prefix>/<first 2 hex chars>/<hex>` with the `POLYPACK-FARM-OBJECT v0` envelope), so `aws s3 sync` can migrate objects between an old shared directory and a bucket without recomputing the cache.
 
-- Unavailable at construction (not mounted / path occupied by a file / permissions): `共享缓存目录不可用（<path>），已降级为工程本地缓存（构建继续）: <reason>` (stage `cache`).
-- Runtime IO failure: `对象存储后端不可用，已降级到后备缓存: <reason>`; writes continue into the local store so this machine still hits next time.
+Environment variables (`POLYPACK_*` wins, `AWS_*` is the fallback):
 
-Hit statistics remain honest (`缓存命中 N/M` in the task-completion event). Real cloud object storage (S3 / OSS) is not implemented; the extension point is an `ObjectStore` implementation swapped at the `CacheBackend` construction site.
+| Variable | Meaning | Default |
+|---|---|---|
+| `POLYPACK_S3_ENDPOINT` | `http(s)://host[:port]` (MinIO / OSS / other compatible endpoints) | AWS endpoints |
+| `POLYPACK_S3_REGION` | Signing region; falls back to `AWS_REGION` / `AWS_DEFAULT_REGION` | `us-east-1` |
+| `POLYPACK_S3_ACCESS_KEY_ID` | Access Key ID; falls back to `AWS_ACCESS_KEY_ID` | required |
+| `POLYPACK_S3_SECRET_ACCESS_KEY` | Secret Access Key; falls back to `AWS_SECRET_ACCESS_KEY` | required |
+| `POLYPACK_S3_SESSION_TOKEN` | Session token for temporary credentials; falls back to `AWS_SESSION_TOKEN` | none |
+| `POLYPACK_S3_PATH_STYLE` | `1`/`true` = path-style; `0`/`false` = virtual-host | `1` when an endpoint is set, else `0` |
+| `POLYPACK_S3_OSS_COMPAT` | `1` = send `x-oss-s3-compat: true` (OSS S3-compatible mode) | `0` |
+
+Profiles / instance metadata (IMDS) / STS are not supported: credentials come only from environment variables and never enter argv, logs or diagnostics. Remote errors keep only the endpoint, HTTP status and S3 `<Code>`; Authorization, keys and session tokens are never logged. Configuration errors (bad URI / missing credentials) fail hard with `poly::E_CACHE_0001` before the worker starts; reachability / runtime errors degrade per §6.3.
+
+Minimum IAM permissions (`<prefix>` is the configured prefix; bucket-level list plus object read/write/delete under the prefix):
+
+```json
+[
+  {
+    "Effect": "Allow",
+    "Action": ["s3:ListBucket"],
+    "Resource": "arn:aws:s3:::<bucket>",
+    "Condition": {"StringLike": {"s3:prefix": ["<prefix>/*"]}}
+  },
+  {
+    "Effect": "Allow",
+    "Action": ["s3:GetObject", "s3:PutObject", "s3:DeleteObject"],
+    "Resource": "arn:aws:s3:::<bucket>/<prefix>/*"
+  }
+]
+```
+
+For OSS S3-compatible mode the RAM actions are `oss:ListObjects` / `oss:GetObject` / `oss:PutObject` / `oss:DeleteObject` on `acs:oss:*:*:<bucket>/<prefix>/*`.
+
+MinIO example:
+
+```bash
+export POLYPACK_S3_ENDPOINT=http://127.0.0.1:9000 POLYPACK_S3_REGION=us-east-1
+export POLYPACK_S3_ACCESS_KEY_ID=... POLYPACK_S3_SECRET_ACCESS_KEY=...
+poly farm worker --cache s3://build-cache/polypack --work-dir /var/tmp/polypack-work
+```
+
+On AWS use `--cache s3://<bucket>/<prefix>` with the usual `AWS_*` variables (or explicit `POLYPACK_S3_*`).
+
+### 6.3 Degradation
+
+The cache is an optimization, not a build prerequisite. When the shared directory or S3-compatible backend is absent / unwritable / goes offline, the worker warns once and falls back to the project-local CAS while the build continues:
+
+- Unavailable at construction (shared directory not mounted / path occupied by a file / permissions; or a valid S3 config whose `ListObjectsV2` probe fails): `共享缓存目录不可用（<path>），已降级为工程本地缓存（构建继续）: <reason>` or `S3 兼容对象存储不可用（s3://<bucket>/<prefix> ...），已降级为工程本地缓存（构建继续）: <reason>` (stage `cache`).
+- Runtime errors (IO / permissions / 5xx / rejected signature / connection failure): `对象存储后端不可用，已降级到后备缓存: <reason>`; writes continue into the local store so this machine still hits next time.
+
+Hit statistics remain honest (`缓存命中 N/M` in the task-completion event).
 
 ## 7. Credential backends
 
@@ -296,13 +344,15 @@ Pass criteria: the origin prints `worker 已注册：mac-01（aarch64-apple-darw
 | `poly::E_FARM_0005` | Lost worker / no available worker | Check farm-directory permissions and worker processes; start a worker declaring the target |
 | `poly::E_FARM_0006` | Work root / task work directory creation or removal failed | Check `--work-dir` permissions; use a worker-private writable directory; clean up `polypack-farm-work-*` residue manually |
 
-Farm-directory IO failures report `poly::E_IO_0001` (check existence and permissions on both sides). Shared-cache warnings (§6.2) are not build failures; if they persist, fix the mount / permissions before looking at hit rates.
+Farm-directory IO failures report `poly::E_IO_0001` (check existence and permissions on both sides). Shared-cache / S3 warnings (§6.3) are not build failures; if they persist, fix the mount / permissions / endpoint and credentials before looking at hit rates.
 
 ## 11. References
 
 - [FARM.en.md](FARM.en.md): frames, origin / build-site model, signature verification guidance.
 - `crates/poly-cli/src/farm.rs`: `worker` / `submit` flags and scheduling entry points.
 - `crates/poly-core/src/farm/`: protocol, pool scheduling, one-shot work directories.
-- `crates/poly-cache/src/store.rs`: shared-directory CAS and fallback backend.
+- `crates/poly-cache/src/store.rs`: shared-directory CAS, shared object envelope and fallback backend.
+- `crates/poly-cache/src/s3.rs`, `crates/poly-cache/src/s3/sigv4.rs`: S3 / OSS-compatible backend and SigV4 signing.
+- `crates/poly-cache/tests/s3_contract.rs`: mock-S3 wire contract (independent SigV4 recomputation); `tests/s3_real.rs` is the real-cloud environment slot (`POLYPACK_S3_REAL=1`).
 - `crates/poly-sign/src/secret.rs`, `crates/poly-sign/src/inject.rs`: credential backend contract and memory injection.
 - `tools/farm-drill.sh`: the executable drill for §8.

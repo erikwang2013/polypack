@@ -34,6 +34,35 @@ pub enum CacheError {
         /// 具体原因。
         detail: String,
     },
+    /// 对象存储配置非法（URI / 环境变量）；消息绝不包含密钥值。
+    #[cfg(feature = "std")]
+    #[error("对象存储配置非法: {0}")]
+    Config(String),
+    /// 远端对象存储返回非 2xx：只保留端点、HTTP 状态与 S3 错误码，
+    /// 响应正文与请求头（含 Authorization）绝不进入错误文本。
+    #[cfg(feature = "std")]
+    #[error("对象存储请求失败（{endpoint}，HTTP {status}）: {code}")]
+    Remote {
+        /// 端点（`scheme://host`，不含 query）。
+        endpoint: String,
+        /// HTTP 状态码。
+        status: u16,
+        /// S3 错误码（响应 XML 的 `<Code>`；缺失时为 `unknown`）。
+        code: String,
+    },
+    /// 远端连接 / 传输失败（只保留端点与简短原因）。
+    #[cfg(feature = "std")]
+    #[error("对象存储连接失败（{endpoint}）: {detail}")]
+    RemoteTransport {
+        /// 端点（`scheme://host`，不含 query）。
+        endpoint: String,
+        /// 简短原因（不含请求 URL、query 与请求头）。
+        detail: String,
+    },
+    /// 远端响应不符合预期（XML 非法 / 正文或分页超过上限）。
+    #[cfg(feature = "std")]
+    #[error("对象存储响应非法: {0}")]
+    Protocol(String),
 }
 
 impl CacheError {
