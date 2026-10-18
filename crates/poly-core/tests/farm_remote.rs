@@ -203,6 +203,7 @@ fn ios_target_routes_to_macos_worker_via_mock_contract() {
                     triple: "aarch64-apple-darwin".to_string(),
                     host: Host::Macos,
                     targets: vec!["ios".to_string()],
+                    capacity: None,
                 },
             })
             .expect("注册帧");

@@ -32,4 +32,4 @@ pub use error::CacheError;
 #[cfg(feature = "std")]
 pub use retention::{Eviction, RetentionPolicy, enforce_retention};
 #[cfg(feature = "std")]
-pub use store::{Entry, LocalStore, ObjectStore};
+pub use store::{DirSharedStore, Entry, FallbackStore, LocalStore, ObjectStore};

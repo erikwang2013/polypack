@@ -81,6 +81,12 @@ pub mod codes {
     pub const E_FARM_0002: Code = Code::new("poly::E_FARM_0002");
     /// worker 执行失败（错误码与修复提示回传）。
     pub const E_FARM_0003: Code = Code::new("poly::E_FARM_0003");
+    /// 农场任务超时（worker 未在期限内回传结果）。
+    pub const E_FARM_0004: Code = Code::new("poly::E_FARM_0004");
+    /// 农场 worker 失联 / 池中无可用 worker（任务无法调度）。
+    pub const E_FARM_0005: Code = Code::new("poly::E_FARM_0005");
+    /// 农场任务隔离失败（一次性工作目录无法创建 / 删除）。
+    pub const E_FARM_0006: Code = Code::new("poly::E_FARM_0006");
     /// 产物二跑不一致（`poly verify --reproducible`）。
     pub const E_VERIFY_0001: Code = Code::new("poly::E_VERIFY_0001");
     /// 没有可比对的产物 / 未接入该目标的校验器。

@@ -1,24 +1,34 @@
-//! 远程农场协议 v0（T-M2-13）：帧格式、worker 注册、拉取-执行-回传与跨机缓存。
+//! 远程农场协议 v1（T-M8-06；v0 帧格式见 T-M2-13）：帧格式、worker 注册、拉取-执行-回传、
+//! 并发调度与跨机缓存。
 //!
-//! - **线格式**：JSON Lines（每帧一行 UTF-8 JSON），版本串 [`PROTOCOL`]（`farm/v0`）；
+//! - **线格式**：JSON Lines（每帧一行 UTF-8 JSON），版本串 [`PROTOCOL`]（`farm/v1`）；
 //!   帧序：`hello`（注册 + 能力声明）→ `hello_ack` → `job` → `result` → `goodbye`；
-//! - **传输抽象**：[`FarmTransport`]；v0 默认实现 [`DirTransport`]（本地目录双信箱），
-//!   HTTP / SSH 等远端后端在 M3+ 接入同一 trait；
+//!   帧字段与 v0 完全一致（`JobSpec` 序列化未变），版本协商取双方共同版本——
+//!   v1 主端接受 `farm/v0` 旧 worker 并以 v0 回 `hello_ack`（[`PROTOCOL_V0`]）；
+//! - **传输抽象**：[`FarmTransport`]；默认实现 [`DirTransport`]（本地目录双信箱），
+//!   v1 worker 池为每 worker 一个信箱对（`<dir>/v1/<worker_id>/`），v0 worker 沿用根信箱；
 //! - **执行**：worker 与本地 `poly build` 共用同一 DAG 实现与同一缓存键公式，共享入口
 //!   即 [`execute_job`]（内部走 `crate::pipeline::plan_with_stages`）；
-//! - **跨机缓存**：[`CacheBackend`] 只换 `ObjectStore` 后端（[`DirSharedStore`] 为参考实现）；
+//! - **跨机缓存**：[`CacheBackend`] 只换 `ObjectStore` 后端（共享目录后端 =
+//!   [`poly_cache::DirSharedStore`]，本地文件系统为默认；云对象存储为后续接入点）；
 //! - **凭据边界**（T-M2-11 同模型）：`JobSpec.secrets` 只传 `crate::job::CredentialRef` 引用，
 //!   绝不内联明文，凭据在构建地（worker）按需拉取；
-//! - **失败回传**：worker 端诊断经 [`RemoteDiagnostic`] 完整回传（错误码 + 修复提示）。
+//! - **隔离**（T-M8-07）：worker 进程边界之内，每任务一个 0700 一次性工作目录，任务结束
+//!   整目录删除（目录名不含网络输入，符号链接不跟随）；凭据经 [`TaskScope`] 在 CLI /
+//!   poly-sign 侧解析为内存态材料，明文不落盘、不进 argv / 日志，任务结束即清空；
+//! - **失败回传**：worker 端诊断经 [`RemoteDiagnostic`] 完整回传（错误码 + 修复提示）；
+//!   任务超时 / worker 失联由主端判定（[`codes::E_FARM_0004`] / [`codes::E_FARM_0005`]）
+//!   并输出带 hint 的 `Failed` 事件。
 
+mod isolation;
 mod master;
-mod store;
+mod pool;
 mod worker;
 
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
-use poly_cache::{Cache, Digest};
+use poly_cache::{Cache, Digest, DirSharedStore, FallbackStore, LocalStore};
 use poly_targets::{Host, current_host};
 use serde::{Deserialize, Serialize};
 
@@ -26,11 +36,20 @@ use crate::diagnostics::{Diagnostic, codes};
 use crate::job::JobSpec;
 
 pub use master::{FarmMaster, JobOutcome, Requirement};
-pub use store::DirSharedStore;
-pub use worker::{ExecOutcome, StageFactory, WorkerExit, WorkerOptions, execute_job, run_worker};
+pub use pool::{FarmPool, PoolJob, PoolOptions, PoolResult};
+pub use worker::{
+    ExecOutcome, StageFactory, TaskScope, TaskScopeFactory, WorkerExit, WorkerOptions, execute_job,
+    run_pool_worker, run_worker,
+};
 
-/// 协议版本串（`hello` / `hello_ack` 携带；不等即 `poly::E_FARM_0001`）。
-pub const PROTOCOL: &str = "farm/v0";
+/// 当前协议版本（`hello` / `hello_ack` 携带；新 worker / 主端默认声明）。
+pub const PROTOCOL: &str = "farm/v1";
+
+/// 旧协议版本（v0 worker 仍可接入 v1 主端；帧字段与 v1 相同，仅版本串不同）。
+pub const PROTOCOL_V0: &str = "farm/v0";
+
+/// 本端支持的协议版本（版本协商：取双方共同版本）。
+pub const SUPPORTED_PROTOCOLS: [&str; 2] = [PROTOCOL_V0, PROTOCOL];
 
 /// 目录后端的轮询间隔（拉取循环的等待粒度）。
 const POLL_INTERVAL: Duration = Duration::from_millis(20);
@@ -88,20 +107,21 @@ impl FarmFrame {
         serde_json::to_string(self).expect("帧可序列化")
     }
 
-    /// 解析一行 JSON；格式非法 / 版本不符 → `poly::E_FARM_0001` + 修复提示。
+    /// 解析一行 JSON；格式非法 / 版本不受支持 → `poly::E_FARM_0001` + 修复提示。
     pub fn decode(line: &str) -> Result<Self, Diagnostic> {
         let frame: Self = serde_json::from_str(line.trim()).map_err(|err| {
-            Diagnostic::error(codes::E_FARM_0001, format!("农场协议帧解析失败: {err}"))
-                .with_hint("线格式 = JSON Lines（farm/v0）；核对两端 poly 版本与字段完整性")
+            Diagnostic::error(codes::E_FARM_0001, format!("农场协议帧解析失败: {err}")).with_hint(
+                "线格式 = JSON Lines（farm/v0 或 farm/v1）；核对两端 poly 版本与字段完整性",
+            )
         })?;
         if let Some(version) = frame.protocol()
-            && version != PROTOCOL
+            && !SUPPORTED_PROTOCOLS.contains(&version)
         {
             return Err(Diagnostic::error(
                 codes::E_FARM_0001,
-                format!("协议版本不受支持: {version}（本端为 {PROTOCOL}）"),
+                format!("协议版本不受支持: {version}（本端支持 farm/v0 / farm/v1）"),
             )
-            .with_hint("把主端与 worker 升级到同一 poly 版本后重试"));
+            .with_hint("把主端与 worker 升级到同一 poly 版本后重试（v1 主端仍接受 v0 worker）"));
         }
         Ok(frame)
     }
@@ -124,6 +144,13 @@ impl FarmFrame {
             Self::Goodbye => "goodbye",
         }
     }
+
+    /// 版本协商：`peer` 与本端共同支持的版本（不支持返回 `None`，由 [`Self::decode`] 拦截）。
+    pub fn negotiate(peer: &str) -> Option<&'static str> {
+        [PROTOCOL, PROTOCOL_V0]
+            .into_iter()
+            .find(|version| *version == peer)
+    }
 }
 
 /// worker 能力声明（注册载荷）：构建地 triple / 宿主 / 可构建目标。
@@ -137,6 +164,10 @@ pub struct WorkerCaps {
     pub host: Host,
     /// 该 worker 声明可构建的目标 id 列表。
     pub targets: Vec<String>,
+    /// v1：本次会话可接任务数（0 = 不限，直到 `goodbye` / 空闲超时）。
+    /// v0 worker 无此字段 → `None`，主端按 v0 语义视为 1（一次会话一个任务）。
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub capacity: Option<usize>,
 }
 
 /// 本机能力声明：宿主由编译期平台判定（未知平台 → `poly::E_FARM_0002`）；triple 优先
@@ -156,6 +187,7 @@ pub fn local_caps(worker_id: &str, targets: Vec<String>) -> Result<WorkerCaps, D
         triple,
         host,
         targets,
+        capacity: None,
     })
 }
 
@@ -304,20 +336,44 @@ impl FarmTransport for DirTransport {
     }
 }
 
-/// worker 侧缓存来源。
+/// worker 侧缓存来源（只携带位置，不暴露具体后端类型：上层只经 `ObjectStore` trait 使用）。
 pub enum CacheBackend {
     /// 工程本地 CAS：`<工程根>/.polypack/cache`（默认）。
     Local,
-    /// 跨机共享对象存储：多构建地共用同一后端根目录（[`DirSharedStore`] 格式）。
+    /// 跨机共享对象存储：多构建地共用同一后端根目录（挂载共享盘即可）。
     Shared(PathBuf),
 }
 
 impl CacheBackend {
     /// 构造 [`Cache`] 门面：同一 trait 换后端即跨机复用（缓存键公式不含绝对路径）。
     pub fn cache(&self, project_root: &Path) -> Cache {
+        self.cache_with(project_root, |_| {})
+    }
+
+    /// 同 [`Self::cache`]，但共享后端缺席 / 运行中不可用时先经 `warn` 告警（每类只报一次）
+    /// 再降级，绝不让构建失败：
+    ///
+    /// - 共享目录不可用（未挂载 / 路径被占用 / 权限不足）→ 直接用工程本地 CAS；
+    /// - 运行中读写失败（掉线、权限、损坏）→ [`FallbackStore`] 落到工程本地 CAS。
+    pub fn cache_with(
+        &self,
+        project_root: &Path,
+        warn: impl Fn(&str) + Send + Sync + 'static,
+    ) -> Cache {
+        let local = || LocalStore::new(project_root.join(".polypack").join("cache"));
         match self {
-            Self::Local => Cache::from_root(project_root.join(".polypack").join("cache")),
-            Self::Shared(root) => Cache::new(DirSharedStore::new(root)),
+            Self::Local => Cache::new(local()),
+            Self::Shared(root) => {
+                let shared = DirSharedStore::new(root);
+                if let Err(err) = shared.ensure_ready() {
+                    warn(&format!(
+                        "共享缓存目录不可用（{}），已降级为工程本地缓存（构建继续）: {err}",
+                        root.display()
+                    ));
+                    return Cache::new(local());
+                }
+                Cache::new(FallbackStore::new(shared, local(), warn))
+            }
         }
     }
 }
@@ -328,7 +384,9 @@ fn unexpected_frame(expected: &str, frame: &FarmFrame) -> Diagnostic {
         codes::E_FARM_0001,
         format!("农场协议帧非预期: 期望 {expected}，实得 {}", frame.kind()),
     )
-    .with_hint("主端与 worker 的协议状态机必须同版本（farm/v0）：核对两端 poly 版本与投递顺序")
+    .with_hint(
+        "主端与 worker 的协议状态机必须同版本（farm/v0 / farm/v1）：核对两端 poly 版本与投递顺序",
+    )
 }
 
 /// IO 失败 → 稳定诊断。

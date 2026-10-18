@@ -15,6 +15,7 @@
 pub mod android;
 pub mod error;
 pub mod harmony;
+pub mod inject;
 pub mod ios;
 pub mod repo;
 pub mod secret;
@@ -24,6 +25,7 @@ pub mod vault;
 pub use android::{AndroidSigner, SignPlan, SignRequest, SignedArtifact};
 pub use error::{SignError, codes};
 pub use harmony::{HarmonySignPlan, HarmonySignRequest, HarmonySignedArtifact, HarmonySigner};
+pub use inject::CredentialScope;
 pub use repo::{GpgSigner, RepoSigner};
 pub use secret::{SecretBackend, SigningMaterial, default_backends, resolve};
 pub use vault::HttpVaultClient;

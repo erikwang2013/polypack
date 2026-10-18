@@ -287,6 +287,27 @@ fn env_backend_is_addressable_by_id() {
     assert_eq!(err.code(), codes::E_SIG_0002);
 }
 
+/// T-M8-07：任务作用域注入的载荷只驻内存、优先于后端链，guard drop 即清空（跨任务零残留）。
+#[test]
+fn task_scope_injects_credentials_in_memory_and_clears_on_drop() {
+    let payload = common::payload(b"injected-keystore-bytes", PASS, Some("pax"), None);
+    let reference = keyring_ref("farm-injected-profile");
+    let temp_root = std::env::temp_dir();
+    {
+        let _scope = poly_sign::CredentialScope::enter(
+            vec![("farm-injected-profile".to_string(), payload)],
+            &temp_root,
+        );
+        // 注入优先：不给任何后端也能解析（keyring 在 headless worker 上不可用也不影响）
+        let material = secret::resolve(&reference, &[]).expect("作用域载荷应解析成功");
+        assert_eq!(material.keystore, b"injected-keystore-bytes");
+        assert_eq!(material.store_password, PASS);
+    }
+    // 作用域结束：内存载荷销毁；keyring 来源在无后端时按不可用报错（不 panic）
+    let err = secret::resolve(&reference, &[]).expect_err("作用域结束后不应再可见");
+    assert_eq!(err.code(), codes::E_SIG_0002);
+}
+
 /// 整段 base64（载荷字段用）。
 fn base64_of(bytes: &[u8]) -> Vec<u8> {
     use base64::Engine as _;
