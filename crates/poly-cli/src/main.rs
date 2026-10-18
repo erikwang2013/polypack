@@ -65,7 +65,7 @@ enum Command {
     Verify(verify::Args),
     /// 内建目标清单（CI 矩阵派生：`poly targets --tier 6 --headless --json`）。
     Targets(targets::Args),
-    /// 插件开发：从内嵌模板生成工程、输出制品 SRI 摘要。
+    /// 插件开发：生成工程、校验工程 / WIT 同步、输出制品 SRI 摘要。
     Plugin(plugin_new::Args),
     /// 商店提审（R4 止步提审）：产物定位 → 凭据引用解析 → 上传 / 提审 / 轮询（幂等重跑）。
     Publish(publish::Args),

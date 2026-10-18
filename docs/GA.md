@@ -14,7 +14,7 @@ M8 生态 GA 交付四件事：WASM 插件 SDK（沙箱、SRI/签名、模板/�
 | WASM 插件沙箱 | 已交付 | `poly-plugin`：默认零能力、显式授权、fuel/epoch/内存上限（T-M8-01） |
 | 插件接口 `target-spec/v1` | 已交付 | WIT `polypack-target`；非 v1 → `E_PLUGIN_0005`（T-M8-02） |
 | SRI 与签名链 | 已交付 | `blake3-<hex>` 先于验签、验签先于实例化（T-M8-03） |
-| 模板与脚手架 | 已交付 | `poly plugin new` / `poly plugin digest` + `templates/plugin-target`（T-M8-04） |
+| 模板与脚手架 | 已交付 | `poly plugin new` / `poly plugin check` / `poly plugin digest` + `templates/plugin-target`（T-M8-04） |
 | 内建 / 插件统一接口 | 已交付 | `TargetProvider` + `ProviderRegistry`，无 builtin 特判（T-M8-05） |
 | 远程农场 v1 | 已交付 | 协议 v1、并发 / worker 池 / 超时重试、v0 worker 兼容（T-M8-06..09） |
 | 商店发布 GA | 已交付 | 指数退避、幂等键、SubmitJournal、回执 v2、`poly retry --from publish`（T-M8-10/11） |
@@ -53,10 +53,11 @@ M8 生态 GA 交付四件事：WASM 插件 SDK（沙箱、SRI/签名、模板/�
 |---|---|---|
 | 1. 生成工程 | `poly plugin new pocket-notes` | 生成 `plugin/`、`componentize/`、`contract/`、`build.sh` 等模板文件 |
 | 2. 构建 wasm | `cd pocket-notes && ./build.sh` | 产物 `dist/plugin.wasm` |
-| 3. 契约测试 | `cargo test -- --nocapture` | 加载组件并调用 `describe` / `package`；失败常见于契约断言未同步 |
-| 4. 计算 SRI | `poly plugin digest dist/plugin.wasm` | 输出 `blake3-<hex>`（与宿主加载同口径） |
-| 5. 注册插件 | 编辑应用 `polypack.toml` 的 `[[plugins]]` | 见 §2.3 |
-| 6. 真实出包 | `poly build --config <app>/polypack.toml --target pocket-notes` | 由插件 provider 产出目标产物 |
+| 3. 工程检查 | `poly plugin check .` | 脚手架文件齐全、WIT 与宿主一致；`dist/plugin.wasm` 缺失只警告（提示先构建） |
+| 4. 契约测试 | `cargo test -- --nocapture` | 加载组件并调用 `describe` / `package`；失败常见于契约断言未同步 |
+| 5. 计算 SRI | `poly plugin digest dist/plugin.wasm` | 输出 `blake3-<hex>`（与宿主加载同口径） |
+| 6. 注册插件 | 编辑应用 `polypack.toml` 的 `[[plugins]]` | 见 §2.3 |
+| 7. 真实出包 | `poly build --config <app>/polypack.toml --target pocket-notes` | 由插件 provider 产出目标产物 |
 
 说明：`poly plugin new` 只生成插件工程，不写入应用目录。构建后把 `dist/plugin.wasm` 复制到应用的 `plugins/` 目录，再按 `polypack.toml` 的 `path` 引用。
 
@@ -103,7 +104,7 @@ poly build --config <app>/polypack.toml --target pocket-notes
 
 ### 2.5 模板契约断言的单一来源
 
-模板的契约测试在 `contract/src/lib.rs` 顶部只保留两个断言常量：`EXPECTED_FORMAT` 与 `EXPECTED_PACKAGE`。修改插件 `describe` / `package` 后同步这两个常量即可；忘记同步会让 `cargo test` 以退出码 101 失败（本次演练的实际卡点，见 §6.4）。模板 WIT 是宿主 `crates/poly-plugin/wit/polypack-target.wit` 的副本，升级接口时需手工同步两处；当前无自动比对门禁（见 §7 已知缺口）。
+模板的契约测试在 `contract/src/lib.rs` 顶部只保留两个断言常量：`EXPECTED_FORMAT` 与 `EXPECTED_PACKAGE`。修改插件 `describe` / `package` 后同步这两个常量即可；忘记同步会让 `cargo test` 以退出码 101 失败（本次演练的实际卡点，见 §6.4）。模板 WIT 是宿主 `crates/poly-plugin/wit/polypack-target.wit` 的副本：仓库侧由 `tools/check-docs.mjs` 逐字比对门禁兜底，工程侧可用 `poly plugin check` 校验同步状态。
 
 ## 3. 安全模型
 
@@ -271,7 +272,7 @@ GPG 操作用一次性 0700 `GNUPGHOME`；信任根只接受公钥，绝不内�
 | 卡点 | 处置 | 状态 |
 |---|---|---|
 | 模板契约硬编码 | 收敛为 `contract/src/lib.rs` 的 `EXPECTED_FORMAT` / `EXPECTED_PACKAGE` 单一常量来源，并写入模板 README 与本文档 | 本次已修 |
-| 无 `poly plugin check` 命令 | 记为已知缺口；文档给出等价验证法：`./build.sh` + `cargo test` + `poly plugin digest` + `poly build --target` | 已知缺口 |
+| 无 `poly plugin check` 命令 | 新增 `poly plugin check <dir>`：校验脚手架文件、WIT 与宿主同步、产物摘要（产物缺失仅警告） | 已修（本次） |
 | 注册示例缺 `sri` | 已在模板 README 与 `poly plugin new` 输出补 SRI 示例 | 已修（`52968b4`） |
 | 最小宿主工程未文档化 | 已写入模板 README 与本文档 §2.4 | 已修（`52968b4` / 本文） |
 | digest 横幅 / 产物复制 / build 输出不显露 describe | 记为已知缺口；用 `poly build --json` 事件或产物结果核对 | 已知缺口 |
@@ -286,8 +287,8 @@ GPG 操作用一次性 0700 `GNUPGHOME`；信任根只接受公钥，绝不内�
 
 | 缺口 | 影响 | 处置 / 后续 |
 |---|---|---|
-| 无独立 `poly plugin check` | 作者需手工串 build / test / digest / build | 文档给出等价验证法；后续评估 CLI 子命令 |
-| 模板 WIT 与宿主 WIT 无自动比对 | 接口升级需手工同步模板副本 | 当前由评审兜底；后续加生成 / 比对门禁 |
+| 无独立 `poly plugin check` | 作者需手工串 build / test / digest / build | 已修：`poly plugin check <dir>` 一条命令校验脚手架文件 / WIT 同步 / 产物摘要（产物缺失仅警告） |
+| 模板 WIT 与宿主 WIT 无自动比对 | 接口升级需手工同步模板副本 | 已修：`tools/check-docs.mjs` 新增模板 WIT ↔ 宿主 WIT 逐字比对门禁；`poly plugin check` 对工程 WIT 做同口径校验 |
 | 签名 / 信任根未在演练端到端走查 | 演练只覆盖 SRI 负向 | 单元 / 集成测试已覆盖签名链；后续演练补端到端 |
 | macOS 农场 IPA R3 为环境槽 SKIP | Linux 环境无 Xcode / codesign | 按 FARM-DEPLOY §9 保持开放，macOS 主机执行后替换 |
 | 真实云对象存储（S3 / OSS）未实现 | 仅共享目录 CAS | `ObjectStore` trait 接入点已留；无对象存储时本地降级 |

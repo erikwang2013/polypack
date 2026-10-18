@@ -1,7 +1,8 @@
-//! `poly plugin new` / `poly plugin digest`（T-M8-04）：插件模板脚手架与 SRI 摘要。
+//! `poly plugin new` / `poly plugin check` / `poly plugin digest`（T-M8-04）：
+//! 插件模板脚手架、工程校验与 SRI 摘要。
 //!
-//! 模板资产在编译期以 `include_str!` 内嵌（`templates/plugin-target/`），
-//! 安装后的 `poly` 二进制不依赖源码仓库路径；生成时替换 id / 显示名 / 包名占位符。
+//! 模板资产与宿主 WIT 在编译期以 `include_str!` 内嵌，安装后的 `poly` 二进制
+//! 不依赖源码仓库路径；生成时替换 id / 显示名 / 包名占位符。
 
 use std::path::{Path, PathBuf};
 
@@ -13,6 +14,25 @@ const ID_TOKEN: &str = "__polypack_plugin_id__";
 const NAME_TOKEN: &str = "__polypack_plugin_name__";
 /// Cargo 包名占位符。
 const CRATE_TOKEN: &str = "__polypack_plugin_crate__";
+
+/// 宿主 WIT（`target-spec/v1`），编译期内嵌；`poly plugin check` 以此为准。
+const HOST_WIT: &str = include_str!("../../poly-plugin/wit/polypack-target.wit");
+
+/// 模板 WIT，编译期内嵌（与宿主 WIT 逐字一致由单元测试兜底）。
+const TEMPLATE_WIT: &str =
+    include_str!("../../../templates/plugin-target/plugin/wit/polypack-target.wit");
+
+/// `poly plugin check` 要求的脚手架文件（相对工程根目录）。
+const CHECK_FILES: [&str; 8] = [
+    "Cargo.toml",
+    "build.sh",
+    "plugin/Cargo.toml",
+    "plugin/wit/polypack-target.wit",
+    "contract/Cargo.toml",
+    "contract/src/lib.rs",
+    "componentize/Cargo.toml",
+    "componentize/src/main.rs",
+];
 
 /// 模板文件清单：`(相对路径, 内容)`。
 const FILES: &[(&str, &str)] = &[
@@ -44,10 +64,7 @@ const FILES: &[(&str, &str)] = &[
         "plugin/src/lib.rs",
         include_str!("../../../templates/plugin-target/plugin/src/lib.rs"),
     ),
-    (
-        "plugin/wit/polypack-target.wit",
-        include_str!("../../../templates/plugin-target/plugin/wit/polypack-target.wit"),
-    ),
+    ("plugin/wit/polypack-target.wit", TEMPLATE_WIT),
     (
         "componentize/Cargo.toml",
         include_str!("../../../templates/plugin-target/componentize/Cargo.toml"),
@@ -83,6 +100,8 @@ pub struct Args {
 pub enum Command {
     /// 从内嵌模板生成插件工程（poly plugin new <id> [--dir <path>]）。
     New(NewArgs),
+    /// 校验插件工程：脚手架文件、WIT 同步与产物摘要（poly plugin check <dir>）。
+    Check(CheckArgs),
     /// 输出插件 wasm 制品摘要（blake3-<hex>，与宿主同口径）。
     Digest(DigestArgs),
 }
@@ -100,6 +119,13 @@ pub struct NewArgs {
     pub force: bool,
 }
 
+/// `poly plugin check` 参数。
+#[derive(Debug, clap::Args)]
+pub struct CheckArgs {
+    /// 插件工程目录（`poly plugin new` 的产物）。
+    pub dir: PathBuf,
+}
+
 /// `poly plugin digest` 参数。
 #[derive(Debug, clap::Args)]
 pub struct DigestArgs {
@@ -111,6 +137,7 @@ pub struct DigestArgs {
 pub fn run(args: &Args, json: bool) -> Result<i32, Diagnostic> {
     match &args.command {
         Command::New(args) => new(args, json),
+        Command::Check(args) => check(args, json),
         Command::Digest(args) => digest(args, json),
     }
 }
@@ -191,6 +218,90 @@ fn new(args: &NewArgs, json: bool) -> Result<i32, Diagnostic> {
         );
     }
     Ok(0)
+}
+
+/// 校验插件工程：脚手架文件、WIT 与宿主同步；产物缺失只警告。
+fn check(args: &CheckArgs, json: bool) -> Result<i32, Diagnostic> {
+    let dir = &args.dir;
+    let missing: Vec<&str> = CHECK_FILES
+        .iter()
+        .copied()
+        .filter(|rel| !dir.join(rel).is_file())
+        .collect();
+    let files_ok = missing.is_empty();
+    let wit_synced = std::fs::read(dir.join("plugin/wit/polypack-target.wit"))
+        .map(|bytes| bytes == HOST_WIT.as_bytes())
+        .unwrap_or(false);
+
+    let wasm = dir.join("dist/plugin.wasm");
+    let digest = if wasm.is_file() {
+        let bytes = std::fs::read(&wasm)
+            .map_err(|err| crate::project::io_error("读取插件制品", &wasm, err))?;
+        Some(poly_plugin::content_digest(&bytes))
+    } else {
+        None
+    };
+
+    if json {
+        let mut report = serde_json::json!({
+            "event": "plugin-check",
+            "dir": display_path(dir),
+            "files_ok": files_ok,
+            "wit_synced": wit_synced,
+            "artifact": digest.is_some(),
+        });
+        if let Some(digest) = &digest {
+            report["digest"] = serde_json::Value::String(digest.clone());
+        }
+        println!(
+            "{}",
+            serde_json::to_string(&report).expect("plugin check 报告可序列化")
+        );
+    } else {
+        println!("插件工程检查: {}", dir.display());
+        println!(
+            "  [{}] 脚手架文件 {}/{}",
+            if files_ok { "ok" } else { "error" },
+            CHECK_FILES.len() - missing.len(),
+            CHECK_FILES.len()
+        );
+        for path in &missing {
+            println!("      缺失: {path}");
+        }
+        println!(
+            "  [{}] WIT 与宿主{}",
+            if wit_synced { "ok" } else { "error" },
+            if wit_synced { "一致" } else { "不一致" }
+        );
+        match &digest {
+            Some(digest) => println!("  [ok] 产物摘要: {digest}"),
+            None => println!("  [warn] dist/plugin.wasm 缺失：先运行 ./build.sh（不算失败）"),
+        }
+    }
+
+    if files_ok && wit_synced {
+        if !json {
+            println!("OK: 插件工程检查通过");
+        }
+        return Ok(0);
+    }
+
+    let mut problems = Vec::new();
+    if !files_ok {
+        problems.push(format!(
+            "缺少 {} 个脚手架文件: {}",
+            missing.len(),
+            missing.join(", ")
+        ));
+    }
+    if !wit_synced {
+        problems.push("plugin/wit/polypack-target.wit 与宿主 WIT 不一致".to_string());
+    }
+    if !json {
+        println!("错误：插件工程检查未通过");
+    }
+    Err(Diagnostic::error(codes::E_INIT_0001, problems.join("；"))
+        .with_hint("用 poly plugin new <id> 重新生成，或从宿主 crates/poly-plugin/wit 同步 WIT"))
 }
 
 /// 输出制品摘要（宿主 `content_digest` 同口径）。
@@ -320,9 +431,9 @@ mod tests {
 
     #[test]
     fn template_wit_matches_host_contract() {
-        let template =
-            include_str!("../../../templates/plugin-target/plugin/wit/polypack-target.wit");
-        let host = include_str!("../../poly-plugin/wit/polypack-target.wit");
-        assert_eq!(template, host, "模板 WIT 与宿主 target-spec/v1 漂移");
+        assert_eq!(
+            TEMPLATE_WIT, HOST_WIT,
+            "模板 WIT 与宿主 target-spec/v1 漂移"
+        );
     }
 }

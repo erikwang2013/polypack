@@ -21,6 +21,19 @@ rustup target add wasm32-unknown-unknown
 ./build.sh
 ```
 
+## 工程检查
+
+构建前后都可用宿主 CLI 校验工程骨架与接口同步：
+
+```bash
+poly plugin check .
+# 脚本用（单行 JSON 事件）：poly --json plugin check .
+```
+
+检查脚手架文件是否齐全、`plugin/wit/polypack-target.wit` 是否与宿主逐字一致；
+`dist/plugin.wasm` 存在时同时打印 `blake3-<hex>` 摘要，缺失则提示先运行
+`./build.sh`（仅警告，不判失败）。
+
 ## 契约测试
 
 ```bash

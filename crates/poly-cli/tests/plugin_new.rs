@@ -270,6 +270,131 @@ fn digest_matches_host_sri_format() {
     assert_eq!(value["digest"], expected);
 }
 
+#[test]
+fn check_passes_on_scaffold_and_warns_without_artifact() {
+    let workspace = TempDir::new("check-ok");
+    let out = poly(
+        &["plugin", "new", "demo-target", "--dir", "demo-plugin"],
+        workspace.path(),
+    );
+    assert!(out.status.success(), "生成失败: {}", combined(&out));
+
+    let out = poly(&["plugin", "check", "demo-plugin"], workspace.path());
+    assert!(out.status.success(), "check 应通过: {}", combined(&out));
+    let text = combined(&out);
+    assert!(text.contains("OK"), "{text}");
+    assert!(
+        text.contains("build.sh"),
+        "缺产物应提示 build.sh（仅警告）: {text}"
+    );
+
+    let json = poly(
+        &["--json", "plugin", "check", "demo-plugin"],
+        workspace.path(),
+    );
+    assert!(
+        json.status.success(),
+        "JSON check 应通过: {}",
+        combined(&json)
+    );
+    let stdout = String::from_utf8_lossy(&json.stdout);
+    let lines: Vec<&str> = stdout
+        .lines()
+        .filter(|line| !line.trim().is_empty())
+        .collect();
+    assert_eq!(lines.len(), 1, "JSON 只应输出一行事件: {stdout}");
+    let value: serde_json::Value = serde_json::from_str(lines[0]).expect("JSON Line");
+    assert_eq!(value["event"], "plugin-check");
+    assert_eq!(value["files_ok"], true);
+    assert_eq!(value["wit_synced"], true);
+    assert_eq!(value["artifact"], false);
+    assert!(
+        value.get("digest").is_none(),
+        "无产物时不应输出 digest: {value}"
+    );
+}
+
+#[test]
+fn check_reports_every_missing_scaffold_file() {
+    let workspace = TempDir::new("check-missing");
+    let out = poly(
+        &["plugin", "new", "demo-target", "--dir", "demo-plugin"],
+        workspace.path(),
+    );
+    assert!(out.status.success(), "生成失败: {}", combined(&out));
+    let root = workspace.path().join("demo-plugin");
+    for rel in ["contract/src/lib.rs", "componentize/src/main.rs"] {
+        std::fs::remove_file(root.join(rel)).expect("删除模板文件");
+    }
+
+    let out = poly(&["plugin", "check", "demo-plugin"], workspace.path());
+    assert!(!out.status.success(), "缺文件必须失败");
+    let text = combined(&out);
+    assert!(text.contains("contract/src/lib.rs"), "{text}");
+    assert!(text.contains("componentize/src/main.rs"), "{text}");
+    assert!(text.contains("E_INIT_0001"), "应带既有错误码: {text}");
+}
+
+#[test]
+fn check_rejects_drifted_wit() {
+    let workspace = TempDir::new("check-wit");
+    let out = poly(
+        &["plugin", "new", "demo-target", "--dir", "demo-plugin"],
+        workspace.path(),
+    );
+    assert!(out.status.success(), "生成失败: {}", combined(&out));
+    let wit = workspace
+        .path()
+        .join("demo-plugin/plugin/wit/polypack-target.wit");
+    let mut content = std::fs::read_to_string(&wit).expect("WIT 可读");
+    content.push_str("\n// drift\n");
+    std::fs::write(&wit, content).expect("WIT 可写");
+
+    let out = poly(&["plugin", "check", "demo-plugin"], workspace.path());
+    assert!(!out.status.success(), "WIT 漂移必须失败");
+    let text = combined(&out);
+    assert!(text.contains("WIT"), "{text}");
+    assert!(text.contains("E_INIT_0001"), "{text}");
+}
+
+#[test]
+fn check_prints_digest_when_artifact_exists() {
+    let workspace = TempDir::new("check-digest");
+    let out = poly(
+        &["plugin", "new", "demo-target", "--dir", "demo-plugin"],
+        workspace.path(),
+    );
+    assert!(out.status.success(), "生成失败: {}", combined(&out));
+    let wasm = workspace.path().join("demo-plugin/dist/plugin.wasm");
+    std::fs::create_dir_all(wasm.parent().expect("dist 父目录")).expect("dist 可建");
+    let bytes = b"\0asm fake plugin bytes";
+    std::fs::write(&wasm, bytes).expect("测试产物可写");
+    let expected = content_digest(bytes);
+
+    let out = poly(&["plugin", "check", "demo-plugin"], workspace.path());
+    assert!(out.status.success(), "check 失败: {}", combined(&out));
+    assert!(
+        String::from_utf8_lossy(&out.stdout).contains(&expected),
+        "人读输出应含摘要 {expected}: {}",
+        combined(&out)
+    );
+
+    let json = poly(
+        &["--json", "plugin", "check", "demo-plugin"],
+        workspace.path(),
+    );
+    assert!(
+        json.status.success(),
+        "JSON check 失败: {}",
+        combined(&json)
+    );
+    let value: serde_json::Value =
+        serde_json::from_str(String::from_utf8_lossy(&json.stdout).trim()).expect("JSON Line");
+    assert_eq!(value["event"], "plugin-check");
+    assert_eq!(value["artifact"], true);
+    assert_eq!(value["digest"], expected);
+}
+
 /// 端到端：新生成工程 → build.sh 产出组件 → 宿主 Sandbox 加载（SRI）→ describe/package。
 ///
 /// 重活（真编译 wasm + 组件封装）只在 `POLY_CONTRACT_REAL=1` 时执行；默认 SKIP-with-print，

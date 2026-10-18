@@ -14,7 +14,7 @@ M8 ecosystem GA delivers four things: the WASM plugin SDK (sandbox, SRI/signatur
 | WASM plugin sandbox | Delivered | `poly-plugin`: default zero capabilities, explicit grants, fuel/epoch/memory caps (T-M8-01) |
 | Plugin interface `target-spec/v1` | Delivered | WIT `polypack-target`; non-v1 → `E_PLUGIN_0005` (T-M8-02) |
 | SRI and signature chain | Delivered | `blake3-<hex>` before verification, verification before instantiation (T-M8-03) |
-| Template and scaffold | Delivered | `poly plugin new` / `poly plugin digest` + `templates/plugin-target` (T-M8-04) |
+| Template and scaffold | Delivered | `poly plugin new` / `poly plugin check` / `poly plugin digest` + `templates/plugin-target` (T-M8-04) |
 | Unified builtin/plugin interface | Delivered | `TargetProvider` + `ProviderRegistry`, no builtin special-casing (T-M8-05) |
 | Remote farm v1 | Delivered | Protocol v1, concurrency / worker pool / timeout retry, v0 worker compatibility (T-M8-06..09) |
 | Store publish GA | Delivered | Exponential backoff, idempotency key, SubmitJournal, receipt v2, `poly retry --from publish` (T-M8-10/11) |
@@ -53,10 +53,11 @@ M8 ecosystem GA delivers four things: the WASM plugin SDK (sandbox, SRI/signatur
 |---|---|---|
 | 1. Generate project | `poly plugin new pocket-notes` | Template files such as `plugin/`, `componentize/`, `contract/`, `build.sh` |
 | 2. Build wasm | `cd pocket-notes && ./build.sh` | Artifact `dist/plugin.wasm` |
-| 3. Contract test | `cargo test -- --nocapture` | Loads the component and calls `describe` / `package`; failures usually mean stale contract assertions |
-| 4. Compute SRI | `poly plugin digest dist/plugin.wasm` | Prints `blake3-<hex>` (same basis as host loading) |
-| 5. Register plugin | Edit `[[plugins]]` in the app's `polypack.toml` | See §2.3 |
-| 6. Real package | `poly build --config <app>/polypack.toml --target pocket-notes` | The plugin provider produces the target artifact |
+| 3. Check project | `poly plugin check .` | Scaffold files present and WIT in sync with the host; a missing `dist/plugin.wasm` is a warning only (build first) |
+| 4. Contract test | `cargo test -- --nocapture` | Loads the component and calls `describe` / `package`; failures usually mean stale contract assertions |
+| 5. Compute SRI | `poly plugin digest dist/plugin.wasm` | Prints `blake3-<hex>` (same basis as host loading) |
+| 6. Register plugin | Edit `[[plugins]]` in the app's `polypack.toml` | See §2.3 |
+| 7. Real package | `poly build --config <app>/polypack.toml --target pocket-notes` | The plugin provider produces the target artifact |
 
 Note: `poly plugin new` only scaffolds the plugin project; it does not write into the app. After building, copy `dist/plugin.wasm` into the app's `plugins/` directory and reference it from `path` in `polypack.toml`.
 
@@ -103,7 +104,7 @@ poly build --config <app>/polypack.toml --target pocket-notes
 
 ### 2.5 Single source of template contract assertions
 
-The template contract test keeps only two assertion constants at the top of `contract/src/lib.rs`: `EXPECTED_FORMAT` and `EXPECTED_PACKAGE`. After changing the plugin's `describe` / `package`, update these two constants; forgetting to do so makes `cargo test` fail with exit code 101 (the actual blocker in this drill, see §6.4). The template WIT is a copy of the host's `crates/poly-plugin/wit/polypack-target.wit`; interface upgrades must update both by hand, and there is no automatic comparison gate yet (see §7 known gaps).
+The template contract test keeps only two assertion constants at the top of `contract/src/lib.rs`: `EXPECTED_FORMAT` and `EXPECTED_PACKAGE`. After changing the plugin's `describe` / `package`, update these two constants; forgetting to do so makes `cargo test` fail with exit code 101 (the actual blocker in this drill, see §6.4). The template WIT is a copy of the host's `crates/poly-plugin/wit/polypack-target.wit`: a byte-for-byte comparison gate in `tools/check-docs.mjs` guards the repository side, and `poly plugin check` verifies a project's copy.
 
 ## 3. Security model
 
@@ -271,7 +272,7 @@ Review conclusion: the M8 delivery surface matches the M8 tasks in [TASKS](TASKS
 | Blocker | Resolution | Status |
 |---|---|---|
 | Hardcoded template contract | Reduced to the single constant source `EXPECTED_FORMAT` / `EXPECTED_PACKAGE` in `contract/src/lib.rs`, and documented in the template README and this document | Fixed in this change |
-| No `poly plugin check` command | Recorded as a known gap; the docs give an equivalent verification path: `./build.sh` + `cargo test` + `poly plugin digest` + `poly build --target` | Known gap |
+| No `poly plugin check` command | Added `poly plugin check <dir>`: validates scaffold files, WIT sync with the host, and the artifact digest (a missing artifact is a warning only) | Fixed in this change |
 | Registration example missing `sri` | SRI example added to the template README and `poly plugin new` output | Fixed (`52968b4`) |
 | Minimal host project undocumented | Written into the template README and §2.4 of this document | Fixed (`52968b4` / this document) |
 | digest banner / artifact copy / build output does not show describe | Recorded as a known gap; use `poly build --json` events or the artifact result to confirm | Known gap |
@@ -286,8 +287,8 @@ The drill completed in ≤ 1 day, meeting the M8 exit criterion. Actual plugin d
 
 | Gap | Impact | Handling / follow-up |
 |---|---|---|
-| No standalone `poly plugin check` | Authors must manually chain build / test / digest / build | Docs provide an equivalent verification path; evaluate a CLI subcommand later |
-| Template WIT and host WIT are not auto-compared | Interface upgrades must sync the template copy by hand | Review catches it today; add a generate / compare gate later |
+| No standalone `poly plugin check` | Authors must manually chain build / test / digest / build | Fixed: `poly plugin check <dir>` validates scaffold files / WIT sync / artifact digest in one command (a missing artifact is a warning only) |
+| Template WIT and host WIT are not auto-compared | Interface upgrades must sync the template copy by hand | Fixed: `tools/check-docs.mjs` now byte-compares template WIT against host WIT; `poly plugin check` applies the same check to a project |
 | Signature / trust root not exercised end to end in the drill | The drill covered only the SRI negative case | Unit / integration tests cover the signature chain; add an end-to-end pass in a later drill |
 | macOS farm IPA R3 is an environment-slot SKIP | The Linux environment has no Xcode / codesign | Kept open per FARM-DEPLOY §9; replace after running on a macOS host |
 | Real cloud object storage (S3 / OSS) not implemented | Shared-directory CAS only | `ObjectStore` trait extension point exists; local fallback when no object store |
