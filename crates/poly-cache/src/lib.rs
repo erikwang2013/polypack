@@ -23,6 +23,8 @@ mod error;
 #[cfg(feature = "std")]
 mod retention;
 #[cfg(feature = "std")]
+mod s3;
+#[cfg(feature = "std")]
 mod store;
 
 #[cfg(feature = "std")]
@@ -31,5 +33,7 @@ pub use digest::{CacheInputs, Digest, cache_key};
 pub use error::CacheError;
 #[cfg(feature = "std")]
 pub use retention::{Eviction, RetentionPolicy, enforce_retention};
+#[cfg(feature = "std")]
+pub use s3::{S3Config, S3Credentials, S3Env, S3Store};
 #[cfg(feature = "std")]
 pub use store::{DirSharedStore, Entry, FallbackStore, LocalStore, ObjectStore};

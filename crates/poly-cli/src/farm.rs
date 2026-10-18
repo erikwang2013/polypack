@@ -16,6 +16,7 @@ use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
+use poly_cache::{S3Config, S3Env};
 use poly_core::farm::{
     ArtifactRecord, CacheBackend, FarmPool, JobOutcome, PoolJob, PoolOptions, Requirement,
     TaskScope, TaskScopeFactory, WorkerOptions, default_worker_id, local_caps, run_pool_worker,
@@ -58,7 +59,8 @@ pub struct WorkerArgs {
     /// 空闲等待上限（秒）：超时即正常退出（无任务可做不是失败）。
     #[arg(long = "idle", default_value_t = 60)]
     pub idle_secs: u64,
-    /// 缓存后端：`local`（工程本地）或共享目录路径（多构建地共用，跨机复用）。
+    /// 缓存后端：`local`（工程本地）、共享目录路径（多构建地共用），或
+    /// `s3://<bucket>[/<prefix>]`（S3 / OSS 兼容；端点与凭据经 POLYPACK_S3_* / AWS_*）。
     #[arg(long, default_value = "local")]
     pub cache: String,
     /// 一次性任务工作目录的父目录（缺省系统临时目录）：worker 在下面建私有 0700 根，
@@ -97,7 +99,8 @@ pub struct SubmitArgs {
     /// 自己的当前目录解析，因此本机多 worker 各持一份工程副本时用 `.` 即可）。
     #[arg(long)]
     pub project_dir: Option<PathBuf>,
-    /// 缓存后端：`local` 或共享目录路径（与 worker 用同一共享目录即跨机命中）。
+    /// 缓存后端（只回显在结果里，后端由 worker 的 `--cache` 决定）：`local`、
+    /// 共享目录路径，或 `s3://<bucket>[/<prefix>]`。
     #[arg(long, default_value = "local")]
     pub cache: String,
 }
@@ -129,8 +132,10 @@ fn serve(args: &WorkerArgs, json: bool) -> Result<i32, Diagnostic> {
         // 凭据内存注入在 CLI / poly-sign 侧；core 只拿到这个不透明作用域工厂
         task_scope: Some(task_scope_factory(credentials)),
     };
+    // 配置错误（URI 非法 / 凭据缺失）在服务开始前硬失败：不把坏配置带进任务循环
+    let backend = cache_backend(&args.cache)?;
     let mut events = crate::project::sink(json);
-    let exit = run_pool_worker(&opts, &cache_backend(&args.cache), events.as_mut())?;
+    let exit = run_pool_worker(&opts, &backend, events.as_mut())?;
     if !json {
         println!(
             "poly farm worker 退出：{}（已完成 {} 个任务）",
@@ -245,6 +250,8 @@ impl TaskScope for FarmTaskScope {
 
 /// 主端：等 worker 池注册 → 按目标并发投递 → 合并结果（失败时错误码与修复提示完整上抛）。
 fn submit(args: &SubmitArgs, json: bool) -> Result<i32, Diagnostic> {
+    // 后端由 worker 选择；发起侧仍先校验 `s3://` 配置，坏 URI / 缺凭据尽早失败
+    cache_backend(&args.cache)?;
     let project = crate::project::load(&args.config)?;
     let registry = Registry::builtin();
     let request = if args.targets.is_empty() || args.targets.iter().any(|id| id == "all") {
@@ -428,12 +435,27 @@ fn declared_hosts(registry: &Registry) -> Vec<Host> {
     hosts
 }
 
-/// `--cache` 解析：`local` → 工程本地 CAS；其余按共享目录（跨机复用验证用）。
-fn cache_backend(value: &str) -> CacheBackend {
-    match value {
-        "local" => CacheBackend::Local,
-        other => CacheBackend::Shared(PathBuf::from(other)),
+/// `--cache` 解析：`local` → 工程本地 CAS；`s3://` → S3 / OSS 兼容后端（环境变量
+/// 解析成配置）；其余按共享目录（跨机复用验证用）。
+///
+/// 配置错误（URI 非法 / 缺凭据 / 开关取值非法）→ `poly::E_CACHE_0001` 硬失败；
+/// 运行期不可达由 `CacheBackend::cache_with` 降级，不会走到这里。
+fn cache_backend(value: &str) -> Result<CacheBackend, Diagnostic> {
+    if value == "local" {
+        return Ok(CacheBackend::Local);
     }
+    if value.starts_with("s3://") {
+        let config = S3Config::from_uri(value, S3Env::from_env()).map_err(|err| {
+            Diagnostic::error(codes::E_CACHE_0001, format!("S3 缓存后端配置非法: {err}")).with_hint(
+                "缓存 URI 写作 s3://<bucket>[/<prefix>]；端点 / 区域 / 凭据经 \
+                 POLYPACK_S3_ENDPOINT、POLYPACK_S3_REGION、POLYPACK_S3_ACCESS_KEY_ID、\
+                 POLYPACK_S3_SECRET_ACCESS_KEY（或 AWS_*）注入；OSS 兼容模式设 \
+                 POLYPACK_S3_OSS_COMPAT=1",
+            )
+        })?;
+        return Ok(CacheBackend::S3(config));
+    }
+    Ok(CacheBackend::Shared(PathBuf::from(value)))
 }
 
 /// CLI profile → `JobSpec.profile`（`build::ProfileArg` 的同名映射是模块私有，故在此重列）。

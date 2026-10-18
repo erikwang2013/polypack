@@ -180,8 +180,15 @@ fn tmp_name(hex: &str) -> String {
     )
 }
 
-/// 共享目录对象文件头行（格式版本；改动格式时递增）。
-const SHARED_HEADER: &str = "POLYPACK-FARM-OBJECT v0";
+/// 共享对象文件头行（格式版本；改动格式时递增）。
+pub(crate) const SHARED_HEADER: &str = "POLYPACK-FARM-OBJECT v0";
+
+/// 编码共享对象信封（头行 ‖ 摘要行 ‖ 载荷）：共享目录与 S3 / OSS 后端共用同一布局。
+pub(crate) fn encode_shared(bytes: &[u8]) -> Vec<u8> {
+    let mut object = format!("{SHARED_HEADER}\n{}\n", Digest::of_bytes(bytes)).into_bytes();
+    object.extend_from_slice(bytes);
+    object
+}
 
 /// 共享目录 CAS 后端（生产形态）：多构建地挂载同一共享盘即可跨 worker 复用。
 ///
@@ -189,8 +196,8 @@ const SHARED_HEADER: &str = "POLYPACK-FARM-OBJECT v0";
 /// 读取校验摘要（头行 / 摘要不符视为未命中并删除，绝不返回可疑内容）。临时名含进程号
 /// 与序号，同名键的多进程 / 多线程并发写不会互相截断。
 ///
-/// 真实云对象存储（S3 / OSS 等）腿未在本仓库实现：接入点是实现 [`ObjectStore`] 并在
-/// `poly_core::farm::CacheBackend` 构造点替换后端，上层流水线无需改动。
+/// 真实云对象存储腿见 [`crate::s3::S3Store`]（S3 兼容 / OSS `x-oss-s3-compat` 模式）；
+/// 共享目录与 S3 后端共用同一对象信封与分片布局，`aws s3 sync` 迁移可直接复用。
 pub struct DirSharedStore {
     root: PathBuf,
 }
@@ -234,10 +241,8 @@ impl ObjectStore for DirSharedStore {
         let path = self.object_path(key);
         let dir = path.parent().expect("对象路径必有父目录");
         fs::create_dir_all(dir).map_err(|e| CacheError::io(dir, e))?;
-        let mut object = format!("{SHARED_HEADER}\n{}\n", Digest::of_bytes(bytes)).into_bytes();
-        object.extend_from_slice(bytes);
         let tmp = dir.join(tmp_name(key.as_str()));
-        fs::write(&tmp, &object).map_err(|e| CacheError::io(&tmp, e))?;
+        fs::write(&tmp, encode_shared(bytes)).map_err(|e| CacheError::io(&tmp, e))?;
         fs::rename(&tmp, &path).map_err(|e| CacheError::io(&path, e))
     }
 
@@ -302,7 +307,7 @@ impl ObjectStore for DirSharedStore {
 }
 
 /// 解析共享对象文件：头行 / 摘要行不符或载荷摘要不符 → `None`（视为未命中）。
-fn parse_shared(object: &[u8]) -> Option<&[u8]> {
+pub(crate) fn parse_shared(object: &[u8]) -> Option<&[u8]> {
     let first = object.iter().position(|&byte| byte == b'\n')?;
     if object[..first] != *SHARED_HEADER.as_bytes() {
         return None;

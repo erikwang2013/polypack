@@ -173,7 +173,7 @@ GPG 操作用一次性 0700 `GNUPGHOME`；信任根只接受公钥，绝不内�
 - 每个任务在 worker 进程内执行；`--work-dir` 下每任务一个 0700 一次性目录，目录名只含 pid + 序号，结束即 `remove_dir_all`，worker 退出删除工作根；失败返回 `E_FARM_0006`。
 - 凭据只经 `--credential <档案名>=env:<变量名>` 注入内存，任务结束随 `CredentialScope` 清空；参数与值不进 argv、日志或磁盘。磁盘 / 日志零明文由演练脚本断言（Round 3）。
 - `--cache <共享目录>` 使用 `DirSharedStore` 共享目录 CAS：同一输入在不同 worker 上产生同一缓存键，二跑命中 100%；对象写入用同目录临时文件 + 原子 rename。共享目录不可用时告警并降级到工程本地 CAS，构建继续。
-- 真实云对象存储（S3 / OSS）尚未实现；接入点是实现 `ObjectStore` trait 并替换 `CacheBackend` 后端（见 FARM-DEPLOY §6.2）。
+- `--cache s3://<bucket>[/<prefix>]` 使用 S3 / OSS 兼容后端（AWS SigV4；`x-oss-s3-compat` 覆盖 OSS 的 S3 兼容模式）。配置 / IAM 见 FARM-DEPLOY §6.2；对象布局与共享目录一致（`aws s3 sync` 可迁移）。已用进程内 mock S3 做网络契约验证（服务端独立重算签名）；真实云环境槽 `POLYPACK_S3_REAL=1` 尚未跑通，不宣称真实云已验证。后端不可达时同样告警一次并降级到工程本地 CAS。
 
 ### 4.3 发布流水线
 
@@ -234,7 +234,7 @@ GPG 操作用一次性 0700 `GNUPGHOME`；信任根只接受公钥，绝不内�
 | `secret-scan` | 三宿主全历史扫描；命中即退出码 1 |
 | `docs-check` | Pax 资产、图示漂移（archify 可用时）、双语结构、SVG XML |
 
-审查结论：M8 交付面与 [TASKS](TASKS.md) M8 任务一致；插件边界（零能力、SRI、签名、资源上限）均有负向测试；provider 统一未改动 L1–L5 打包器源码；农场与发布链路的真跑证据来自本地 Linux 演练与注入测试，macOS IPA R3 与真实云对象存储仍为环境槽 / 后续（见 §7）。
+审查结论：M8 交付面与 [TASKS](TASKS.md) M8 任务一致；插件边界（零能力、SRI、签名、资源上限）均有负向测试；provider 统一未改动 L1–L5 打包器源码；农场与发布链路的真跑证据来自本地 Linux 演练与注入测试，macOS IPA R3 与真实云对象存储真跑仍为环境槽 / 后续（S3 兼容后端已实现并通过 mock 契约测试，见 §7）。
 
 ## 6. 「1 天新增目标」演练记录
 
@@ -318,7 +318,7 @@ CARGO_TARGET_DIR=target cargo test -p poly-plugin --test signature
 | 模板 WIT 与宿主 WIT 无自动比对 | 接口升级需手工同步模板副本 | 已修：`tools/check-docs.mjs` 新增模板 WIT ↔ 宿主 WIT 逐字比对门禁；`poly plugin check` 对工程 WIT 做同口径校验 |
 | 签名 / 信任根未在演练端到端走查 | 演练只覆盖 SRI 负向 | 已修（2026-10-19）：§6.6 `tools/plugin-signature-drill.sh` 真跑签名链 8/8（有效 / 篡改 / 缺签名 / 错公钥 / SRI 先行 / 信任根不可用 / 无泄漏 / 配置引用）。剩余：CLI 经 keyring / env 解析信任根并加载真实构建产物未纳入该步骤 |
 | macOS 农场 IPA R3 为环境槽 SKIP | Linux 环境无 Xcode / codesign | 按 FARM-DEPLOY §9 保持开放，macOS 主机执行后替换 |
-| 真实云对象存储（S3 / OSS）未实现 | 仅共享目录 CAS | `ObjectStore` trait 接入点已留；无对象存储时本地降级 |
+| 真实云对象存储（S3 / OSS）未在真实云上跑通 | 已实现 S3 兼容后端（SigV4 + OSS `x-oss-s3-compat`），mock 契约已验证 | 已实现，mock-verified；真实云环境槽（`POLYPACK_S3_REAL=1` + `POLYPACK_S3_TEST_URI`）保持开放，跑通前不宣称真实云已验证 |
 | Garmin 无内建 iq 打包器 | `poly build --target garmin` package 阶段 SKIP-with-print | 已记录实验缺口；条件任务 |
 | 13 个规划平台尚未声明 TargetSpec | 49 目标表中标注「规划中」 | 按 ROADMAP 推进，生成表随注册表更新 |
 
@@ -329,7 +329,7 @@ CARGO_TARGET_DIR=target cargo test -p poly-plugin --test signature
 | 人类外部开发者试用 | GA 发布后 | 记录卡点并回写文档 |
 | CLI 信任根载体端到端 | 下一次涉及签名发布的演练 | keyring / env 解析信任根 + `poly build` 真实插件产物的验签通过 / 失败路径 |
 | macOS worker + IPA 真跑 | 有 macOS 主机 | FARM-DEPLOY §9 日志与产物归档 |
-| 云对象存储后端 | 需要跨机大规模缓存 | `ObjectStore` 实现 + 二跑命中 |
+| 真实云对象存储二跑命中 | 有 S3 / OSS 桶与凭据 | 设 `POLYPACK_S3_REAL=1` + `POLYPACK_S3_TEST_URI` 跑 `tests/s3_real.rs`，再做两 worker 二跑命中 |
 | Garmin iq 打包器 | 条件任务触发 | 产物结构检查与真机实证 |
 
 参考：[README](../README.md) · [ROADMAP](ROADMAP.md) · [TASKS](TASKS.md) · [FARM-DEPLOY](FARM-DEPLOY.md) · [EXPERIMENTAL-TARGETS](EXPERIMENTAL-TARGETS.md) · English: [GA.en.md](GA.en.md)
