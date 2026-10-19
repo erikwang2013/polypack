@@ -26,6 +26,7 @@ impl EventSink for CaptureSink {
 fn job() -> JobSpec {
     JobSpec {
         id: "dag-test".to_string(),
+        app_id: None,
         profile: Profile::Local,
         targets: Vec::new(),
         excluded: Vec::new(),
@@ -336,10 +337,7 @@ fn run_with_exposes_project_context() {
         "[package]\nname = \"t\"\nversion = \"0.0.1\"\n[ui]\nframework = \"react\"\nentry = \"index.html\"\n[core]\ncrate = \"core\"\n",
     )
     .expect("配置合法");
-    let project = Project {
-        root: std::path::PathBuf::from("/tmp/polypack-dag-test"),
-        config,
-    };
+    let project = Project::new(std::path::PathBuf::from("/tmp/polypack-dag-test"), config);
 
     let mut sink = CaptureSink::default();
     plan.run_with(Some(&project), &job(), &mut sink)

@@ -130,6 +130,7 @@ fn c_abi_is_callable_and_prefixed() {
 
     let stub = poly_core::job::JobSpec {
         id: "cffi".to_string(),
+        app_id: None,
         profile: poly_core::job::Profile::Ci,
         targets: vec![poly_targets::TargetSpec::new_stub(
             "linux",
@@ -183,6 +184,7 @@ fn cache_key_is_identical_across_engine_and_host_pipeline() {
         target_spec: "linux-1".to_string(),
         toolchain: "poly-test/1".to_string(),
         profile: "ci".to_string(),
+        app_id: None,
     };
     let engine_key = cache_key(&inputs);
     assert_eq!(

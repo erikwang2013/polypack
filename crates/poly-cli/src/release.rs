@@ -252,7 +252,7 @@ fn prepare(project: &Project, spec: &TargetSpec, repo: &Path) -> Result<Prepared
         )
     })?;
 
-    let artifact_root = project::packages_root(&project.root).join(&spec.id);
+    let artifact_root = project::app_packages_root(project).join(&spec.id);
     let mut found = Vec::new();
     collect_artifacts(&artifact_root, kind.extension(), &artifact_root, &mut found).map_err(
         |err| {

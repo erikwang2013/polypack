@@ -363,6 +363,8 @@ impl PolypackConfig {
                     Profile::Local => "local",
                 }
             ),
+            // 单应用配置没有工作区上下文；CLI 在成员构建时装填成员 id。
+            app_id: None,
             profile,
             targets: resolved.selected,
             excluded: resolved.excluded,

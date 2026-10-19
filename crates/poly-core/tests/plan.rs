@@ -24,6 +24,7 @@ impl EventSink for CaptureSink {
 fn job(targets: Vec<TargetSpec>) -> JobSpec {
     JobSpec {
         id: "test-job".to_string(),
+        app_id: None,
         profile: Profile::Local,
         targets,
         excluded: Vec::new(),

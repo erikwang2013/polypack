@@ -40,6 +40,14 @@ pub mod codes {
     pub const E_CFG_0001: Code = Code::new("poly::E_CFG_0001");
     /// 配置文件解析失败。
     pub const E_CFG_0002: Code = Code::new("poly::E_CFG_0002");
+    /// 工作区声明非法（成员为空 / 绝对路径 / 成员 id 重复）。
+    pub const E_WS_0001: Code = Code::new("poly::E_WS_0001");
+    /// 工作区成员目录或成员 `polypack.toml` 缺失。
+    pub const E_WS_0002: Code = Code::new("poly::E_WS_0002");
+    /// 工作区成员路径越出工作区根（含符号链接逃逸）。
+    pub const E_WS_0003: Code = Code::new("poly::E_WS_0003");
+    /// `--app` 指定的工作区成员不存在。
+    pub const E_WS_0004: Code = Code::new("poly::E_WS_0004");
     /// 目标不存在。
     pub const E_TGT_0001: Code = Code::new("poly::E_TGT_0001");
     /// 目标不可达（宿主 / 授权 / 凭据）。
@@ -144,6 +152,18 @@ pub mod codes {
     pub const E_PLUGIN_0009: Code = Code::new("poly::E_PLUGIN_0009");
     /// 插件签名信任根不可用（CredentialRef 解析失败 / 公钥导入失败 / 缺验签工具）。
     pub const E_PLUGIN_0010: Code = Code::new("poly::E_PLUGIN_0010");
+    /// 更新清单输入非法（渠道 / 版本 / 平台 / 发布时间 / 基址）。
+    pub const E_UPDATE_0001: Code = Code::new("poly::E_UPDATE_0001");
+    /// 更新清单签名凭据缺失 / 不可用 / 引用非法。
+    pub const E_UPDATE_0002: Code = Code::new("poly::E_UPDATE_0002");
+    /// 更新产物目录 / 产物缺失或无法唯一确定。
+    pub const E_UPDATE_0003: Code = Code::new("poly::E_UPDATE_0003");
+    /// 更新清单 / 签名文件读写失败。
+    pub const E_UPDATE_0004: Code = Code::new("poly::E_UPDATE_0004");
+    /// 更新清单 schema 非法（缺字段 / 空平台表 / URL 非法）。
+    pub const E_UPDATE_0005: Code = Code::new("poly::E_UPDATE_0005");
+    /// 更新清单签名验证失败（签名与清单 / 信任根不匹配，或缺工具）。
+    pub const E_UPDATE_0006: Code = Code::new("poly::E_UPDATE_0006");
     /// IO 错误。
     pub const E_IO_0001: Code = Code::new("poly::E_IO_0001");
 }

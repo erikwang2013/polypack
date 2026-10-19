@@ -128,7 +128,7 @@ fn package_target(
     host: Host,
     ctx: &mut StageContext<'_>,
 ) -> Result<bool, StageError> {
-    let out_dir = project::packages_root(&project.root).join(&spec.id);
+    let out_dir = project::app_packages_root(project).join(&spec.id);
     if providers.get(&spec.id, &spec.package.format).is_none() {
         skip(
             ctx.events,
@@ -700,10 +700,7 @@ mod tests {
         .expect("写核心 Cargo.toml");
         let config =
             poly_core::config::PolypackConfig::parse(FIXTURE_TOML).expect("fixture 配置应合法");
-        let project = poly_core::Project {
-            root: root.clone(),
-            config,
-        };
+        let project = poly_core::Project::new(root.clone(), config);
         (root, project)
     }
 

@@ -272,13 +272,17 @@ poly release --target fedora,freebsd   # deb / rpm / pkg / pkgsrc 自托管仓�
 
 > `--target all` = 当前环境**可构建**的全部目标；排除项（需厂商授权、宿主 / 凭据不可达）与原因在 plan 阶段列明。
 >
-> 当前可用命令：`poly doctor` / `poly init` / `poly build` / `poly history` / `poly dev` / `poly clean` / `poly bridge` / `poly farm` / `poly scan` / `poly verify` / `poly targets` / `poly retry` / `poly plugin` / `poly release`。`poly release` 面向 deb / rpm / pkg / pkgsrc 自托管仓库；小程序提审走 `poly publish`。`poly history` 读取 `.polypack/history/events.jsonl`（路径脱敏，5 MiB / 10000 条轮转）。
+> 当前可用命令：`poly doctor` / `poly init` / `poly build` / `poly history` / `poly dev` / `poly clean` / `poly bridge` / `poly farm` / `poly scan` / `poly verify` / `poly targets` / `poly retry` / `poly plugin` / `poly release`。`poly release` 面向 deb / rpm / pkg / pkgsrc 自托管仓库；小程序提审走 `poly publish`；`poly update` 生成 / 校验签名 OTA 清单。`poly history` 读取 `.polypack/history/events.jsonl`（路径脱敏，5 MiB / 10000 条轮转）。
 >
 > `poly release --credential` 可重复：裸 `REF` 为全局缺省，`TARGET=REF` 按目标覆盖（如 `--credential fedora=keyring:fedora-gpg --credential freebsd=env:FREEBSD_KEY`）。
 >
 > `poly release --changed`：未变更目标发独立 `release-skipped` 事件并以 0 退出，不重写回执、不递增 `runs`；`--since` 在 release 模式返回 `E_PLAN_0002`（改用 `--changed` 或预筛 `--target`）。
 >
 > 商店元数据：`store/metadata/<platform>/<locale>.toml`；`poly publish --check-metadata --metadata-dir store/metadata --channel wechat-open-platform` 只校验，`--metadata-dir` 与 `--materials` 互斥。详见 [docs/STORE-METADATA.md](docs/STORE-METADATA.md)。
+>
+> 多应用工作区：根 `polypack.toml` 的 `[workspace] members`；`poly build --workspace` / `--app <id>`。详见 [docs/WORKSPACE.md](docs/WORKSPACE.md)。
+>
+> OTA：`poly update manifest` 生成并签名 Tauri v2 `latest.json`，`poly update check` 验签。详见 [docs/OTA.md](docs/OTA.md)。
 >
 > 预编译二进制：推送 `v*` tag 时 `.github/workflows/release.yml` 构建三宿主产物并附加到 GitHub Release（Linux x86_64 / macOS arm64 / Windows x86_64），并生成 `SHA256SUMS.txt`。
 

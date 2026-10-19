@@ -41,10 +41,7 @@ fn project(root: &Path) -> Project {
          [core]\ncrate = \"core\"\n",
     )
     .expect("配置合法");
-    Project {
-        root: root.to_path_buf(),
-        config,
-    }
+    Project::new(root.to_path_buf(), config)
 }
 
 /// 写一份最小 UI：入口 HTML + 脚本 + 会被构建工具消费 / 不该进产物的文件。
@@ -168,10 +165,7 @@ fn manifest_honours_configured_theme_color() {
          [core]\ncrate = \"core\"\n",
     )
     .expect("配置合法");
-    let project = Project {
-        root: tree.path().to_path_buf(),
-        config,
-    };
+    let project = Project::new(tree.path().to_path_buf(), config);
     let dist = tree.path().join("dist");
     web::build_ui(&project, &dist).expect("构建必须成功");
     let raw = std::fs::read_to_string(dist.join("manifest.webmanifest")).expect("读 manifest");

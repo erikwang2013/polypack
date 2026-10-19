@@ -2,6 +2,7 @@
 
 mod bridge;
 mod build;
+mod build_artifacts;
 mod clean;
 mod dev;
 mod doctor;
@@ -21,6 +22,7 @@ mod scan;
 mod sign;
 mod smoke;
 mod targets;
+mod update;
 mod verify;
 mod verify_embedded;
 mod verify_freertos;
@@ -75,6 +77,8 @@ enum Command {
     Publish(publish::Args),
     /// 多目标仓库发布：产物集合 → 仓库元数据刷新与签名 → 回执归档（幂等重跑）。
     Release(release::Args),
+    /// OTA 更新通道：生成并签名 Tauri v2 更新清单 / 校验清单与签名。
+    Update(update::Args),
 }
 
 fn main() -> std::process::ExitCode {
@@ -99,6 +103,7 @@ fn main() -> std::process::ExitCode {
         Command::Plugin(args) => plugin_new::run(&args, cli.json),
         Command::Publish(args) => publish::run(&args, cli.json),
         Command::Release(args) => release::run(&args, cli.json),
+        Command::Update(args) => update::run(&args, cli.json),
     };
     if !cli.json {
         let (face, text) = match &result {

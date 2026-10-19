@@ -437,6 +437,7 @@ pub fn cache_key(
         target_spec: format!("android-aar:{}", abi_ids.join(",")),
         toolchain: format!("{}+{engine}+{interface}", super::BRIDGE_SCHEMA),
         profile: profile.to_string(),
+        app_id: None,
     }))
 }
 

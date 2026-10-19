@@ -25,6 +25,11 @@ Notable changes are recorded here; since v1.0.0, tags and releases follow `vX.Y.
 - **M9-E5 商店元数据**：`store/metadata/<platform>/<locale>.toml`（`schema = 1`，微信 / 支付宝两套规则），校验返回全部稳定 `metadata.*` 违规码；`poly publish --metadata-dir` / `--check-metadata` / `--metadata-locale` 接入，`--materials` 与 `--metadata-dir` 互斥；材料按 key 排序并以 blake3(canonical JSON) 摘要写入回执 `materials_digest`；双语作者指南 `docs/STORE-METADATA.md`。
 
 *M9-E5 store metadata: `store/metadata/<platform>/<locale>.toml` (`schema = 1`, WeChat / Alipay rule sets); validation reports every stable `metadata.*` violation; `poly publish --metadata-dir` / `--check-metadata` / `--metadata-locale` are wired, `--materials` and `--metadata-dir` are mutually exclusive; materials are key-sorted and their blake3(canonical JSON) digest is recorded as receipt `materials_digest`; bilingual author guide in `docs/STORE-METADATA.md`.*
+- **M9-E2 多应用工作区**：根 `polypack.toml` 可选 `[workspace].members`，成员目录各自持有 `polypack.toml`；`poly build --workspace` / `--app <id>`；`JobSpec.app_id` 可省略且单应用序列化不变；共享 core compile 键跨应用一致、UI bundle 键按 app 隔离；产物 / 快照落 `.polypack/packages/<app>/<target>/` 与 `.polypack/artifacts/<app>/<target>/`；新增 `E_WS_0001..0004`、ADR 0008、`docs/WORKSPACE.md` 与 `scripts/demo-workspace.sh`。
+- **M9-E4 OTA（部分）**：`poly update manifest` 生成并 GPG 签名的确定性 Tauri v2 `latest.json`（保留版本副本供回滚），`poly update check` 做 schema + 可选信任根验签；机制矩阵与回滚手册见 `docs/OTA.md`。真实 Tauri 安装 / 回滚演练仍为环境门控。
+
+*M9-E2 multi-app workspace: optional root `[workspace].members` with per-member `polypack.toml`; `poly build --workspace` / `--app <id>`; `JobSpec.app_id` optional with unchanged single-app serialization; shared core compile keys stay identical while UI bundle keys are per-app; outputs/snapshots land in `.polypack/packages/<app>/<target>/` and `.polypack/artifacts/<app>/<target>/`; new `E_WS_0001..0004`, ADR 0008, `docs/WORKSPACE.md`, and `scripts/demo-workspace.sh`.*
+*M9-E4 OTA (partial): `poly update manifest` generates and GPG-signs a deterministic Tauri v2 `latest.json` (version copies retained for rollback), and `poly update check` validates the schema plus optional trust-root verification; the mechanism matrix and rollback runbook are in `docs/OTA.md`. The real Tauri install / rollback drill remains environment-gated.*
 
 ## [1.11.0] — 2026-10-19
 

@@ -220,7 +220,7 @@ pub(crate) fn verify_c_abi_symbols(
 
 /// 打包暂存目录（与 package 阶段同源：`<packages>/<target>/`）。
 fn staged_dir(project: &Project, spec: &TargetSpec) -> PathBuf {
-    project::packages_root(&project.root).join(&spec.id)
+    project::app_packages_root(project).join(&spec.id)
 }
 
 /// C ABI 期望符号（唯一来源；排序去重后与 nm / 声明侧同口径）。

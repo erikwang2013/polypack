@@ -237,7 +237,7 @@ fn resolve(project: &Project, target: &str) -> Result<(JobSpec, TargetSpec), Dia
 
 /// 未签名 APK 缺位（`--input` 未给且暂存目录里没有）时的稳定诊断。
 fn missing_apk(project: &Project, spec: &TargetSpec) -> Diagnostic {
-    let staged = project::packages_root(&project.root).join(&spec.id);
+    let staged = project::app_packages_root(project).join(&spec.id);
     Diagnostic::error(
         codes::E_RETRY_0001,
         format!("{} 下没有未签名 APK（目标 {}）", staged.display(), spec.id),

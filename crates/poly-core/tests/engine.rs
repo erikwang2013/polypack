@@ -45,6 +45,8 @@ fn cache_key_is_stable_across_build_modes() {
         target_spec: "linux-1".to_string(),
         toolchain: "poly-test/1".to_string(),
         profile: "ci".to_string(),
+        // 单应用：None 不进键，GOLDEN_KEY 必须与 M9 之前逐字节一致。
+        app_id: None,
     };
     assert_eq!(cache_key(&inputs).as_str(), GOLDEN_KEY);
 }

@@ -116,11 +116,17 @@ pub struct CacheInputs {
     pub toolchain: String,
     /// 构建参数 profile（`"ci"` / `"local"`）。
     pub profile: String,
+    /// 多应用工作区的应用 id；单应用为 `None`。
+    ///
+    /// 仅在 `Some` 时混入键：单应用（`None`）键与 M9 之前逐字节一致；共享 core 源树的
+    /// compile 键由调用方传 `None`，从而跨应用复用同一缓存条目。
+    pub app_id: Option<String>,
 }
 
 /// 计算缓存键：`blake3(域前缀 ‖ 各字段 长度前缀‖值)`。
 ///
 /// 域前缀做版本隔离，长度前缀消除字段拼接歧义（`"ab"+"c"` 与 `"a"+"bc"` 不同键）。
+/// `app_id = None` 时不追加任何字节，单应用键保持向后兼容。
 pub fn cache_key(inputs: &CacheInputs) -> Digest {
     let mut hasher = blake3::Hasher::new();
     hasher.update(KEY_DOMAIN.as_bytes());
@@ -132,6 +138,9 @@ pub fn cache_key(inputs: &CacheInputs) -> Digest {
         inputs.profile.as_bytes(),
     ] {
         hash_field(&mut hasher, field);
+    }
+    if let Some(app_id) = &inputs.app_id {
+        hash_field(&mut hasher, app_id.as_bytes());
     }
     Digest::from_hash(hasher.finalize())
 }

@@ -981,9 +981,9 @@
 | Project | Scope | Candidate tasks |
 |---|---|---|
 | M9-E1 | SBOM / build provenance | T-M9-01..03 |
-| M9-E2 | monorepo / multi-app workspace | T-M9-04..06 |
+| M9-E2 | monorepo / multi-app workspace (delivered; ADR 0008 / WORKSPACE / demo script) | T-M9-04..06 |
 | M9-E3 | Incremental release `poly release --changed` | T-M9-07..09 |
-| M9-E4 | Production hot update / OTA channel | T-M9-10..12 |
+| M9-E4 | Production hot update / OTA channel (T-M9-10/11 delivered; T-M9-12 environment-gated) | T-M9-10..12 |
 | M9-E5 | Store metadata pipeline | T-M9-13..15 |
 | M9-E6 | GUI target-matrix view / build history | T-M9-16..18 |
 | M9-E7 | Pre-release device preview matrix | T-M9-19..21 |
@@ -1003,4 +1003,6 @@
 | M9-G4 | MSI real-sample launch test | T-M9-53..54 |
 | M9-G5 | Branch-protection admin bypass (external process) | T-M9-55 |
 
+> **Wave 2 progress (2026-10-20)**: M9-E2 delivered (`[workspace]`, `--workspace` / `--app`, cache / output isolation, ADR 0008, bilingual WORKSPACE docs, and a demo script); M9-E4 delivered T-M9-10/11 (mechanism matrix + signed manifest + `poly update`), with T-M9-12 real binary update / rollback environment-gated.
+>
 > **Wave 1 progress (2026-10-20)**: M9-E1 (SBOM + `poly verify --sbom` + receipt `sbom_digest`), M9-E3 (`--changed`; T-M9-09 pending), M9-E5 (store metadata), M9-E6 history (T-M9-16/17; GUI T-M9-18 deferred), M9-G1 (install script / signing / install-smoke; crates.io T-M9-45 still open), M9-G2 (protocol; human T-M9-49 external), M9-G3 (owner / validator; T-M9-51 external), M9-G4 (sample / CI; Windows first run passed, ENV-01 CLOSED), and M9-D1/D2 plus M9-P1..P8/G5 (ADR decisions) have landed or partially landed. External items are not marked ✅.

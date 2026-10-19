@@ -65,10 +65,10 @@ fn generated_swift_bindings_typecheck_with_apple_toolchain() {
     let root = std::env::temp_dir().join(format!("poly-bindings-ios-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&root);
     copy_tree(&fixture_dir(), &root.join("core"));
-    let project = Project {
-        root: root.clone(),
-        config: PolypackConfig::parse(CONFIG).expect("临时工程配置合法"),
-    };
+    let project = Project::new(
+        root.clone(),
+        PolypackConfig::parse(CONFIG).expect("临时工程配置合法"),
+    );
     // 引擎身份进证据行：三处定位里命中的是夹具自托管 bin（版本与夹具的 uniffi 依赖锁一处）。
     let engine = poly_core::bridge::UniffiEngine::discover(&root.join("core"))
         .expect("夹具自带 src/bin/uniffi-bindgen.rs");

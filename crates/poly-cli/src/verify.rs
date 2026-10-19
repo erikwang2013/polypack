@@ -205,7 +205,7 @@ fn generate_sboms(
         if !spec.hosts.contains(&host) {
             continue;
         }
-        let staged = project::packages_root(&project.root).join(&spec.id);
+        let staged = project::app_packages_root(project).join(&spec.id);
         let artifacts = staged_artifacts(&staged, &spec.package.format);
         if artifacts.is_empty() {
             warning(
@@ -839,9 +839,7 @@ fn verify_hap_sign(
             &format!(
                 "目标 {} 未校验：{} 下没有 HAP（先跑 poly build 把产物流到打包暂存目录）",
                 spec.id,
-                project::packages_root(&project.root)
-                    .join(&spec.id)
-                    .display()
+                project::app_packages_root(project).join(&spec.id).display()
             ),
         );
         return Ok(false);
@@ -893,9 +891,7 @@ fn verify_hap_structure(
             &format!(
                 "目标 {} 未校验：{} 下没有 HAP（先跑 poly build 把产物流到打包暂存目录）",
                 spec.id,
-                project::packages_root(&project.root)
-                    .join(&spec.id)
-                    .display()
+                project::app_packages_root(project).join(&spec.id).display()
             ),
         );
         return Ok(false);
@@ -939,7 +935,7 @@ fn verify_quickapp_lint(
     ids: &[String],
     events: &mut dyn EventSink,
 ) -> Result<bool, StageError> {
-    let staged = project::packages_root(&project.root)
+    let staged = project::app_packages_root(project)
         .join(&spec.id)
         .join(MINIAPP_DIR);
     let Some((rpk, count)) = quickapp_rpk(&staged) else {
@@ -1195,7 +1191,7 @@ fn quickapp_defect(spec: &TargetSpec, message: impl Into<String>) -> Diagnostic 
 /// 签名器产物命名 `poly_sign::harmony::signed_output`）；缺已签名件时退化到未签名 HAP，
 /// 供结构检查（对未签件同样成立）；返回 `(路径, 是否已签名)`。
 fn hap_for_verify(project: &Project, spec: &TargetSpec) -> Option<(PathBuf, bool)> {
-    let staged = project::packages_root(&project.root).join(&spec.id);
+    let staged = project::app_packages_root(project).join(&spec.id);
     let preferred = staged.join(format!(
         "{}-signed.hap",
         crate::sign::unsigned_name_for(project, "hap")
@@ -1256,7 +1252,7 @@ fn verify_wgt_lint(
     ids: &[String],
     events: &mut dyn EventSink,
 ) -> Result<bool, StageError> {
-    let staged = project::packages_root(&project.root).join(&spec.id);
+    let staged = project::app_packages_root(project).join(&spec.id);
     let Some((wgt, count)) = staged_file(&staged, "wgt") else {
         warning(
             events,
@@ -1342,7 +1338,7 @@ fn verify_ares_package(
     ids: &[String],
     events: &mut dyn EventSink,
 ) -> Result<bool, StageError> {
-    let staged = project::packages_root(&project.root).join(&spec.id);
+    let staged = project::app_packages_root(project).join(&spec.id);
     let Some((ipk, count)) = staged_file(&staged, "ipk") else {
         warning(
             events,
@@ -1465,7 +1461,7 @@ fn verify_sandbox_selfcheck(
         );
         return Ok(false);
     };
-    let staged = project::packages_root(&project.root).join(&spec.id);
+    let staged = project::app_packages_root(project).join(&spec.id);
     let Some((package, count)) = staged_file(&staged, "zip") else {
         warning(
             events,
@@ -1548,7 +1544,7 @@ fn verify_ports(
     ids: &[String],
     events: &mut dyn EventSink,
 ) -> Result<bool, StageError> {
-    let staged = project::packages_root(&project.root).join(&spec.id);
+    let staged = project::app_packages_root(project).join(&spec.id);
     let Some((port, count)) = staged_ports_dir(&staged) else {
         warning(
             events,
@@ -1636,7 +1632,7 @@ fn verify_pkg(
     ids: &[String],
     events: &mut dyn EventSink,
 ) -> Result<bool, StageError> {
-    let staged = project::packages_root(&project.root).join(&spec.id);
+    let staged = project::app_packages_root(project).join(&spec.id);
     let Some((stage, manifest, count)) = staged_pkg(&staged) else {
         warning(
             events,
@@ -1801,7 +1797,7 @@ fn verify_pkgsrc(
     ids: &[String],
     events: &mut dyn EventSink,
 ) -> Result<bool, StageError> {
-    let staged = project::packages_root(&project.root).join(&spec.id);
+    let staged = project::app_packages_root(project).join(&spec.id);
     let Some((port, count)) = staged_pkgsrc_dir(&staged) else {
         warning(
             events,
@@ -1905,7 +1901,7 @@ fn verify_roku_sideload(
     ids: &[String],
     events: &mut dyn EventSink,
 ) -> Result<bool, StageError> {
-    let staged = project::packages_root(&project.root).join(&spec.id);
+    let staged = project::app_packages_root(project).join(&spec.id);
     let Some((package, count)) = staged_file(&staged, "zip") else {
         warning(
             events,
@@ -1973,7 +1969,7 @@ fn verify_kaios_structure(
     ids: &[String],
     events: &mut dyn EventSink,
 ) -> Result<bool, StageError> {
-    let staged = project::packages_root(&project.root).join(&spec.id);
+    let staged = project::app_packages_root(project).join(&spec.id);
     let Some((package, count)) = staged_file(&staged, "zip") else {
         warning(
             events,
@@ -2037,7 +2033,7 @@ fn verify_tiktok_minis_structure(
     ids: &[String],
     events: &mut dyn EventSink,
 ) -> Result<bool, StageError> {
-    let staged = project::packages_root(&project.root).join(&spec.id);
+    let staged = project::app_packages_root(project).join(&spec.id);
     let Some((package, count)) = staged_file(&staged, "zip") else {
         warning(
             events,
@@ -2102,7 +2098,7 @@ fn verify_facebook_instant_games_structure(
     ids: &[String],
     events: &mut dyn EventSink,
 ) -> Result<bool, StageError> {
-    let staged = project::packages_root(&project.root).join(&spec.id);
+    let staged = project::app_packages_root(project).join(&spec.id);
     let Some((package, count)) = staged_file(&staged, "zip") else {
         warning(
             events,
@@ -2167,7 +2163,7 @@ fn verify_fitbit(
     ids: &[String],
     events: &mut dyn EventSink,
 ) -> Result<bool, StageError> {
-    let staged = project::packages_root(&project.root).join(&spec.id);
+    let staged = project::app_packages_root(project).join(&spec.id);
     let Some((package, count)) = staged_file(&staged, "fba") else {
         warning(
             events,
@@ -2260,7 +2256,7 @@ fn verify_zepp(
     ids: &[String],
     events: &mut dyn EventSink,
 ) -> Result<bool, StageError> {
-    let staged = project::packages_root(&project.root).join(&spec.id);
+    let staged = project::app_packages_root(project).join(&spec.id);
     let Some((package, count)) = staged_file(&staged, "zab") else {
         warning(
             events,
@@ -2360,7 +2356,7 @@ fn verify_garmin(
     ids: &[String],
     events: &mut dyn EventSink,
 ) -> Result<bool, StageError> {
-    let staged = project::packages_root(&project.root).join(&spec.id);
+    let staged = project::app_packages_root(project).join(&spec.id);
     let Some((package, count)) = staged_file(&staged, "iq") else {
         warning(
             events,
@@ -2501,7 +2497,7 @@ fn verify_deb_lint(
     ids: &[String],
     events: &mut dyn EventSink,
 ) -> Result<bool, StageError> {
-    let staged = project::packages_root(&project.root).join(&spec.id);
+    let staged = project::app_packages_root(project).join(&spec.id);
     let Some((deb, count)) = staged_file(&staged, "deb") else {
         warning(
             events,
@@ -2605,7 +2601,7 @@ fn verify_rpm_lint(
     ids: &[String],
     events: &mut dyn EventSink,
 ) -> Result<bool, StageError> {
-    let staged = project::packages_root(&project.root).join(&spec.id);
+    let staged = project::app_packages_root(project).join(&spec.id);
     let Some((rpm, count)) = staged_file(&staged, "rpm") else {
         warning(
             events,
@@ -2696,7 +2692,7 @@ fn verify_appimage_structure(
     ids: &[String],
     events: &mut dyn EventSink,
 ) -> Result<bool, StageError> {
-    let staged = project::packages_root(&project.root).join(&spec.id);
+    let staged = project::app_packages_root(project).join(&spec.id);
     let appdir = staged_dir(&staged, ".AppDir");
     let image = staged_file(&staged, "AppImage");
     if appdir.is_none() && image.is_none() {
@@ -2778,7 +2774,7 @@ fn verify_flatpak_lint(
     ids: &[String],
     events: &mut dyn EventSink,
 ) -> Result<bool, StageError> {
-    let staged = project::packages_root(&project.root).join(&spec.id);
+    let staged = project::app_packages_root(project).join(&spec.id);
     let Some((dir, _)) = staged_dir(&staged, "-flatpak.stage") else {
         warning(
             events,
@@ -2824,7 +2820,7 @@ fn verify_snap_lint(
     ids: &[String],
     events: &mut dyn EventSink,
 ) -> Result<bool, StageError> {
-    let staged = project::packages_root(&project.root).join(&spec.id);
+    let staged = project::app_packages_root(project).join(&spec.id);
     let Some((dir, _)) = staged_dir(&staged, "-snap.stage") else {
         warning(
             events,
@@ -2871,7 +2867,7 @@ fn verify_appstream_validate(
     ids: &[String],
     events: &mut dyn EventSink,
 ) -> Result<bool, StageError> {
-    let staged = project::packages_root(&project.root).join(&spec.id);
+    let staged = project::app_packages_root(project).join(&spec.id);
     // 暂存树形态：deb / rpm 原生文件（元数据需解包，见告警）；AppDir =
     // `<名>.AppDir/usr/share/metainfo/`、Flatpak = `<名>-flatpak.stage/files/share/metainfo/`、
     // Snap 同形 → 最多 5 层目录，留一层余量。
@@ -2985,7 +2981,7 @@ fn verify_pwa_audit(
     ids: &[String],
     events: &mut dyn EventSink,
 ) -> Result<bool, StageError> {
-    let site = project::packages_root(&project.root)
+    let site = project::app_packages_root(project)
         .join(&spec.id)
         .join("site");
     if !site.is_dir() {
@@ -3443,10 +3439,7 @@ mod tests {
         let _ = std::fs::remove_dir_all(&root);
         std::fs::create_dir_all(root.join("core")).expect("工程目录可建");
         let config = poly_core::config::PolypackConfig::parse(toml).expect("fixture 配置应合法");
-        let project = Project {
-            root: root.clone(),
-            config,
-        };
+        let project = Project::new(root.clone(), config);
         (root, project)
     }
 

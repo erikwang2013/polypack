@@ -62,7 +62,7 @@ pub(crate) const FREERTOS_ALLOWED_UNRESOLVED: &[&str] = &[
 ];
 
 pub(crate) fn package_dir(project: &Project, spec: &TargetSpec) -> PathBuf {
-    project::packages_root(&project.root).join(&spec.id)
+    project::app_packages_root(project).join(&spec.id)
 }
 
 pub(crate) fn defect(spec: &TargetSpec, message: String) -> StageError {
