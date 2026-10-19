@@ -201,7 +201,8 @@ pub trait Packager: Send + Sync {
 /// VxWorks 库 / 镜像（T-M6-05，两 format 共用同一 kit 构建）+ Zephyr west 模板（T-M6-06）+
 /// FreeRTOS QEMU 示例板（T-M6-07）；M7：watchOS 伴生包（T-M7-06，xcodebuild archive → 可签
 /// `.app`，复用 M2 Apple 宿主门控 / 远程农场 R3；签名 / 校验复用 ios 链）+ Fitbit `.fba`
-/// （T-M7-07）+ Zepp `.zab`（T-M7-08）+ Wear 变体 wearos（复用 aab 链，T-M7-02/03）。
+/// （T-M7-07）+ Zepp `.zab`（T-M7-08）+ Wear 变体 wearos（复用 aab 链，T-M7-02/03）+
+/// Garmin `.iq`（T-M7-09，monkeyc 环境槽编译 + 结构自检）。
 pub fn builtin() -> Vec<Box<dyn Packager>> {
     vec![
         Box::new(crate::packagers::windows::WixMsi),
@@ -246,6 +247,7 @@ pub fn builtin() -> Vec<Box<dyn Packager>> {
         Box::new(crate::packagers::watchos::Watchos),
         Box::new(crate::packagers::fitbit::Fitbit),
         Box::new(crate::packagers::zepp::Zepp),
+        Box::new(crate::packagers::garmin::GarminIq),
     ]
 }
 

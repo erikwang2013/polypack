@@ -336,8 +336,9 @@ pub(crate) fn assemble_inputs(
             inputs.miniapp_bridge = Some(project.root.join("bridge").join("wasm-bindgen"));
         }
         // 穿戴 JS 运行时（T-M7-07/08）：工程根下 `fitbit/` / `zepp/`（或根自身）由打包器
-        // 按候选链解析；官方 CLI 只作 verify 腿自检，不参与产物组装
-        "fba" | "zab" => {
+        // 按候选链解析；官方 CLI 只作 verify 腿自检，不参与产物组装。
+        // Garmin（T-M7-09）：工程根下 `garmin/`（或根自身）由打包器解析；monkeyc 是环境槽。
+        "fba" | "zab" | "iq" => {
             inputs.miniapp_host = Some(project.root.clone());
         }
         // Roku 频道（T-M4-15）：适配器根按工程根候选链解析（<root>/ui/adapters/roku），

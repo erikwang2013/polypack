@@ -6,6 +6,23 @@ Notable changes are recorded here; since v1.0.0, tags and releases follow `vX.Y.
 
 ## [Unreleased]
 
+## [1.11.0] — 2026-10-19
+
+### Added
+- **缺口收口（2026-10-19）**：`poly release` 的 `--credential` 可重复并支持 `TARGET=REF` 按目标凭据（裸 `REF` 仍为全局缺省；未知/重复映射报 `E_PLAN_0002`；dry-run 逐目标报告 `credential_given`）；Garmin 内建 `.iq` 打包器（`crates/poly-bundle/src/packagers/garmin.rs`：解析工程、环境槽 `monkeyc` / `CIQ_DEVKEY`、`.iq` 结构自检；`iq-structure-check` 已接入 `poly verify`）；`default_backends()` 按环境装配 Vault 信任根载体；新增 `.github/workflows/release.yml`（`v*` tag 构建三宿主二进制 + `SHA256SUMS.txt`）；新增双语 `docs/INITIATIVES.md`（E1–E7、8 个规划平台、开放决策与 55 个候选任务 / 226 人日）与 `docs/ENV-SLOTS.md`（19 个环境槽的关闭协议）。
+
+*Gap closure (2026-10-19): repeatable `poly release --credential` with `TARGET=REF` per-target refs (a bare `REF` stays the global default; unknown/duplicate mappings fail with `E_PLAN_0002`; dry-run reports `credential_given` per target); the built-in Garmin `.iq` packager (`crates/poly-bundle/src/packagers/garmin.rs`: project resolution, `monkeyc` / `CIQ_DEVKEY` environment slots, `.iq` structure check; `iq-structure-check` wired into `poly verify`); `default_backends()` assembles the Vault trust-root carrier from the environment; a new `.github/workflows/release.yml` (three-host binaries + `SHA256SUMS.txt` on `v*` tags); and the bilingual `docs/INITIATIVES.md` (E1–E7, the 8 planned platforms, open decisions, and 55 candidate tasks / 226 person-days) plus `docs/ENV-SLOTS.md` (close-out protocol for 19 environment slots).*
+
+### Changed
+- keyring 3.6.3 → 4.2.0（`v1` 兼容层）→ zbus 5.19；zbus 5 仍以独立 crate 携带 `zvariant` / `zvariant_derive` / `zbus_names`，RUSTSEC-2026-0370/0371/0372 豁免保留（上游标注 unmaintained，非漏洞；升级路径 zbus 6）；文档同步：GA 规划平台数 13→8、README 源码安装 / 预编译二进制说明、TASKS M2 全 ✅、ROADMAP 任务数 116/283。
+
+*keyring 3.6.3 → 4.2.0 (`v1` compatibility layer) → zbus 5.19; zbus 5 still ships `zvariant` / `zvariant_derive` / `zbus_names` as standalone crates, so the RUSTSEC-2026-0370/0371/0372 exemptions remain (upstream marks them unmaintained, not vulnerable; the upgrade path is zbus 6); documentation sync: GA planned-platform count 13→8, README source-install / prebuilt-binary guidance, all M2 TASKS entries ✅, ROADMAP task count 116/283.*
+
+### Fixed
+- 文档更正：GA 缺口清单的规划平台数由 13 改为 8（与 49 目标现状表中的 8 行「规划中」一致）；README 快速开始改用仓库内安装路径（`cargo install --path crates/poly-cli`），注明 crates.io 发布待办（所有 workspace crate 均 `publish = false`），并把过时的 M1 命令说明更新为当前命令集（`poly release` 面向 deb / rpm / pkg / pkgsrc 自托管仓库，小程序提审走 `poly publish`）；TASKS 中 T-M2-10 / T-M2-13 标题补 ✅（保留原注记）。
+
+*Documentation corrections: the GA gap-list planned-platform count changed from 13 to 8 (matching the 8 "planned" rows in the 49-target status table); the README quick start now uses the in-repo install path (`cargo install --path crates/poly-cli`), notes that crates.io publication is pending (all workspace crates set `publish = false`), and replaces the stale M1 command note with the current command set (`poly release` targets deb / rpm / pkg / pkgsrc self-hosted repos; mini-program submission goes through `poly publish`); and the T-M2-10 / T-M2-13 headings now carry ✅ (their original notes preserved).*
+
 ## [1.10.0] — 2026-10-18
 
 ### Added

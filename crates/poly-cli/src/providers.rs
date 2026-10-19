@@ -16,6 +16,8 @@ use poly_targets::{Runtime, TargetSpec};
 /// 官方 provider + `[[plugins]]` 插件统一注册。
 pub(crate) fn registry(project: &Project) -> Result<ProviderRegistry, Diagnostic> {
     let mut registry = poly_bundle::official_registry();
+    // 信任根后端链一次装配（keyring + 环境配置齐备时的 Vault），插件间复用。
+    let backends = poly_sign::secret::default_backends();
     for section in &project.config.plugins {
         let grant = PluginGrant {
             id: section.id.clone(),
@@ -43,7 +45,6 @@ pub(crate) fn registry(project: &Project) -> Result<ProviderRegistry, Diagnostic
             })?),
             None => None,
         };
-        let backends = poly_sign::secret::default_backends();
         let policy = grant.trust_root.as_ref().map(|trust_root| SignaturePolicy {
             detached: detached.as_deref(),
             trust_root,

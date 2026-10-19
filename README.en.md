@@ -4,7 +4,9 @@
 
 [简体中文](README.md) · [Roadmap](docs/ROADMAP.en.md) · [Architecture](#architecture) · [Platforms](#platform-matrix)
 
-> **Project status: M8 ecosystem GA delivered and closed** (2026-10-18, 13/13 — the wasmtime plugin sandbox and the `target-spec/v1` WIT contract (deny-by-default, explicit grants, three resource limits), SRI + GPG detached-signature chain (CredentialRef trust root), the standalone template repo and `poly plugin new|digest`, built-in targets unified behind `TargetProvider` (built-ins are official plugins, no builtin special-casing), farm v1 (concurrency/worker pool/timeout retries/isolation/shared CAS), the publishing GA (backoff/idempotency/receipt v2/`poly retry --from publish`) and the 49-target status table, plus the bilingual [GA docs](docs/GA.en.md), technical review and the "add a target in one day" rehearsal (an independent developer agent completed scaffolding→custom packaging in 38 min). M0–M8 milestones closed (conditional tasks and environment slots recorded in TASKS); M7 details: adapter-wear compact tokens, the Wear OS target with its dual form-smoke tracks (incl. a release gate), the watchOS SwiftUI template plus packaging/signing chain (experimental), Fitbit `.fba` / Zepp `.zab`, the Garmin Monkey C spike (experimental), the experimental-target three-section docs, and wearable contracts with goldens; xcodebuild / codesign / Wear-device environment slots record SKIP-with-print, and the Garmin iq packager is a recorded experimental gap). Available commands: `poly doctor` / `poly init` / `poly build` (deb / AppDir / web static bundles; **Android AAB/APK**; **iOS unsigned IPA** on macOS hosts; **HarmonyOS HAP packaging + hap-sign-tool signing/verification**; **WeChat/Alipay/Douyin/Quick-App bundles** (wasm sandbox outlet shipped inside); **TV family: android-tv / fire-tv (Leanback), tvos (Apple chain reuse), tizen-tv / webos-tv / vidaa-tv / smartcast-tv (web tier)**; **wearables: Wear OS / Fitbit / Zepp / watchOS※experimental / Garmin※experimental**; sign/verify wired into the DAG; `[budget]` size gate warn/fail) / `poly bridge` (uniffi + **ohos NAPI** + **wasm** outlets) / `poly farm worker|submit` (remote farm) / `poly scan` (secret scan) / `poly verify --reproducible` / `poly targets` (target-matrix JSON for CI derivation) / `poly retry --from sign|verify` / `poly plugin new|digest` (plugin scaffolding and SRI digest) / `poly dev` / `poly clean` / `poly release` (self-hosted rpm/deb/pkg repo metadata + signing + receipt archival, `--target fedora,freebsd`). Eleven workflows green across three hosts (new `wear-smoke` nightly form smoke and `wear-release-smoke` release gate; `bsd-ci`: native FreeBSD 14.5 QEMU build + install smoke runs for real; OpenBSD 7.9 is a best-effort leg that records SKIP-with-print when the image cannot boot under TCG on KVM-less runners; nightly. New `embedded-ci`: the tier-6 matrix is derived from TargetSpec, with QNX / Zephyr / FreeRTOS QEMU smokes and a REAL/SKIP job summary, missing toolchains recorded as SKIP-with-print; nightly); the tvOS chain proven on macos-14 (XCFramework→archive→IPA 7,065 B); Android TV device smoke 6/6 walk + "core task with no pointer" + focus-ring pixel evidence; the remote-control smoke suite runs three legs, 14 scenarios / 69 key steps, all green. Milestone and environment-slot notes live in [docs/TASKS.en.md](docs/TASKS.en.md); planning in [docs/ROADMAP.en.md](docs/ROADMAP.en.md).
+> **Project status: M8 ecosystem GA delivered and closed** (2026-10-18, 13/13 — the wasmtime plugin sandbox and the `target-spec/v1` WIT contract (deny-by-default, explicit grants, three resource limits), SRI + GPG detached-signature chain (CredentialRef trust root), the standalone template repo and `poly plugin new|digest`, built-in targets unified behind `TargetProvider` (built-ins are official plugins, no builtin special-casing), farm v1 (concurrency/worker pool/timeout retries/isolation/shared CAS), the publishing GA (backoff/idempotency/receipt v2/`poly retry --from publish`) and the 49-target status table, plus the bilingual [GA docs](docs/GA.en.md), technical review and the "add a target in one day" rehearsal (an independent developer agent completed scaffolding→custom packaging in 38 min). M0–M8 milestones closed (conditional tasks and environment slots recorded in TASKS); M7 details: adapter-wear compact tokens, the Wear OS target with its dual form-smoke tracks (incl. a release gate), the watchOS SwiftUI template plus packaging/signing chain (experimental), Fitbit `.fba` / Zepp `.zab`, the Garmin Monkey C spike (experimental), the experimental-target three-section docs, and wearable contracts with goldens; xcodebuild / codesign / Wear-device environment slots record SKIP-with-print, and the built-in Garmin iq packager is wired (monkeyc environment slot + structure check)). Available commands: `poly doctor` / `poly init` / `poly build` (deb / AppDir / web static bundles; **Android AAB/APK**; **iOS unsigned IPA** on macOS hosts; **HarmonyOS HAP packaging + hap-sign-tool signing/verification**; **WeChat/Alipay/Douyin/Quick-App bundles** (wasm sandbox outlet shipped inside); **TV family: android-tv / fire-tv (Leanback), tvos (Apple chain reuse), tizen-tv / webos-tv / vidaa-tv / smartcast-tv (web tier)**; **wearables: Wear OS / Fitbit / Zepp / watchOS※experimental / Garmin※experimental**; sign/verify wired into the DAG; `[budget]` size gate warn/fail) / `poly bridge` (uniffi + **ohos NAPI** + **wasm** outlets) / `poly farm worker|submit` (remote farm) / `poly scan` (secret scan) / `poly verify --reproducible` / `poly targets` (target-matrix JSON for CI derivation) / `poly retry --from sign|verify` / `poly plugin new|digest` (plugin scaffolding and SRI digest) / `poly dev` / `poly clean` / `poly release` (self-hosted rpm/deb/pkg repo metadata + signing + receipt archival, `--target fedora,freebsd`). Eleven workflows green across three hosts plus a `release` workflow (new `wear-smoke` nightly form smoke and `wear-release-smoke` release gate; `bsd-ci`: native FreeBSD 14.5 QEMU build + install smoke runs for real; OpenBSD 7.9 is a best-effort leg that records SKIP-with-print when the image cannot boot under TCG on KVM-less runners; nightly. New `embedded-ci`: the tier-6 matrix is derived from TargetSpec, with QNX / Zephyr / FreeRTOS QEMU smokes and a REAL/SKIP job summary, missing toolchains recorded as SKIP-with-print; nightly); the tvOS chain proven on macos-14 (XCFramework→archive→IPA 7,065 B); Android TV device smoke 6/6 walk + "core task with no pointer" + focus-ring pixel evidence; the remote-control smoke suite runs three legs, 14 scenarios / 69 key steps, all green. Milestone and environment-slot notes live in [docs/TASKS.en.md](docs/TASKS.en.md); planning in [docs/ROADMAP.en.md](docs/ROADMAP.en.md).
+>
+> **2026-10-19 gap closure**: per-target `poly release` credentials, the built-in Garmin `.iq` packager, the Vault trust-root carrier, the keyring/zbus upgrade, GitHub Releases binaries, and documentation consistency have landed; the environment-slot ledger is in [ENV-SLOTS](docs/ENV-SLOTS.en.md) and uninitiated directions are in [INITIATIVES](docs/INITIATIVES.en.md).
 >
 > **Note on diagram labels:** the embedded diagrams are labeled in Chinese (the project's primary language). English-labeled variants are available under `docs/assets/en/`.
 
@@ -100,7 +102,7 @@ The full 13-step journey is in [Request lifecycle](#request-lifecycle) below.
 | L6 | VxWorks | headless (core library) | static library / image |
 | L6 | RTOS (Zephyr / FreeRTOS) | headless (no_std core) | static library |
 | L6 | Fitbit OS | Fitbit JS SDK | `.fba` app package → Fitbit Gallery |
-| L6 | Garmin (Connect IQ) | Monkey C transpile ※experimental | `.iq` package (spike: no built-in iq packager → SKIP-with-print) |
+| L6 | Garmin (Connect IQ) | Monkey C transpile ※experimental | `.iq` package (built-in iq packager; monkeyc / devkey environment slots → SKIP-with-print; structure check) |
 | L6 | Zepp OS | Zepp JS API | `.zab` mini app → Zepp store |
 | L7 | PlayStation | official SDK plugin (license required) | platform bundle |
 | L7 | Xbox | GDK plugin (license required) | platform bundle |
@@ -258,20 +260,24 @@ The interface is written once (React) and mapped by the adapter layer onto **eac
 | Wearables (Wear OS / watchOS / Fitbit / Garmin / Zepp) | RN (Wear beta) / SwiftUI template / JS side / Monkey C subset | compact tokens |
 | Embedded / automotive (QNX / AUTOSAR / RTOS) | headless core (optional HMI layer) | platform HMI specs |
 
-## Quick start (planned API)
+## Quick start
 
 ```bash
-# available today (M1): init / build / dev / clean / doctor (see below); release / publish are target shape
-cargo install polypack      # install the poly CLI
+# not on crates.io yet (all workspace crates set publish = false): install from source
+cargo install --path crates/poly-cli   # or cargo run -p poly-cli --
 poly init                   # generate polypack.toml
 poly dev                    # hot preview
-poly release --target android,ios,wechat
-poly release --target all --publish
+poly build --target all     # build every buildable target in this environment
+poly release --target fedora,freebsd   # deb / rpm / pkg / pkgsrc self-hosted repos
 ```
 
 > `--target all` = every **buildable** target in the current environment; exclusions (license-gated, unreachable host/credentials) and their reasons are listed during the plan stage.
 >
-> Available today (M1): `cargo run -p poly-cli -- init|build|dev|clean|doctor` (toolchain probes, sample-app scaffolding, cache-addressed multi-target build & packaging, full-reload hot preview, cache/artifact cleanup).
+> Current commands: `poly doctor` / `poly init` / `poly build` / `poly dev` / `poly clean` / `poly bridge` / `poly farm` / `poly scan` / `poly verify` / `poly targets` / `poly retry` / `poly plugin` / `poly release`. `poly release` targets deb / rpm / pkg / pkgsrc self-hosted repos; mini-program submission goes through `poly publish`.
+>
+> `poly release --credential` is repeatable: a bare `REF` is the global default and `TARGET=REF` overrides it per target (e.g. `--credential fedora=keyring:fedora-gpg --credential freebsd=env:FREEBSD_KEY`).
+>
+> Prebuilt binaries: pushing a `v*` tag makes `.github/workflows/release.yml` build all three hosts and attach them to the GitHub Release (Linux x86_64 / macOS arm64 / Windows x86_64), with a `SHA256SUMS.txt`.
 
 Sketch of `polypack.toml`:
 
@@ -311,7 +317,7 @@ polypack/
 ├── crates/
 │   ├── poly-cli/          # command line entry (clap)
 │   ├── poly-core/         # pipeline orchestration, JobSpec, event bus
-│   ├── poly-targets/      # TargetSpec registry (50+ target declarations)
+│   ├── poly-targets/      # TargetSpec registry (49-target matrix; 43 declared targets)
 │   ├── poly-toolchain/    # SDK / NDK / Xcode / emsdk probe & install
 │   ├── poly-bundle/       # packager matrix (apk / ipa / hap / msi / dmg / deb / rpm / wgt / …)
 │   ├── poly-sign/         # signing, notarization, hardening
@@ -324,7 +330,9 @@ polypack/
 ├── app/                   # poly-gui console (Tauri + React)
 ├── docs/
 │   ├── ROADMAP.en.md      # detailed plan (milestones, risks, support matrix)
-│   ├── TASKS.en.md        # task plan (116 tasks / 283 person-days)
+│   ├── TASKS.en.md        # task plan (116 tasks / 283 person-days + M9 candidates)
+│   ├── INITIATIVES.en.md  # uninitiated directions: initiation / design / candidate tasks
+│   ├── ENV-SLOTS.en.md    # environment-slot close-out ledger (commands / evidence / owner)
 │   ├── FARM.en.md         # remote farm: origin / build site (deployment, credentials, signature checks)
 │   ├── assets/            # every SVG embedded in this document (incl. Pax)
 │   └── diagrams/          # diagram sources (JSON IR) + rebuild pipeline
@@ -355,7 +363,7 @@ Docs are part of the product; diagrams and prose must stay single-sourced:
 
 Releases: since v1.0.0, tags and GitHub Release names follow `vX.Y.Z` semantic increments (v1.0.0 = this documentation and planning baseline).
 
-Incubated extension directions (SBOM / monorepo / incremental releases / OTA / store metadata / GUI dashboard / device previews / ADR) live in [docs/ROADMAP.en.md](docs/ROADMAP.en.md) §13.
+Incubated extension directions (SBOM / monorepo / incremental releases / OTA / store metadata / GUI dashboard / device previews / ADR) live in [docs/ROADMAP.en.md](docs/ROADMAP.en.md) §13; detailed initiation, design, and task breakdowns are in [docs/INITIATIVES.en.md](docs/INITIATIVES.en.md), and the environment-slot close-out protocol is in [docs/ENV-SLOTS.en.md](docs/ENV-SLOTS.en.md).
 
 | Milestone | Scope |
 |---|---|

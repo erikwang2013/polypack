@@ -163,9 +163,9 @@ fn providers_for(spec: &TargetSpec) -> Vec<BuiltinProvider> {
 
 /// 官方 provider 注册表（注册期校验声明与重复项；内建数据不一致即 panic）。
 ///
-/// 尚无内建打包器的实验目标（当前为 garmin `iq`）也以 provider 形态登记：目标表与
+/// 尚无内建打包器的实验目标也以 provider 形态登记：目标表与
 /// `Registry::builtin()` 保持逐字段一致，打包调用如实返回 [`ProviderError::Unavailable`]，
-/// 调用侧按环境性缺失跳过——不在调用侧留「有没有打包器」的旁路判断。
+/// 调用侧按环境性缺失跳过——不在调用侧留「有没有打包器」的旁路判断（后续新缺口沿用此形态）。
 pub fn official_registry() -> ProviderRegistry {
     let mut registry = ProviderRegistry::new();
     for spec in poly_targets::builtin::builtin() {
@@ -197,7 +197,7 @@ impl TargetProvider for MissingPackager {
 
     fn package(&self, _input: &PackageInput<'_>) -> Result<PackageArtifact, ProviderError> {
         Err(ProviderError::Unavailable(format!(
-            "目标 {}（format = {}）尚无内建打包器（T-M7-09 记录的能力缺口）",
+            "目标 {}（format = {}）尚无内建打包器",
             self.spec.id, self.spec.package.format
         )))
     }

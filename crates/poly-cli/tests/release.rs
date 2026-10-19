@@ -34,6 +34,12 @@ fn help_lists_release_surface() {
     for flag in ["--target", "--repo", "--credential", "--dry-run"] {
         assert!(stdout.contains(flag), "help 须含 {flag}：{stdout}");
     }
+    for syntax in ["TARGET=REF", "env:VAR"] {
+        assert!(
+            stdout.contains(syntax),
+            "help 须解释按目标凭据语法 {syntax}：{stdout}"
+        );
+    }
     let _ = std::fs::remove_dir_all(&root);
 }
 
@@ -157,6 +163,70 @@ fn dry_run_reports_manifest_and_receipt_anchor() {
         receipt.display()
     );
     assert!(!receipt.exists(), "dry-run 不落回执");
+    let _ = std::fs::remove_dir_all(&root);
+}
+
+/// 两个仓库格式目标（linux / web 均覆盖为 rpm），供 per-target 凭据测试。
+fn fixture_two_rpm(tag: &str) -> PathBuf {
+    let root = fixture(tag);
+    let mut config = std::fs::read_to_string(root.join("polypack.toml")).expect("读配置");
+    config.push_str("[targets.linux]\nformat = \"rpm\"\n[targets.web]\nformat = \"rpm\"\n");
+    std::fs::write(root.join("polypack.toml"), config).expect("写配置");
+    for target in ["linux", "web"] {
+        let dir = root.join(".polypack").join("packages").join(target);
+        std::fs::create_dir_all(&dir).expect("产物目录可建");
+        std::fs::write(
+            dir.join(format!("fixture-app-0.1.0-1.{target}.rpm")),
+            b"rpm-bytes",
+        )
+        .expect("写产物");
+    }
+    root
+}
+
+#[test]
+fn dry_run_accepts_per_target_credential_mappings() {
+    let root = fixture_two_rpm("per-target-cred");
+    let out = poly(
+        &root,
+        &[
+            "release",
+            "--target",
+            "linux,web",
+            "--dry-run",
+            "--json",
+            "--credential",
+            "linux=keyring:linux-gpg",
+            "--credential",
+            "web=env:WEB_KEY",
+        ],
+    );
+    assert_eq!(
+        out.status.code(),
+        Some(0),
+        "凭据映射须解析成功：{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    let text = String::from_utf8_lossy(&out.stdout);
+    let events: Vec<serde_json::Value> = text
+        .lines()
+        .filter(|line| !line.trim().is_empty())
+        .map(|line| {
+            serde_json::from_str(line)
+                .unwrap_or_else(|err| panic!("行不是合法 JSON：{line}（{err}）"))
+        })
+        .collect();
+    assert_eq!(events.len(), 2, "每个目标一条 dry-run 事件：{text}");
+    assert_eq!(events[0]["target"], "linux");
+    assert_eq!(events[1]["target"], "web");
+    for event in &events {
+        assert_eq!(event["event"], "release-dry-run");
+        assert_eq!(event["credential_given"].as_bool(), Some(true));
+    }
+    assert!(
+        !text.contains("linux-gpg") && !text.contains("WEB_KEY"),
+        "报告不得泄漏凭据引用值：{text}"
+    );
     let _ = std::fs::remove_dir_all(&root);
 }
 

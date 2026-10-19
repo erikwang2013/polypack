@@ -433,7 +433,7 @@ CI host × target-tier matrix:
 
 ## 9. Milestones and task breakdown
 
-> Estimates assume 1.5 FTE; every task is "done" when it is demonstrable. The task-level breakdown (113 tasks / 279.5 person-days, with roles, dependencies, acceptance criteria, and scheduling notes) is in **[TASKS.en.md](TASKS.en.md)** and [TASKS.md](TASKS.md).
+> Estimates assume 1.5 FTE; every task is "done" when it is demonstrable. The task-level breakdown (116 tasks / 283 person-days, with roles, dependencies, acceptance criteria, and scheduling notes) is in **[TASKS.en.md](TASKS.en.md)** and [TASKS.md](TASKS.md).
 
 ### M0 foundation (2 weeks)
 
@@ -553,7 +553,8 @@ Any change affecting **architecture / features / flows / platform matrix** must,
 3. Sync `docs/ROADMAP.md` and `docs/ROADMAP.en.md`; the task plan follows the same rule (`docs/TASKS.md` / `docs/TASKS.en.md`), with additions/removals and estimate changes landing in both files in one commit;
 4. Platform matrix additions/removals = update together: the README tiered list (×2 languages) + this file's per-platform detail (×2 languages) + milestone acceptance + the TargetSpec;
 5. Pax is generated from a single source by `tools/build-pax.mjs` (twelve colorful expressions, each with its own motion + the full-cycle animated version + the project icon `pax-mark.svg` + the expression contact sheet `pax-moods.svg` + the local playground `docs/pax.html`); re-run it after art or expression changes and sync both READMEs (CI verifies drift with `node tools/build-pax.mjs --check`);
-6. Keep `docs/EXPERIMENTAL-TARGETS.md` and `docs/EXPERIMENTAL-TARGETS.en.md` in sync for the experimental targets (`watchos` / `garmin`) capability / gap / alternatives (every gap keeps an alternative or explicitly says "no alternative"; `node tools/check-experimental.mjs` checks TargetSpec / documentation tables / CI three-way consistency).
+6. Keep `docs/EXPERIMENTAL-TARGETS.md` and `docs/EXPERIMENTAL-TARGETS.en.md` in sync for the experimental targets (`watchos` / `garmin`) capability / gap / alternatives (every gap keeps an alternative or explicitly says "no alternative"; `node tools/check-experimental.mjs` checks TargetSpec / documentation tables / CI three-way consistency);
+7. Keep the initiative and environment-slot docs in sync: `docs/INITIATIVES.md` ↔ `.en.md` and `docs/ENV-SLOTS.md` ↔ `.en.md` must land in both files in one commit (the `tools/check-docs.mjs` PAIRS list now enforces structural parity).
 
 ## 12. Glossary
 
@@ -572,7 +573,7 @@ Any change affecting **architecture / features / flows / platform matrix** must,
 
 ## 13. Extension directions (incubation pool)
 
-Projected from the 2026-10-14 gap audit: the directions below **do not consume the current M0–M8 schedule**; each carries a "promotion trigger" and a "first step", and enters the roadmap only after the trigger fires and a needs-validation review passes (to prevent building on assumptions).
+Projected from the 2026-10-14 gap audit: the directions below **do not consume the current M0–M8 schedule**; each carries a "promotion trigger" and a "first step", and enters the roadmap only after the trigger fires and a needs-validation review passes (to prevent building on assumptions). Detailed initiation, design, task breakdown, and acceptance criteria for every direction live in **[INITIATIVES.en.md](INITIATIVES.en.md)**; the environment-slot close-out protocol lives in **[ENV-SLOTS.en.md](ENV-SLOTS.en.md)**. The GA §7 gap projects (CLI distribution, human external trial, environment-slot close-out, MSI real sample, branch protection) are initiated in INITIATIVES §5 (M9-G1..G5).
 
 | # | Extension | Value | Promotion trigger | First step |
 |---|---|---|---|---|
@@ -590,3 +591,5 @@ Projected from the 2026-10-14 gap audit: the directions below **do not consume t
 - **License**: settled — **Apache-2.0** (the `LICENSE` file is in place); re-evaluate compatibility if GPL-family toolchain installers are ever included;
 - **Plugin marketplace**: distribution model for WASM plugins (official registry vs decentralized index);
 - **Remote farm**: self-hosted only (docs + deployment guide) or a hosted offering.
+
+The analysis, alternatives, and candidate tasks for both decisions live in [INITIATIVES.en.md](INITIATIVES.en.md) §4 (M9-D1 / M9-D2).

@@ -112,12 +112,6 @@ fn official_registry_describes_every_builtin_spec_verbatim() {
             .get(&spec.id, &spec.package.format)
             .unwrap_or_else(|| panic!("目标 {} 的默认格式缺少 provider", spec.id));
         assert_eq!(provider.describe().expect("describe"), *spec);
-        if spec.id == "garmin" {
-            // 已记录的打包器缺口（T-M7-09）：目标表保留，另由
-            // `declared_only_targets_stay_in_registry_and_skip_as_unavailable` 锁定跳过语义。
-            assert!(poly_bundle::find(&spec.id, &spec.package.format).is_none());
-            continue;
-        }
         assert!(
             poly_bundle::find(&spec.id, &spec.package.format).is_some(),
             "provider 必须委托既有打包器矩阵（{}，{}）",
@@ -153,17 +147,18 @@ fn reused_targets_route_to_their_shared_packagers() {
     );
 }
 
+/// 通用字节输入没有工程根：打包器如实报 `MissingInput`，provider 统一映射为可跳过
+/// `Unavailable`（调用侧按环境性缺失 SKIP-with-print），不硬失败。
 #[test]
-fn declared_only_targets_stay_in_registry_and_skip_as_unavailable() {
+fn materialized_bundle_inputs_without_project_skip_as_unavailable() {
     let registry = official_registry();
     let garmin = poly_targets::builtin::builtin()
         .into_iter()
         .find(|spec| spec.id == "garmin")
         .expect("内建 garmin 声明");
-    // 目标表不因缺打包器而丢项：仍以 provider 形态登记（describe 逐字段一致）。
     let provider = registry
         .get(&garmin.id, &garmin.package.format)
-        .expect("缺口目标仍在统一注册表");
+        .expect("garmin 仍在统一注册表");
     assert_eq!(provider.describe().expect("describe"), garmin);
 
     let empty: Vec<(String, Vec<u8>)> = Vec::new();
@@ -179,9 +174,12 @@ fn declared_only_targets_stay_in_registry_and_skip_as_unavailable() {
     };
     match provider.package(&input) {
         Err(ProviderError::Unavailable(reason)) => {
-            assert!(reason.contains("打包器"), "跳过原因需如实点名：{reason}");
+            assert!(
+                reason.contains("garmin") && reason.contains("miniapp_host"),
+                "跳过原因需如实点名目标与缺失输入：{reason}"
+            );
         }
-        other => panic!("缺口目标应返回 Unavailable，实际 {other:?}"),
+        other => panic!("缺工程根应返回 Unavailable，实际 {other:?}"),
     }
 }
 

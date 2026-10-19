@@ -226,6 +226,144 @@ fn resolve_targets_dedupes_and_reports_unknown_ids() {
     assert_eq!(err.code.to_string(), "poly::E_TGT_0001");
 }
 
+fn credential_values(values: &[&str]) -> Vec<String> {
+    values.iter().map(|value| value.to_string()).collect()
+}
+
+fn credential_specs() -> Vec<TargetSpec> {
+    vec![
+        spec("fedora", "rpm"),
+        spec("freebsd", "pkg"),
+        spec("netbsd", "pkgsrc"),
+    ]
+}
+
+#[test]
+fn bare_credential_is_default_for_every_target() {
+    let creds = parse_credentials(
+        &credential_values(&["keyring:release"]),
+        &credential_specs(),
+    )
+    .expect("裸引用");
+    assert_eq!(creds.resolve("fedora"), Some("keyring:release"));
+    assert_eq!(creds.resolve("freebsd"), Some("keyring:release"));
+}
+
+#[test]
+fn target_mapping_overrides_bare_default() {
+    let values = credential_values(&[
+        "vault:shared",
+        "fedora=keyring:fedora-gpg",
+        "freebsd=env:FREEBSD_KEY",
+    ]);
+    let creds = parse_credentials(&values, &credential_specs()).expect("裸引用 + 映射");
+    assert_eq!(creds.resolve("fedora"), Some("keyring:fedora-gpg"));
+    assert_eq!(creds.resolve("freebsd"), Some("env:FREEBSD_KEY"));
+    assert_eq!(
+        creds.resolve("netbsd"),
+        Some("vault:shared"),
+        "未映射目标用缺省"
+    );
+}
+
+#[test]
+fn credential_ref_with_colon_is_not_a_mapping() {
+    let creds = parse_credentials(
+        &credential_values(&["keyring:release"]),
+        &credential_specs(),
+    )
+    .expect("冒号引用");
+    assert_eq!(creds.resolve("fedora"), Some("keyring:release"));
+}
+
+#[test]
+fn env_ref_with_equals_is_not_misparsed_as_mapping() {
+    let values = credential_values(&["env:FREEBSD_KEY=value", "fedora=env:FOO=bar"]);
+    let creds = parse_credentials(&values, &credential_specs()).expect("env 变量名可含 =");
+    assert_eq!(
+        creds.resolve("fedora"),
+        Some("env:FOO=bar"),
+        "映射右值保留 ="
+    );
+    assert_eq!(
+        creds.resolve("freebsd"),
+        Some("env:FREEBSD_KEY=value"),
+        "左侧含冒号按整值引用"
+    );
+}
+
+#[test]
+fn duplicate_target_mapping_is_rejected() {
+    let values = credential_values(&["fedora=keyring:a", "fedora=keyring:b"]);
+    let err = parse_credentials(&values, &credential_specs()).expect_err("重复映射须报错");
+    assert_eq!(err.code.to_string(), "poly::E_PLAN_0002");
+    assert!(err.message.contains("fedora"), "{}", err.message);
+    assert!(
+        err.hint.as_deref().unwrap_or_default().contains("--target"),
+        "修复提示点名 --target"
+    );
+}
+
+#[test]
+fn unknown_target_mapping_is_rejected() {
+    let err = parse_credentials(
+        &credential_values(&["fodora=keyring:typo"]),
+        &credential_specs(),
+    )
+    .expect_err("未知目标须报错");
+    assert_eq!(err.code.to_string(), "poly::E_PLAN_0002");
+    assert!(err.message.contains("fodora"), "{}", err.message);
+    assert!(
+        err.hint.as_deref().unwrap_or_default().contains("--target"),
+        "修复提示点名 --target"
+    );
+}
+
+/// 记录每次发布收到的目标与凭据引用（验证选择发生在 release_target 之前）。
+#[derive(Default)]
+struct RecordingBackend {
+    seen: std::cell::RefCell<Vec<(String, Option<String>)>>,
+}
+
+impl RepoBackend for RecordingBackend {
+    fn publish(&self, request: &RepoRequest<'_>) -> Result<(), Diagnostic> {
+        self.seen.borrow_mut().push((
+            request.target.to_string(),
+            request.credential.map(str::to_string),
+        ));
+        Ok(())
+    }
+}
+
+#[test]
+fn different_targets_receive_their_own_credentials() {
+    let (root, project) = fixture("per-target-credential");
+    seed(&root, "fedora", "app-0.1.0.rpm", b"rpm");
+    seed(&root, "freebsd", "app-0.1.0.pkg", b"pkg");
+    let specs = vec![spec("fedora", "rpm"), spec("freebsd", "pkg")];
+    let values = credential_values(&["fedora=keyring:fedora-gpg", "freebsd=env:FREEBSD_KEY"]);
+    let creds = parse_credentials(&values, &specs).expect("映射合法");
+    let backend = RecordingBackend::default();
+    let repo = root.join(".polypack").join("repo");
+    for spec in &specs {
+        let prepared = prepare(&project, spec, &repo).expect("准备须成功");
+        release_target(&prepared, creds.resolve(&prepared.target), &backend, 1)
+            .expect("发布须成功");
+    }
+    let seen = backend.seen.borrow();
+    assert_eq!(seen.len(), 2);
+    assert_eq!(
+        seen[0],
+        ("fedora".to_string(), Some("keyring:fedora-gpg".to_string()))
+    );
+    assert_eq!(
+        seen[1],
+        ("freebsd".to_string(), Some("env:FREEBSD_KEY".to_string()))
+    );
+    drop(seen);
+    let _ = std::fs::remove_dir_all(&root);
+}
+
 /// T-M5-06：pkg 已接本地后端；本机无 pkg(8) 时如实报 E_RELEASE_0005 且不落回执。
 /// 有 pkg 的宿主（FreeBSD）跳过该分支断言——真跑与安装冒烟归 T-M5-09 VM。
 #[test]

@@ -10,11 +10,12 @@ ignore = [
     # （T-M3-09 微信 CI 协议），不含服务端解密面。触发复查：引入 RSA 解密路径、或上游出修复版。
     # 同款豁免见 .cargo/audit.toml（cargo-audit 腿；两处须一致）。
     "RUSTSEC-2023-0071",
-    # RUSTSEC-2026-0370 / 0371 / 0372：zbus 4.x 栈（zvariant / zvariant_derive /
-    # zbus_names）上游标记 unmaintained（**非漏洞**）。本仓仅经 keyring 的
-    # async-secret-service 在 Linux 读取会话总线上的凭据，无网络 / 跨信任边界面；
-    # 升级路径 = keyring 迁移到 zbus 5 维护线（依赖升级任务跟进）。
-    # 触发复查：keyring 升级或 zbus 5 可用。同款豁免见 .cargo/audit.toml。
+    # RUSTSEC-2026-0370 / 0371 / 0372：zbus 5.19 仍以独立 crate 形式携带
+    # zvariant / zvariant_derive / zbus_names（上游自 zbus 6.0 起才合并进 zbus）。
+    # 本仓仅经 keyring 4.2 的 zbus-secret-service 在 Linux 会话总线读凭据，
+    # 无网络 / 跨信任边界面；上游标注 unmaintained（非漏洞），当前无安全升级版。
+    # 升级路径 = keyring / secret-service 迁移到 zbus 6；触发复查：该链路升级。
+    # 同款豁免见 .cargo/audit.toml（cargo-audit 腿；两处须一致）。
     "RUSTSEC-2026-0370",
     "RUSTSEC-2026-0371",
     "RUSTSEC-2026-0372",

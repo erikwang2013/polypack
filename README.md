@@ -4,7 +4,9 @@
 
 [English](README.en.md) · [详细规划](docs/ROADMAP.md) · [架构](#项目架构) · [平台矩阵](#支持平台矩阵)
 
-> **项目状态：M8 生态 GA 已交付并收口**（2026-10-18，13/13——wasmtime 插件沙箱与 `target-spec/v1` WIT 契约（默认零能力、显式授权与三道上限）、SRI + GPG 分离签名链（CredentialRef 信任根）、独立模板仓库与 `poly plugin new|digest`、内建目标统一 `TargetProvider`（内建即官方插件，无 builtin 特判）、农场 v1（并发/worker 池/超时重试/隔离/共享 CAS）、发布 GA（退避/幂等/回执 v2/`poly retry --from publish`）、49 目标现状表，双语 [GA 文档](docs/GA.md)、技术审查与「1 天新增目标」演练（独立开发者代理 38 min 完成脚手架→自定义出包）。M0–M8 里程碑均已收口（条件任务与环境槽按 TASKS 注记）；M7 细节：adapter-wear 紧凑 tokens、Wear OS 目标与表单冒烟双轨（含发版门）、watchOS SwiftUI 模板与打包/签名链（实验）、Fitbit `.fba` / Zepp `.zab`、Garmin Monkey C spike（实验）、实验目标三段式文档、穿戴契约与金样；xcodebuild / codesign / Wear 设备类环境槽按 SKIP-with-print，garmin 的 iq 打包器为已记录实验缺口）。可用命令：`poly doctor` / `poly init` / `poly build`（deb / AppDir / Web 静态包；**Android AAB/APK**；**iOS 未签名 IPA**（macOS 宿主）；**鸿蒙 HAP 打包 + hap-sign-tool 签名校验**；**微信/支付宝/抖音/快应用代码包**（含 wasm 沙箱出口随包）；**TV 家族：android-tv / fire-tv（Leanback）、tvos（复用 Apple 链）、tizen-tv / webos-tv / vidaa-tv / smartcast-tv（web 系）**；**穿戴：Wear OS / Fitbit / Zepp / watchOS※实验 / Garmin※实验**；sign/verify 入 DAG；`[budget]` 体积门禁 warn/fail）/ `poly bridge`（uniffi + **ohos NAPI** + **wasm** 三出口）/ `poly farm worker|submit`（远程农场）/ `poly scan`（密钥扫描）/ `poly verify --reproducible` / `poly targets`（目标矩阵 JSON，供 CI 派生）/ `poly retry --from sign|verify` / `poly plugin new|digest`（插件脚手架与 SRI 摘要） / `poly dev` / `poly clean` / `poly release`（自托管 rpm/deb/pkg 仓库元数据 + 签名 + 回执归档，`--target fedora,freebsd`）。十一工作流三宿主全绿（新增 `wear-smoke` 夜跑表单冒烟与 `wear-release-smoke` 发版门；`bsd-ci`：FreeBSD 14.5 QEMU 原生构建 + 安装冒烟真跑；OpenBSD 7.9 为尽力腿，托管 runner 无 KVM、镜像 TCG 起不来时按 SKIP-with-print 留痕；每夜。新增 `embedded-ci`：tier-6 矩阵从 TargetSpec 派生 + QNX / Zephyr / FreeRTOS QEMU 冒烟，缺工具链按 SKIP-with-print 并在 job summary 列 REAL/SKIP；每夜）；tvOS 打包链 macos-14 真跑首证（XCFramework→archive→IPA 7,065B）；Android TV 设备冒烟 6/6 走查 + 「无指针完成核心任务」+ 焦点环像素实证；遥控器冒烟三腿复合 14 场景 / 69 键步全过。里程碑与环境槽注记见 [docs/TASKS.md](docs/TASKS.md)，规划见 [docs/ROADMAP.md](docs/ROADMAP.md)。
+> **项目状态：M8 生态 GA 已交付并收口**（2026-10-18，13/13——wasmtime 插件沙箱与 `target-spec/v1` WIT 契约（默认零能力、显式授权与三道上限）、SRI + GPG 分离签名链（CredentialRef 信任根）、独立模板仓库与 `poly plugin new|digest`、内建目标统一 `TargetProvider`（内建即官方插件，无 builtin 特判）、农场 v1（并发/worker 池/超时重试/隔离/共享 CAS）、发布 GA（退避/幂等/回执 v2/`poly retry --from publish`）、49 目标现状表，双语 [GA 文档](docs/GA.md)、技术审查与「1 天新增目标」演练（独立开发者代理 38 min 完成脚手架→自定义出包）。M0–M8 里程碑均已收口（条件任务与环境槽按 TASKS 注记）；M7 细节：adapter-wear 紧凑 tokens、Wear OS 目标与表单冒烟双轨（含发版门）、watchOS SwiftUI 模板与打包/签名链（实验）、Fitbit `.fba` / Zepp `.zab`、Garmin Monkey C spike（实验）、实验目标三段式文档、穿戴契约与金样；xcodebuild / codesign / Wear 设备类环境槽按 SKIP-with-print，garmin 的内建 iq 打包器已接线（monkeyc 环境槽 + 结构自检））。可用命令：`poly doctor` / `poly init` / `poly build`（deb / AppDir / Web 静态包；**Android AAB/APK**；**iOS 未签名 IPA**（macOS 宿主）；**鸿蒙 HAP 打包 + hap-sign-tool 签名校验**；**微信/支付宝/抖音/快应用代码包**（含 wasm 沙箱出口随包）；**TV 家族：android-tv / fire-tv（Leanback）、tvos（复用 Apple 链）、tizen-tv / webos-tv / vidaa-tv / smartcast-tv（web 系）**；**穿戴：Wear OS / Fitbit / Zepp / watchOS※实验 / Garmin※实验**；sign/verify 入 DAG；`[budget]` 体积门禁 warn/fail）/ `poly bridge`（uniffi + **ohos NAPI** + **wasm** 三出口）/ `poly farm worker|submit`（远程农场）/ `poly scan`（密钥扫描）/ `poly verify --reproducible` / `poly targets`（目标矩阵 JSON，供 CI 派生）/ `poly retry --from sign|verify` / `poly plugin new|digest`（插件脚手架与 SRI 摘要） / `poly dev` / `poly clean` / `poly release`（自托管 rpm/deb/pkg 仓库元数据 + 签名 + 回执归档，`--target fedora,freebsd`）。十一工作流三宿主全绿 + `release` 发版工作流（新增 `wear-smoke` 夜跑表单冒烟与 `wear-release-smoke` 发版门；`bsd-ci`：FreeBSD 14.5 QEMU 原生构建 + 安装冒烟真跑；OpenBSD 7.9 为尽力腿，托管 runner 无 KVM、镜像 TCG 起不来时按 SKIP-with-print 留痕；每夜。新增 `embedded-ci`：tier-6 矩阵从 TargetSpec 派生 + QNX / Zephyr / FreeRTOS QEMU 冒烟，缺工具链按 SKIP-with-print 并在 job summary 列 REAL/SKIP；每夜）；tvOS 打包链 macos-14 真跑首证（XCFramework→archive→IPA 7,065B）；Android TV 设备冒烟 6/6 走查 + 「无指针完成核心任务」+ 焦点环像素实证；遥控器冒烟三腿复合 14 场景 / 69 键步全过。里程碑与环境槽注记见 [docs/TASKS.md](docs/TASKS.md)，规划见 [docs/ROADMAP.md](docs/ROADMAP.md)。
+>
+> **2026-10-19 缺口收口**：`poly release` 按目标凭据、Garmin 内建 `.iq` 打包器、Vault 信任根载体、keyring/zbus 升级、GitHub Releases 二进制与文档一致性已落地；环境槽关闭台账见 [ENV-SLOTS](docs/ENV-SLOTS.md)，未立项方向见 [INITIATIVES](docs/INITIATIVES.md)。
 
 ---
 
@@ -98,7 +100,7 @@ poly release --target android,ios,wechat,tizen --publish
 | L6 | VxWorks | 无 UI（核心库） | 静态库 / 镜像 |
 | L6 | RTOS（Zephyr / FreeRTOS） | 无 UI（no_std 核心） | 静态库 |
 | L6 | Fitbit OS | Fitbit JS SDK | `.fba` 应用包 → Fitbit Gallery |
-| L6 | Garmin（Connect IQ） | Monkey C 转译 ※实验 | `.iq` 包（spike 无内建 iq 打包器 → SKIP-with-print） |
+| L6 | Garmin（Connect IQ） | Monkey C 转译 ※实验 | `.iq` 包（内建 iq 打包器；monkeyc / devkey 环境槽 → SKIP-with-print；结构自检） |
 | L6 | Zepp OS | Zepp JS API | `.zab` 小程序 → Zepp 商店 |
 | L7 | PlayStation | 官方 SDK 插件（需授权） | 平台包 |
 | L7 | Xbox | GDK 插件（需授权） | 平台包 |
@@ -256,20 +258,24 @@ PolyPack 的界面只写一遍（React），由适配层按端映射到**该平�
 | 穿戴（Wear OS / watchOS / Fitbit / Garmin / Zepp） | RN（Wear beta）/ SwiftUI 模板 / JS 侧 / Monkey C 子集 | 紧凑型 tokens |
 | 嵌入式 / 车机（QNX / AUTOSAR / RTOS） | headless 核心（可选 HMI 层） | 平台 HMI 规范 |
 
-## 快速开始（规划中 API）
+## 快速开始
 
 ```bash
-# 已可用（M1）：init / build / dev / clean / doctor（见下方说明）；release / publish 为目标形态
-cargo install polypack      # 安装 poly CLI
+# crates.io 尚未发布（所有 workspace crate 均 publish = false）：从源码安装
+cargo install --path crates/poly-cli   # 或 cargo run -p poly-cli --
 poly init                   # 生成 polypack.toml
 poly dev                    # 启动热预览
-poly release --target android,ios,wechat
-poly release --target all --publish
+poly build --target all     # 构建当前环境可构建的目标
+poly release --target fedora,freebsd   # deb / rpm / pkg / pkgsrc 自托管仓库
 ```
 
 > `--target all` = 当前环境**可构建**的全部目标；排除项（需厂商授权、宿主 / 凭据不可达）与原因在 plan 阶段列明。
 >
-> M1 已可用：`cargo run -p poly-cli -- init|build|dev|clean|doctor`（本地工具链探测、示例应用脚手架、带内容寻址缓存的多端构建与打包、整页重载热预览、缓存与产物清理）。
+> 当前可用命令：`poly doctor` / `poly init` / `poly build` / `poly dev` / `poly clean` / `poly bridge` / `poly farm` / `poly scan` / `poly verify` / `poly targets` / `poly retry` / `poly plugin` / `poly release`。`poly release` 面向 deb / rpm / pkg / pkgsrc 自托管仓库；小程序提审走 `poly publish`。
+>
+> `poly release --credential` 可重复：裸 `REF` 为全局缺省，`TARGET=REF` 按目标覆盖（如 `--credential fedora=keyring:fedora-gpg --credential freebsd=env:FREEBSD_KEY`）。
+>
+> 预编译二进制：推送 `v*` tag 时 `.github/workflows/release.yml` 构建三宿主产物并附加到 GitHub Release（Linux x86_64 / macOS arm64 / Windows x86_64），并生成 `SHA256SUMS.txt`。
 
 `polypack.toml` 示意：
 
@@ -309,7 +315,7 @@ polypack/
 ├── crates/
 │   ├── poly-cli/          # 命令行入口（clap）
 │   ├── poly-core/         # 流水线编排、JobSpec、事件总线
-│   ├── poly-targets/      # TargetSpec 注册表（50+ 目标声明）
+│   ├── poly-targets/      # TargetSpec 注册表（49 目标矩阵；43 个已声明目标）
 │   ├── poly-toolchain/    # SDK / NDK / Xcode / emsdk 探测与安装
 │   ├── poly-bundle/       # 打包器矩阵（apk / ipa / hap / msi / dmg / deb / rpm / wgt / …）
 │   ├── poly-sign/         # 签名、公证、加固
@@ -322,7 +328,9 @@ polypack/
 ├── app/                   # poly-gui 控制台（Tauri + React）
 ├── docs/
 │   ├── ROADMAP.md         # 详细规划（里程碑、风险、支持矩阵）
-│   ├── TASKS.md           # 任务计划（116 任务 / 283 人日）
+│   ├── TASKS.md           # 任务计划（116 任务 / 283 人日 + M9 候选）
+│   ├── INITIATIVES.md     # 未立项方向：立项 / 方案 / 候选任务
+│   ├── ENV-SLOTS.md       # 环境槽关闭台账（命令 / 证据 / owner）
 │   ├── FARM.md            # 远程农场：发起地 / 构建地（部署、凭据与签名验证）
 │   ├── assets/            # 本文档内嵌的全部 SVG（含 Pax）
 │   └── diagrams/          # 图示源文件（JSON IR）与重建流水线
@@ -353,7 +361,7 @@ polypack/
 
 自 v1.0.0 起，本仓库的 tag 与 GitHub Release 名称统一按 `vX.Y.Z` 语义化递增（v1.0.0 = 本文档与规划基线）。
 
-已立项的扩展方向（SBOM / monorepo / 增量发布 / OTA / 商店元数据 / GUI 仪表盘 / 设备预览 / ADR）见 [docs/ROADMAP.md](docs/ROADMAP.md) 第 13 节。
+已立项的扩展方向（SBOM / monorepo / 增量发布 / OTA / 商店元数据 / GUI 仪表盘 / 设备预览 / ADR）见 [docs/ROADMAP.md](docs/ROADMAP.md) 第 13 节；每个方向的详细立项、方案与任务分解见 [docs/INITIATIVES.md](docs/INITIATIVES.md)，环境槽关闭协议见 [docs/ENV-SLOTS.md](docs/ENV-SLOTS.md)。
 
 | 里程碑 | 内容 |
 |---|---|

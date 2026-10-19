@@ -1,0 +1,99 @@
+name: release
+
+# 预编译 `poly` 二进制：tag `v*` 推送时构建三宿主产物并附加到 GitHub Release。
+# 源码安装仍是主路径（`cargo install --path crates/poly-cli`）；本工作流只解决
+# 「没有 Rust 工具链的用户如何拿到 CLI」这一分发缺口。
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: build / ${{ matrix.target }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            archive: tar.gz
+          - os: macos-14
+            target: aarch64-apple-darwin
+            archive: tar.gz
+          - os: windows-2022
+            target: x86_64-pc-windows-msvc
+            archive: zip
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: 构建缓存
+        uses: Swatinem/rust-cache@v2
+
+      - name: 构建 poly（release）
+        run: cargo build --release -p poly-cli --bin poly
+
+      - name: 打包（Unix）
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          cp target/release/poly "dist/poly-${{ matrix.target }}"
+          tar -C dist -czf "dist/poly-${{ matrix.target }}.tar.gz" "poly-${{ matrix.target }}"
+          rm "dist/poly-${{ matrix.target }}"
+
+      - name: 打包（Windows）
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path dist | Out-Null
+          Copy-Item target/release/poly.exe "dist/poly-${{ matrix.target }}.exe"
+          Compress-Archive -Path "dist/poly-${{ matrix.target }}.exe" -DestinationPath "dist/poly-${{ matrix.target }}.zip" -Force
+          Remove-Item "dist/poly-${{ matrix.target }}.exe"
+
+      - name: 上传构建产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: poly-${{ matrix.target }}
+          path: dist/*
+          if-no-files-found: error
+
+  publish:
+    name: publish / GitHub Release
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: 生成校验和
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd dist
+          sha256sum * > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+
+      - name: 创建或更新 Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" dist/* --clobber
+          else
+            gh release create "$TAG" dist/* --generate-notes --title "$TAG"
+          fi

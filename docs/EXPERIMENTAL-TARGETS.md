@@ -49,8 +49,8 @@
 | UI 子集 | View / 卡片 / 文本 / Pressable 复合（底 + 焦点环 + 文字）；颜色 / 间距 / 安全区与 adapter-wear tokens 同源；圆 454×454、方 320×320 参考视口 | 草稿 §2 表 A/C |
 | 交互子集 | 三键 UP / DOWN / SELECT / BACK；焦点序 = 共享焦点内核 `engine.order` 线性循环；Back 历史同形 | 草稿 §2 表 B |
 | Connect IQ 工程 | `manifest.xml` + `monkey.jungle` + `resources/strings/strings.xml` + `source/*.mc`；参考设备 `venu2` / `venusq`；应用 id = `sha256(identifier)` 前 32 hex | 草稿 §2 表 D |
-| 校验 | 29/29 测试：转译确定性、子集 / API 白名单正负例、XML / 工程 / `.iq` 条目断言；`npm run build` 真跑结构自检 | 草稿 §5；`ui/adapters/garmin/test/` |
-| 编译器腿（环境就绪时） | `monkeyc -e -w -r -o out.iq -y <devkey> -f monkey.jungle` → `.iq`（`manifest.xml` + 按设备 `.prg`）；devkey 仅取路径（`CIQ_DEVKEY`） | 草稿 §2 表 D、§5 |
+| 校验 | 29/29 Node 测试 + Rust 内建 `.iq` 结构自检（包根 `manifest.xml` + ≥1 个按设备 `.prg`）；`poly verify` 的 `iq-structure-check` 已接线；`npm run build` 真跑结构自检 | 草稿 §5；`ui/adapters/garmin/test/`；`crates/poly-bundle/tests/packagers_garmin.rs` |
+| 编译器腿（环境就绪时） | Rust 打包器 `crates/poly-bundle/src/packagers/garmin.rs` 解析 `<project>/garmin`（或宿主根）并调用 `monkeyc -e -w -r -o out.iq -y <devkey> -f monkey.jungle` → `.iq`（`manifest.xml` + 按设备 `.prg`）；devkey 仅取路径（`CIQ_DEVKEY`） | 草稿 §2 表 D、§5；`crates/poly-bundle/src/packagers/garmin.rs` |
 
 ### 3.2 缺口与替代方案
 
@@ -65,11 +65,11 @@
 | G7 | 资产 / 图标 / 启动图缺位 | manifest 省略图标字段（开发侧载形态） | 资产管线后续接入；本 spike 只发射 `AppName` 字符串资源 |
 | G8 | 每形态仅声明参考设备（`venu2` / `venusq`） | 未做多设备产品矩阵 | `iq:products` 按需扩展；缩放公式按 `dc.getWidth()/getHeight()` 通用 |
 | G9 | 生命周期最小：无 `onStart` / `onStop` 持久化 | 退出 / 重启后状态归零 | 示例页为瞬时状态；`Application.Storage` 不在白名单，列为后续扩展 |
-| G10 | 无 Rust 内建 `iq` 打包器：spike 为独立 Node 模块 | `poly build --target garmin` 的 package 阶段无法出包 | 以「无内建打包器（format = iq）」SKIP-with-print，不伪造 `.iq`；替代：`ui/adapters/garmin` 的 `npm test` / `npm run build`（结构自检 + 编译器环境槽）；Rust 打包器列为条件任务 |
+| G10 | 无真实 Connect IQ SDK / 设备证据：内建打包器只做结构自检 | `.iq` 真实编译与设备行为仍需环境槽；结构可由 Rust 校验器真跑 | 内建 `iq` 打包器 + `check_garmin_iq_structure` 已落地；设 `CIQ_MONKEYC` / `CIQ_HOME` / `CONNECTIQ_HOME` + `CIQ_DEVKEY` 后真跑编译；「编译器 / 真机实证」无替代（需 SDK + 密钥 + 设备） |
 
 ### 3.3 结论
 
-继续（受限档）。`experimental = true` 保持不变。触发前置：Connect IQ SDK 编译一次 + 真机 / 模拟器走查（本机无 `monkeyc` / SDK / devkey，编译器腿 SKIP-with-print）。降级备选（若不愿承担）：仅保留 L6 TargetSpec + `experimental` + 能力边界（不做 Rust 打包器 / 不承诺示例页）。
+继续（受限档）。`experimental = true` 保持不变。触发前置：Connect IQ SDK 编译一次 + 真机 / 模拟器走查（本机无 `monkeyc` / SDK / devkey，编译器腿 SKIP-with-print）。降级备选（若不愿承担）：保留 L6 TargetSpec + `experimental` + 能力边界 + 内建打包器 / 结构自检，但不承诺编译器 / 真机实证。
 
 ## 4. 非实验目标：Wear OS 的边界
 
@@ -86,4 +86,4 @@
 | 缺口 / 替代方案变化 | 同提交更新本文件与 README L6 说明；每个缺口必须保留「替代方案」或明示「无替代」 |
 | CI 校验 | `node tools/gen-target-table.mjs --check`；`node tools/check-docs.mjs`；`node tools/check-experimental.mjs` |
 
-素材：`ui/adapters/garmin/CAPABILITY-BOUNDARY-DRAFT.md`（T-M7-09）、`crates/poly-cli/templates/watchos/README.md`、`crates/poly-bundle/src/packagers/watchos.rs`、TargetSpec notes。
+素材：`ui/adapters/garmin/CAPABILITY-BOUNDARY-DRAFT.md`（T-M7-09）、`crates/poly-bundle/src/packagers/garmin.rs`、`crates/poly-cli/templates/watchos/README.md`、`crates/poly-bundle/src/packagers/watchos.rs`、TargetSpec notes。

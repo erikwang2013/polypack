@@ -321,24 +321,28 @@ Boundary: the table above verifies the host load chain (SRI → signature verifi
 
 ### 7.1 Gap list
 
+> Per-slot close-out protocols (required environment, commands, evidence, owner, status) live in [ENV-SLOTS.en.md](ENV-SLOTS.en.md); detailed planning for uninitiated directions lives in [INITIATIVES.en.md](INITIATIVES.en.md).
+
 | Gap | Impact | Handling / follow-up |
 |---|---|---|
 | No standalone `poly plugin check` | Authors must manually chain build / test / digest / build | Fixed: `poly plugin check <dir>` validates scaffold files / WIT sync / artifact digest in one command (a missing artifact is a warning only) |
 | Template WIT and host WIT are not auto-compared | Interface upgrades must sync the template copy by hand | Fixed: `tools/check-docs.mjs` now byte-compares template WIT against host WIT; `poly plugin check` applies the same check to a project |
-| Signature / trust root not exercised end to end in the drill | The drill covered only the SRI negative case | Fixed (2026-10-19): §6.6 `tools/plugin-signature-drill.sh` runs the chain for real, 8/8 (valid / tampered / missing / wrong key / SRI first / unavailable root / no leaks / config reference); the same section's `plugin_trust_root_env` now automates the CLI env carrier + real component artifact through `poly build` pass / fail paths (valid signature packages, wrong key `E_PLUGIN_0009`, missing env `E_PLUGIN_0010`). Remaining: the keyring / Vault carriers require the host Secret Service / Keychain / Credential Manager or a Vault service and remain environment slots |
+| Signature / trust root not exercised end to end in the drill | The drill covered only the SRI negative case | Fixed (2026-10-19): §6.6 `tools/plugin-signature-drill.sh` runs the chain for real, 8/8 (valid / tampered / missing / wrong key / SRI first / unavailable root / no leaks / config reference); the same section's `plugin_trust_root_env` now automates the CLI env carrier + real component artifact through `poly build` pass / fail paths (valid signature packages, wrong key `E_PLUGIN_0009`, missing env `E_PLUGIN_0010`). Remaining: the keyring / Vault carriers are wired (`default_backends()` assembles Vault from `VAULT_ADDR` / `VAULT_TOKEN`; keyring uses the host Secret Service / Keychain / Credential Manager); the E2E against real services remains an environment slot (see [ENV-SLOTS.en.md](ENV-SLOTS.en.md)) |
+| One global `--credential` cannot satisfy heterogeneous targets | rpm/deb and pkg needing different signing material had to be released in separate runs | Fixed: `poly release` accepts repeatable `--credential` and `TARGET=REF` mappings; a bare `REF` stays the global default; unknown/duplicate mappings fail with `E_PLAN_0002`; a true heterogeneous run still needs real keyring / Vault environments |
+| keyring 3.6.3 pulled in zbus 4.x (unmaintained) | Supply-chain warning (not a vulnerability) | Upgraded to keyring 4.2.0 (`v1` compatibility layer) → zbus 5.19; zbus 5 still ships `zvariant` / `zvariant_derive` / `zbus_names` as standalone crates, so the RUSTSEC-2026-0370/0371/0372 exemptions remain (upgrade path is zbus 6) |
 | macOS farm IPA R3 is an environment-slot SKIP | The Linux environment has no Xcode / codesign | Kept open per FARM-DEPLOY §9; replace after running on a macOS host |
 | Real cloud object storage (S3 / OSS) not run against a real cloud yet | S3-compatible backend implemented (SigV4 + OSS `x-oss-s3-compat`), mock contract verified | Implemented, mock-verified; the real-cloud environment slot (`POLYPACK_S3_REAL=1` + `POLYPACK_S3_TEST_URI`) stays open — no real-cloud verification is claimed before it runs |
-| Garmin has no builtin iq packager | `poly build --target garmin` SKIP-with-print at the package stage | Recorded experimental gap; conditional task |
-| 13 planned platforms have no TargetSpec yet | Marked "planned" in the 49-target table | Advance per ROADMAP; the generated table follows the registry |
+| Garmin has no real Connect IQ SDK / device evidence | The built-in iq packager has landed and performs structure self-checks only; real compilation / device behavior still needs the environment slots | Set `CIQ_MONKEYC` / `CIQ_HOME` / `CONNECTIQ_HOME` + `CIQ_DEVKEY` to run `monkeyc`; the `check_garmin_iq_structure` structure check is wired into verify; device walkthrough in [ENV-SLOTS.en.md](ENV-SLOTS.en.md) |
+| 8 planned platforms have no TargetSpec yet | Marked "planned" in the 49-target table | Detailed initiation and conditional tasks are in [INITIATIVES.en.md](INITIATIVES.en.md) §3 (M9-P1..P8); advance per ROADMAP and the generated table follows the registry |
 
 ### 7.2 Follow-up actions
 
 | Action | Trigger | Acceptance |
 |---|---|---|
-| Human external developer trial | After GA publication | Record blockers and write them back to the docs |
-| Keyring / Vault trust-root carriers end to end | Next drill involving signed releases (requires the host Secret Service / Keychain / Credential Manager or a Vault service) | keyring / Vault trust-root resolution + `poly build` against a real plugin artifact, pass and fail paths (the env carrier is already automated by §6.6 `plugin_trust_root_env`) |
+| Human external developer trial | After GA publication | Record blockers and write them back to the docs; protocol and tasks in [INITIATIVES.en.md](INITIATIVES.en.md) M9-G2 |
+| Keyring / Vault trust-root carriers end to end | Next drill involving signed releases (requires the host Secret Service / Keychain / Credential Manager or a Vault service) | The code is wired (`default_backends()` assembles Vault from the environment); still need a real-service run of keyring / Vault trust-root resolution + `poly build` against a real plugin artifact, pass and fail paths (the env carrier is already automated by §6.6 `plugin_trust_root_env`) |
 | macOS worker + real IPA run | A macOS host is available | FARM-DEPLOY §9 logs and artifacts archived |
 | Real-cloud object storage second-run hit | An S3 / OSS bucket and credentials are available | Set `POLYPACK_S3_REAL=1` + `POLYPACK_S3_TEST_URI` and run `tests/s3_real.rs`, then a two-worker second-run hit |
-| Garmin iq packager | Conditional task triggered | Artifact structure check and real-device evidence |
+| Garmin real compile + device walkthrough | SDK + devkey + device ready | A real `.iq` passes `check_garmin_iq_structure` and completes a device / emulator walkthrough; see [ENV-SLOTS.en.md](ENV-SLOTS.en.md) |
 
-References: [README](../README.md) · [ROADMAP](ROADMAP.md) · [TASKS](TASKS.md) · [FARM-DEPLOY](FARM-DEPLOY.md) · [EXPERIMENTAL-TARGETS](EXPERIMENTAL-TARGETS.md) · 中文: [GA.md](GA.md)
+References: [README](../README.md) · [ROADMAP](ROADMAP.md) · [TASKS](TASKS.md) · [FARM-DEPLOY](FARM-DEPLOY.md) · [EXPERIMENTAL-TARGETS](EXPERIMENTAL-TARGETS.md) · [INITIATIVES](INITIATIVES.en.md) · [ENV-SLOTS](ENV-SLOTS.en.md) · 中文: [GA.md](GA.md)

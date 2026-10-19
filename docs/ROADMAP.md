@@ -430,7 +430,7 @@ CI 宿主 × 目标层矩阵：
 
 ## 9. 里程碑与任务分解
 
-> 估算按 1.5 FTE；每项任务以「可演示」为完成标准。任务级分解（113 任务 / 279.5 人日，含角色、依赖、验收标准与排期备注）见 **[TASKS.md](TASKS.md)** 与 [TASKS.en.md](TASKS.en.md)。
+> 估算按 1.5 FTE；每项任务以「可演示」为完成标准。任务级分解（116 任务 / 283 人日，含角色、依赖、验收标准与排期备注）见 **[TASKS.md](TASKS.md)** 与 [TASKS.en.md](TASKS.en.md)。
 
 ### M0 地基（2 周）
 
@@ -550,7 +550,8 @@ CI 宿主 × 目标层矩阵：
 3. 同步 `docs/ROADMAP.md` 与 `docs/ROADMAP.en.md`；任务计划同规矩（`docs/TASKS.md` / `docs/TASKS.en.md`），任务增删与估算调整须双文件同提交更新；
 4. 平台矩阵增删 = 同时更新：README 分级表（×2 语言）+ 本文件逐平台明细（×2 语言）+ 里程碑验收 + TargetSpec；
 5. Pax 由 `tools/build-pax.mjs` 单一源生成（十二种彩色表情·各自带专属动效 + 全表情循环动画版 + 项目图标 `pax-mark.svg` + 表情联系表 `pax-moods.svg` + 本地游乐场 `docs/pax.html`）；美术或表达变化时运行该脚本重新生成，并同步双 README（CI 以 `node tools/build-pax.mjs --check` 校验漂移）；
-6. 实验目标（`watchos` / `garmin`）的能力 / 缺口 / 替代方案同步 `docs/EXPERIMENTAL-TARGETS.md` 与 `docs/EXPERIMENTAL-TARGETS.en.md`（每个缺口保留替代方案或明示「无替代」；`node tools/check-experimental.mjs` 校验 TargetSpec / 文档表 / CI 三处一致）。
+6. 实验目标（`watchos` / `garmin`）的能力 / 缺口 / 替代方案同步 `docs/EXPERIMENTAL-TARGETS.md` 与 `docs/EXPERIMENTAL-TARGETS.en.md`（每个缺口保留替代方案或明示「无替代」；`node tools/check-experimental.mjs` 校验 TargetSpec / 文档表 / CI 三处一致）；
+7. 立项与环境槽文档同步：`docs/INITIATIVES.md` ↔ `.en.md`、`docs/ENV-SLOTS.md` ↔ `.en.md` 必须双文件同提交更新（`tools/check-docs.mjs` 的 PAIRS 已纳入结构校验）。
 
 ## 12. 术语表
 
@@ -569,7 +570,7 @@ CI 宿主 × 目标层矩阵：
 
 ## 13. 扩展方向（孵化池）
 
-2026-10-14 缺口审计立项：以下方向**不占当前 M0–M8 排期**；每项给出「提升为正式里程碑的触发条件」与「首步动作」，满足触发条件并经需求验证评审后进入路线图（防止凭假设开工）。
+2026-10-14 缺口审计立项：以下方向**不占当前 M0–M8 排期**；每项给出「提升为正式里程碑的触发条件」与「首步动作」，满足触发条件并经需求验证评审后进入路线图（防止凭假设开工）。每个方向的详细立项、方案、任务分解与验收标准见 **[INITIATIVES.md](INITIATIVES.md)**；环境槽关闭协议见 **[ENV-SLOTS.md](ENV-SLOTS.md)**。GA §7 缺口项目（CLI 分发、人类外部试用、环境槽收口、MSI 真样本、分支保护）的立项见 INITIATIVES §5（M9-G1..G5）。
 
 | # | 扩展 | 价值 | 提升条件 | 首步动作 |
 |---|---|---|---|---|
@@ -587,3 +588,5 @@ CI 宿主 × 目标层矩阵：
 - **许可**：已定为 **Apache-2.0**（`LICENSE` 已落地）；若未来包含 GPL 系工具链安装脚本，再评估许可证兼容；
 - **插件市场**：WASM 插件的分发形态（官方注册表 vs 去中心化索引）；
 - **远程农场**：仅自建（文档提供部署指南）还是提供托管服务。
+
+两项决策的分析、备选与候选任务见 [INITIATIVES.md](INITIATIVES.md) §4（M9-D1 / M9-D2）。

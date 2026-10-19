@@ -15,7 +15,7 @@
 //! 已注册 11 个 tier-6 目标全部登记（含带 UI 的 android-automotive / watchos / fitbit /
 //! zepp / wearos：其产物走同一 `package_target` 门禁，端到端 warn/fail 行为已由
 //! `tests/budget.rs` 的快应用同一门禁钉住；QNX 无 SDP 时按环境槽 SKIP-with-print，不伪造
-//! 产物也即无体积可判；garmin 为 Monkey C spike 阶段已记录的打包器缺口）。
+//! 产物也即无体积可判；garmin 的 iq 打包器已接线，走同一门禁）。
 //!
 //! 端到端 CLI 证据在 `POLY_CONTRACT_REAL=1` 的 `autosar_build_budget_gate_end_to_end`
 //! （真宿主静态库 + ARXML，真跑 `poly build --target autosar`）。
@@ -52,10 +52,10 @@ const TIER6_IDS: [&str; 11] = [
     "zepp",
 ];
 
-/// 打包器缺口白名单：实验目标在打包器接线前如实留缺（T-M7-09 结论=继续受限档；
-/// Monkey C 子集仍为 spike，iq 打包器归后续任务）。进入本名单的目标必须是 experimental，
-/// 且一旦出现内建打包器必须移出名单（下面的断言会失败提醒）。
-const PACKAGER_GAPS: [&str; 1] = ["garmin"];
+/// 打包器缺口白名单：实验目标在打包器接线前如实留缺。进入本名单的目标必须是
+/// experimental，且一旦出现内建打包器必须移出名单（下面的断言会失败提醒）。
+/// garmin 的 iq 打包器已接线（T-M7-09），名单清空；后续新缺口沿用此表。
+const PACKAGER_GAPS: [&str; 0] = [];
 
 struct TempDir(PathBuf);
 
@@ -221,7 +221,7 @@ fn assert_gate(artifact: &Artifact, spec: &TargetSpec) {
 
 /// 已注册 tier-6 目标全覆盖：每个声明的 format 都解析到内建打包器（= package 阶段会
 /// 走到同一预算门）；headless 集合恰好是 5 个，android-automotive / watchos / fitbit /
-/// zepp / wearos 带 UI 不入矩阵（garmin 为已记录的打包器缺口，见 [`PACKAGER_GAPS`]）。
+/// garmin / zepp / wearos 带 UI 不入矩阵（缺口见 [`PACKAGER_GAPS`]）。
 #[test]
 fn all_registered_tier6_targets_route_through_package_budget_gate() {
     let tier6: Vec<TargetSpec> = Registry::builtin()

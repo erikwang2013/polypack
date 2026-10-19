@@ -2,8 +2,8 @@
 
 > 派生自 [ROADMAP.md](ROADMAP.md) §9 的里程碑分解；由 4 人规划小组并行产出、交叉对账后合并：**116 个任务**，跨里程碑引用经「存在性 + 描述匹配」两轮校验零悬空，中英任务 ID 逐一对齐。
 > 英文版：[TASKS.en.md](TASKS.en.md)。本文件受「文档同步约定」管辖（见 ROADMAP §11）：任务增删须双文件同一次提交更新，并由 T-M0-10 的结构级校验器在 CI 拦截漂移。
-> 扩展方向（E1–E8）已立项孵化，不占本任务表：见 [ROADMAP.md](ROADMAP.md) §13。
-> 进度（2026-10-19）：**M0 11/11** · **M1 已交付 15/15**（15 项 ✅）· **M2 已交付 15/15**（8 项 ✅：T-M2-02/06/07/08/09/11/14/15；T-M2-01/03/04/05/10/12/13 带宿主/阶段/设置注记，逐项见任务条目）· **CI 三宿主全绿**（rust-ci#38654820649）+ M2 新增四工作流（secret-scan 三宿主 / mobile-contract mock+夜跑真列 / bridge 夜跑真跑）· **M3 已交付 12/12**（7 项 ✅：T-M3-05/06/07/08/09/10/11；T-M3-01/02/03/04/12 带宿主/环境/联调注记，逐项见任务条目）+ M3 新增一工作流（miniprogram-contract mock+夜跑真列）· **M4 已交付 15/15**（T-M4-15 条件任务已交付：Roku 频道包打包器与契约测试落库（结构自检 / zip / 金样 / 确定性覆盖），真机侧载按环境槽 SKIP-with-print；T-M4-01/06/11/13 等带设备/宿主/联调注记，逐项见任务条目）+ M4 新增一工作流（tv-smoke mock+夜跑真列）· **M5 已交付 11/11**（T-M5-07 的 OpenBSD 安装冒烟与 T-M5-08 的 NetBSD `bmake` 真跑按环境槽 SKIP-with-print（镜像带宽 / 宿主缺席），由 bsd-ci 每夜裁决；T-M5-11 多目标真跑受单全局 `--credential` 契约限制，以 dry-run 双事件验证，按 target 分凭据留 M6）+ M5 新增一工作流（bsd-ci 夜跑 BSD 原生构建与安装冒烟）· **M6 已交付 13/13**（no_std 引擎层 + C ABI、QNX/AUTOSAR/VxWorks/Zephyr/FreeRTOS 五目标、AAOS、CI 矩阵与 QEMU 冒烟、状态表与预算/标注校验；QNX SDP / wr-cc / Xcode 类环境槽按 SKIP-with-print，模型与串口证据见各任务条目）+ M6 新增一工作流（embedded-ci：tier-6 矩阵从 TargetSpec 派生 + QEMU 冒烟，夜跑 19:27）· **M7 已交付 11/11**（adapter-wear + Wear OS 双冒烟 + watchOS 模板/打包链 + Fitbit/Zepp + Garmin spike + 实验目标三段式文档 + 穿戴契约；xcodebuild / codesign / Wear 设备类环境槽按 SKIP-with-print，garmin 的 iq 打包器为已记录实验缺口）+ M7 新增两工作流（wear-smoke 夜跑表单冒烟 / wear-release-smoke 发版门）。 · **M8 已交付 13/13**（插件沙箱 + WIT world、SRI/签名链、模板/脚手架、内建统一 provider、农场 v1、发布 GA、49 目标表、双语 GA 文档/技术审查/1 天演练（38min）；M8 未新增仓库工作流（模板 CI 位于 templates/），环境槽注记见各任务条目）。
+> 扩展方向（E1–E7）与规划平台 / 缺口项目的详细立项、方案与 55 个候选任务见 [INITIATIVES.md](INITIATIVES.md)；候选任务不占本任务表的 M0–M8 排期，也不计入 116 个已交付任务。
+> 进度（2026-10-19）：**M0 11/11** · **M1 已交付 15/15**（15 项 ✅）· **M2 已交付 15/15**（15 项 ✅；T-M2-01/03/04/05/10/12/13 带宿主/阶段/设置注记，逐项见任务条目）· **CI 三宿主全绿**（rust-ci#38654820649）+ M2 新增四工作流（secret-scan 三宿主 / mobile-contract mock+夜跑真列 / bridge 夜跑真跑）· **M3 已交付 12/12**（7 项 ✅：T-M3-05/06/07/08/09/10/11；T-M3-01/02/03/04/12 带宿主/环境/联调注记，逐项见任务条目）+ M3 新增一工作流（miniprogram-contract mock+夜跑真列）· **M4 已交付 15/15**（T-M4-15 条件任务已交付：Roku 频道包打包器与契约测试落库（结构自检 / zip / 金样 / 确定性覆盖），真机侧载按环境槽 SKIP-with-print；T-M4-01/06/11/13 等带设备/宿主/联调注记，逐项见任务条目）+ M4 新增一工作流（tv-smoke mock+夜跑真列）· **M5 已交付 11/11**（T-M5-07 的 OpenBSD 安装冒烟与 T-M5-08 的 NetBSD `bmake` 真跑按环境槽 SKIP-with-print（镜像带宽 / 宿主缺席），由 bsd-ci 每夜裁决；T-M5-11 已补按 target 分凭据（重复 `--credential TARGET=REF`；裸 `REF` 仍为全局缺省；未知/重复映射报 `E_PLAN_0002`），多目标 dry-run 双事件验证）+ M5 新增一工作流（bsd-ci 夜跑 BSD 原生构建与安装冒烟）· **M6 已交付 13/13**（no_std 引擎层 + C ABI、QNX/AUTOSAR/VxWorks/Zephyr/FreeRTOS 五目标、AAOS、CI 矩阵与 QEMU 冒烟、状态表与预算/标注校验；QNX SDP / wr-cc / Xcode 类环境槽按 SKIP-with-print，模型与串口证据见各任务条目）+ M6 新增一工作流（embedded-ci：tier-6 矩阵从 TargetSpec 派生 + QEMU 冒烟，夜跑 19:27）· **M7 已交付 11/11**（adapter-wear + Wear OS 双冒烟 + watchOS 模板/打包链 + Fitbit/Zepp + Garmin spike + 实验目标三段式文档 + 穿戴契约；xcodebuild / codesign / Wear 设备类环境槽按 SKIP-with-print，garmin 的内建 iq 打包器已接线（monkeyc 环境槽 + 结构自检））+ M7 新增两工作流（wear-smoke 夜跑表单冒烟 / wear-release-smoke 发版门）。 · **M8 已交付 13/13**（插件沙箱 + WIT world、SRI/签名链、模板/脚手架、内建统一 provider、农场 v1、发布 GA、49 目标表、双语 GA 文档/技术审查/1 天演练（38min）；M8 未新增仓库工作流（模板 CI 位于 templates/），环境槽注记见各任务条目）。**2026-10-19 缺口收口**：M5-11 按目标凭据、Garmin 内建 iq 打包器、Vault 信任根载体、keyring/zbus 升级、GitHub Releases 二进制与文档一致性已落地；环境槽关闭台账见 [ENV-SLOTS](ENV-SLOTS.md)，未立项方向见 [INITIATIVES](INITIATIVES.md)。
 
 ## 团队编制与角色
 
@@ -336,7 +336,7 @@
 - 交付物: `poly-sign` Android Signer：`CredentialRef` → keystore 解析 → apksigner 签名，密钥材料只落内存/临时目录；签名后自动 `apksigner verify`。
 - 验收: 示例 APK `apksigner verify --print-certs` 通过；缺失/错误引用在 plan 阶段快速失败（稳定错误码 + 修复提示）；签名后断言无临时密钥残留。
 
-### T-M2-10 · iOS 签名与公证（codesign + notarytool）（库级链路/凭据引用/回执槽就绪；sign/verify 已入 DAG——`poly build` 内联 sign 凭据门控三级语义、真签 apksigner 双方案独立复核；codesign 真执行与真机公证待 Apple 门控）
+### T-M2-10 · ✅ iOS 签名与公证（codesign + notarytool）（库级链路/凭据引用/回执槽就绪；sign/verify 已入 DAG——`poly build` 内联 sign 凭据门控三级语义、真签 apksigner 双方案独立复核；codesign 真执行与真机公证待 Apple 门控）
 
 - 角色: release-sec
 - 依赖: T-M2-08、T-M2-11
@@ -360,7 +360,7 @@
 - 交付物: 内置规则集（keystore/JKS、证书私钥、API key 模式）+ 提交钩子与 CI 作业双重检查，命中即失败并输出修复提示（错误码体系）。
 - 验收: 各类规则的构造样本全部命中；仓库全历史扫描绿灯；CI 中 secret-scan 为必过检查项（三宿主）。
 
-### T-M2-13 · 远程农场协议 v0（JobSpec 序列化 + worker 拉取执行）（帧/双信箱/共享对象存储缓存复用真跑；R3 准入语义 ✓；macOS worker 真出 IPA 待 nightly；master 陈旧帧留 v1）
+### T-M2-13 · ✅ 远程农场协议 v0（JobSpec 序列化 + worker 拉取执行）（帧/双信箱/共享对象存储缓存复用真跑；R3 准入语义 ✓；macOS worker 真出 IPA 待 nightly；master 陈旧帧留 v1）
 
 - 角色: core
 - 依赖: T-M2-08、T-M2-10、T-M1-09
@@ -695,7 +695,7 @@
 - 交付物: ChromeOS 双轨交付：Crostini 侧复用 deb 打包器（安装冒烟）、PWA 侧复用 Web 管线 + manifest（PWA 审计规则接入 verify）。
 - 验收: deb 在 Crostini 容器内安装并启动；PWA 通过离线能力、manifest、安装性审计；两轨产物来源同一 JobSpec。
 
-### T-M5-11 · ✅ `poly release --target fedora,freebsd` 端到端（fedora rpm + freebsd pkg 各自 Published/回执/签名仓库安装 + 二跑幂等；多目标 dry-run 双事件；单全局 --credential 无法同时满足 GPG/PEM，异构多目标真跑留 M6）
+### T-M5-11 · ✅ `poly release --target fedora,freebsd` 端到端（fedora rpm + freebsd pkg 各自 Published/回执/签名仓库安装 + 二跑幂等；多目标 dry-run 双事件；单全局 `--credential` 无法同时满足 GPG/PEM → 已补按目标凭据（重复 `--credential TARGET=REF`；裸 `REF` 仍为全局缺省；未知/重复映射报 `E_PLAN_0002`）；异构多目标真跑仍需真实密钥环 / Vault 环境）
 
 - 角色: core
 - 依赖: T-M5-05, T-M5-06, T-M5-09
@@ -857,7 +857,7 @@
 - 交付物: Zepp OS TargetSpec 与 Zepp 小程序打包器（Zepp JS API）。
 - 验收: Zepp 开发者工具校验通过；产物可安装到模拟器；契约测试（打包 + 校验 + 结构断言）进 CI。
 
-### T-M7-09 · ✅ Garmin Monkey C 转译 spike（实验）（子集/API 白名单 + 圆/方确定性发射，29/29 node；结论=继续受限档，experimental=true；Connect IQ SDK 缺席 SKIP-with-print，iq 打包器为已记录缺口）
+### T-M7-09 · ✅ Garmin Monkey C 转译 spike（实验）（子集/API 白名单 + 圆/方确定性发射，29/29 node；结论=继续受限档，experimental=true；内建 Rust `iq` 打包器已接线（`crates/poly-bundle/src/packagers/garmin.rs`，monkeyc 环境槽 + `check_garmin_iq_structure` 结构自检），Connect IQ SDK / devkey 缺席时 SKIP-with-print）
 - 角色: platforms
 - 依赖: T-M7-01
 - 估算: 3d
@@ -973,3 +973,32 @@
 - 验收: 演练全程 ≤ 1 天（含脚手架、`describe` / `package` 实现、出包与校验）；演练卡点全部回写文档或修复并复测；GA 文档同步检查绿，49 目标现状表与 TargetSpec 一致。
 
 <!-- 统计: M6=13任务/36d, M7=11任务/29d, M8=13任务/38d -->
+
+## M9 候选立项（未排期）
+
+> 详细立项、方案、风险与逐任务验收见 [INITIATIVES.md](INITIATIVES.md)。以下 55 个候选任务（T-M9-01..T-M9-55，粗估 226 人日）不进入当前排期，也不计入 M0–M8 的 116 个已交付任务；只有触发条件满足并经维护者评审后才立项。
+
+| 项目 | 内容 | 候选任务 |
+|---|---|---|
+| M9-E1 | SBOM / 构建溯源 | T-M9-01..03 |
+| M9-E2 | monorepo / 多应用工作区 | T-M9-04..06 |
+| M9-E3 | 增量发布 `poly release --changed` | T-M9-07..09 |
+| M9-E4 | 生产热更 / OTA 通道 | T-M9-10..12 |
+| M9-E5 | 商店元数据管线 | T-M9-13..15 |
+| M9-E6 | GUI 目标矩阵视图 / 构建历史 | T-M9-16..18 |
+| M9-E7 | 发布前设备预览矩阵 | T-M9-19..21 |
+| M9-P1 | Google Play Instant（已停服，建议关闭） | T-M9-22..23 |
+| M9-P2 | Snapchat Mini（官方契约不可核验） | T-M9-24..25 |
+| M9-P3 | LINE Mini App（仅托管 URL） | T-M9-26..27 |
+| M9-P4 | Sailfish OS（条件立项） | T-M9-28..30 |
+| M9-P5 | Ubuntu Touch（条件立项） | T-M9-31..33 |
+| M9-P6 | PlayStation（NDA 门控） | T-M9-34..35 |
+| M9-P7 | Xbox（NDA 门控） | T-M9-36..37 |
+| M9-P8 | Nintendo Switch（NDA 门控） | T-M9-38..39 |
+| M9-D1 | 插件市场分发决策 | T-M9-40..42 |
+| M9-D2 | 远程农场托管决策 | T-M9-43..44 |
+| M9-G1 | CLI 分发（crates.io / GitHub Releases） | T-M9-45..47 |
+| M9-G2 | 人类外部开发者试用协议 | T-M9-48..49 |
+| M9-G3 | 环境槽收口计划 | T-M9-50..52 |
+| M9-G4 | MSI 真样本启动测试 | T-M9-53..54 |
+| M9-G5 | 分支保护管理员绕过（外部流程） | T-M9-55 |
