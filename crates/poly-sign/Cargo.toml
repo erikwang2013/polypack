@@ -30,23 +30,19 @@ ureq = { version = "3.4", default-features = false, features = [
 # security-framework；Windows：schannel API——许可证全在 deny.toml 白名单内。
 rustls-native-certs = "0.8"
 
-# keyring v3 无 default feature，必须按平台显式选后端（否则落到其内置 mock store）。
-# Linux 用 async-secret-service（secret-service + zbus，纯 Rust）：只依赖会话总线，
-# 不需要系统 libdbus（sync-secret-service / dbus-secret-service 才会链到 libdbus）。
+# keyring v4 的 `v1` 兼容特性暴露与 v3 相同的 `Entry` API，且按目标平台自动选后端：
+# Linux / *nix 用 zbus-secret-service（纯 Rust，只依赖会话总线，不链系统 libdbus），
+# macOS = Keychain，Windows = Credential Manager；不支持的平台 Entry::new 返回
+# NoDefaultStore（`available()` 报错并提示改用 Env / Memory 注入），仍可编译。
 [target.'cfg(target_os = "linux")'.dependencies]
-keyring = { version = "3.6.3", default-features = false, features = [
-    "async-secret-service",
-    "async-io",
-    "crypto-rust",
-] }
+keyring = { version = "4.2.0", default-features = false, features = ["v1"] }
 [target.'cfg(target_os = "macos")'.dependencies]
-keyring = { version = "3.6.3", default-features = false, features = ["apple-native"] }
+keyring = { version = "4.2.0", default-features = false, features = ["v1"] }
 [target.'cfg(target_os = "windows")'.dependencies]
-keyring = { version = "3.6.3", default-features = false, features = ["windows-native"] }
-# 其余平台（BSD 等）没有原生后端：退回 keyring 内置 mock store 保证可编译，
-# 运行时 `available()` 探测失败并给出改用 Env / Memory 注入的提示。
+keyring = { version = "4.2.0", default-features = false, features = ["v1"] }
+# 其余平台（BSD 等）：`v1` 在非 macOS / iOS / Android 的 *nix 上同样启用 zbus 后端。
 [target.'cfg(not(any(target_os = "linux", target_os = "macos", target_os = "windows")))'.dependencies]
-keyring = { version = "3.6.3", default-features = false }
+keyring = { version = "4.2.0", default-features = false, features = ["v1"] }
 
 [dev-dependencies]
 # 测试自造最小 APK（zip 容器）；与 poly-bundle 同版本同 feature，不引入新的第三方树。
@@ -54,14 +50,9 @@ zip = { version = "9.0.3", default-features = false, features = ["deflate"] }
 
 # 真总线闭环（tests/keyring_real.rs）的写 / 删侧：`KeyringBackend` 本体只读，写删得直接
 # 用 keyring crate。同版本同特性 = 与依赖侧共用同一编译实例，不引入新的第三方树；
-# 只在 Linux 声明（真跑形态是 headless secret-service，测试文件本身也 `cfg(linux)`），
-# 避免在 macOS / Windows 上把 secret-service 后端特性并进 apple-native / windows-native。
+# 只在 Linux 声明（真跑形态是 headless secret-service，测试文件本身也 `cfg(linux)`）。
 [target.'cfg(target_os = "linux")'.dev-dependencies]
-keyring = { version = "3.6.3", default-features = false, features = [
-    "async-secret-service",
-    "async-io",
-    "crypto-rust",
-] }
+keyring = { version = "4.2.0", default-features = false, features = ["v1"] }
 
 [lints]
 workspace = true

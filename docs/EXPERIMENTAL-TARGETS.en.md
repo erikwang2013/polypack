@@ -49,8 +49,8 @@ Continue (constrained). `experimental = true` stays; the capability boundary shi
 | UI subset | View / card / text / Pressable composite (background + focus ring + label); colors / spacing / safe area share adapter-wear tokens; round 454×454 and square 320×320 reference viewports | Draft §2 tables A/C |
 | Interaction subset | Three keys UP / DOWN / SELECT / BACK; focus order = the shared focus kernel's `engine.order` linear cycle; Back history mirrors the kernel | Draft §2 table B |
 | Connect IQ project | `manifest.xml` + `monkey.jungle` + `resources/strings/strings.xml` + `source/*.mc`; reference devices `venu2` / `venusq`; app id = first 32 hex of `sha256(identifier)` | Draft §2 table D |
-| Verification | 29/29 tests: transpile determinism, subset / API allowlist positive and negative cases, XML / project / `.iq` entry assertions; `npm run build` really runs the structure self-check | Draft §5; `ui/adapters/garmin/test/` |
-| Compiler leg (when environment is ready) | `monkeyc -e -w -r -o out.iq -y <devkey> -f monkey.jungle` → `.iq` (`manifest.xml` + per-device `.prg`); devkey path only (`CIQ_DEVKEY`) | Draft §2 table D, §5 |
+| Verification | 29/29 Node tests plus the built-in Rust `.iq` structure check (root `manifest.xml` + ≥1 per-device `.prg`); the `iq-structure-check` verifier is wired into `poly verify`; `npm run build` really runs the structure self-check | Draft §5; `ui/adapters/garmin/test/`; `crates/poly-bundle/tests/packagers_garmin.rs` |
+| Compiler leg (when environment is ready) | The Rust packager `crates/poly-bundle/src/packagers/garmin.rs` resolves `<project>/garmin` (or the host root) and runs `monkeyc -e -w -r -o out.iq -y <devkey> -f monkey.jungle` → `.iq` (`manifest.xml` + per-device `.prg`); devkey path only (`CIQ_DEVKEY`) | Draft §2 table D, §5; `crates/poly-bundle/src/packagers/garmin.rs` |
 
 ### 3.2 Gaps and alternatives
 
@@ -65,11 +65,11 @@ Continue (constrained). `experimental = true` stays; the capability boundary shi
 | G7 | Assets / icons / launch images are missing | Manifest omits icon fields (development sideload form) | Asset pipeline to follow; this spike emits only the `AppName` string resource |
 | G8 | Only one reference device per form (`venu2` / `venusq`) | No multi-device product matrix | `iq:products` can be extended as needed; the scaling formula based on `dc.getWidth()/getHeight()` is generic |
 | G9 | Minimal lifecycle: no `onStart` / `onStop` persistence | State resets after exit / restart | The example page is transient by design; `Application.Storage` is not in the allowlist and is a follow-up extension |
-| G10 | No built-in Rust `iq` packager: the spike is a standalone Node module | The package stage of `poly build --target garmin` cannot produce a bundle | SKIP-with-print with "no built-in packager (format = iq)", never faking a `.iq`; alternative: `npm test` / `npm run build` in `ui/adapters/garmin` (structure self-check + compiler environment slots); the Rust packager is a conditional task |
+| G10 | No real Connect IQ SDK / device evidence: the built-in packager performs structure self-checks only | Real `.iq` compilation and device behavior still require the environment slots; the structure can be checked for real by the Rust verifier | The built-in `iq` packager + `check_garmin_iq_structure` have landed; set `CIQ_MONKEYC` / `CIQ_HOME` / `CONNECTIQ_HOME` + `CIQ_DEVKEY` to run the compiler; "compiler / device evidence" has no alternative (needs SDK + key + device) |
 
 ### 3.3 Conclusion
 
-Continue (constrained). `experimental = true` stays. Trigger prerequisite: one Connect IQ SDK compile + a device / emulator walkthrough (this machine has no `monkeyc` / SDK / devkey, so the compiler leg is SKIP-with-print). Degrade option (if not undertaken): keep only the L6 TargetSpec + `experimental` + capability boundary (no Rust packager / no example-page promise).
+Continue (constrained). `experimental = true` stays. Trigger prerequisite: one Connect IQ SDK compile + a device / emulator walkthrough (this machine has no `monkeyc` / SDK / devkey, so the compiler leg is SKIP-with-print). Degrade option (if not undertaken): keep the L6 TargetSpec + `experimental` + capability boundary + the built-in packager / structure check, but do not promise compiler / device evidence.
 
 ## 4. Non-experimental target: Wear OS boundary
 
@@ -86,4 +86,4 @@ Continue (constrained). `experimental = true` stays. Trigger prerequisite: one C
 | Gap / alternative changes | Update this file and the README L6 notes in the same commit; every gap must keep an alternative or explicitly say "no alternative" |
 | CI checks | `node tools/gen-target-table.mjs --check`; `node tools/check-docs.mjs`; `node tools/check-experimental.mjs` |
 
-Sources: `ui/adapters/garmin/CAPABILITY-BOUNDARY-DRAFT.md` (T-M7-09), `crates/poly-cli/templates/watchos/README.md`, `crates/poly-bundle/src/packagers/watchos.rs`, TargetSpec notes.
+Sources: `ui/adapters/garmin/CAPABILITY-BOUNDARY-DRAFT.md` (T-M7-09), `crates/poly-bundle/src/packagers/garmin.rs`, `crates/poly-cli/templates/watchos/README.md`, `crates/poly-bundle/src/packagers/watchos.rs`, TargetSpec notes.

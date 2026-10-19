@@ -223,6 +223,10 @@ enum Verifier {
     /// Zepp `.zab` 结构自检（[`poly_bundle::check_zepp_structure`]：外层清单 / zpk md5 /
     /// device.zip）+ 在场时的 `zeus --version`；模拟器安装腿不可得，SKIP-with-print，T-M7-08。
     ZeppStructure,
+    /// Garmin Connect IQ `.iq` 结构自检（[`poly_bundle::check_garmin_iq_structure`]：包根
+    /// `manifest.xml` + ≥1 个按设备 `.prg`，与打包器同一实现，T-M7-09）；编译器 / SDK /
+    /// 开发者密钥是打包环境槽，缺席时 verify 只校验已产出的 `.iq`。
+    GarminIqStructure,
     /// deb 结构检查 + 在场时的官方 lintian（`--fail-on error`），T-M5-01。
     DebLint,
     /// rpm 结构检查 + 在场时的官方 rpmlint，T-M5-01。
@@ -283,6 +287,7 @@ fn verifier_for(id: &str) -> Option<Verifier> {
         "facebook-instant-games-structure-check" => Some(Verifier::FacebookInstantGamesStructure),
         "fitbit-structure-check" => Some(Verifier::FitbitStructure),
         "zepp-structure-check" => Some(Verifier::ZeppStructure),
+        "iq-structure-check" => Some(Verifier::GarminIqStructure),
         "lintian" => Some(Verifier::DebLint),
         "rpmlint" => Some(Verifier::RpmLint),
         "appimage-structure" => Some(Verifier::AppimageStructure),
@@ -320,10 +325,6 @@ fn verifier_owner(id: &str) -> Option<&'static str> {
         "wechat-devtools-cli" | "alipay-devtools-cli" | "douyin-devtools-cli" => {
             Some("小程序开发者工具 CLI 校验（T-M3-11；本机无 devtools 时 SKIP-with-print）")
         }
-        "iq-structure-check" => Some(
-            "Garmin `.iq` 工程 / 包结构自检（T-M7-09 Node spike 已实现：manifest / jungle / \
-             strings / Monkey C 子集；Rust 校验器接线归 T-M7-10）",
-        ),
         _ => None,
     }
 }
@@ -419,6 +420,7 @@ fn verify_target(
     let mut facebook_ids: Vec<String> = Vec::new();
     let mut fitbit_ids: Vec<String> = Vec::new();
     let mut zepp_ids: Vec<String> = Vec::new();
+    let mut garmin_ids: Vec<String> = Vec::new();
     let mut deb_ids: Vec<String> = Vec::new();
     let mut rpm_ids: Vec<String> = Vec::new();
     let mut appimage_ids: Vec<String> = Vec::new();
@@ -452,6 +454,7 @@ fn verify_target(
             Some(Verifier::FacebookInstantGamesStructure) => facebook_ids.push(id.clone()),
             Some(Verifier::FitbitStructure) => fitbit_ids.push(id.clone()),
             Some(Verifier::ZeppStructure) => zepp_ids.push(id.clone()),
+            Some(Verifier::GarminIqStructure) => garmin_ids.push(id.clone()),
             Some(Verifier::DebLint) => deb_ids.push(id.clone()),
             Some(Verifier::RpmLint) => rpm_ids.push(id.clone()),
             Some(Verifier::AppimageStructure) => appimage_ids.push(id.clone()),
@@ -533,6 +536,9 @@ fn verify_target(
     }
     if !zepp_ids.is_empty() {
         checked |= verify_zepp(project, spec, &zepp_ids, events)?;
+    }
+    if !garmin_ids.is_empty() {
+        checked |= verify_garmin(project, spec, &garmin_ids, events)?;
     }
     if !deb_ids.is_empty() {
         checked |= verify_deb_lint(project, spec, &deb_ids, events)?;
@@ -2183,6 +2189,71 @@ fn verify_zepp(
     Ok(true)
 }
 
+/// Garmin Connect IQ `.iq` 校验腿（`iq-structure-check`，T-M7-09）：与打包器**同一份**
+/// 结构检查（[`poly_bundle::check_garmin_iq_structure`]：包根 `manifest.xml` + ≥1 个
+/// 按设备 `.prg`）。编译器 / SDK / 开发者密钥是打包环境槽；verify 只校验已产出的 `.iq`，
+/// 缺产物时如实告警跳过，绝不假装编译或设备验证过。
+fn verify_garmin(
+    project: &Project,
+    spec: &TargetSpec,
+    ids: &[String],
+    events: &mut dyn EventSink,
+) -> Result<bool, StageError> {
+    let staged = project::packages_root(&project.root).join(&spec.id);
+    let Some((package, count)) = staged_file(&staged, "iq") else {
+        warning(
+            events,
+            &format!(
+                "目标 {} 未校验：{} 下没有 *.iq（先跑 poly build 把产物流到打包暂存目录；\
+                 Connect IQ SDK / $CIQ_DEVKEY 缺席时打包按环境槽跳过）",
+                spec.id,
+                staged.display()
+            ),
+        );
+        return Ok(false);
+    };
+    if count > 1 {
+        warning(
+            events,
+            &format!(
+                "目标 {} 的产物有 {count} 份 .iq（取最新一份 {}）",
+                spec.id,
+                package.display()
+            ),
+        );
+    }
+    let structure = match poly_bundle::check_garmin_iq_structure(&package) {
+        Ok(structure) => structure,
+        Err(err) => return Err(bundle_diagnostic(spec, &err).into()),
+    };
+    warning(
+        events,
+        &format!(
+            "目标 {} 的 .iq 结构自检：{} 条目，按设备 .prg {} 个（{}），{} 字节",
+            spec.id,
+            structure.entries.len(),
+            structure.prg_entries.len(),
+            structure.prg_entries.join(", "),
+            structure.bytes
+        ),
+    );
+    warning(
+        events,
+        &format!(
+            "目标 {} 的 Connect IQ 编译 / 真机腿 SKIP-with-print：本机不执行 monkeyc 与设备走查；\
+             结构自检已真跑，编译器实证需 Connect IQ SDK + 开发者密钥",
+            spec.id
+        ),
+    );
+    for id in ids {
+        events.emit(&BuildEvent::Verified {
+            checker: id.clone(),
+            ok: true,
+        });
+    }
+    Ok(true)
+}
+
 /// 暂存目录下的 ports 骨架（`<staged>/ports/<DISTNAME>/`；多个取字典序最后一份）。
 fn staged_ports_dir(staged: &Path) -> Option<(PathBuf, usize)> {
     let mut dirs: Vec<PathBuf> = std::fs::read_dir(staged.join("ports"))
@@ -3250,6 +3321,59 @@ mod tests {
             verifier_owner("sideload-structure-check").is_none(),
             "已接入的校验器不得再留 owner 占位"
         );
+    }
+
+    /// Garmin 的 `iq-structure-check` 已由 owner 占位转为真实现（T-M7-09 Rust 打包器接线）。
+    #[test]
+    fn garmin_iq_structure_check_is_served_and_verifies_staged_iq() {
+        let garmin = Registry::builtin()
+            .get("garmin")
+            .expect("内建 garmin 目标")
+            .clone();
+        assert_eq!(garmin.verify, vec!["iq-structure-check"]);
+        assert_eq!(
+            verifier_for("iq-structure-check"),
+            Some(Verifier::GarminIqStructure)
+        );
+        assert!(
+            verifier_owner("iq-structure-check").is_none(),
+            "已接入的校验器不得再留 owner 占位"
+        );
+
+        let (root, project) = fixture("garmin");
+        let staged = root.join(".polypack").join("packages").join("garmin");
+        std::fs::create_dir_all(&staged).expect("staged 目录可建");
+        let src = root.join("iq-src");
+        std::fs::create_dir_all(&src).expect("合成输入目录可建");
+        let manifest = src.join("manifest.xml");
+        std::fs::write(
+            &manifest,
+            "<iq:manifest version=\"3\"><iq:application/></iq:manifest>",
+        )
+        .expect("写 manifest");
+        let prg = src.join("venu2.prg");
+        std::fs::write(&prg, b"PRG\0").expect("写 .prg");
+        let package = staged.join("fixture-app-0.0.1.iq");
+        poly_bundle::zipwrite::write_zip(
+            &[
+                ("manifest.xml".to_string(), manifest),
+                ("venu2.prg".to_string(), prg),
+            ],
+            &package,
+        )
+        .expect("合成 .iq");
+
+        let mut sink = poly_core::events::HumanSink {
+            out: Vec::<u8>::new(),
+        };
+        assert!(
+            verify_target(&project, &garmin, &mut sink).expect("staged .iq 应通过结构自检"),
+            "garmin 的 iq-structure-check 应真跑"
+        );
+        let text = String::from_utf8_lossy(&sink.out).into_owned();
+        assert!(text.contains("结构自检"), "{text}");
+        assert!(text.contains("SKIP-with-print"), "{text}");
+        let _ = std::fs::remove_dir_all(&root);
     }
 
     /// KaiOS 的 `kaios-structure-check` 已接入，与打包器共用结构检查。

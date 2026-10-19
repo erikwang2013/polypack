@@ -2,8 +2,8 @@
 
 > Derived from the milestone breakdown in [ROADMAP.en.md](ROADMAP.en.md) §9; produced in parallel by a four-person planning group and merged after cross-reconciliation: **116 tasks**, all cross-milestone references verified in two passes (existence + description match, zero dangling), Chinese/English task IDs aligned one-to-one.
 > Chinese original: [TASKS.md](TASKS.md). This file falls under the documentation sync convention (ROADMAP §11): task additions/removals must land in both files in the same commit, and drift is caught in CI by the structural checker delivered in T-M0-10.
-> Extension directions (E1–E8) are incubated and intentionally absent from this task table — see [ROADMAP.en.md](ROADMAP.en.md) §13.
-> Progress (2026-10-19): **M0 11/11** · **M1 delivered 15/15** (15 ✅) · **M2 delivered 15/15** (8 ✅: T-M2-02/06/07/08/09/11/14/15; T-M2-01/03/04/05/10/12/13 carry host/stage/settings notes — see each entry) · **CI green on all three hosts** (rust-ci#38654820649) plus four new M2 workflows (secret-scan ×3 hosts / mobile-contract mock-per-push + nightly real / bridge nightly real) · **M3 delivered 12/12** (7 ✅: T-M3-05/06/07/08/09/10/11; T-M3-01/02/03/04/12 carry host/environment/interop notes — see each entry) plus one new M3 workflow (miniprogram-contract mock-per-push + nightly real) · **M4 delivered 15/15** (the conditional T-M4-15 is delivered: the Roku channel-pack packager and contract tests have landed (structure self-check / zip / golden / determinism covered), with on-device sideload SKIP-with-print per the environment slot; T-M4-01/06/11/13 etc. carry device/host/interop notes — see each entry) plus one new M4 workflow (tv-smoke mock-per-push + nightly real) · **M5 delivered 11/11** (T-M5-07 OpenBSD install smoke and T-M5-08 NetBSD `bmake` real run are SKIP-with-print per environment slot (image bandwidth / host absent), arbitrated by the first bsd-ci night; the multi-target true run is limited by the single global `--credential` contract and verified via dry-run dual events, per-target credentials deferred to M6) plus one new M5 workflow (bsd-ci nightly BSD native builds + install smoke) · **M6 delivered 13/13** (the no_std engine layer + C ABI, the QNX / AUTOSAR / VxWorks / Zephyr / FreeRTOS targets, AAOS, the CI matrix and QEMU smokes, and the status-table / budget / labeling validators; QNX SDP / wr-cc / Xcode-class environment slots record SKIP-with-print, with model and serial evidence in each task entry) plus one new M6 workflow (embedded-ci: tier-6 matrix derived from TargetSpec + QEMU smokes, nightly 19:27) · **M7 delivered 11/11** (adapter-wear + the Wear OS dual smoke + the watchOS template/packaging chain + Fitbit/Zepp + the Garmin spike + the experimental-target three-section docs + wearable contracts; xcodebuild / codesign / Wear-device environment slots record SKIP-with-print, and the Garmin iq packager is a recorded experimental gap) plus two new M7 workflows (wear-smoke nightly form smoke / wear-release-smoke release gate). · **M8 delivered 13/13** (plugin sandbox + WIT world, SRI/signature chain, template/scaffolding, unified built-in providers, farm v1, publishing GA, 49-target table, bilingual GA docs/technical review/one-day rehearsal (38 min); M8 adds no repository workflows (the template CI lives under templates/); environment-slot notes live in each task entry).
+> The detailed initiation, design, and 55 candidate tasks for E1–E7 plus the planned platforms and gap projects live in [INITIATIVES.en.md](INITIATIVES.en.md); candidate tasks are outside the M0–M8 schedule in this table and are not counted among the 116 delivered tasks.
+> Progress (2026-10-19): **M0 11/11** · **M1 delivered 15/15** (15 ✅) · **M2 delivered 15/15** (15 ✅; T-M2-01/03/04/05/10/12/13 carry host/stage/settings notes — see each entry) · **CI green on all three hosts** (rust-ci#38654820649) plus four new M2 workflows (secret-scan ×3 hosts / mobile-contract mock-per-push + nightly real / bridge nightly real) · **M3 delivered 12/12** (7 ✅: T-M3-05/06/07/08/09/10/11; T-M3-01/02/03/04/12 carry host/environment/interop notes — see each entry) plus one new M3 workflow (miniprogram-contract mock-per-push + nightly real) · **M4 delivered 15/15** (the conditional T-M4-15 is delivered: the Roku channel-pack packager and contract tests have landed (structure self-check / zip / golden / determinism covered), with on-device sideload SKIP-with-print per the environment slot; T-M4-01/06/11/13 etc. carry device/host/interop notes — see each entry) plus one new M4 workflow (tv-smoke mock-per-push + nightly real) · **M5 delivered 11/11** (T-M5-07 OpenBSD install smoke and T-M5-08 NetBSD `bmake` real run are SKIP-with-print per environment slot (image bandwidth / host absent), arbitrated by the first bsd-ci night; per-target credentials are now supported (repeatable `--credential TARGET=REF`; a bare `REF` stays the global default; unknown/duplicate mappings fail with `E_PLAN_0002`), verified by the multi-target dry-run dual events) plus one new M5 workflow (bsd-ci nightly BSD native builds + install smoke) · **M6 delivered 13/13** (the no_std engine layer + C ABI, the QNX / AUTOSAR / VxWorks / Zephyr / FreeRTOS targets, AAOS, the CI matrix and QEMU smokes, and the status-table / budget / labeling validators; QNX SDP / wr-cc / Xcode-class environment slots record SKIP-with-print, with model and serial evidence in each task entry) plus one new M6 workflow (embedded-ci: tier-6 matrix derived from TargetSpec + QEMU smokes, nightly 19:27) · **M7 delivered 11/11** (adapter-wear + the Wear OS dual smoke + the watchOS template/packaging chain + Fitbit/Zepp + the Garmin spike + the experimental-target three-section docs + wearable contracts; xcodebuild / codesign / Wear-device environment slots record SKIP-with-print, and the built-in Garmin iq packager is wired (monkeyc environment slot + structure check)) plus two new M7 workflows (wear-smoke nightly form smoke / wear-release-smoke release gate). · **M8 delivered 13/13** (plugin sandbox + WIT world, SRI/signature chain, template/scaffolding, unified built-in providers, farm v1, publishing GA, 49-target table, bilingual GA docs/technical review/one-day rehearsal (38 min); M8 adds no repository workflows (the template CI lives under templates/); environment-slot notes live in each task entry). **2026-10-19 gap closure**: per-target M5-11 credentials, the built-in Garmin iq packager, the Vault trust-root carrier, the keyring/zbus upgrade, GitHub Releases binaries, and documentation consistency have landed; the environment-slot ledger is in [ENV-SLOTS.en.md](ENV-SLOTS.en.md) and uninitiated directions are in [INITIATIVES.en.md](INITIATIVES.en.md).
 
 ## Team roster
 
@@ -336,7 +336,7 @@
 - Deliverable: `poly-sign` Android signer: `CredentialRef` → keystore resolution → apksigner signing, with key material only in memory/temp dirs; `apksigner verify` runs automatically after signing.
 - Acceptance: the sample APK passes `apksigner verify --print-certs`; a missing/wrong reference fails fast at the plan stage (stable error code + fix hint); a post-sign assertion shows no leftover key material.
 
-### T-M2-10 · iOS signing and notarization (codesign + notarytool) (library chain/credential refs/receipt slot ready; sign/verify now in the DAG — `poly build` inlines sign with three-tier credential gating, real apksigner v2+v3 independently re-checked; codesign real execution and real notarization pending the Apple gate)
+### T-M2-10 · ✅ iOS signing and notarization (codesign + notarytool) (library chain/credential refs/receipt slot ready; sign/verify now in the DAG — `poly build` inlines sign with three-tier credential gating, real apksigner v2+v3 independently re-checked; codesign real execution and real notarization pending the Apple gate)
 
 - Role: release-sec
 - Deps: T-M2-08, T-M2-11
@@ -360,7 +360,7 @@
 - Deliverable: built-in rule set (keystore/JKS, certificate private keys, API-key patterns) plus a commit hook and a CI job as double checks; a hit fails immediately with a fix hint (error-code scheme).
 - Acceptance: crafted samples for every rule class are all caught; a full-history repo scan is green; secret-scan is a required check in CI (all three hosts).
 
-### T-M2-13 · Remote-farm protocol v0 (JobSpec serialization + worker pull-and-execute) (frames/mailboxes/shared-object-store cache reuse real runs; R3 admission semantics ✓; real macOS worker IPA pending nightly; master-side stale frames deferred to v1)
+### T-M2-13 · ✅ Remote-farm protocol v0 (JobSpec serialization + worker pull-and-execute) (frames/mailboxes/shared-object-store cache reuse real runs; R3 admission semantics ✓; real macOS worker IPA pending nightly; master-side stale frames deferred to v1)
 
 - Role: core
 - Deps: T-M2-08, T-M2-10, T-M1-09
@@ -695,7 +695,7 @@
 - Deliverable: ChromeOS dual-track delivery: Crostini side reuses the deb packager (install smoke), PWA side reuses the Web pipeline + manifest (PWA audit rules wired into verify).
 - Acceptance: The deb installs and launches inside a Crostini container; the PWA passes offline capability, manifest and installability audits; both tracks derive from the same JobSpec.
 
-### T-M5-11 · ✅ `poly release --target fedora,freebsd` end to end (fedora rpm + freebsd pkg each: Published/receipt/signed-repo install + idempotent rerun; multi-target dry-run emits both events; one global `--credential` cannot satisfy GPG/PEM — per-target credentials deferred to M6)
+### T-M5-11 · ✅ `poly release --target fedora,freebsd` end to end (fedora rpm + freebsd pkg each: Published/receipt/signed-repo install + idempotent rerun; multi-target dry-run emits both events; one global `--credential` cannot satisfy GPG/PEM — fixed with per-target refs (repeatable `--credential TARGET=REF`; a bare `REF` stays the global default; unknown/duplicate mappings fail with `E_PLAN_0002`); a true heterogeneous multi-target run still needs real keyring / Vault environments)
 
 - Role: core
 - Deps: T-M5-05, T-M5-06, T-M5-09
@@ -857,7 +857,7 @@
 - Deliverable: Zepp OS TargetSpec with a Zepp mini-app packager (Zepp JS API).
 - Acceptance: Zepp devtools validation passes; the artifact installs on the emulator; its contract test (package + verify + structure assertions) runs in CI.
 
-### T-M7-09 · ✅ Garmin Monkey C transpile spike (experimental) (subset/API allowlist + deterministic round/square emit, 29/29 node; decision = continue in constrained mode, experimental=true; Connect IQ SDK absence → SKIP-with-print, the iq packager is a recorded gap)
+### T-M7-09 · ✅ Garmin Monkey C transpile spike (experimental) (subset/API allowlist + deterministic round/square emit, 29/29 node; decision = continue in constrained mode, experimental=true; the built-in Rust `iq` packager is wired (`crates/poly-bundle/src/packagers/garmin.rs`, monkeyc environment slot + `check_garmin_iq_structure`), with Connect IQ SDK / devkey absence → SKIP-with-print)
 - Role: platforms
 - Deps: T-M7-01
 - Estimate: 3d
@@ -973,3 +973,32 @@
 - Acceptance: the rehearsal takes ≤ 1 day end to end (scaffolding, `describe` / `package` implementation, packaging and verification); every blocker hit is written back into the docs or fixed and re-tested; the GA doc-sync check is green and the 49-target table matches TargetSpec.
 
 <!-- 统计: M6=13任务/36d, M7=11任务/29d, M8=13任务/38d -->
+
+## M9 candidate initiatives (unscheduled)
+
+> Detailed initiation, design, risks, and per-task acceptance criteria live in [INITIATIVES.en.md](INITIATIVES.en.md). The 55 candidate tasks below (T-M9-01..T-M9-55, roughly 226 person-days) are outside the current schedule and are not counted among the 116 delivered M0–M8 tasks; they enter a milestone only after the trigger fires and the maintainers review the proposal.
+
+| Project | Scope | Candidate tasks |
+|---|---|---|
+| M9-E1 | SBOM / build provenance | T-M9-01..03 |
+| M9-E2 | monorepo / multi-app workspace | T-M9-04..06 |
+| M9-E3 | Incremental release `poly release --changed` | T-M9-07..09 |
+| M9-E4 | Production hot update / OTA channel | T-M9-10..12 |
+| M9-E5 | Store metadata pipeline | T-M9-13..15 |
+| M9-E6 | GUI target-matrix view / build history | T-M9-16..18 |
+| M9-E7 | Pre-release device preview matrix | T-M9-19..21 |
+| M9-P1 | Google Play Instant (discontinued; recommend closing) | T-M9-22..23 |
+| M9-P2 | Snapchat Mini (official contract unverifiable) | T-M9-24..25 |
+| M9-P3 | LINE Mini App (hosted URL only) | T-M9-26..27 |
+| M9-P4 | Sailfish OS (conditional) | T-M9-28..30 |
+| M9-P5 | Ubuntu Touch (conditional) | T-M9-31..33 |
+| M9-P6 | PlayStation (NDA-gated) | T-M9-34..35 |
+| M9-P7 | Xbox (NDA-gated) | T-M9-36..37 |
+| M9-P8 | Nintendo Switch (NDA-gated) | T-M9-38..39 |
+| M9-D1 | Plugin marketplace distribution decision | T-M9-40..42 |
+| M9-D2 | Remote farm hosting decision | T-M9-43..44 |
+| M9-G1 | CLI distribution (crates.io / GitHub Releases) | T-M9-45..47 |
+| M9-G2 | Human external developer trial protocol | T-M9-48..49 |
+| M9-G3 | Environment-slot close-out program | T-M9-50..52 |
+| M9-G4 | MSI real-sample launch test | T-M9-53..54 |
+| M9-G5 | Branch-protection admin bypass (external process) | T-M9-55 |

@@ -27,6 +27,7 @@
 //! - [`watchos`]：watchOS 伴生包（T-M7-06，SwiftUI 模板工程 xcodebuild archive → 可签 `.app`）
 //! - [`fitbit`]：Fitbit OS 应用包 `.fba`（T-M7-07，SDK 6.1 结构 + 三层结构自检）
 //! - [`zepp`]：Zepp OS 小程序 `.zab`（T-M7-08，manifest + md5 命名 zpk + 内层 device.zip）
+//! - [`garmin`]：Garmin Connect IQ `.iq`（T-M7-09，monkeyc 环境槽编译 + 结构自检）
 
 pub mod android;
 pub mod autosar;
@@ -35,6 +36,7 @@ pub mod embedded;
 pub mod fitbit;
 pub mod freebsd;
 pub mod freertos;
+pub mod garmin;
 pub mod harmony;
 pub mod html5;
 pub mod ios;

@@ -1,18 +1,10 @@
-//! `poly release`：多目标仓库发布编排（T-M5-11 准备面）。
+//! `poly release`：多目标仓库发布编排（T-M5-11）。
 //!
-//! 本层只落 **poly-cli 自有面**：目标列表解析（逗号 / 重复）、产物集合定位与清单摘要、
-//! 回执 schema 与固定落点（`<root>/.polypack/release/<target>/<version>-<digest16>.json`）、
-//! 幂等判定（同清单摘要 + 同仓库 = no-op，`runs+1`）与 `E_RELEASE_*` 稳定错误码。
-//!
-//! 仓库元数据刷新与签名由 [`RepoBackend`] 承接：deb / rpm 走 [`repo::LocalBackend`]
-//! （T-M5-05，自托管目录 + GPG 签名）；pkg 同走本地后端（T-M5-06，`pkg repo` catalogue
-//! 原生 rsa/ecdsa/eddsa 签名，需 FreeBSD 用户态）；pkgsrc 同走本地后端（T-M5-08，扁平
-//! `.tgz` + `pkg_summary.gz` + `pkg_admin gpg-sign-package` 逐包 GPG，需 NetBSD 用户态）。
-//! 本机缺对应包工具时如实报 `E_RELEASE_0005`，绝不假装发布过。`--dry-run` 不触仓库：完整
-//! 解析产物、清单摘要、回执锚点与命中预测。
-//!
-//! shortcut: 回执按「目标 + 清单摘要」单键，同键并发按单写者假设（后写赢）——发布按
-//! 单脚本串行跑（同 poly-publish 归档口径）。
+//! 本层只落 poly-cli 自有面：目标解析（逗号 / 重复）、产物定位与清单摘要、回执 schema 与
+//! 固定落点（`<root>/.polypack/release/<target>/<version>-<digest16>.json`）、幂等判定与
+//! `E_RELEASE_*` 稳定错误码。仓库刷新/签名由 [`RepoBackend`] 承接（deb / rpm / pkg / pkgsrc
+//! 均走 [`repo::LocalBackend`]，缺宿主工具报 `E_RELEASE_0005`）；`--dry-run` 不触仓库。
+//! shortcut: 回执按「目标 + 清单摘要」单键，同键并发按单写者假设（后写赢）。
 
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -53,9 +45,11 @@ pub struct Args {
     /// 仓库根目录（相对路径按工程根解析；缺省 `<工程根>/.polypack/repo`）。
     #[arg(long, default_value = ".polypack/repo")]
     pub repo: PathBuf,
-    /// 签名凭据引用（形态由仓库后端解释；dry-run 只报是否给出，值零落屏）。
-    #[arg(long, value_name = "REF")]
-    pub credential: Option<String>,
+    /// 签名凭据引用（可重复）。裸 `REF` 为全局缺省；`TARGET=REF` 按目标覆盖
+    /// （如 `--credential fedora=keyring:fedora-gpg`）。形态：env:VAR / keyring[:条目名]
+    /// / vault[:条目名]。dry-run 只报是否给出，值零落屏。
+    #[arg(long, value_name = "REF", action = clap::ArgAction::Append)]
+    pub credential: Vec<String>,
     /// 只解析产物与幂等锚点，不写仓库、不落回执。
     #[arg(long)]
     pub dry_run: bool,
@@ -67,26 +61,68 @@ pub fn run(args: &Args, json: bool) -> Result<i32, Diagnostic> {
     let registry = Registry::builtin();
     let mut specs = resolve_targets(&args.target, &registry)?;
     apply_format_overrides(&project, &mut specs)?;
+    let credentials = parse_credentials(&args.credential, &specs)?;
     let repo = resolve_repo(&project.root, &args.repo);
     for spec in &specs {
         let prepared = prepare(&project, spec, &repo)?;
+        let credential = credentials.resolve(&prepared.target);
         if args.dry_run {
             let cache_hit = no_op_receipt(&prepared)?.is_some();
-            report_dry_run(&prepared, cache_hit, args.credential.is_some(), json);
+            report_dry_run(&prepared, cache_hit, credential.is_some(), json);
             continue;
         }
         // deb / rpm / pkg / pkgsrc 都是本地自托管仓库后端（pkg(8) / pkgsrc 工具真跑需
         // FreeBSD / NetBSD 用户态）。
         let backend: Box<dyn RepoBackend> = Box::new(repo::LocalBackend);
-        let outcome = release_target(
-            &prepared,
-            args.credential.as_deref(),
-            backend.as_ref(),
-            unix_now(),
-        )?;
+        let outcome = release_target(&prepared, credential, backend.as_ref(), unix_now())?;
         report_published(&prepared, &outcome, json);
     }
     Ok(0)
+}
+
+/// `--credential` 解析结果：裸引用为全局缺省，`TARGET=REF` 按目标覆盖。
+#[derive(Debug, Default)]
+struct Credentials {
+    default: Option<String>,
+    per_target: std::collections::BTreeMap<String, String>,
+}
+
+impl Credentials {
+    fn resolve(&self, target: &str) -> Option<&str> {
+        let mapped = self.per_target.get(target).map(String::as_str);
+        mapped.or(self.default.as_deref())
+    }
+}
+
+/// 解析重复的 `--credential`：`=` 左侧无 `:` 且像目标（或右值像凭据引用）才按映射；
+/// 其余整值按引用（env 变量名可含 `=`，不能见 `=` 就当映射）。
+fn parse_credentials(values: &[String], specs: &[TargetSpec]) -> Result<Credentials, Diagnostic> {
+    let ids: std::collections::BTreeSet<&str> = specs.iter().map(|s| s.id.as_str()).collect();
+    let mut creds = Credentials::default();
+    for value in values {
+        let Some((left, right)) = value.split_once('=').filter(|(left, right)| {
+            !left.contains(':')
+                && (ids.contains(left) || crate::retry::parse_credential(right).is_ok())
+        }) else {
+            creds.default = Some(value.clone());
+            continue;
+        };
+        if !ids.contains(left) {
+            let msg = format!("--credential 映射 {left}= 的目标不在本次 --target 中");
+            return Err(credential_error(msg));
+        }
+        if creds.per_target.insert(left.into(), right.into()).is_some() {
+            let msg = format!("--credential 对目标 {left} 重复映射");
+            return Err(credential_error(msg));
+        }
+    }
+    Ok(creds)
+}
+
+/// 凭据参数错误统一口径（与凭据引用解析同码）。
+fn credential_error(message: impl Into<String>) -> Diagnostic {
+    Diagnostic::error(codes::E_PLAN_0002, message.into())
+        .with_hint("裸 REF 作全局缺省；TARGET=REF 按目标覆盖，左侧须是 --target 中的目标 id")
 }
 
 /// 仓库产物格式（本命令只编排有仓库语义的格式）。
@@ -174,7 +210,6 @@ struct Prepared {
     version: String,
     /// 仓库根（绝对路径）。
     repo: PathBuf,
-    /// 仓库格式。
     kind: RepoKind,
     /// 目标声明的签名凭据档案（`TargetSpec.signing`；T-M5-05 仓库签名用）。
     signing: Option<String>,
@@ -186,7 +221,6 @@ struct Prepared {
     receipt: PathBuf,
 }
 
-/// 一次真腿的结果。
 #[derive(Debug)]
 struct Outcome {
     /// 是否命中 no-op（同清单摘要 + 同仓库）。
@@ -207,11 +241,9 @@ struct RepoRequest<'a> {
     target: &'a str,
     /// 仓库根。
     repo: &'a Path,
-    /// 仓库格式。
     kind: RepoKind,
     /// 目标声明的签名凭据档案。
     signing: Option<&'a str>,
-    /// 产物集合。
     artifacts: &'a [Artifact],
     /// 签名凭据引用（未给 = 后端按目标声明解析）。
     credential: Option<&'a str>,

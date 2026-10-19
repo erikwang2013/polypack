@@ -146,12 +146,24 @@ fn payload_from(
     Ok((payload, backend.id()))
 }
 
-/// 默认后端链：系统密钥库。
+/// 默认后端链：系统密钥库 + （环境配置齐备时）Vault。
 ///
-/// Vault（需要 `VaultClient` 接线）与 Env（变量名来自 `CredentialSource::Env`）由调用方
-/// 注入，见 [`VaultBackend`] / [`EnvBackend`]；CI 无密钥库时用 [`MemoryBackend`] 注入。
+/// Vault 只在 `VAULT_ADDR` / `VAULT_TOKEN` 均可用时加入；未配置 Vault 的工程不会因
+/// 构造失败被拦住。Env（变量名来自 `CredentialSource::Env`）由解析层按引用直接处理；
+/// CI 无密钥库时用 [`MemoryBackend`] 注入。
 pub fn default_backends() -> Vec<Box<dyn SecretBackend>> {
-    vec![Box::new(KeyringBackend::new())]
+    backends_with_vault(crate::vault::HttpVaultClient::from_env().ok())
+}
+
+/// [`default_backends`] 的可测接缝：显式注入 Vault 客户端（`None` = 未配置）。
+fn backends_with_vault(
+    vault: Option<crate::vault::HttpVaultClient>,
+) -> Vec<Box<dyn SecretBackend>> {
+    let mut backends: Vec<Box<dyn SecretBackend>> = vec![Box::new(KeyringBackend::new())];
+    if let Some(client) = vault {
+        backends.push(Box::new(VaultBackend::new(client)));
+    }
+    backends
 }
 
 /// 按 id 从后端链里找实现；缺失即「凭据不可用」（稳定错误码 + 修复提示）。
@@ -369,7 +381,7 @@ impl SecretBackend for MemoryBackend {
 
 /// 系统密钥库后端（`CredentialSource::Keyring`）。
 ///
-/// 按平台走 keyring v3 的原生后端（见 `Cargo.toml`：Linux = Secret Service / zbus 纯 Rust，
+/// 按平台走 keyring v4 `v1` 兼容层的原生后端（见 `Cargo.toml`：Linux = Secret Service / zbus 纯 Rust，
 /// macOS = Keychain，Windows = Credential Manager）。headless 环境探测失败只报错不 panic，
 /// 提示改用 Env / Memory 注入。
 pub struct KeyringBackend {
@@ -469,5 +481,29 @@ impl<C: VaultClient> SecretBackend for VaultBackend<C> {
 
     fn fetch(&self, name: &str) -> Result<Vec<u8>, SignError> {
         self.client.read(name)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// 未配置 Vault：默认链只有 keyring，不因 Vault 上下文缺失而失败。
+    #[test]
+    fn default_chain_without_vault_is_keyring_only() {
+        let backends = backends_with_vault(None);
+        assert!(backends.iter().any(|backend| backend.id() == KEYRING_ID));
+        assert!(!backends.iter().any(|backend| backend.id() == VAULT_ID));
+    }
+
+    /// 配置 Vault：默认链同时含 keyring 与 vault，`source = "vault"` 才能解析。
+    #[test]
+    fn default_chain_with_vault_includes_both() {
+        let client =
+            crate::vault::HttpVaultClient::new("http://127.0.0.1:8200", "test-token", None)
+                .expect("显式构造 Vault 客户端（不联网）");
+        let backends = backends_with_vault(Some(client));
+        assert!(backends.iter().any(|backend| backend.id() == KEYRING_ID));
+        assert!(backends.iter().any(|backend| backend.id() == VAULT_ID));
     }
 }
