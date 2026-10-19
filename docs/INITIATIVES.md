@@ -46,12 +46,12 @@
 
 ### M9-E2 · monorepo / 多应用工作区
 
-- 状态：候选 · 未排期。
+- 状态：候选 · 已交付（T-M9-04/05/06；代码、测试、ADR、双语文档与示例脚本）。
 - 触发条件：首个多应用仓库用户出现，且共享同一 Rust core 与发布流程。
 - 背景与问题：`PolypackConfig`（`crates/poly-core/src/config.rs`）是单应用模型（`[package]` / `[ui]` / `[core]` / `[targets.*]` / `[retention]`）且 `deny_unknown_fields`；`Project`（`crates/poly-core/src/plan.rs`）只有一个根目录，没有 workspace 成员、应用选择与共享缓存语义。
 - 目标：一份根配置声明多个应用成员，按应用解析 JobSpec 与产物落点，共享 core 源树缓存键。非目标：不做跨应用依赖图、不做 Nx / Turborepo 级任务编排、不改变单应用配置含义。
-- 方案概览：新增 `[workspace] members = [...]` 段与每成员 `polypack.toml`；`JobSpec` 增加 `app_id`，缓存键混入成员相对路径；CLI 增加 `poly build --workspace` 与 `--app <id>`；产物落点 `<root>/.polypack/packages/<app>/<target>/`。集成点：`crates/poly-core/src/config.rs`、`crates/poly-core/src/plan.rs`、`crates/poly-core/src/job.rs`、`crates/poly-cli/src/build.rs`、`crates/poly-cache/src/digest.rs`。备选：外部脚本循环调用（现状）、把每个应用做成独立仓库（共享 core 成本高）。
-- 交付物：`[workspace]` schema 与 ADR；成员发现与 JobSpec 复合语义；CLI 选择器；两应用示例与缓存命中测试。
+- 方案概览：已实现根 `[workspace] members`（成员目录各自持有 `polypack.toml`，id = 目录末段，唯一且不得逃逸根）；`JobSpec.app_id` 可省略，单应用序列化不变；`poly build --workspace` 按声明序构建全部成员，`--app <id>` 只构建一个；共享 core 的 compile 键不含 app id，UI bundle 键混入 app id；产物/快照落 `.polypack/packages/<app>/<target>/` 与 `.polypack/artifacts/<app>/<target>/`；新增 `E_WS_0001..0004`。集成点：`crates/poly-core/src/workspace.rs`、`plan.rs`、`job.rs`、`crates/poly-cli/src/build.rs`、`crates/poly-cache/src/digest.rs`。备选：外部脚本循环调用、把每个应用做成独立仓库（共享 core 成本高）。
+- 交付物：`[workspace]` schema 与 [ADR 0008](../decisions/0008-monorepo-workspace.md)；成员发现与 JobSpec 复合语义；CLI 选择器；两应用示例（`crates/poly-cli/tests/workspace.rs` / `scripts/demo-workspace.sh`）与缓存命中测试；[WORKSPACE](WORKSPACE.md) 双语使用文档。
 - 风险与缓解：schema 破坏单应用兼容 → 缺省无 `[workspace]` 时行为逐字节不变；成员间配置漂移 → 统一继承 + 显式覆盖表；缓存串键 → 键中强制包含 app_id 与成员路径。
 - 决策项：单根配置还是每应用独立配置为事实源；成员是否允许不同 `core` crate。
 - 首步动作：写 `[workspace]` schema 草案与两应用最小示例，先跑通配置解析再改流水线。
@@ -82,12 +82,12 @@
 
 ### M9-E4 · 生产热更 / OTA 通道
 
-- 状态：候选 · 未排期。
+- 状态：候选 · 部分交付（T-M9-10/11 已交付；T-M9-12 的 Tauri 真实安装 / 回滚为环境门控）。
 - 触发条件：首批用户提出线上更新诉求，且目标平台允许自管更新通道。
 - 背景与问题：流水线止于 publish；发布后的版本迭代没有清单、签名、灰度或回滚语义。各端机制不同（Tauri updater、Play In-App Updates、App Store 分阶段发布、小程序版本管理），不能用一个包打天下。
 - 目标：定义签名的更新清单与渠道 / 回滚模型，先覆盖自托管 Tauri 目标，再给出各平台机制矩阵。非目标：不做通用二进制 delta、不绕过商店审核、不承诺所有目标可自更新。
-- 方案概览：新增 `poly update manifest --channel <name>`，输出 Tauri v2 updater 兼容的 `latest.json`（version / notes / pub_date / platforms），签名复用 `crates/poly-sign`；静态托管发布；平台矩阵记录 Play In-App Updates、App Store phased release、小程序版本管理、Tauri updater 的可用性与人工步骤。集成点：`crates/poly-cli/src/main.rs`（新子命令）、`crates/poly-sign`、`crates/poly-publish/src/archive.rs`（渠道回执）。备选：只写调研文档、完全交给各端工具链。
-- 交付物：机制矩阵与 ADR；更新清单 schema 与签名；Tauri 自托管通道端到端演练；回滚手册。
+- 方案概览：已实现 `poly update manifest --channel <name>`：校验 channel/version/platform/base URL/pub_date，选定唯一产物并嵌入其 Tauri `.sig`，输出确定性的 Tauri v2 `latest.json`（排序键、两空格、尾换行），用 `GpgSigner` 生成 GPG 分离签名，同时保留 `<version>.json` / `.sig` 供回滚；`poly update check` 做 schema 校验与可选信任根验签。平台矩阵与来源日期见 [OTA](OTA.md)。集成点：`crates/poly-cli/src/update.rs`、`update/manifest.rs`、`crates/poly-sign`。备选：只写调研文档、完全交给各端工具链。
+- 交付物：机制矩阵（已交付）；更新清单 schema 与签名（已交付）；Tauri 自托管通道真实安装 / 回滚演练（环境门控，未执行）；回滚手册（已交付，见 [OTA](OTA.md)）。
 - 风险与缓解：签名密钥泄露 → 复用引用模型与一次性签名环境；灰度失控 → 清单支持百分比/白名单但先只做单渠道；商店政策变化 → 矩阵标注来源日期，不写死。
 - 决策项：GA 支持哪些更新渠道；更新签名是否复用发布密钥；是否提供托管清单服务。
 - 首步动作：做一次逐端机制调研并写成矩阵，明确「可自更新 / 仅商店更新 / 不可更新」三类。

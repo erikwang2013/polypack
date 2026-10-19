@@ -35,3 +35,4 @@
 | [0005](0005-farm-hosting.md) | 远程农场：GA 仅自托管 | accepted |
 | [0006](0006-platform-decisions.md) | 规划平台结论：关闭 / 条件 / NDA 门控 | accepted |
 | [0007](0007-external-and-ui-decisions.md) | 外部流程与 UI 决策：分支保护、历史持久化、设备预览 | accepted |
+| [0008](0008-monorepo-workspace.md) | 多应用工作区：`[workspace].members`、app id、缓存与产物隔离 | accepted |

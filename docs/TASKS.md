@@ -981,9 +981,9 @@
 | 项目 | 内容 | 候选任务 |
 |---|---|---|
 | M9-E1 | SBOM / 构建溯源 | T-M9-01..03 |
-| M9-E2 | monorepo / 多应用工作区 | T-M9-04..06 |
+| M9-E2 | monorepo / 多应用工作区（已交付；ADR 0008 / WORKSPACE / 示例脚本） | T-M9-04..06 |
 | M9-E3 | 增量发布 `poly release --changed` | T-M9-07..09 |
-| M9-E4 | 生产热更 / OTA 通道 | T-M9-10..12 |
+| M9-E4 | 生产热更 / OTA 通道（T-M9-10/11 已交付；T-M9-12 环境门控） | T-M9-10..12 |
 | M9-E5 | 商店元数据管线 | T-M9-13..15 |
 | M9-E6 | GUI 目标矩阵视图 / 构建历史 | T-M9-16..18 |
 | M9-E7 | 发布前设备预览矩阵 | T-M9-19..21 |
@@ -1003,4 +1003,6 @@
 | M9-G4 | MSI 真样本启动测试 | T-M9-53..54 |
 | M9-G5 | 分支保护管理员绕过（外部流程） | T-M9-55 |
 
+> **Wave 2 进度（2026-10-20）**：M9-E2 已交付（`[workspace]`、`--workspace` / `--app`、缓存 / 产物隔离、ADR 0008、WORKSPACE 双语文档与示例脚本）；M9-E4 已交付 T-M9-10/11（机制矩阵 + 签名清单 + `poly update`），T-M9-12 真机更新 / 回滚为环境门控。
+>
 > **Wave 1 进度（2026-10-20）**：M9-E1（SBOM + `poly verify --sbom` + 回执 `sbom_digest`）、M9-E3（`--changed`；T-M9-09 待补）、M9-E5（store metadata）、M9-E6 历史（T-M9-16/17；GUI T-M9-18 延后）、M9-G1（install script / 签名 / install-smoke；crates.io T-M9-45 仍开）、M9-G2（协议；真人 T-M9-49 外部）、M9-G3（owner / validator；T-M9-51 外部）、M9-G4（样例 / CI；Windows 首跑已通过，ENV-01 CLOSED）、M9-D1/D2 与 M9-P1..P8/G5（ADR 决策）已落地或部分落地。外部项不标 ✅。
