@@ -329,7 +329,7 @@ CARGO_TARGET_DIR=target cargo test -p poly-cli --test plugin_trust_root_env
 | 模板 WIT 与宿主 WIT 无自动比对 | 接口升级需手工同步模板副本 | 已修：`tools/check-docs.mjs` 新增模板 WIT ↔ 宿主 WIT 逐字比对门禁；`poly plugin check` 对工程 WIT 做同口径校验 |
 | 签名 / 信任根未在演练端到端走查 | 演练只覆盖 SRI 负向 | 已修（2026-10-19）：§6.6 `tools/plugin-signature-drill.sh` 真跑签名链 8/8（有效 / 篡改 / 缺签名 / 错公钥 / SRI 先行 / 信任根不可用 / 无泄漏 / 配置引用）；同节 `plugin_trust_root_env` 已自动化 CLI env 载体 + 真实组件制品的 `poly build` 通过 / 失败路径（有效签名出包、错公钥 `E_PLUGIN_0009`、缺 env `E_PLUGIN_0010`）。剩余：keyring / Vault 载体已接线（`default_backends()` 按 `VAULT_ADDR` / `VAULT_TOKEN` 装配 Vault；keyring 走宿主 Secret Service / Keychain / Credential Manager）；真实服务上的 E2E 仍是环境槽（见 [ENV-SLOTS](ENV-SLOTS.md)） |
 | 单全局 `--credential` 无法满足异构多目标 | rpm/deb 与 pkg 需不同签名材料时只能分次发布 | 已修：`poly release` 支持重复 `--credential` 与 `TARGET=REF` 映射；裸 `REF` 仍为全局缺省；未知/重复映射报 `E_PLAN_0002`；异构真跑仍需真实 keyring / Vault 环境 |
-| keyring 3.6.3 拉入 zbus 4.x（unmaintained） | 供应链告警（非漏洞） | 已升级 keyring 4.2.0（`v1` 兼容层）→ zbus 5.19；移除 RUSTSEC-2026-0370/0371/0372 的 deny / audit 豁免 |
+| keyring 3.6.3 拉入 zbus 4.x（unmaintained） | 供应链告警（非漏洞） | 已升级 keyring 4.2.0（`v1` 兼容层）→ zbus 5.19；zbus 5 仍以独立 crate 携带 `zvariant` / `zvariant_derive` / `zbus_names`，RUSTSEC-2026-0370/0371/0372 豁免保留（升级路径 zbus 6） |
 | macOS 农场 IPA R3 为环境槽 SKIP | Linux 环境无 Xcode / codesign | 按 FARM-DEPLOY §9 保持开放，macOS 主机执行后替换 |
 | 真实云对象存储（S3 / OSS）未在真实云上跑通 | 已实现 S3 兼容后端（SigV4 + OSS `x-oss-s3-compat`），mock 契约已验证 | 已实现，mock-verified；真实云环境槽（`POLYPACK_S3_REAL=1` + `POLYPACK_S3_TEST_URI`）保持开放，跑通前不宣称真实云已验证 |
 | Garmin 无真实 Connect IQ SDK / 设备证据 | 内建 iq 打包器已落地，只做结构自检；真实编译 / 真机行为仍需环境槽 | 设 `CIQ_MONKEYC` / `CIQ_HOME` / `CONNECTIQ_HOME` + `CIQ_DEVKEY` 后真跑 `monkeyc`；结构自检 `check_garmin_iq_structure` 已入 verify；真机走查见 [ENV-SLOTS](ENV-SLOTS.md) |
