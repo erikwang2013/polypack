@@ -418,8 +418,8 @@
 
 ### M9-G4 · MSI 真样本启动测试
 
-- 状态：候选 · 代码 / CI 已落地；真实安装 / 启动 / 卸载证据待 `windows-2022` 首跑。
-- 进度（2026-10-20）：`examples/windows-msi-app/` 真实 Tauri v2 样例、`crates/poly-bundle/tests/windows_msi_real.rs` 门控真跑测试（`POLY_MSI_REAL=1`、`POLY_TAURI_CORE_BIN`、`POLY_MSI_REAL_OUT`，失败码 `POLY_MSI_REAL_0001..0006`）与 rust-ci `windows-msi-real` 作业已落；真实 MSI / 安装 / 启动 / 卸载 / 残留证据待首跑，未标 ✅。
+- 状态：候选 · 已交付（2026-10-20 `windows-2022` 首跑通过：`windows-msi-real` 6m30s）。
+- 进度（2026-10-20）：`examples/windows-msi-app/` 真实 Tauri v2 样例、`crates/poly-bundle/tests/windows_msi_real.rs` 门控真跑测试（`POLY_MSI_REAL=1`、`POLY_TAURI_CORE_BIN`、`POLY_MSI_REAL_OUT`，失败码 `POLY_MSI_REAL_0001..0006`）与 rust-ci `windows-msi-real` 作业已落；run 39308849058 真跑通过，MSI / 安装 / 启动 / 卸载 / 残留证据作为 CI 工件归档。ENV-01 已置 `CLOSED`。
 - 触发条件：Windows L1 对外宣称可安装；或首次 Windows 用户报告安装问题。
 - 背景与问题：`crates/poly-bundle/src/packagers/windows.rs` 生成 WiX `.wxs` 并调用 candle / light，注释给出 `msiexec /i` 冒烟提示，但没有真实样本的安装、启动、卸载与残留检查证据。
 - 目标：用真实 Tauri 样例在干净 Windows 环境完成安装 → 启动 → 卸载 → 残留检查，并归档证据。非目标：不做 MSIX / Store 打包、不做多语言安装器矩阵。

@@ -1003,4 +1003,4 @@
 | M9-G4 | MSI 真样本启动测试 | T-M9-53..54 |
 | M9-G5 | 分支保护管理员绕过（外部流程） | T-M9-55 |
 
-> **Wave 1 进度（2026-10-20）**：M9-E1（SBOM + `poly verify --sbom` + 回执 `sbom_digest`）、M9-E3（`--changed`；T-M9-09 待补）、M9-E5（store metadata）、M9-E6 历史（T-M9-16/17；GUI T-M9-18 延后）、M9-G1（install script / 签名 / install-smoke；crates.io T-M9-45 仍开）、M9-G2（协议；真人 T-M9-49 外部）、M9-G3（owner / validator；T-M9-51 外部）、M9-G4（样例 / CI；Windows 首跑待证）、M9-D1/D2 与 M9-P1..P8/G5（ADR 决策）已落地或部分落地。外部项不标 ✅。
+> **Wave 1 进度（2026-10-20）**：M9-E1（SBOM + `poly verify --sbom` + 回执 `sbom_digest`）、M9-E3（`--changed`；T-M9-09 待补）、M9-E5（store metadata）、M9-E6 历史（T-M9-16/17；GUI T-M9-18 延后）、M9-G1（install script / 签名 / install-smoke；crates.io T-M9-45 仍开）、M9-G2（协议；真人 T-M9-49 外部）、M9-G3（owner / validator；T-M9-51 外部）、M9-G4（样例 / CI；Windows 首跑已通过，ENV-01 CLOSED）、M9-D1/D2 与 M9-P1..P8/G5（ADR 决策）已落地或部分落地。外部项不标 ✅。

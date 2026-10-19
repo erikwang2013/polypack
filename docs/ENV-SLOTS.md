@@ -20,11 +20,12 @@
 | `CI` | 托管或自托管 runner 可完成，需凭据 / 工具链 / KVM |
 | `HOST` | 需物理设备、GUI、局域网或交互登录 |
 | `HUMAN` | 需组织流程或人工签字 |
+| `CLOSED` | 真实证据已归档并复核，槽位关闭 |
 
 ## 2. 槽位总表
 | ID | 关联任务 | 槽位 | 状态 | 模式 | 负责人 | 证据 | 现有 CI |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| ENV-01 | T-M1-05 | Windows 真实 Tauri 样例 + 默认 Program Files 启动 | PARTIAL | HOST | release-sec | §3 ENV-01 | rust-ci |
+| ENV-01 | T-M1-05 | Windows 真实 Tauri 样例 + 默认 Program Files 启动 | CLOSED | HOST | release-sec | run 39308849058 · windows-msi-real | rust-ci |
 | ENV-02 | T-M2-10 | macOS `codesign` + `notarytool` 真执行 | PARTIAL | CI | release-sec | §3 ENV-02 | mobile-contract |
 | ENV-03 | T-M2-13 / T-M8-09 | macOS 农场 worker → IPA | OPEN | HOST | infra + release-sec | §3 ENV-03 | — |
 | ENV-04 | T-M3-05 / T-M3-06 | 微信 / 支付宝 / 抖音开发者工具预览 | PARTIAL | HOST | core + release-sec | §3 ENV-04 | miniprogram-contract |
@@ -66,9 +67,9 @@ msiexec /i ".polypack\packages\windows\Pax Notes_1.2.3_x64_en-US.msi" /qn
 ```
 - 进度（2026-10-20）：`examples/windows-msi-app/` 真实 Tauri v2 样例、`crates/poly-bundle/tests/windows_msi_real.rs` 与 rust-ci `windows-msi-real` 作业已落地；真实 MSI / 安装 / 启动 / 卸载 / 残留证据待 `windows-2022` 首跑，状态保持 `PARTIAL`。
 - 证据：两条 NSIS 测试输出；真实样例安装到默认路径后的 `--version` 输出与窗口截图；`Pax Notes_1.2.3_x64-setup.exe` 的 SHA-256；卸载后目录消失。当前 `tauri_layout` 仅 Linux 断言，Windows 真实样例腿需新增测试或外部脚本，不得用 Linux 输出冒充。
-- 现状：`PARTIAL`。MSI / NSIS 真编译与临时目录启动 / 卸载已在 rust-ci windows-2022 真跑；默认路径 + 真实 Tauri 样例仍开。 负责人：release-sec。
-- 下一步：在 windows-2022 增加真实 Tauri 样例夹具与默认路径冒烟；或在物理 Windows 上执行上面命令并归档截图。
-- 阻塞：默认 Program Files 写入需提权；GUI 启动与开始菜单观察需交互桌面，托管 runner 服务会话做不到。 运行位置：CI 可覆盖安装与默认路径启动；GUI 观察需物理 Windows。
+- 现状：`CLOSED`（2026-10-20）。run 39308849058 的 `windows-msi-real` 作业在 windows-2022 真跑通过：构建 MSI → `msiexec /i /qn` → 启动安装副本 `--smoke` → `msiexec /x /qn` → 检查安装目录 / 开始菜单 / HKCU / ARP 残留；日志、MSI、`.wxs`、`smoke-marker.txt`、摘要作为 CI 工件归档。 负责人：release-sec。
+- 下一步：无（该槽已关闭）；仅在新 Windows / WebView2 / WiX 版本变化时复跑。
+- 阻塞：无；GUI 目视渲染仍需交互桌面，但安装 / 默认路径启动 / 退出 / 卸载 / 残留已由 CI 覆盖。
 
 ### ENV-02 · macOS `codesign` + `notarytool` 真执行
 

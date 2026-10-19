@@ -418,8 +418,8 @@ This document covers 22 candidates: 7 incubation items, 8 planned platforms, 2 o
 
 ### M9-G4 · MSI real-sample launch test
 
-- Status: candidate · code / CI landed; real install / launch / uninstall evidence awaits the first `windows-2022` run.
-- Progress (2026-10-20): the real Tauri v2 sample `examples/windows-msi-app/`, the gated real-run test `crates/poly-bundle/tests/windows_msi_real.rs` (`POLY_MSI_REAL=1`, `POLY_TAURI_CORE_BIN`, `POLY_MSI_REAL_OUT`, codes `POLY_MSI_REAL_0001..0006`), and the rust-ci `windows-msi-real` job have landed; real MSI / install / launch / uninstall / residue evidence awaits the first run, so it is not marked ✅.
+- Status: candidate · delivered (the first `windows-2022` run passed on 2026-10-20: `windows-msi-real` in 6m30s).
+- Progress (2026-10-20): the real Tauri v2 sample `examples/windows-msi-app/`, the gated real-run test `crates/poly-bundle/tests/windows_msi_real.rs` (`POLY_MSI_REAL=1`, `POLY_TAURI_CORE_BIN`, `POLY_MSI_REAL_OUT`, codes `POLY_MSI_REAL_0001..0006`), and the rust-ci `windows-msi-real` job have landed; run 39308849058 passed, with MSI / install / launch / uninstall / residue evidence archived as CI artifacts. ENV-01 is now `CLOSED`.
 - Trigger: Windows L1 claims installability; or the first Windows user reports an install problem.
 - Why: `crates/poly-bundle/src/packagers/windows.rs` generates a WiX `.wxs` and calls candle / light, and comments suggest an `msiexec /i` smoke, but there is no evidence of install, launch, uninstall, and residue checks on a real sample.
 - Goals: use a real Tauri sample on a clean Windows environment to install → launch → uninstall → check residue and archive evidence. Non-goals: MSIX / Store packaging, a multi-language installer matrix.

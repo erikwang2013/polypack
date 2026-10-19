@@ -20,11 +20,12 @@ Environment slots are tracked separately from code gaps: a slot closes with envi
 | `CI` | Completable on a hosted or self-hosted runner with credentials / toolchain / KVM |
 | `HOST` | Requires a physical device, GUI, LAN, or interactive login |
 | `HUMAN` | Requires an organizational process or human sign-off |
+| `CLOSED` | Real evidence archived and reviewed; the slot is closed |
 
 ## 2. Slot index
 | ID | Linked task | Slot | Status | Mode | Owner | Evidence | Existing CI |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| ENV-01 | T-M1-05 | Windows real Tauri sample + default Program Files launch | PARTIAL | HOST | release-sec | §3 ENV-01 | rust-ci |
+| ENV-01 | T-M1-05 | Windows real Tauri sample + default Program Files launch | CLOSED | HOST | release-sec | run 39308849058 · windows-msi-real | rust-ci |
 | ENV-02 | T-M2-10 | macOS `codesign` + `notarytool` real execution | PARTIAL | CI | release-sec | §3 ENV-02 | mobile-contract |
 | ENV-03 | T-M2-13 / T-M8-09 | macOS farm worker → IPA | OPEN | HOST | infra + release-sec | §3 ENV-03 | — |
 | ENV-04 | T-M3-05 / T-M3-06 | WeChat / Alipay / Douyin devtools preview | PARTIAL | HOST | core + release-sec | §3 ENV-04 | miniprogram-contract |
@@ -66,9 +67,9 @@ msiexec /i ".polypack\packages\windows\Pax Notes_1.2.3_x64_en-US.msi" /qn
 ```
 - Progress (2026-10-20): the real Tauri v2 sample `examples/windows-msi-app/`, `crates/poly-bundle/tests/windows_msi_real.rs`, and the rust-ci `windows-msi-real` job have landed; real MSI / install / launch / uninstall / residue evidence awaits the first `windows-2022` run, so the status stays `PARTIAL`.
 - Evidence: output of both NSIS tests; `--version` output and a window screenshot after installing the real sample into the default path; SHA-256 of `Pax Notes_1.2.3_x64-setup.exe`; the install directory is gone after uninstall. The current `tauri_layout` assertion is Linux-only; the Windows real-sample leg needs a new test or external script, and Linux output must not be presented as Windows evidence.
-- Status: `PARTIAL`. MSI / NSIS real compile plus temp-directory launch / uninstall run on rust-ci windows-2022; default path + real Tauri sample remain open. Owner: release-sec.
-- Next action: add a real Tauri sample fixture and a default-path smoke on windows-2022, or run the commands above on physical Windows and archive screenshots.
-- Blocker: writing to default Program Files needs elevation; observing GUI launch and the Start menu needs an interactive desktop, which a hosted runner service session cannot provide. Execution mode: CI can cover install and default-path launch; GUI observation needs physical Windows.
+- Status: `CLOSED` (2026-10-20). Run 39308849058's `windows-msi-real` job passed on windows-2022: build MSI → `msiexec /i /qn` → launch the installed copy with `--smoke` → `msiexec /x /qn` → check install-directory / Start-menu / HKCU / ARP residue; logs, MSI, `.wxs`, `smoke-marker.txt`, and digests are archived as CI artifacts. Owner: release-sec.
+- Next action: none (the slot is closed); re-run only when Windows / WebView2 / WiX versions change.
+- Blocker: none; visual GUI rendering still needs an interactive desktop, but install / default-path launch / exit / uninstall / residue are covered by CI.
 
 ### ENV-02 · macOS `codesign` + `notarytool` real execution
 

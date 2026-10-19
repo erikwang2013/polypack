@@ -20,7 +20,7 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const TASKS_FILE = 'docs/TASKS.md';
 const LEDGERS = ['docs/ENV-SLOTS.md', 'docs/ENV-SLOTS.en.md'];
 const EXPECTED_IDS = Array.from({ length: 19 }, (_, i) => `ENV-${String(i + 1).padStart(2, '0')}`);
-const VALID_STATUS = new Set(['OPEN', 'PARTIAL', 'CODE-GAP', 'HUMAN']);
+const VALID_STATUS = new Set(['OPEN', 'PARTIAL', 'CODE-GAP', 'HUMAN', 'CLOSED']);
 const VALID_MODE = new Set(['CI', 'HOST', 'HUMAN']);
 const VALID_ROLES = new Set(['release-sec', 'core', 'docs', 'infra', 'maintainer']);
 const TASK_ID_RE = /T-M\d-\d{2}/g;
