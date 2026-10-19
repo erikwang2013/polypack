@@ -306,7 +306,16 @@ CARGO_TARGET_DIR=target cargo test -p poly-plugin --test signature
 
 预期：`test result: ok. 8 passed; 0 failed`。2026-10-19 本机实测 8/8（测试本体 5.05s，不含编译）。宿主无 gpg 或 Windows MSYS 时测试打印 SKIP，包装脚本相应输出 SKIP 而非 PASS。
 
-边界：该步骤验证宿主加载链（SRI → 验签 → 组件解析 → 实例化）；CLI 从 keyring / env 解析信任根并加载真实构建产物的路径不在本步骤内。
+CLI 端到端补充（env 凭据载体 + 真实组件制品，2026-10-19）：
+
+```bash
+CARGO_TARGET_DIR=target cargo test -p poly-cli --test plugin_trust_root_env
+# test result: ok. 1 passed; 0 failed
+```
+
+`cli_resolves_trust_root_from_env_and_loads_signed_plugin` 建临时工程，`[[plugins]]` 指向仓库内真实组件夹具 `crates/poly-plugin/tests/fixtures/reference-plugin.wasm`（由 `guests/build.sh` 编译产出并提交入库），并用一次性 0700 GNUPGHOME 内的 gpg 密钥对写分离签名。配置只出现 `trust_root = { name = "plugin-trust-root", source = { env = { variable = "POLYPACK_PLUGIN_TRUST_ROOT" } } }`，公钥载荷 `base64(JSON) {"public_key":"<base64>"}` 经子进程环境注入。正向 `poly build --target linux-reference --json` 断言插件被接受（`plugin_granted`）、`describe` 声明的目标可用、`packaged`（`reference-bin`）事件与暂存产物落地；负向以另一把公钥与缺失环境变量分别断言 `E_PLUGIN_0009` / `E_PLUGIN_0010`。宿主无 gpg 时打印 SKIP；夹具缺失是编译期失败，不会静默跳过。
+
+边界：上表验证宿主加载链（SRI → 验签 → 组件解析 → 实例化）；CLI 经 env 载体解析信任根并加载真实组件制品的路径已由上述 `plugin_trust_root_env` 自动化。keyring（依赖宿主 Secret Service / Keychain / Credential Manager）与 Vault（依赖 Vault 服务与客户端接线）载体仍是环境槽，未纳入自动门禁；夹具在测试时不再重编译（模板 → `build.sh` 的真编译链路由 `poly-cli` 的 `POLY_CONTRACT_REAL=1` 用例另行覆盖）。
 
 ## 7. 已知缺口与后续
 
@@ -316,7 +325,7 @@ CARGO_TARGET_DIR=target cargo test -p poly-plugin --test signature
 |---|---|---|
 | 无独立 `poly plugin check` | 作者需手工串 build / test / digest / build | 已修：`poly plugin check <dir>` 一条命令校验脚手架文件 / WIT 同步 / 产物摘要（产物缺失仅警告） |
 | 模板 WIT 与宿主 WIT 无自动比对 | 接口升级需手工同步模板副本 | 已修：`tools/check-docs.mjs` 新增模板 WIT ↔ 宿主 WIT 逐字比对门禁；`poly plugin check` 对工程 WIT 做同口径校验 |
-| 签名 / 信任根未在演练端到端走查 | 演练只覆盖 SRI 负向 | 已修（2026-10-19）：§6.6 `tools/plugin-signature-drill.sh` 真跑签名链 8/8（有效 / 篡改 / 缺签名 / 错公钥 / SRI 先行 / 信任根不可用 / 无泄漏 / 配置引用）。剩余：CLI 经 keyring / env 解析信任根并加载真实构建产物未纳入该步骤 |
+| 签名 / 信任根未在演练端到端走查 | 演练只覆盖 SRI 负向 | 已修（2026-10-19）：§6.6 `tools/plugin-signature-drill.sh` 真跑签名链 8/8（有效 / 篡改 / 缺签名 / 错公钥 / SRI 先行 / 信任根不可用 / 无泄漏 / 配置引用）；同节 `plugin_trust_root_env` 已自动化 CLI env 载体 + 真实组件制品的 `poly build` 通过 / 失败路径（有效签名出包、错公钥 `E_PLUGIN_0009`、缺 env `E_PLUGIN_0010`）。剩余：keyring / Vault 载体依赖宿主 Secret Service / Keychain / Credential Manager 或 Vault 服务，仍是环境槽 |
 | macOS 农场 IPA R3 为环境槽 SKIP | Linux 环境无 Xcode / codesign | 按 FARM-DEPLOY §9 保持开放，macOS 主机执行后替换 |
 | 真实云对象存储（S3 / OSS）未在真实云上跑通 | 已实现 S3 兼容后端（SigV4 + OSS `x-oss-s3-compat`），mock 契约已验证 | 已实现，mock-verified；真实云环境槽（`POLYPACK_S3_REAL=1` + `POLYPACK_S3_TEST_URI`）保持开放，跑通前不宣称真实云已验证 |
 | Garmin 无内建 iq 打包器 | `poly build --target garmin` package 阶段 SKIP-with-print | 已记录实验缺口；条件任务 |
@@ -327,7 +336,7 @@ CARGO_TARGET_DIR=target cargo test -p poly-plugin --test signature
 | 动作 | 触发条件 | 验收 |
 |---|---|---|
 | 人类外部开发者试用 | GA 发布后 | 记录卡点并回写文档 |
-| CLI 信任根载体端到端 | 下一次涉及签名发布的演练 | keyring / env 解析信任根 + `poly build` 真实插件产物的验签通过 / 失败路径 |
+| keyring / Vault 信任根载体端到端 | 下一次涉及签名发布的演练（需宿主 Secret Service / Keychain / Credential Manager 或 Vault 服务） | keyring / Vault 解析信任根 + `poly build` 真实插件产物的验签通过 / 失败路径（env 载体已由 §6.6 `plugin_trust_root_env` 自动化） |
 | macOS worker + IPA 真跑 | 有 macOS 主机 | FARM-DEPLOY §9 日志与产物归档 |
 | 真实云对象存储二跑命中 | 有 S3 / OSS 桶与凭据 | 设 `POLYPACK_S3_REAL=1` + `POLYPACK_S3_TEST_URI` 跑 `tests/s3_real.rs`，再做两 worker 二跑命中 |
 | Garmin iq 打包器 | 条件任务触发 | 产物结构检查与真机实证 |
