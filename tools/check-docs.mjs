@@ -36,6 +36,7 @@ const PAIRS = [
   ['docs/INSTALL.md', 'docs/INSTALL.en.md'],
   ['docs/HUMAN-TRIAL.md', 'docs/HUMAN-TRIAL.en.md'],
   ['docs/STORE-METADATA.md', 'docs/STORE-METADATA.en.md'],
+  ['docs/OTA.md', 'docs/OTA.en.md'],
 ];
 
 const count = (text, re) => (text.match(re) || []).length;
