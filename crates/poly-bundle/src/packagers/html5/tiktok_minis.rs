@@ -142,7 +142,10 @@ pub fn check_tiktok_minis_structure(package: &Path) -> Result<TiktokMinisStructu
         .and_then(Value::as_array)
         .ok_or_else(|| bad(format!("{MINIS_MANIFEST} 缺 resource_list 数组")))?;
     let mut resources = Vec::new();
-    flatten_resources(list, "", &mut resources).map_err(&bad)?;
+    flatten_resources(list, "", &mut resources).map_err(|reason| BundleError::Archive {
+        path: package.to_path_buf(),
+        reason,
+    })?;
     resources.sort();
     let mut expected: Vec<String> = entries
         .iter()
