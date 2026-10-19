@@ -210,6 +210,13 @@ enum Verifier {
     /// KaiOS 包 zip 结构自检（[`poly_bundle::check_kaios_structure`]：`manifest.webapp`
     /// 必填字段 + 入口存在，与打包器同一实现；设备 / KaiStore 腿本机不可得，SKIP-with-print）。
     KaiosStructure,
+    /// TikTok Minis zip 结构自检（[`poly_bundle::check_tiktok_minis_structure`]：
+    /// `minis.config.json` / `minis.manifest.json`；平台沙箱腿 SKIP-with-print）。
+    TiktokMinisStructure,
+    /// Facebook Instant Games zip 结构自检
+    /// （[`poly_bundle::check_facebook_instant_games_structure`]：`fbapp-config.json`；
+    /// Meta 沙箱腿 SKIP-with-print）。
+    FacebookInstantGamesStructure,
     /// Fitbit `.fba` 三层结构自检（[`poly_bundle::check_fitbit_structure`]）+ 在场时的
     /// `fitbit-build --help` 自检；CLI 缺席 SKIP-with-print，T-M7-07。
     FitbitStructure,
@@ -272,6 +279,8 @@ fn verifier_for(id: &str) -> Option<Verifier> {
         "pkgsrc-check" => Some(Verifier::PkgsrcCheck),
         "sideload-structure-check" => Some(Verifier::RokuSideload),
         "kaios-structure-check" => Some(Verifier::KaiosStructure),
+        "tiktok-minis-structure-check" => Some(Verifier::TiktokMinisStructure),
+        "facebook-instant-games-structure-check" => Some(Verifier::FacebookInstantGamesStructure),
         "fitbit-structure-check" => Some(Verifier::FitbitStructure),
         "zepp-structure-check" => Some(Verifier::ZeppStructure),
         "lintian" => Some(Verifier::DebLint),
@@ -406,6 +415,8 @@ fn verify_target(
     let mut pkgsrc_ids: Vec<String> = Vec::new();
     let mut roku_ids: Vec<String> = Vec::new();
     let mut kaios_ids: Vec<String> = Vec::new();
+    let mut tiktok_ids: Vec<String> = Vec::new();
+    let mut facebook_ids: Vec<String> = Vec::new();
     let mut fitbit_ids: Vec<String> = Vec::new();
     let mut zepp_ids: Vec<String> = Vec::new();
     let mut deb_ids: Vec<String> = Vec::new();
@@ -437,6 +448,8 @@ fn verify_target(
             Some(Verifier::PkgsrcCheck) => pkgsrc_ids.push(id.clone()),
             Some(Verifier::RokuSideload) => roku_ids.push(id.clone()),
             Some(Verifier::KaiosStructure) => kaios_ids.push(id.clone()),
+            Some(Verifier::TiktokMinisStructure) => tiktok_ids.push(id.clone()),
+            Some(Verifier::FacebookInstantGamesStructure) => facebook_ids.push(id.clone()),
             Some(Verifier::FitbitStructure) => fitbit_ids.push(id.clone()),
             Some(Verifier::ZeppStructure) => zepp_ids.push(id.clone()),
             Some(Verifier::DebLint) => deb_ids.push(id.clone()),
@@ -508,6 +521,12 @@ fn verify_target(
     }
     if !kaios_ids.is_empty() {
         checked |= verify_kaios_structure(project, spec, &kaios_ids, events)?;
+    }
+    if !tiktok_ids.is_empty() {
+        checked |= verify_tiktok_minis_structure(project, spec, &tiktok_ids, events)?;
+    }
+    if !facebook_ids.is_empty() {
+        checked |= verify_facebook_instant_games_structure(project, spec, &facebook_ids, events)?;
     }
     if !fitbit_ids.is_empty() {
         checked |= verify_fitbit(project, spec, &fitbit_ids, events)?;
@@ -1841,6 +1860,136 @@ fn verify_kaios_structure(
     Ok(true)
 }
 
+/// TikTok Minis zip 结构自检腿（`tiktok-minis-structure-check`）：与打包器**同一份**检查
+/// （[`poly_bundle::check_tiktok_minis_structure`]：`minis.config.json` build 字段 /
+/// `minis.manifest.json` 资源树；缺陷 E_BND_0006 硬失败）。本机无
+/// TikTok 开发者平台沙箱 / 上传入口——平台侧审核 SKIP-with-print，结构自检是真跑面。
+fn verify_tiktok_minis_structure(
+    project: &Project,
+    spec: &TargetSpec,
+    ids: &[String],
+    events: &mut dyn EventSink,
+) -> Result<bool, StageError> {
+    let staged = project::packages_root(&project.root).join(&spec.id);
+    let Some((package, count)) = staged_file(&staged, "zip") else {
+        warning(
+            events,
+            &format!(
+                "目标 {} 未校验：{} 下没有 *.zip（先跑 poly build 把产物流到打包暂存目录）",
+                spec.id,
+                staged.display()
+            ),
+        );
+        return Ok(false);
+    };
+    if count > 1 {
+        warning(
+            events,
+            &format!(
+                "目标 {} 的产物有 {count} 份 zip（取最新一份 {}）",
+                spec.id,
+                package.display()
+            ),
+        );
+    }
+    let structure = match poly_bundle::check_tiktok_minis_structure(&package) {
+        Ok(structure) => structure,
+        Err(err) => return Err(bundle_diagnostic(spec, &err).into()),
+    };
+    warning(
+        events,
+        &format!(
+            "目标 {} 的包结构自检：{} 条目，minis.config.json htmlEntry={} outputDir={}，\
+             resource_list {} 项",
+            spec.id,
+            structure.entries.len(),
+            structure.html_entry,
+            structure.output_dir,
+            structure.resources
+        ),
+    );
+    warning(
+        events,
+        &format!(
+            "目标 {} 的平台侧沙箱 / 审核腿 SKIP-with-print：本机无 TikTok 开发者平台沙箱 / \
+             上传入口（experimental，不声明商店受理）；结构自检是本机真跑面",
+            spec.id
+        ),
+    );
+    for id in ids {
+        events.emit(&BuildEvent::Verified {
+            checker: id.clone(),
+            ok: true,
+        });
+    }
+    Ok(true)
+}
+
+/// Facebook Instant Games zip 结构自检腿（`facebook-instant-games-structure-check`）：
+/// 与打包器**同一份**检查（[`poly_bundle::check_facebook_instant_games_structure`]：
+/// `fbapp-config.json` 字段；缺陷 E_BND_0006 硬失败）。本机无 Meta
+/// 应用后台 / 沙箱——平台侧审核 SKIP-with-print，结构自检是真跑面。
+fn verify_facebook_instant_games_structure(
+    project: &Project,
+    spec: &TargetSpec,
+    ids: &[String],
+    events: &mut dyn EventSink,
+) -> Result<bool, StageError> {
+    let staged = project::packages_root(&project.root).join(&spec.id);
+    let Some((package, count)) = staged_file(&staged, "zip") else {
+        warning(
+            events,
+            &format!(
+                "目标 {} 未校验：{} 下没有 *.zip（先跑 poly build 把产物流到打包暂存目录）",
+                spec.id,
+                staged.display()
+            ),
+        );
+        return Ok(false);
+    };
+    if count > 1 {
+        warning(
+            events,
+            &format!(
+                "目标 {} 的产物有 {count} 份 zip（取最新一份 {}）",
+                spec.id,
+                package.display()
+            ),
+        );
+    }
+    let structure = match poly_bundle::check_facebook_instant_games_structure(&package) {
+        Ok(structure) => structure,
+        Err(err) => return Err(bundle_diagnostic(spec, &err).into()),
+    };
+    warning(
+        events,
+        &format!(
+            "目标 {} 的包结构自检：{} 条目，fbapp-config.json platform_version={} \
+             orientation={} navigation_menu_version={}",
+            spec.id,
+            structure.entries.len(),
+            structure.platform_version,
+            structure.orientation,
+            structure.navigation_menu_version
+        ),
+    );
+    warning(
+        events,
+        &format!(
+            "目标 {} 的平台侧沙箱 / 审核腿 SKIP-with-print：本机无 Meta 应用后台 / 沙箱\
+             （experimental，不声明商店受理）；结构自检是本机真跑面",
+            spec.id
+        ),
+    );
+    for id in ids {
+        events.emit(&BuildEvent::Verified {
+            checker: id.clone(),
+            ok: true,
+        });
+    }
+    Ok(true)
+}
+
 /// Fitbit `.fba` 校验腿（`fitbit-structure-check`，T-M7-07）：与打包器**同一份**检查
 /// （[`poly_bundle::check_fitbit_structure`]：外层应用清单、每家族 `device-<family>.zip`、
 /// 组件清单三层；缺陷 E_BND_0006 硬失败）。官方 `fitbit-build` 只作工具在场自检
@@ -3121,6 +3270,36 @@ mod tests {
         );
     }
 
+    /// HTML5 L2 平台（TikTok Minis / Facebook Instant Games）的结构自检已接入，
+    /// 与打包器共用结构检查。
+    #[test]
+    fn html5_structure_checks_are_served() {
+        let registry = Registry::builtin();
+        for (target, id, verifier) in [
+            (
+                "tiktok-minis",
+                "tiktok-minis-structure-check",
+                Verifier::TiktokMinisStructure,
+            ),
+            (
+                "facebook-instant-games",
+                "facebook-instant-games-structure-check",
+                Verifier::FacebookInstantGamesStructure,
+            ),
+        ] {
+            let spec = registry
+                .get(target)
+                .unwrap_or_else(|| panic!("内建 {target} 目标"))
+                .clone();
+            assert_eq!(spec.verify, vec![id]);
+            assert_eq!(verifier_for(id), Some(verifier));
+            assert!(
+                verifier_owner(id).is_none(),
+                "已接入的校验器不得再留 owner 占位"
+            );
+        }
+    }
+
     /// ChromeOS PWA 轨的 `pwa-audit` 已接入（T-M5-10）；browser 模式下不可安装的
     /// display 与离线能力缺失都由 `poly_bundle::audit_pwa` 硬失败（见 poly-bundle 测试）。
     #[test]
@@ -4235,6 +4414,104 @@ mod tests {
         let err = verify_target(&project, &spec, &mut sink).expect_err("缺必填字段必须硬失败");
         assert_eq!(err.diagnostic.code.to_string(), "poly::E_BND_0006");
         let _ = std::fs::remove_dir_all(&root);
+    }
+
+    /// HTML5 L2 平台结构自检三态：合规过检发 `Verified`（含平台侧 SKIP-with-print）/
+    /// 平台配置坏件 E_BND_0006 硬失败 / 缺产物告警跳过并说明原因。
+    #[test]
+    fn html5_structure_legs_cover_pass_fail_and_skip() {
+        let cases = [
+            (
+                "tiktok-minis",
+                "tiktok-minis-structure-check",
+                "<!doctype html><html><body><script>TTMinis.init({});</script></body></html>",
+                "minis.config.json",
+                r#"{"build":{"htmlEntry":"index.html","outputDir":"."}}"#,
+                Some((
+                    "minis.manifest.json",
+                    r#"{"name":"minis.manifest.json","resource_list":[{"type":"file","name":"index.html"}]}"#,
+                )),
+                r#"{"dev":{"clientKey":"x"},"build":{"htmlEntry":"index.html","outputDir":"."}}"#,
+            ),
+            (
+                "facebook-instant-games",
+                "facebook-instant-games-structure-check",
+                "<!doctype html><html><body><script src=\"https://connect.facebook.net/en_US/fbinstant.latest.js\"></script></body></html>",
+                "fbapp-config.json",
+                r#"{"instant_games":{"platform_version":"RICH_GAMEPLAY","orientation":"LANDSCAPE","navigation_menu_version":"NAV_FLOATING"}}"#,
+                None,
+                r#"{"instant_games":{"platform_version":"RICH_GAMEPLAY","orientation":"SIDEWAYS","navigation_menu_version":"NAV_FLOATING"}}"#,
+            ),
+        ];
+        for (target, checker, index_text, config_name, config_text, manifest, bad_config) in cases {
+            let (root, project) = fixture(&format!("html5-{target}"));
+            let spec = Registry::builtin()
+                .get(target)
+                .unwrap_or_else(|| panic!("内建 {target} 目标"))
+                .clone();
+            let staged = root.join(format!(".polypack/packages/{target}"));
+            let mut sink = poly_core::events::HumanSink {
+                out: Vec::<u8>::new(),
+            };
+
+            // 三态 ①：缺产物 → 跳过并点名落点，不硬失败。
+            assert!(!verify_target(&project, &spec, &mut sink).expect("缺产物不该失败"));
+            let text = String::from_utf8_lossy(&sink.out).replace('\\', "/");
+            assert!(text.contains("没有 *.zip"), "{target}: {text}");
+            assert!(
+                text.contains(&format!(".polypack/packages/{target}")),
+                "{target}: {text}"
+            );
+
+            std::fs::create_dir_all(&staged).expect("暂存目录可建");
+            let index = staged.join("index.html");
+            std::fs::write(&index, index_text).expect("写入口");
+            let config = staged.join(config_name);
+            std::fs::write(&config, config_text).expect("写平台配置");
+            let mut entries = vec![
+                ("index.html".to_string(), index.clone()),
+                (config_name.to_string(), config),
+            ];
+            if let Some((name, text)) = manifest {
+                let path = staged.join(name);
+                std::fs::write(&path, text).expect("写资源清单");
+                entries.push((name.to_string(), path));
+            }
+            let good = staged.join("fixture-0.0.1.zip");
+            poly_bundle::zipwrite::write_zip(&entries, &good).expect("合成合规包");
+
+            // 三态 ②：合规件 → 过检，结构摘要 + 平台侧 SKIP 句都进事件流。
+            sink.out.clear();
+            assert!(
+                verify_target(&project, &spec, &mut sink).expect("合规包应过检"),
+                "{target}: 合规件必须给出 Verified 判决"
+            );
+            let text = String::from_utf8_lossy(&sink.out).into_owned();
+            assert!(text.contains("包结构自检"), "{target}: {text}");
+            assert!(text.contains("SKIP-with-print"), "{target}: {text}");
+            assert!(text.contains(checker), "{target}: {text}");
+            if target == "tiktok-minis" {
+                assert!(text.contains("htmlEntry=index.html"), "{target}: {text}");
+                assert!(text.contains("resource_list 1 项"), "{target}: {text}");
+            } else {
+                assert!(text.contains("RICH_GAMEPLAY"), "{target}: {text}");
+                assert!(text.contains("Meta"), "{target}: {text}");
+            }
+
+            // 三态 ③：平台配置坏件 → E_BND_0006 硬失败，不降级成跳过。
+            std::fs::remove_file(&good).expect("清掉合格件");
+            let bad_config_path = staged.join("bad-config.json");
+            std::fs::write(&bad_config_path, bad_config).expect("写坏配置");
+            let bad = staged.join("broken-0.0.1.zip");
+            let bad_entries = vec![
+                ("index.html".to_string(), index),
+                (config_name.to_string(), bad_config_path),
+            ];
+            poly_bundle::zipwrite::write_zip(&bad_entries, &bad).expect("合成坏包");
+            let err = verify_target(&project, &spec, &mut sink).expect_err("坏配置必须硬失败");
+            assert_eq!(err.diagnostic.code.to_string(), "poly::E_BND_0006");
+            let _ = std::fs::remove_dir_all(&root);
+        }
     }
 
     /// webOS 腿：暂存目录没有 `.ipk`（打包未就绪）→ 告警跳过，不硬失败。

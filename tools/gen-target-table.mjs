@@ -167,17 +167,24 @@ function unescapeRust(s) {
   return out;
 }
 
-const RUNTIME = { Native: 'native', Wasm: 'wasm', Staticlib: 'staticlib', None: 'none' };
+const RUNTIME = {
+  Native: 'native',
+  Wasm: 'wasm',
+  Staticlib: 'staticlib',
+  Html5: 'html5',
+  None: 'none',
+};
 const BRIDGE = {
   Uniffi: 'uniffi',
   Napi: 'napi',
   WasmBindgen: 'wasm-bindgen',
   Cffi: 'cffi',
   TauriIpc: 'tauri-ipc',
+  Html5: 'html5',
   None: 'none',
 };
 const asEnum = (raw, table, label) => {
-  const m = /^[A-Za-z]+::([A-Za-z]+)$/.exec(raw.trim());
+  const m = /^[A-Za-z]+::([A-Za-z0-9]+)$/.exec(raw.trim());
   if (!m || !(m[1] in table)) throw new Error(`无法解析${label}: ${raw}`);
   return table[m[1]];
 };
@@ -208,7 +215,7 @@ function parseValue(raw, label = '值') {
   }
   if (/^(true|false)$/.test(value)) return { kind: 'bool', value: value === 'true' };
   if (/^\d+$/.test(value)) return { kind: 'number', value: Number(value) };
-  if (/^[A-Za-z]+::[A-Za-z]+$/.test(value)) return { kind: 'enum', value };
+  if (/^[A-Za-z][A-Za-z0-9]*::[A-Za-z][A-Za-z0-9]*$/.test(value)) return { kind: 'enum', value };
   throw new Error(`无法解析${label}: ${value.slice(0, 120)}`);
 }
 

@@ -31,6 +31,8 @@ pub enum Runtime {
     Wasm,
     /// 编译为静态库（嵌入式 / 车机）。
     Staticlib,
+    /// 以 HTML5 页面直接运行（无 Rust 核心）。
+    Html5,
     /// 无核心代码（纯平台模板）。
     None,
 }
@@ -50,6 +52,8 @@ pub enum Bridge {
     Cffi,
     /// Tauri IPC（桌面，核心即宿主）。
     TauriIpc,
+    /// HTML5 平台 JS SDK 桥（页面直接运行，无 Rust 桥）。
+    Html5,
     /// 无跨语言桥。
     None,
 }

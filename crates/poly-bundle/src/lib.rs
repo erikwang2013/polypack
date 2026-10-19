@@ -47,6 +47,10 @@ pub use packagers::fitbit::{FitbitStructure, check_fitbit_structure};
 pub use packagers::freebsd::{PkgStructure, check_pkg_structure};
 pub use packagers::freertos::{FreeRtosStructure, check_freertos_structure};
 pub use packagers::harmony::{HapStructure, check_hap_structure};
+pub use packagers::html5::{
+    FacebookInstantGamesStructure, TiktokMinisStructure, check_facebook_instant_games_structure,
+    check_tiktok_minis_structure,
+};
 pub use packagers::kaios::{KaiosStructure, check_kaios_structure};
 pub use packagers::linux::{
     AppdirStructure, DebStructure, FlatpakStructure, RpmStructure, SnapStructure,
