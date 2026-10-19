@@ -64,11 +64,11 @@
 
 ### M9-E3 · 增量发布 `poly release --changed`
 
-- 状态：候选 · 未排期（ROADMAP 建议 M1 缓存落地后试点；缓存已具备，可提前验证）。
+- 状态：候选 · 部分交付（T-M9-07/08 已交付 2026-10-20；T-M9-09 的 CI 示例与节时实测待补）。
 - 触发条件：多目标 CI 发布耗时成为瓶颈，或目标数 ≥ 5 的仓库每周发布 ≥ 1 次。
 - 背景与问题：`poly release` 只接受 target / repo / credential / dry-run（`crates/poly-cli/src/release.rs` 的 `Args`），没有变更判定；现有 no-op 只在单目标内比较回执 `manifest_digest`，CI 仍要构建全部目标。
 - 目标：按缓存键或回执摘要跳过未变更目标，输出稳定的 skipped 事件与退出码，减少多端 CI 时间。非目标：不做增量编译、不做单目标内部分产物上传、不改变发布回执语义。
-- 方案概览：`Args` 增加 `--changed`（可选 `--since <ref>`）；在 `prepare` 前用 `CacheInputs`（`crates/poly-cache/src/digest.rs`）重算键，与回执新增的 `cache_key` 比较，缺失时退回 `manifest_digest`；skipped 走 JSON 报告而非伪造 Published 事件。集成点：`crates/poly-cli/src/release.rs`、`crates/poly-cache/src/digest.rs`、`crates/poly-cli/src/build.rs` 的事件流。备选：`git diff` 判定（跨仓库/生成文件脆弱）、mtime（不可靠）。
+- 方案概览：已实现 `--changed`：在 `prepare` 后比较回执 `cache_key`（当前等于 `manifest_digest`）并回退 `manifest_digest`，同时校验 repo 根与仓库格式；命中时发独立 `release-skipped` 事件，不写仓库、不重写回执、不递增 `runs`，`key_source` 标明降级路径。`--since <ref>` 因 release 没有 per-target source/package 映射而返回 `E_PLAN_0002`，提示用 `--changed` 或预筛 `--target`。集成点：`crates/poly-cli/src/release.rs`、`release/report.rs`、`release/tests.rs`、`poly-cli/tests/release.rs`。备选：`git diff` 判定（跨仓库/生成文件脆弱）、mtime（不可靠）。
 - 交付物：`--changed` 与 `--since`；回执 `cache_key` 字段；skipped JSON 契约；CI 示例与节时实测。
 - 风险与缓解：缓存键缺输入导致漏发 → 键构造单源 + 变更输入表测试；回执旧版本无 `cache_key` → 明确降级到摘要并告警；跳过被误认为成功发布 → skipped 与 published 事件严格区分。
 - 决策项：判定主键用缓存键还是回执摘要；`--changed` 是否默认开启。
@@ -100,12 +100,12 @@
 
 ### M9-E5 · 商店元数据管线
 
-- 状态：候选 · 未排期。
+- 状态：候选 · 已实现（T-M9-13/14/15；作者指南见 [STORE-METADATA](STORE-METADATA.md)）。
 - 触发条件：M2 / M3 首个商店发布跑通后，listing 文案或截图开始多语言维护。
 - 背景与问题：`poly publish --materials` 只接受单个 JSON 文件（`crates/poly-cli/src/publish.rs`、`PublishRequest::with_materials`），没有版本化目录、字段长度校验、截图规格与多语言完整性检查；每次发版靠人工拼 JSON。
 - 目标：仓库内版本化 metadata 目录，按平台 / 语言校验并确定性打包为提审材料。非目标：不自动生成截图、不调用商店 listing 更新 API、不替代人工审核。
-- 方案概览：`store/metadata/<platform>/<locale>.toml`，字段含 title、short_description、full_description、keywords、screenshots、privacy_url、support_url；`crates/poly-publish` 增加 metadata 校验模块，`poly publish --check-metadata` 与 `--metadata-dir` 接入 `materials`；打包结果摘要进回执。集成点：`crates/poly-publish/src/flow.rs`、`crates/poly-cli/src/publish.rs`、`crates/poly-publish/src/archive.rs`。备选：外部商店 CLI、每平台各自维护 JSON。
-- 交付物：metadata schema 与校验器；`poly publish` 接线；多语言完整性报告；双语作者指南。
+- 方案概览：已实现 `store/metadata/<platform>/<locale>.toml`（`schema = 1`；微信 / 支付宝两套规则，CJK 计 2），校验返回全部违规并使用稳定 `metadata.*` 码；`--metadata-dir` / `--check-metadata` / `--metadata-locale` 接入 `poly publish`，`--materials` 与 `--metadata-dir` 互斥；材料按 key 排序并以 blake3(canonical JSON) 摘要写入回执 `materials_digest`。集成点：`crates/poly-publish/src/metadata.rs`、`flow.rs`、`archive.rs`、`crates/poly-cli/src/publish.rs`。备选：外部商店 CLI、每平台各自维护 JSON。
+- 交付物：metadata schema 与校验器（已交付）；`poly publish` 接线（已交付）；多语言完整性报告（已交付）；双语作者指南（已交付，见 [STORE-METADATA](STORE-METADATA.md)）。
 - 风险与缓解：平台字段规则变化 → 规则表版本化并标来源；截图资产膨胀 → 只存路径与摘要，不入库二进制；语言缺失 → 默认语言回退但显式告警。
 - 决策项：metadata 事实源放仓库还是 CMS；截图是否允许外链。
 - 首步动作：选 2 个已支持平台，列出其 listing 必填字段与长度限制，先落 schema。
@@ -118,12 +118,12 @@
 
 ### M9-E6 · GUI 目标矩阵视图 / 构建历史
 
-- 状态：候选 · 未排期。
+- 状态：候选 · 部分交付（T-M9-16/17 已交付 2026-10-20；T-M9-18 GUI 因 `app/` 未跟踪延后，[ADR 0007](../decisions/0007-external-and-ui-decisions.md)）。
 - 触发条件：M1 Tauri 管线跑通且 `app/` 控制台骨架落地；或用户明确要求可视化构建历史。
 - 背景与问题：README 把 `app/` 描述为 poly-gui 控制台目标形态，但当前仓库未跟踪该目录；`BuildEvent`（`crates/poly-core/src/events.rs`）只经 stdout / JSON Lines 输出，没有持久历史，无法回答「某目标最近一次成功构建是什么时候」。
 - 目标：本地持久化构建事件，提供目标 × 最近构建的矩阵视图与单次构建详情。非目标：不做多用户服务端、不做云端同步、不做远程农场调度 UI。
-- 方案概览：CLI 将事件追加到 `.polypack/history/events.jsonl`（含 schema_version、build_id、ts、target、event），按大小轮转；GUI 通过 Tauri command 读取并聚合为矩阵；矩阵列含目标、最近状态、耗时、产物摘要、错误码。集成点：`crates/poly-core/src/events.rs`、`crates/poly-cli/src/build.rs`、新建 `app/`。备选：解析 CI 日志（不可靠）、SQLite（查询强但首版过重）。
-- 交付物：history 写入与轮转；查询 / 聚合命令；矩阵与详情视图；隐私说明（路径脱敏）。
+- 方案概览：已实现 `HistoryRecord`（schema_version、build_id、ts、target、event、status、duration、artifact 摘要、错误码）写入 `.polypack/history/events.jsonl`，按 5 MiB / 10000 条双上限轮转并保留最新记录；路径落盘前脱敏为项目相对路径。`poly history [--target ID] [--limit N] [--json]` 提供按目标聚合的查询；GUI 矩阵与详情视图（T-M9-18）仍待 `app/` 落地。集成点：`crates/poly-core/src/events.rs`、`crates/poly-cli/src/build.rs`、`crates/poly-cli/src/history.rs`。备选：解析 CI 日志（不可靠）、SQLite（查询强但首版过重）。
+- 交付物：history 写入与轮转（已交付）；查询 / 聚合命令（已交付）；矩阵与详情视图（延后）；隐私说明（路径脱敏，已交付）。
 - 风险与缓解：事件流含敏感路径 → 落盘前脱敏，只留相对路径；历史无限增长 → 条数与体积双上限；GUI 与 CLI 漂移 → 共用同一 schema 与金样。
 - 决策项：JSONL 还是 SQLite；历史默认保留期；是否记录本机绝对路径。
 - 首步动作：在 `crates/poly-core/src/events.rs` 定义可落盘的 `HistoryRecord` schema，并让 `poly build --json` 与文件写入共用。
@@ -136,7 +136,7 @@
 
 ### M9-E7 · 发布前设备预览矩阵
 
-- 状态：候选 · 未排期。
+- 状态：候选 · 未排期；决策已记录：先做 build-vs-buy 调研（T-M9-19），本阶段不写设备农场代码（[ADR 0007](../decisions/0007-external-and-ui-decisions.md)）。
 - 触发条件：M4 TV 或 M7 穿戴冒烟遇到设备瓶颈，或商店预览 / 真机回归成为发布阻塞。
 - 背景与问题：`poly smoke` 与各平台结构检查能在无设备时 SKIP，但没有设备池、租约、安装启动截图与日志归档；发布前真机矩阵完全靠人工。
 - 目标：定义设备池与预览任务模型，在真机 / 模拟器上执行安装、启动、截图、日志采集并归档证据。非目标：不做完整设备农场产品、不做无人值守审核、不承诺所有目标有设备。
@@ -160,7 +160,7 @@
 
 ### M9-P1 · Google Play Instant
 
-- 状态：候选 · 未排期；建议关闭。
+- 状态：候选 · 未排期；结论：关闭（retired，保留一行），见 [ADR 0006](../decisions/0006-platform-decisions.md)。
 - 触发条件：Google 官方恢复 Instant Apps 受理与 Instant API（当前无迹象）。
 - 现状：Google 自 2025-12 起停止受理 Instant Apps 发布，Play services Instant API 停用；README 与 `tools/gen-status-table.mjs` 已标注「已停服」，无 TargetSpec。
 - 可行性：不可行；没有可提交的渠道。
@@ -180,7 +180,7 @@
 
 ### M9-P2 · Snapchat Mini
 
-- 状态：候选 · 未排期；建议关闭（可季度复审）。
+- 状态：候选 · 未排期；结论：关闭 + 季度复审（下次 2027-01-20），见 [ADR 0006](../decisions/0006-platform-decisions.md)。
 - 触发条件：Snap 官方重新发布可核验的 Minis 文档、SDK 与上传契约。
 - 现状：官方文档入口 404，developers.snap.com 无 Minis 文档；npm `@snapchat/minis-sdk` 3.0.5（2022）标注 deprecating minis；无 zip / manifest / 打包契约可核验。
 - 可行性：当前不可行；契约缺失使任何打包器都是猜测。
@@ -200,7 +200,7 @@
 
 ### M9-P3 · LINE Mini App
 
-- 状态：候选 · 未排期；建议条件支持（部署模式，不声明 TargetSpec）。
+- 状态：候选 · 未排期；结论：条件支持（仅部署模式，不声明 TargetSpec），见 [ADR 0006](../decisions/0006-platform-decisions.md)。
 - 触发条件：出现明确使用 LINE 渠道的用户，且接受「只托管 URL、无本地上传包」。
 - 现状：LIFF 应用由 LINE Developers Console 以托管 URL 注册（LINE Login 渠道 → LIFF；Endpoint URL 必须 HTTPS 且不得含 fragment）；官方无本地上传包格式或 LIFF 配置文件。
 - 可行性：作为「部署 + 配置校验」可行；作为平台产物打包不可行。
@@ -220,7 +220,7 @@
 
 ### M9-P4 · Sailfish OS
 
-- 状态：候选 · 未排期；建议条件支持（需赞助或明确用户）。
+- 状态：候选 · 未排期；结论：条件支持（需赞助 / 设备承诺），见 [ADR 0006](../decisions/0006-platform-decisions.md)。
 - 触发条件：有 Sailfish 用户或赞助方承诺测试设备与 Jolla 账号。
 - 现状：现有 `linux-rpm` 链只出桌面 Tauri RPM（`crates/poly-bundle/src/packagers/linux.rs`）；缺 Qt / Silica QML 宿主、Sailfish SDK 交叉工具链（armv7hl / aarch64）与 harbour 打包 / 签名。
 - 可行性：技术上中等偏高（可复用 RPM 与 Linux 交叉经验）；市场上小众。
@@ -241,7 +241,7 @@
 
 ### M9-P5 · Ubuntu Touch
 
-- 状态：候选 · 未排期；建议条件支持（需赞助或明确用户）。
+- 状态：候选 · 未排期；结论：条件支持（需赞助 / 设备承诺），见 [ADR 0006](../decisions/0006-platform-decisions.md)。
 - 触发条件：有 Ubuntu Touch 用户或赞助方承诺测试设备与 OpenStore 发布。
 - 现状：现有 Linux deb 链不能产出 `.click`（格式、AppArmor、click 清单均不同）；缺 Clickable / Ubuntu Touch SDK 与 WebView 壳。
 - 可行性：技术上中等；生态与设备规模小。
@@ -262,7 +262,7 @@
 
 ### M9-P6 · PlayStation
 
-- 状态：候选 · 未排期；建议 NDA 门控。
+- 状态：候选 · 未排期；结论：NDA 门控（无授权不写代码），见 [ADR 0006](../decisions/0006-platform-decisions.md)。
 - 触发条件：获得 Sony 授权开发者身份并签署 NDA，且能本地安装官方 SDK。
 - 现状：L7 规划目标；官方 SDK 需授权，SDK 不入库、只做本地路径探测；当前无 TargetSpec。
 - 可行性：公开不可行；只能在授权环境内以插件形态实现。
@@ -282,7 +282,7 @@
 
 ### M9-P7 · Xbox
 
-- 状态：候选 · 未排期；建议 NDA 门控。
+- 状态：候选 · 未排期；结论：NDA 门控（无授权不写代码），见 [ADR 0006](../decisions/0006-platform-decisions.md)。
 - 触发条件：获得微软授权开发者身份并签署 NDA，且能本地安装 GDK。
 - 现状：L7 规划目标；GDK 需授权，SDK 不入库、只做本地路径探测；当前无 TargetSpec。
 - 可行性：公开不可行；只能在授权环境内以插件形态实现。
@@ -302,7 +302,7 @@
 
 ### M9-P8 · Nintendo Switch
 
-- 状态：候选 · 未排期；建议 NDA 门控。
+- 状态：候选 · 未排期；结论：NDA 门控（无授权不写代码），见 [ADR 0006](../decisions/0006-platform-decisions.md)。
 - 触发条件：获得任天堂授权开发者身份并签署 NDA，且能本地安装 NintendoSDK。
 - 现状：L7 规划目标；NintendoSDK 需授权，SDK 不入库、只做本地路径探测；当前无 TargetSpec。
 - 可行性：公开不可行；只能在授权环境内以插件形态实现。
@@ -326,7 +326,7 @@
 
 ### M9-D1 · 插件市场分发：官方注册表 vs 去中心化索引
 
-- 状态：候选 · 未排期。
+- 状态：候选 · 未排期；决策已记录：采用去中心化签名索引（[ADR 0004](../decisions/0004-plugin-marketplace.md)）。
 - 触发条件：第三方插件 ≥ 3 个，或出现第一个「如何发现 / 安装插件」的外部请求。
 - 背景与问题：ADR 0003 已定 WASM 沙箱与 `target-spec/v1`，但插件只以文件形式分发（`crates/poly-plugin`、`crates/poly-cli/src/plugin_new.rs`），没有索引、版本解析、吊销与来源展示。
 - 目标：选定分发模型并定义可验证的索引格式。非目标：不做付费市场、不做托管插件执行、不改变 SRI / 签名信任链。
@@ -344,7 +344,7 @@
 
 ### M9-D2 · 远程农场：仅自托管 vs 托管服务
 
-- 状态：候选 · 未排期。
+- 状态：候选 · 未排期；决策已记录：GA 仅自托管（[ADR 0005](../decisions/0005-farm-hosting.md)）。
 - 触发条件：外部用户缺少 macOS / Windows 构建机且明确要求托管；或自托管部署支持成本成为负担。
 - 背景与问题：农场 v1 已有协议、隔离、共享缓存与部署指南（`crates/poly-cli/src/farm.rs`、`docs/FARM.md`、`docs/FARM-DEPLOY.md`），但 ROADMAP 原则写明不托管用户代码与密钥；托管与否会影响信任边界与商业模式。
 - 目标：做出「仅自托管」或「托管服务」的明确决策与边界。非目标：本文不承诺实现托管服务、不改变现有自托管能力。
@@ -365,9 +365,9 @@
 
 ### M9-G1 · CLI 分发到 crates.io / GitHub Releases
 
-- 状态：候选 · 部分落地（GitHub Releases 二进制工作流已先行落地；crates.io 发布审计、签名与安装脚本仍待补）。
+- 状态：候选 · 部分落地（GitHub Releases、install script、可选 secret-gated 签名与 install-smoke 已落地；crates.io 发布审计 T-M9-45 仍开放）。
 - 触发条件：GA 发布；外部用户要求不装 Rust 工具链即可使用 `poly`。
-- 背景与问题：根 `Cargo.toml` 版本为 `0.0.0`，`crates/poly-cli/Cargo.toml` 的 bin 名为 `poly`，仓库有 `repository` 元数据；此前没有发布工作流，用户只能源码构建。现已落 `.github/workflows/release.yml`：`v*` tag 触发三宿主构建并附 `SHA256SUMS.txt`，但 crates.io 发布审计、签名与安装脚本仍未做。
+- 背景与问题：根 `Cargo.toml` 版本为 `0.0.0`，`crates/poly-cli/Cargo.toml` 的 bin 名为 `poly`，仓库有 `repository` 元数据；此前没有发布工作流，用户只能源码构建。现已落 `.github/workflows/release.yml`（`v*` tag 三宿主构建 + `SHA256SUMS.txt`）、`scripts/install.sh`（强制 SHA-256 + 可选 minisign 严格验签）、双语 `docs/INSTALL`、secret-gated 签名与 install-smoke；crates.io 发布审计（T-M9-45）仍未做。
 - 目标：提供可验证的 crates.io 安装与 GitHub Releases 二进制，带校验和与签名。非目标：首版不做 Homebrew / Scoop / apt 仓库。
 - 方案概览：先按依赖顺序 `cargo package` / `cargo publish --dry-run` 审计全部可发布 crate；GitHub Actions 构建 linux x86_64 / aarch64、macOS x86_64 / aarch64、Windows x86_64；发布 `SHA256SUMS` 与 GPG/minisign 签名；安装脚本验签后落盘。当前 GitHub Releases 腿已按最小形态落地（三宿主构建 + SHA256SUMS）；签名与安装脚本仍待补。集成点：根 `Cargo.toml`、`crates/poly-cli/Cargo.toml`、`.github/workflows/`。备选：只发 GitHub Releases（已部分落地）、只发 crates.io（需 Rust）。
 - 交付物：发布清单与 crate 顺序；跨平台构建工作流（已落地）；校验和（已落地）/ 签名（待补）；安装脚本与双语文档。
@@ -383,9 +383,9 @@
 
 ### M9-G2 · 人类外部开发者试用协议
 
-- 状态：候选 · 未排期。
+- 状态：候选 · 协议已落地（T-M9-48）；T-M9-49 的 ≥3 名真人试用是外部项。
 - 触发条件：GA 发布后；首个外部开发者愿意参与。
-- 背景与问题：GA §6 的「1 天新增目标」由独立上下文 AI 代理执行，明确未做人类可用性研究；没有招募、知情同意、任务脚本、观察记录与问题分级流程。
+- 背景与问题：GA §6 的「1 天新增目标」由独立上下文 AI 代理执行，明确未做人类可用性研究；没有招募、知情同意、任务脚本、观察记录与问题分级流程。协议与模板已落在 `docs/HUMAN-TRIAL.md` / `.en.md`；真人执行无法由本机完成。
 - 目标：建立可重复的人类试用协议并完成 ≥ 3 名外部开发者试用。非目标：不做正式可用性实验室、不收集无关个人数据。
 - 方案概览：协议含招募标准、知情同意、90 分钟任务脚本（脚手架 → 自定义目标 → 出包）、think-aloud 记录、问题分级（阻塞 / 摩擦 / 建议）、匿名化报告模板；问题回写 GA §7.2 与 issue。集成点：`docs/GA.md` §6 / §7.2、`.github/ISSUE_TEMPLATE`。备选：只做问卷、只做代理演练（现状）。
 - 交付物：试用协议；同意书与记录模板；≥ 3 份匿名报告；修复清单。
@@ -400,9 +400,9 @@
 
 ### M9-G3 · 环境槽收口计划
 
-- 状态：候选 · 未排期。
+- 状态：候选 · 台账 / owner / validator 已落地（T-M9-50、T-M9-52）；T-M9-51 的真实逐槽关闭仍为外部项。
 - 触发条件：现在；在任何对外声明「已验证」之前必须收口。
-- 背景与问题：GA §7.1 与 FARM-DEPLOY §9 仍开放 macOS IPA、真实 S3 / OSS、keyring / Vault、Garmin iq 等环境槽；缺统一台账时 SKIP-with-print 容易被误读为通过。`docs/ENV-SLOTS.md` 已落地（ENV-01..ENV-19），作为单一事实源。
+- 背景与问题：GA §7.1 与 FARM-DEPLOY §9 仍开放 macOS IPA、真实 S3 / OSS、keyring / Vault、Garmin iq 等环境槽；缺统一台账时 SKIP-with-print 容易被误读为通过。`docs/ENV-SLOTS.md` 已落地（ENV-01..ENV-19，含 Owner/Evidence 列），`tools/check-env-slots.mjs` 已接入 docs-check；真实逐槽关闭仍需外部环境与证据。
 - 目标：每个槽有 owner、缺失能力、证据路径、关闭判据与状态；无 owner 的 SKIP 不得进入发布说明。非目标：不伪造环境、不把 mock 验证写成真实环境验证。
 - 方案概览：台账已建（slot id、target、缺失能力、owner、证据路径、状态），槽位来源为 GA §7.1、FARM-DEPLOY §9、各目标 notes；关闭证据为真实日志 + 产物摘要；可加 `tools/check-env-slots.mjs` 校验台账与文档引用。集成点：`docs/GA.md` §7.1、`docs/FARM-DEPLOY.md` §9、`.github/workflows/`。备选：只在 issue 跟踪（不可审计）。
 - 交付物：环境槽台账（已落 `docs/ENV-SLOTS.md`）；四类槽的关闭证据；无 SKIP 的发布检查清单。
@@ -418,7 +418,8 @@
 
 ### M9-G4 · MSI 真样本启动测试
 
-- 状态：候选 · 未排期。
+- 状态：候选 · 代码 / CI 已落地；真实安装 / 启动 / 卸载证据待 `windows-2022` 首跑。
+- 进度（2026-10-20）：`examples/windows-msi-app/` 真实 Tauri v2 样例、`crates/poly-bundle/tests/windows_msi_real.rs` 门控真跑测试（`POLY_MSI_REAL=1`、`POLY_TAURI_CORE_BIN`、`POLY_MSI_REAL_OUT`，失败码 `POLY_MSI_REAL_0001..0006`）与 rust-ci `windows-msi-real` 作业已落；真实 MSI / 安装 / 启动 / 卸载 / 残留证据待首跑，未标 ✅。
 - 触发条件：Windows L1 对外宣称可安装；或首次 Windows 用户报告安装问题。
 - 背景与问题：`crates/poly-bundle/src/packagers/windows.rs` 生成 WiX `.wxs` 并调用 candle / light，注释给出 `msiexec /i` 冒烟提示，但没有真实样本的安装、启动、卸载与残留检查证据。
 - 目标：用真实 Tauri 样例在干净 Windows 环境完成安装 → 启动 → 卸载 → 残留检查，并归档证据。非目标：不做 MSIX / Store 打包、不做多语言安装器矩阵。
@@ -435,7 +436,7 @@
 
 ### M9-G5 · 分支保护管理员绕过（外部流程）
 
-- 状态：候选 · 未排期。
+- 状态：候选 · 未排期；外部动作：需仓库 owner 执行（[ADR 0007](../decisions/0007-external-and-ui-decisions.md)）。
 - 触发条件：现在；T-M2-12 已记录 `enforce_admins=false`。
 - 背景与问题：required checks 已设置，但管理员直推可绕过 secret-scan 等必过检查，属于流程缺口而非代码缺口；仓库内无法修复。
 - 目标：启用管理员同样受规则约束（或 org-level ruleset），并留下可核验证据。非目标：不改 CI 代码、不改变检查项集合。

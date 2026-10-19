@@ -159,6 +159,7 @@ pub fn publish_checked(
             // 终态重跑 = no-op：不触网，只如实记一次执行。
             receipt.runs += 1;
             receipt.last_unix = unix_now();
+            attach_materials_digest(&mut receipt, request);
             let state = receipt.state;
             let path = archive
                 .save(&receipt)
@@ -172,13 +173,16 @@ pub fn publish_checked(
         Ok(Some(mut receipt)) => {
             receipt.runs += 1;
             receipt.last_unix = unix_now();
+            attach_materials_digest(&mut receipt, request);
             let state = receipt.state;
             (receipt, Some(state))
         }
-        Ok(None) => (
-            Receipt::new(channel, &request.appid, &request.version, package.digest()),
-            None,
-        ),
+        Ok(None) => {
+            let mut receipt =
+                Receipt::new(channel, &request.appid, &request.version, package.digest());
+            attach_materials_digest(&mut receipt, request);
+            (receipt, None)
+        }
         Err(error) => return Err(fail(Stage::Receipt, error)),
     };
 
@@ -342,6 +346,16 @@ fn submit_idempotent(
             let _ = archive.save_submit(channel, key, &journal);
             Err(failure)
         }
+    }
+}
+
+/// 材料摘要入回执（T-M9-14）：canonical JSON 的 blake3，跨进程 / 跨平台稳定。
+///
+/// `--materials` 文件与 `--metadata-dir` 产物同口径（[`crate::metadata::materials_digest`]）；
+/// 无材料时保留既有字段（续跑不清空历史证据）。
+fn attach_materials_digest(receipt: &mut Receipt, request: &PublishRequest) {
+    if let Some(materials) = request.materials.as_ref() {
+        receipt.materials_digest = Some(crate::metadata::materials_digest(materials));
     }
 }
 

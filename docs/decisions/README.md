@@ -31,3 +31,7 @@
 | [0001](0001-bilingual-docs.md) | 双语文档：中文为主，英文镜像 + 结构校验 | accepted |
 | [0002](0002-single-rust-workspace.md) | 单一 Cargo workspace，不拆 crate / 仓库 | accepted |
 | [0003](0003-wasm-plugins.md) | WASM 插件沙箱与 `target-spec/v1` WIT | accepted |
+| [0004](0004-plugin-marketplace.md) | 插件市场分发：去中心化签名索引 | accepted |
+| [0005](0005-farm-hosting.md) | 远程农场：GA 仅自托管 | accepted |
+| [0006](0006-platform-decisions.md) | 规划平台结论：关闭 / 条件 / NDA 门控 | accepted |
+| [0007](0007-external-and-ui-decisions.md) | 外部流程与 UI 决策：分支保护、历史持久化、设备预览 | accepted |

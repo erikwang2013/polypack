@@ -48,6 +48,7 @@ pub mod archive;
 pub mod douyin;
 pub mod error;
 pub mod flow;
+pub mod metadata;
 pub mod oem;
 pub mod retry;
 pub mod secret;

@@ -1,0 +1,16 @@
+[package]
+name = "poly-msi-sample"
+version = "0.1.0"
+description = "Minimal Tauri v2 sample used by the PolyPack real-MSI test (T-M9-53/54)"
+edition = "2021"
+
+# Standalone workspace: examples/ is intentionally not a member of the PolyPack
+# workspace (`members = ["crates/*"]`), so the sample resolves its own Tauri
+# dependency tree and lockfile without touching the main workspace.
+[workspace]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }

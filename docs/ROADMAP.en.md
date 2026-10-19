@@ -582,8 +582,8 @@ Projected from the 2026-10-14 gap audit: the directions below **do not consume t
 | E3 | **Incremental releases `poly release --changed`** | republish only changed targets (decided by the content-addressed cache), cutting multi-target CI time by an order of magnitude | pilot right after M1 ships the cache | prototype change detection on cache keys |
 | E4 | **Production hot update / OTA channel** | completes the "release → iterate" loop with an online update channel | first users asking for over-the-air updates | survey per-platform update mechanisms (Play In-App Updates / mini-program version management / Tauri updater) |
 | E5 | **Store metadata pipeline** | versioned, multilingual management of listing copy / screenshots / keywords (publish currently only uploads and submits) | the first M2/M3 store release lands | define the metadata directory structure and its checker |
-| E6 | **GUI target-matrix view / build history** | upgrade poly-gui from "console" to a usability dashboard | the M1 Tauri pipeline lands | design the matrix view's data source (the BuildEvent stream) |
-| E7 | **Pre-release device preview matrix** | real-device/emulator matrix previews (also supplies the smoke-test devices noted in the audit) | M4 TV or M7 wearables smoke testing hits a device bottleneck | survey device-farm options and cost |
+| E6 | **GUI target-matrix view / build history** | upgrade poly-gui from "console" to a usability dashboard | the M1 Tauri pipeline lands | design the matrix view's data source (the BuildEvent stream); see [ADR 0007](decisions/0007-external-and-ui-decisions.md) (history persistence first, GUI once `app/` lands) |
+| E7 | **Pre-release device preview matrix** | real-device/emulator matrix previews (also supplies the smoke-test devices noted in the audit) | M4 TV or M7 wearables smoke testing hits a device bottleneck | survey device-farm options and cost; see [ADR 0007](decisions/0007-external-and-ui-decisions.md) (build-vs-buy first) |
 | E8 | **Decision records (ADR)** | archive the "why" behind choices (bilingual docs, no crate split, wasm plugins, …) | can start immediately | `docs/decisions/` exists (template + 3 backfilled records); append as needed |
 
 ## 14. Open questions (to decide)
@@ -592,4 +592,4 @@ Projected from the 2026-10-14 gap audit: the directions below **do not consume t
 - **Plugin marketplace**: distribution model for WASM plugins (official registry vs decentralized index);
 - **Remote farm**: self-hosted only (docs + deployment guide) or a hosted offering.
 
-The analysis, alternatives, and candidate tasks for both decisions live in [INITIATIVES.en.md](INITIATIVES.en.md) §4 (M9-D1 / M9-D2).
+The analysis, alternatives, and candidate tasks for both decisions live in [INITIATIVES.en.md](INITIATIVES.en.md) §4 (M9-D1 / M9-D2). The decisions are recorded in [ADR 0004](decisions/0004-plugin-marketplace.md) (signed decentralized plugin index) and [ADR 0005](decisions/0005-farm-hosting.md) (self-hosted-only farm for GA); hosting / BYOC would require a new ADR and an explicit revision of the §2 non-goal.

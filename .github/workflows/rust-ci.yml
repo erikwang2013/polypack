@@ -132,3 +132,122 @@ jobs:
       - name: cargo audit
         if: runner.os == 'Linux'
         run: cargo audit
+
+  # T-M9-53/54：真实 Tauri v2 样例 → WiX MSI → 安装 / 启动 / 卸载 / 残留。
+  #
+  # 前置：windows-2022 预装 WebView2 Runtime 与 WiX Toolset v3.14（candle / light）。
+  # Tauri CLI 非必需：样例前端是已提交的静态 dist，`cargo build --release` 即产出
+  # 真实 Tauri exe；MSI 由仓库内 poly-bundle 的 WiX 打包器（candle + light）生成，
+  # 这样测试覆盖的是本项目打包器，而不是 `tauri build --bundles msi`。
+  # 任何前置缺失都会在本作业内显式失败，测试自身的 SKIP 仅用于本地/降级宿主。
+  windows-msi-real:
+    name: windows-msi-real / install-launch-uninstall
+    runs-on: windows-2022
+    timeout-minutes: 60
+    env:
+      POLY_MSI_REAL: "1"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Rust toolchain（stable）
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: 构建缓存
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            . -> target
+            examples/windows-msi-app/src-tauri -> examples/windows-msi-app/src-tauri/target
+
+      - name: 校验 WebView2 Runtime / WiX v3 前置
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+
+          # WebView2 Evergreen Runtime：机器级或用户级注册表任一存在即可。
+          $wv2Keys = @(
+            'HKLM:\SOFTWARE\WOW6432Node\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}',
+            'HKLM:\SOFTWARE\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}',
+            'HKCU:\SOFTWARE\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}'
+          )
+          $wv2 = @($wv2Keys | Where-Object { Test-Path $_ } | ForEach-Object {
+            (Get-ItemProperty $_ -ErrorAction SilentlyContinue).pv
+          } | Where-Object { $_ })
+          if ($wv2.Count -eq 0) {
+            throw 'WebView2 Runtime 缺失：windows-2022 镜像应预装 Evergreen Runtime'
+          }
+          "WebView2 Runtime: $($wv2 -join ', ')"
+
+          # WiX v3.14：windows-2022 预装；显式定位并把 bin 注入后续步骤 PATH。
+          $wixCandidates = @(
+            (Join-Path ${env:ProgramFiles(x86)} 'WiX Toolset v3.14\bin'),
+            (Join-Path ${env:ProgramFiles(x86)} 'WiX Toolset v3.11\bin'),
+            (Join-Path $env:ProgramFiles 'WiX Toolset v3.14\bin')
+          )
+          $wix = $wixCandidates |
+            Where-Object { Test-Path (Join-Path $_ 'candle.exe') } |
+            Select-Object -First 1
+          if (-not $wix -or -not (Test-Path (Join-Path $wix 'light.exe'))) {
+            throw '找不到 WiX v3（candle.exe / light.exe）：windows-2022 应预装 WiX Toolset v3.14'
+          }
+          $wix | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          $env:PATH = "$wix;$env:PATH"
+          "WiX: $wix"
+
+      - name: 构建真实 Tauri v2 样例（cargo build --release）
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $log = Join-Path $env:RUNNER_TEMP 'tauri-build.log'
+          cargo build --release --manifest-path examples/windows-msi-app/src-tauri/Cargo.toml 2>&1 |
+            Tee-Object -FilePath $log
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $exe = (Resolve-Path 'examples/windows-msi-app/src-tauri/target/release/poly-msi-sample.exe').Path
+          "POLY_TAURI_CORE_BIN=$exe" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "POLY_MSI_REAL_OUT=$(Join-Path $env:RUNNER_TEMP 'poly-msi-real')" |
+            Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          Get-FileHash $exe -Algorithm SHA256 |
+            Format-List |
+            Out-File -FilePath (Join-Path $env:RUNNER_TEMP 'sample-exe.sha256') -Encoding utf8
+          Write-Host "sample exe: $exe"
+
+      - name: 真实 MSI 安装 / 启动 / 卸载 / 残留
+        shell: pwsh
+        run: |
+          $log = Join-Path $env:RUNNER_TEMP 'msi-real.log'
+          cargo test -p poly-bundle --test windows_msi_real -- --nocapture 2>&1 |
+            Tee-Object -FilePath $log
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          # CI 前置已校验，SKIP 在此作业等同于缺少证据：不得把跳过当通过。
+          if (Select-String -Path $log -Pattern 'SKIP' -SimpleMatch) {
+            throw 'windows-msi-real：测试打印了 SKIP（前置或样例缺失），CI 需要真实证据'
+          }
+
+      - name: 记录 MSI 摘要
+        if: always()
+        shell: pwsh
+        run: |
+          $dir = Join-Path $env:RUNNER_TEMP 'poly-msi-real'
+          $sha = Join-Path $env:RUNNER_TEMP 'msi.sha256'
+          if (Test-Path $dir) {
+            Get-ChildItem $dir -Filter *.msi | ForEach-Object {
+              "$((Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower())  $($_.Name)"
+            } | Out-File -FilePath $sha -Encoding utf8
+            if (Test-Path $sha) { Get-Content $sha }
+          } else {
+            Write-Host "MSI 证据目录不存在（测试在构建前 SKIP 或失败）：$dir"
+          }
+
+      - name: 归档日志 / MSI / 摘要
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-msi-real-evidence
+          path: |
+            ${{ runner.temp }}/tauri-build.log
+            ${{ runner.temp }}/msi-real.log
+            ${{ runner.temp }}/sample-exe.sha256
+            ${{ runner.temp }}/msi.sha256
+            ${{ runner.temp }}/poly-msi-real/
+          if-no-files-found: warn
+          retention-days: 30

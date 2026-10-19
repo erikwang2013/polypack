@@ -268,14 +268,19 @@ cargo install --path crates/poly-cli   # or cargo run -p poly-cli --
 poly init                   # generate polypack.toml
 poly dev                    # hot preview
 poly build --target all     # build every buildable target in this environment
+poly history --limit 10     # latest build status / duration / artifact per target
 poly release --target fedora,freebsd   # deb / rpm / pkg / pkgsrc self-hosted repos
 ```
 
 > `--target all` = every **buildable** target in the current environment; exclusions (license-gated, unreachable host/credentials) and their reasons are listed during the plan stage.
 >
-> Current commands: `poly doctor` / `poly init` / `poly build` / `poly dev` / `poly clean` / `poly bridge` / `poly farm` / `poly scan` / `poly verify` / `poly targets` / `poly retry` / `poly plugin` / `poly release`. `poly release` targets deb / rpm / pkg / pkgsrc self-hosted repos; mini-program submission goes through `poly publish`.
+> Current commands: `poly doctor` / `poly init` / `poly build` / `poly history` / `poly dev` / `poly clean` / `poly bridge` / `poly farm` / `poly scan` / `poly verify` / `poly targets` / `poly retry` / `poly plugin` / `poly release`. `poly release` targets deb / rpm / pkg / pkgsrc self-hosted repos; mini-program submission goes through `poly publish`. `poly history` reads `.polypack/history/events.jsonl` (path redaction, 5 MiB / 10,000-record rotation).
 >
 > `poly release --credential` is repeatable: a bare `REF` is the global default and `TARGET=REF` overrides it per target (e.g. `--credential fedora=keyring:fedora-gpg --credential freebsd=env:FREEBSD_KEY`).
+>
+> `poly release --changed`: unchanged targets emit a distinct `release-skipped` event and exit 0 without rewriting the receipt or incrementing `runs`; `--since` returns `E_PLAN_0002` in release mode (use `--changed` or pre-filter `--target`).
+>
+> Store metadata: `store/metadata/<platform>/<locale>.toml`; `poly publish --check-metadata --metadata-dir store/metadata --channel wechat-open-platform` validates only, and `--metadata-dir` is mutually exclusive with `--materials`. See [docs/STORE-METADATA.en.md](docs/STORE-METADATA.en.md).
 >
 > Prebuilt binaries: pushing a `v*` tag makes `.github/workflows/release.yml` build all three hosts and attach them to the GitHub Release (Linux x86_64 / macOS arm64 / Windows x86_64), with a `SHA256SUMS.txt`.
 

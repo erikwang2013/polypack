@@ -99,6 +99,10 @@ pub struct Receipt {
     pub version: String,
     /// 代码包摘要（容器无关口径；hex）。
     pub digest: String,
+    /// 提审材料摘要（`metadata::materials_digest` 口径：canonical JSON 的 blake3；旧回执 /
+    /// 无材料时缺省）。可选字段——不升 schema 版本，旧回执照常读取。
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub materials_digest: Option<String>,
     /// 已走到 / 停在的阶段。
     pub state: AuditState,
     /// 本键累计执行次数（首跑 1；重跑 / no-op 也 +1——如实记录被跑过几次）。
@@ -137,6 +141,7 @@ impl Receipt {
             appid: appid.to_string(),
             version: version.to_string(),
             digest: digest.to_string(),
+            materials_digest: None,
             state: AuditState::Uploaded,
             runs: 1,
             first_unix: now,

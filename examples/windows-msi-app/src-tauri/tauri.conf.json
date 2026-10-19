@@ -1,0 +1,27 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Poly MSI Sample",
+  "version": "0.1.0",
+  "identifier": "com.polypack.windows-msi-sample",
+  "build": {
+    "frontendDist": "../web"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "Poly MSI Sample",
+        "width": 420,
+        "height": 260,
+        "resizable": false
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": false,
+    "targets": ["msi"],
+    "icon": ["icons/icon.png", "icons/icon.ico"]
+  }
+}

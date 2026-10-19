@@ -2,13 +2,16 @@
 //!
 //! 阶段序见 ROADMAP §5.1；`compile` 与 `bundle(ui)` 为双支线并行，汇聚于 `package`。
 
+use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
-use std::time::{Instant, SystemTime, UNIX_EPOCH};
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use poly_cache::{Cache, LocalStore, RetentionPolicy, enforce_retention};
+use poly_core::events::{HistoryRecord, HistoryStatus};
 use poly_core::{BuildEvent, Diagnostic, EventSink, PluginGrant, Profile, pipeline};
 use poly_targets::{TargetRequest, current_host};
+use sha2::{Digest, Sha256};
 
 use crate::project;
 
@@ -55,6 +58,7 @@ pub struct Args {
 /// 执行一次构建；返回进程退出码。
 pub fn run(args: &Args, json: bool) -> Result<i32, Diagnostic> {
     let started = Instant::now();
+    let started_wall = SystemTime::now();
     let project = project::load(&args.config)?;
     // T-M8-05：目标表来自统一 provider 注册表（官方目标 + `[[plugins]]` 插件同表）。
     let registry = crate::providers::target_registry(&project)?;
@@ -84,11 +88,38 @@ pub fn run(args: &Args, json: bool) -> Result<i32, Diagnostic> {
     )?;
     let mut events = project::sink(json);
     emit_plugin_grants(events.as_mut(), &job.plugins);
-    plan.run_with(Some(&project), &job, events.as_mut())?;
+    // 事件透传的同时旁路记录告警，供历史状态判定（T-M9-16）；不改变 stdout 事件流。
+    let (outcome, warnings, warned_targets) = {
+        let mut recorder = RecordingSink {
+            inner: events.as_mut(),
+            warnings: Vec::new(),
+            warned_targets: BTreeSet::new(),
+        };
+        let outcome = plan.run_with(Some(&project), &job, &mut recorder);
+        (outcome, recorder.warnings, recorder.warned_targets)
+    };
 
-    // 产物快照（每目标一份）与 [retention] 自动淘汰：失败只告警，不影响构建结果
-    snapshot_artifacts(&project, &job.targets, events.as_mut());
-    enforce_retention_policy(&project, events.as_mut());
+    if outcome.is_ok() {
+        // 产物快照（每目标一份）与 [retention] 自动淘汰：失败只告警，不影响构建结果
+        snapshot_artifacts(&project, &job.targets, events.as_mut());
+        enforce_retention_policy(&project, events.as_mut());
+    }
+
+    // 成功与失败都落一条每目标记录；历史写失败只告警，绝不改变构建结果（§5.5）。
+    record_history(
+        HistoryContext {
+            project: &project,
+            job: &job,
+            warnings: &warnings,
+            warned_targets: &warned_targets,
+            failure: outcome.as_ref().err().map(|err| &err.diagnostic),
+            started_wall,
+            elapsed: started.elapsed(),
+        },
+        events.as_mut(),
+    );
+
+    outcome.map_err(Diagnostic::from)?;
 
     if !json {
         let stats = cache.stats();
@@ -114,6 +145,170 @@ fn emit_plugin_grants(events: &mut dyn EventSink, plugins: &[PluginGrant]) {
             net: grant.net.clone(),
         });
     }
+}
+
+/// 事件透传 + 告警旁路记录：历史状态用它判定「本次构建有告警 / 该目标被点名」。
+struct RecordingSink<'a> {
+    inner: &'a mut dyn EventSink,
+    warnings: Vec<String>,
+    warned_targets: BTreeSet<String>,
+}
+
+impl EventSink for RecordingSink<'_> {
+    fn emit(&mut self, event: &BuildEvent) {
+        if let BuildEvent::Warning { message, .. } = event {
+            self.warnings.push(message.clone());
+        }
+        if let BuildEvent::Budgeted {
+            target,
+            code: Some(_),
+            ..
+        } = event
+        {
+            self.warned_targets.insert(target.clone());
+        }
+        self.inner.emit(event);
+    }
+}
+
+/// 一次构建的历史落盘上下文（字段多于 7 个，收成结构体避免 `too_many_arguments`）。
+struct HistoryContext<'a> {
+    project: &'a poly_core::Project,
+    job: &'a poly_core::JobSpec,
+    warnings: &'a [String],
+    warned_targets: &'a BTreeSet<String>,
+    failure: Option<&'a Diagnostic>,
+    started_wall: SystemTime,
+    elapsed: Duration,
+}
+
+/// 追加每目标一条构建记录（成功 / 告警 / 失败）；写失败降级为告警。
+fn record_history(context: HistoryContext<'_>, events: &mut dyn EventSink) {
+    let ts = crate::history::now_millis();
+    let build_id = format!("build-{ts}-{}", std::process::id());
+    let duration_ms = u64::try_from(context.elapsed.as_millis()).unwrap_or(u64::MAX);
+    let packages = project::packages_root(&context.project.root);
+
+    let records: Vec<HistoryRecord> = context
+        .job
+        .targets
+        .iter()
+        .map(|target| {
+            let artifact = newest_artifact(&packages.join(&target.id), context.started_wall);
+            let warned = context.warned_targets.contains(&target.id)
+                || context
+                    .warnings
+                    .iter()
+                    .any(|message| message.contains(&target.id));
+            let (status, error_code) = match context.failure {
+                Some(diagnostic) => (HistoryStatus::Failed, Some(diagnostic.code.to_string())),
+                None if artifact.is_none() || warned => (HistoryStatus::Warning, None),
+                None => (HistoryStatus::Success, None),
+            };
+            let mut record =
+                HistoryRecord::build(build_id.clone(), &target.id, status, ts, duration_ms);
+            if let Some((path, digest)) = artifact {
+                record = record.with_artifact(&context.project.root, &path, Some(digest));
+            }
+            if let Some(code) = error_code {
+                record = record.with_error_code(code);
+            }
+            record
+        })
+        .collect();
+
+    if let Err(err) = crate::history::append_history(&context.project.root, &records) {
+        events.emit(&BuildEvent::Warning {
+            stage: "history".to_string(),
+            message: format!("构建历史写入失败（不阻断构建）: {err}"),
+        });
+    }
+}
+
+/// 目标本次构建产出的最新产物：先找本次写入的最新文件，再取它所在的顶层条目
+/// （目录产物取整棵树的确定性摘要，避免把目录内的元数据文件误当成产物本身）。
+fn newest_artifact(dir: &Path, started_wall: SystemTime) -> Option<(PathBuf, String)> {
+    let mut stack = vec![dir.to_path_buf()];
+    let mut newest: Option<(SystemTime, PathBuf)> = None;
+    while let Some(current) = stack.pop() {
+        let Ok(entries) = std::fs::read_dir(&current) else {
+            continue;
+        };
+        for entry in entries.flatten() {
+            let Ok(file_type) = entry.file_type() else {
+                continue;
+            };
+            if file_type.is_symlink() {
+                continue;
+            }
+            let path = entry.path();
+            if file_type.is_dir() {
+                stack.push(path);
+                continue;
+            }
+            let Ok(modified) = entry.metadata().and_then(|meta| meta.modified()) else {
+                continue;
+            };
+            // 2 秒容差：部分文件系统 mtime 精度为秒，构建开始同秒内的写入仍算本次。
+            if started_wall
+                .duration_since(modified)
+                .is_ok_and(|age| age > Duration::from_secs(2))
+            {
+                continue;
+            }
+            let replace = newest.as_ref().is_none_or(|(best, best_path)| {
+                modified > *best || (modified == *best && path > *best_path)
+            });
+            if replace {
+                newest = Some((modified, path));
+            }
+        }
+    }
+    let (_, path) = newest?;
+    let relative = path.strip_prefix(dir).ok()?;
+    let top = dir.join(relative.components().next()?);
+    let digest = artifact_digest(&top)?;
+    Some((top, digest))
+}
+
+/// 产物摘要：文件取内容 SHA-256；目录按相对路径排序后做确定性树摘要。
+fn artifact_digest(path: &Path) -> Option<String> {
+    let mut hasher = Sha256::new();
+    if path.is_file() {
+        let mut file = std::fs::File::open(path).ok()?;
+        std::io::copy(&mut file, &mut hasher).ok()?;
+        return Some(format!("sha256:{:x}", hasher.finalize()));
+    }
+    let mut entries: Vec<(String, PathBuf)> = Vec::new();
+    let mut stack = vec![path.to_path_buf()];
+    while let Some(current) = stack.pop() {
+        for entry in std::fs::read_dir(&current).ok()?.flatten() {
+            let file_type = entry.file_type().ok()?;
+            if file_type.is_dir() {
+                stack.push(entry.path());
+            } else if file_type.is_file() {
+                let entry_path = entry.path();
+                entries.push((path_key(path, &entry_path), entry_path));
+            }
+        }
+    }
+    entries.sort_by(|a, b| a.0.cmp(&b.0));
+    for (key, entry_path) in entries {
+        hasher.update(key.as_bytes());
+        hasher.update([0]);
+        let mut file = std::fs::File::open(&entry_path).ok()?;
+        std::io::copy(&mut file, &mut hasher).ok()?;
+        hasher.update([0]);
+    }
+    Some(format!("sha256:{:x}", hasher.finalize()))
+}
+
+/// 树内相对路径（统一 `/` 分隔），用作树摘要的排序键。
+fn path_key(root: &Path, path: &Path) -> String {
+    path.strip_prefix(root)
+        .unwrap_or(path)
+        .to_string_lossy()
+        .replace('\\', "/")
 }
 
 /// 产物快照：`<root>/.polypack/artifacts/<target>/build-<millis>/{core,dist}`，每目标保留

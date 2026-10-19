@@ -333,7 +333,7 @@ CARGO_TARGET_DIR=target cargo test -p poly-cli --test plugin_trust_root_env
 | macOS 农场 IPA R3 为环境槽 SKIP | Linux 环境无 Xcode / codesign | 按 FARM-DEPLOY §9 保持开放，macOS 主机执行后替换 |
 | 真实云对象存储（S3 / OSS）未在真实云上跑通 | 已实现 S3 兼容后端（SigV4 + OSS `x-oss-s3-compat`），mock 契约已验证 | 已实现，mock-verified；真实云环境槽（`POLYPACK_S3_REAL=1` + `POLYPACK_S3_TEST_URI`）保持开放，跑通前不宣称真实云已验证 |
 | Garmin 无真实 Connect IQ SDK / 设备证据 | 内建 iq 打包器已落地，只做结构自检；真实编译 / 真机行为仍需环境槽 | 设 `CIQ_MONKEYC` / `CIQ_HOME` / `CONNECTIQ_HOME` + `CIQ_DEVKEY` 后真跑 `monkeyc`；结构自检 `check_garmin_iq_structure` 已入 verify；真机走查见 [ENV-SLOTS](ENV-SLOTS.md) |
-| 8 个规划平台尚未声明 TargetSpec | 49 目标表中标注「规划中」 | 详细立项与条件任务见 [INITIATIVES](INITIATIVES.md) §3（M9-P1..P8）；按 ROADMAP 推进，生成表随注册表更新 |
+| 8 个规划平台尚未声明 TargetSpec | 49 目标表中标注「规划中」 | 详细立项与条件任务见 [INITIATIVES](INITIATIVES.md) §3（M9-P1..P8）；平台结论见 [ADR 0006](decisions/0006-platform-decisions.md)；按 ROADMAP 推进，生成表随注册表更新 |
 
 ### 7.2 后续动作
 

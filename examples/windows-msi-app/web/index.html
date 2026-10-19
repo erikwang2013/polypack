@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Poly MSI Sample</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        font-family: system-ui, sans-serif;
+      }
+      body {
+        display: grid;
+        min-height: 100vh;
+        margin: 0;
+        place-items: center;
+      }
+      main {
+        max-width: 22rem;
+        padding: 1.5rem;
+        text-align: center;
+      }
+      p {
+        min-height: 2.5rem;
+      }
+      button {
+        padding: 0.5rem 1.25rem;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Poly MSI Sample</h1>
+      <p id="status">Installed from an MSI and launched successfully.</p>
+      <button id="ping" type="button">Ping</button>
+    </main>
+    <script src="app.js"></script>
+  </body>
+</html>

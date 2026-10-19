@@ -6,6 +6,26 @@ Notable changes are recorded here; since v1.0.0, tags and releases follow `vX.Y.
 
 ## [Unreleased]
 
+### Added
+- **M9 决策记录（2026-10-20）**：新增 ADR 0004（去中心化签名插件索引）、ADR 0005（GA 仅自托管农场）、ADR 0006（8 个规划平台结论：关闭 / 条件 / NDA 门控）、ADR 0007（G5 外部动作 / E6 历史持久化优先 / E7 设备预览调研）；`docs/INITIATIVES` 双语状态同步。
+
+*M9 decision records (2026-10-20): ADRs 0004 (signed decentralized plugin index), 0005 (self-hosted-only farm for GA), 0006 (eight planned-platform verdicts: close / conditional / NDA-gated), and 0007 (G5 external action / E6 persistence-first / E7 device-preview research); INITIATIVES statuses synced in both languages.*
+- **M9 分发与流程**：`scripts/install.sh`（三宿主 Release 资产 + 强制 SHA256 + 可选 minisign 严格验签）、双语 `docs/INSTALL`、release 工作流的 secret-gated 签名与 install-smoke、双语 `docs/HUMAN-TRIAL` 试用协议、ENV-SLOTS 的 Owner/Evidence 列与 `tools/check-env-slots.mjs` 门禁（接入 docs-check）。T-M9-45（crates.io）、T-M9-49（真人试用）、T-M9-51（逐槽真实关闭）仍为外部项。
+
+*M9 distribution and process: `scripts/install.sh` (three-host release assets + mandatory SHA-256 + optional strict minisign verification), bilingual `docs/INSTALL`, secret-gated release signing plus an install-smoke job, the bilingual `docs/HUMAN-TRIAL` protocol, and the ENV-SLOTS Owner/Evidence columns with the `tools/check-env-slots.mjs` gate wired into docs-check. T-M9-45 (crates.io), T-M9-49 (human trials), and T-M9-51 (per-slot real closure) remain external.*
+- **M9-G4 MSI 真样本**：`examples/windows-msi-app/`（真实 Tauri v2 样例）、`crates/poly-bundle/tests/windows_msi_real.rs`（门控 `POLY_MSI_REAL=1`，安装 / 启动 / 卸载 / 残留检查，错误码 `POLY_MSI_REAL_0001..0006`）与 rust-ci `windows-msi-real` 作业；真实证据待 `windows-2022` 首跑。
+
+*M9-G4 MSI real sample: `examples/windows-msi-app/` (a real Tauri v2 sample), `crates/poly-bundle/tests/windows_msi_real.rs` (gated by `POLY_MSI_REAL=1`; install / launch / uninstall / residue checks; codes `POLY_MSI_REAL_0001..0006`), and the rust-ci `windows-msi-real` job; real evidence awaits the first `windows-2022` run.*
+- **M9-E3 增量发布**：`poly release --changed` 比较回执 `cache_key`（当前等于 `manifest_digest`）并回退 `manifest_digest`，命中时发独立 `release-skipped` 事件、不写仓库 / 不重写回执 / 不递增 `runs`；`--since` 返回 `E_PLAN_0002`。T-M9-09 的 CI 示例与节时实测待补。
+
+*M9-E3 incremental release: `poly release --changed` compares the receipt `cache_key` (currently equal to `manifest_digest`) with a `manifest_digest` fallback; a hit emits a distinct `release-skipped` event without writing the repo, rewriting the receipt, or incrementing `runs`; `--since` returns `E_PLAN_0002`. The T-M9-09 CI example and measured savings are pending.*
+- **M9-E6 构建历史**：`HistoryRecord` 写入 `.polypack/history/events.jsonl`（路径脱敏为项目相对路径、产物 SHA-256 / 目录摘要、5 MiB / 10000 条双上限轮转并保留最新），`poly history [--target ID] [--limit N] [--json]` 按目标查询；T-M9-18 GUI 因 `app/` 未跟踪延后。
+
+*M9-E6 build history: `HistoryRecord` is persisted to `.polypack/history/events.jsonl` (project-relative path redaction, artifact SHA-256 / directory digest, rotation at 5 MiB / 10,000 records keeping the newest), with `poly history [--target ID] [--limit N] [--json]` for per-target queries; the T-M9-18 GUI is deferred because `app/` is not tracked.*
+- **M9-E5 商店元数据**：`store/metadata/<platform>/<locale>.toml`（`schema = 1`，微信 / 支付宝两套规则），校验返回全部稳定 `metadata.*` 违规码；`poly publish --metadata-dir` / `--check-metadata` / `--metadata-locale` 接入，`--materials` 与 `--metadata-dir` 互斥；材料按 key 排序并以 blake3(canonical JSON) 摘要写入回执 `materials_digest`；双语作者指南 `docs/STORE-METADATA.md`。
+
+*M9-E5 store metadata: `store/metadata/<platform>/<locale>.toml` (`schema = 1`, WeChat / Alipay rule sets); validation reports every stable `metadata.*` violation; `poly publish --metadata-dir` / `--check-metadata` / `--metadata-locale` are wired, `--materials` and `--metadata-dir` are mutually exclusive; materials are key-sorted and their blake3(canonical JSON) digest is recorded as receipt `materials_digest`; bilingual author guide in `docs/STORE-METADATA.md`.*
+
 ## [1.11.0] — 2026-10-19
 
 ### Added

@@ -22,48 +22,51 @@
 | `HUMAN` | 需组织流程或人工签字 |
 
 ## 2. 槽位总表
+| ID | 关联任务 | 槽位 | 状态 | 模式 | 负责人 | 证据 | 现有 CI |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| ENV-01 | T-M1-05 | Windows 真实 Tauri 样例 + 默认 Program Files 启动 | PARTIAL | HOST | release-sec | §3 ENV-01 | rust-ci |
+| ENV-02 | T-M2-10 | macOS `codesign` + `notarytool` 真执行 | PARTIAL | CI | release-sec | §3 ENV-02 | mobile-contract |
+| ENV-03 | T-M2-13 / T-M8-09 | macOS 农场 worker → IPA | OPEN | HOST | infra + release-sec | §3 ENV-03 | — |
+| ENV-04 | T-M3-05 / T-M3-06 | 微信 / 支付宝 / 抖音开发者工具预览 | PARTIAL | HOST | core + release-sec | §3 ENV-04 | miniprogram-contract |
+| ENV-05 | T-M4-15 | Roku 真机侧载 | PARTIAL | HOST | core | §3 ENV-05 | — |
+| ENV-06 | T-M5-07 | OpenBSD VM 安装冒烟 | PARTIAL | CI | infra | §3 ENV-06 | bsd-ci |
+| ENV-07 | T-M5-08 | NetBSD `bmake` / pkgsrc | OPEN | CI | infra | §3 ENV-07 | — |
+| ENV-08 | T-M6-03 / T-M6-09 | QNX SDP + QEMU 冒烟 | PARTIAL | CI | infra | §3 ENV-08 | embedded-ci |
+| ENV-09 | T-M6-05 | VxWorks `wr-cc` 链接腿 | PARTIAL | CI | infra | §3 ENV-09 | embedded-ci |
+| ENV-10 | T-M7-04 | Wear OS 设备 / 模拟器冒烟 | PARTIAL | CI | infra | §3 ENV-10 | wear-release-smoke |
+| ENV-11 | T-M7-05 / T-M7-06 | watchOS `xcodebuild` 真构建 | PARTIAL | CI | core + release-sec | §3 ENV-11 | — |
+| ENV-12 | T-M7-07 | Fitbit `fitbit-build` 自检 | PARTIAL | CI | infra | §3 ENV-12 | — |
+| ENV-13 | T-M7-08 | Zepp `zeus` + 模拟器安装 | PARTIAL | HOST | core | §3 ENV-13 | — |
+| ENV-14 | T-M7-09 | Garmin Connect IQ SDK / devkey 编译 | PARTIAL | CI | core | §3 ENV-14 | — |
+| ENV-15 | T-M8-03 | keyring 信任根载体 | OPEN | CI | release-sec | §3 ENV-15 | — |
+| ENV-16 | T-M8-03 | Vault 信任根载体 | OPEN | CI | release-sec + core | §3 ENV-16 | — |
+| ENV-17 | T-M8-09 | 真实 S3 / OSS 往返与农场二跑 | OPEN | CI | infra + release-sec | §3 ENV-17 | — |
+| ENV-18 | T-M2-12 | Branch protection admin bypass | OPEN | HUMAN | maintainer | §3 ENV-18 | secret-scan |
+| ENV-19 | GA §7.2 | 人类外部开发者试用 | OPEN | HUMAN | docs | §3 ENV-19 | — |
 
-| ID | 关联任务 | 槽位 | 状态 | 模式 | 现有 CI |
-| --- | --- | --- | --- | --- | --- |
-| ENV-01 | T-M1-05 | Windows 真实 Tauri 样例 + 默认 Program Files 启动 | PARTIAL | HOST | rust-ci |
-| ENV-02 | T-M2-10 | macOS `codesign` + `notarytool` 真执行 | PARTIAL | CI | mobile-contract |
-| ENV-03 | T-M2-13 / T-M8-09 | macOS 农场 worker → IPA | OPEN | HOST | — |
-| ENV-04 | T-M3-05 / T-M3-06 | 微信 / 支付宝 / 抖音开发者工具预览 | PARTIAL | HOST | miniprogram-contract |
-| ENV-05 | T-M4-15 | Roku 真机侧载 | PARTIAL | HOST | — |
-| ENV-06 | T-M5-07 | OpenBSD VM 安装冒烟 | PARTIAL | CI | bsd-ci |
-| ENV-07 | T-M5-08 | NetBSD `bmake` / pkgsrc | OPEN | CI | — |
-| ENV-08 | T-M6-03 / T-M6-09 | QNX SDP + QEMU 冒烟 | PARTIAL | CI | embedded-ci |
-| ENV-09 | T-M6-05 | VxWorks `wr-cc` 链接腿 | PARTIAL | CI | embedded-ci |
-| ENV-10 | T-M7-04 | Wear OS 设备 / 模拟器冒烟 | PARTIAL | CI | wear-release-smoke |
-| ENV-11 | T-M7-05 / T-M7-06 | watchOS `xcodebuild` 真构建 | PARTIAL | CI | — |
-| ENV-12 | T-M7-07 | Fitbit `fitbit-build` 自检 | PARTIAL | CI | — |
-| ENV-13 | T-M7-08 | Zepp `zeus` + 模拟器安装 | PARTIAL | HOST | — |
-| ENV-14 | T-M7-09 | Garmin Connect IQ SDK / devkey 编译 | PARTIAL | CI | — |
-| ENV-15 | T-M8-03 | keyring 信任根载体 | OPEN | CI | — |
-| ENV-16 | T-M8-03 | Vault 信任根载体 | OPEN | CI | — |
-| ENV-17 | T-M8-09 | 真实 S3 / OSS 往返与农场二跑 | OPEN | CI | — |
-| ENV-18 | T-M2-12 | Branch protection admin bypass | OPEN | HUMAN | secret-scan |
-| ENV-19 | GA §7.2 | 人类外部开发者试用 | OPEN | HUMAN | — |
-
+负责人只使用五个角色：`release-sec` / `core` / `docs` / `infra` / `maintainer`；组合用 ` + `。证据列指向 §3 的执行卡；真实证据包仍按 §4.2 归档，本表不伪造证据。真实逐槽关闭仍是外部工作，未关闭槽位保持原状态。
 ## 3. 槽位执行卡
 
 ### ENV-01 · Windows 真实 Tauri 样例 + 默认 Program Files 启动
 
 - 关联任务：T-M1-05（Windows 打包器），T-M1-03（Tauri 布局）。 缺口：现有 NSIS 冒烟用 rustc 夹具 PE 和 `/D=` 临时目录；真实 Tauri 样例、默认 `$PROGRAMFILES64\Pax Notes`、开始菜单启动未验证。`real_tauri_core_binary_resolves_injected_resources` 目前固定 `Host::Linux`，不能产出 Windows 证据。
 - 环境 / 工具链 / 凭据：windows-2022 或物理 Windows 10/11、WebView2 Runtime、NSIS、WiX v3.14、Tauri CLI、真实 Tauri 样例工程；无需云凭据。
-- 开关：`POLY_TAURI_CORE_BIN=<真实 Tauri 可执行>`；NSIS / MSI 测试无需额外开关。
+- 开关：`POLY_TAURI_CORE_BIN=<真实 Tauri 可执行>`；MSI 真跑另需 `POLY_MSI_REAL=1` 与 `POLY_MSI_REAL_OUT=<证据目录>`；NSIS 测试无需额外开关。
 - 命令：
 ```powershell
 cargo test -p poly-bundle --test packagers_windows nsis_real_build_produces_pe_installer -- --nocapture
 cargo test -p poly-bundle --test packagers_windows nsis_install_launch_uninstall_smoke -- --nocapture
 $env:POLY_TAURI_CORE_BIN = "C:\work\pax-notes\target\release\pax-notes.exe"
 cargo test -p poly-bundle --test tauri_layout real_tauri_core_binary_resolves_injected_resources -- --nocapture
+$env:POLY_MSI_REAL = "1"; $env:POLY_MSI_REAL_OUT = "C:\work\msi-evidence"
+cargo test -p poly-bundle --test windows_msi_real -- --nocapture
 poly build --target windows
 msiexec /i ".polypack\packages\windows\Pax Notes_1.2.3_x64_en-US.msi" /qn
 & "$env:ProgramFiles\Pax Notes\pax-notes.exe" --version
 ```
+- 进度（2026-10-20）：`examples/windows-msi-app/` 真实 Tauri v2 样例、`crates/poly-bundle/tests/windows_msi_real.rs` 与 rust-ci `windows-msi-real` 作业已落地；真实 MSI / 安装 / 启动 / 卸载 / 残留证据待 `windows-2022` 首跑，状态保持 `PARTIAL`。
 - 证据：两条 NSIS 测试输出；真实样例安装到默认路径后的 `--version` 输出与窗口截图；`Pax Notes_1.2.3_x64-setup.exe` 的 SHA-256；卸载后目录消失。当前 `tauri_layout` 仅 Linux 断言，Windows 真实样例腿需新增测试或外部脚本，不得用 Linux 输出冒充。
-- 现状：`PARTIAL`。MSI / NSIS 真编译与临时目录启动 / 卸载已在 rust-ci windows-2022 真跑；默认路径 + 真实 Tauri 样例仍开。 负责人：packagers + release-sec。
+- 现状：`PARTIAL`。MSI / NSIS 真编译与临时目录启动 / 卸载已在 rust-ci windows-2022 真跑；默认路径 + 真实 Tauri 样例仍开。 负责人：release-sec。
 - 下一步：在 windows-2022 增加真实 Tauri 样例夹具与默认路径冒烟；或在物理 Windows 上执行上面命令并归档截图。
 - 阻塞：默认 Program Files 写入需提权；GUI 启动与开始菜单观察需交互桌面，托管 runner 服务会话做不到。 运行位置：CI 可覆盖安装与默认路径启动；GUI 观察需物理 Windows。
 
@@ -127,7 +130,7 @@ POLYPACK_ALIPAY_DEVTOOLS_LOGIN="$POLYPACK_ALIPAY_DEVTOOLS_LOGIN" \
 cargo test -p poly-cli --test contract_m3_devtools contract_devtools_real_preview -- --nocapture
 ```
 - 证据：三端预览命令退出码 0；WeChat / Alipay 预览二维码截图或预览 URL；抖音远程预览返回；工具版本与登录账号（脱敏）；`contract_devtools_real_preview` 无 SKIP 的完整输出。
-- 现状：`PARTIAL`。mock 与命令组装真跑；真实预览依赖 GUI 登录，miniprogram-contract `real` 作业在 vars / secrets 未设时只 NOTE。 负责人：ui-adapters + release-sec。
+- 现状：`PARTIAL`。mock 与命令组装真跑；真实预览依赖 GUI 登录，miniprogram-contract `real` 作业在 vars / secrets 未设时只 NOTE。 负责人：core + release-sec。
 - 下一步：在 macOS 上登录三端工具，设置 CLI 路径与登录态，跑模块测试并保存二维码 / URL；抖音优先走免密 Token 以进 CI。
 - 阻塞：微信 / 支付宝登录态涉及扫码或 2FA，不能存进公开仓库；抖音账号资质另需审核。 运行位置：GUI 登录需物理 macOS；登录态就绪后命令腿可在 CI 跑。
 
@@ -143,7 +146,7 @@ POLY_ROKU_REAL=1 ROKU_DEV_TARGET=<ip> ROKU_DEV_PASSWORD=<pwd> node scripts/build
 curl --connect-timeout 2 -s "http://<ip>:8060/"
 ```
 - 证据：脚本输出 `ECP 设备: <name>` 与 `plugin_install 侧载成功`；Roku 屏幕上的频道启动截图；`ui/adapters/roku/dist/polypack-spike-channel.zip` 的 SHA-256；设备型号 / 固件版本。
-- 现状：`PARTIAL`。结构自检与 zip 布局真跑；真机侧载按环境槽 SKIP-with-print，无 CI 作业。 负责人：packagers / QA。
+- 现状：`PARTIAL`。结构自检与 zip 布局真跑；真机侧载按环境槽 SKIP-with-print，无 CI 作业。 负责人：core。
 - 下一步：用一台开发者模式 Roku 执行上述命令，截图并归档；如设备可长期在线，再加自托管 runner 作业。
 - 阻塞：需要局域网内的真实 Roku 与开发者密码；托管 runner 无设备网络。 运行位置：物理设备 + 同 LAN 宿主，不能进托管 CI。
 
@@ -162,7 +165,7 @@ cd /usr/ports/x11/<port> && make package PACKAGES=/tmp/openbsd-packages
 pkg_add /tmp/openbsd-packages/<pkg>.tgz && pkg_info && pkg_check
 ```
 - 证据：`make package` 与 `pkg_add` 退出码 0；`pkg_info` 显示包；`pkg_check` 无错误；`signify -V` 输出；bsd-ci `openbsd` 作业绿色日志与 artifact。
-- 现状：`PARTIAL`。作业已接线但宿主虚拟化不满足，只有 SKIP / 失败日志，没有安装证据。 负责人：infra + packagers。
+- 现状：`PARTIAL`。作业已接线但宿主虚拟化不满足，只有 SKIP / 失败日志，没有安装证据。 负责人：infra。
 - 下一步：给 bsd-ci 加 KVM self-hosted runner 标签，跑绿一次后把 `continue-on-error` 改为 false。
 - 阻塞：托管 ubuntu-latest 无 KVM；OpenBSD 在 TCG 下启动超时。 运行位置：CI（KVM self-hosted）可关闭。
 
@@ -181,7 +184,7 @@ cd <生成的 pkgsrc 目录> && bmake package
 pkg_add <产物>.tgz && pkg_info && pkg_info -L <pkg>
 ```
 - 证据：`bmake package` 退出码 0；`pkg_add` / `pkg_info` 输出；`.tgz` SHA-256；NetBSD 版本与 `bmake -V MAKE_VERSION`。
-- 现状：`OPEN`。pkgsrc 生成与结构断言真跑；`bmake` 腿 SKIP-with-print，且无 CI 作业。 负责人：packagers + infra。
+- 现状：`OPEN`。pkgsrc 生成与结构断言真跑；`bmake` 腿 SKIP-with-print，且无 CI 作业。 负责人：infra。
 - 下一步：在 bsd-ci 新增 `netbsd` 作业（vmactions/netbsd-vm 或 self-hosted），先跑结构再跑 `bmake package`。
 - 阻塞：无 NetBSD 宿主；pkgsrc 首次 bootstrap 与镜像带宽大。 运行位置：CI（NetBSD VM / self-hosted）可关闭。
 
@@ -200,7 +203,7 @@ poly build --target qnx --json
 POLYPACK_QNX_QEMU=/usr/bin/qemu-system-x86_64 poly verify --target qnx --json
 ```
 - 证据：`doctor` 找到 `qcc` / `nto*-gcc`；build JSONL 出现 `qnx-image-structure` 的 `verified`；QEMU 串口日志与 `result.json`；`.ifs` / 静态库 SHA-256。
-- 现状：`PARTIAL`。SDP 探测、结构校验与 CI 矩阵已接线；SDP 未提供，真实编译 / QEMU 冒烟 SKIP。 负责人：platforms + infra。
+- 现状：`PARTIAL`。SDP 探测、结构校验与 CI 矩阵已接线；SDP 未提供，真实编译 / QEMU 冒烟 SKIP。 负责人：infra。
 - 下一步：在 self-hosted runner 安装 SDP 7.1 并设 `vars.POLYPACK_QNX_SDP`；首绿后把 QNX 条目从 job summary 的 SKIP 列表移除。
 - 阻塞：QNX SDP 需商业许可证，不能公开下载进托管 runner。 运行位置：CI（self-hosted runner + 许可证）可关闭。
 
@@ -218,7 +221,7 @@ poly init /tmp/poly-vx && cd /tmp/poly-vx
 poly build --target vxworks --json
 ```
 - 证据：build JSONL 出现 `vxworks-ld-check` 的 `verified`；`check.sh` 的 `wr-cc -c` 与链接命令退出码 0；`nm` 无白名单外未解析符号；`.vxe` / 库 SHA-256；`wr-cc --version`。
-- 现状：`PARTIAL`。打包器与结构断言真跑；`wr-cc` 链接腿 SKIP。 负责人：platforms + infra。
+- 现状：`PARTIAL`。打包器与结构断言真跑；`wr-cc` 链接腿 SKIP。 负责人：infra。
 - 下一步：在 self-hosted runner 装 Workbench SDK，设 `WR_CC`，跑一次并归档 `check.sh` 输出。
 - 阻塞：VxWorks SDK 与许可证需商业采购。 运行位置：CI（self-hosted runner）可关闭。
 
@@ -237,7 +240,7 @@ node ui/smoke/wear/run.mjs --leg android --serial emulator-5554 \
   --apk "$POLYPACK_WEAR_FORM_APK" --logs /tmp/wear-logs
 ```
 - 证据：`result.json`（schema `polypack/wear-smoke/v1`）、`logcat.txt`、截图、UIAutomator dump、构建摘要含 commit 与 APK SHA-256；`wear-release-smoke` 作业绿色并上传 90 天 artifact。
-- 现状：`PARTIAL`。mock / 夜跑作业就绪；KVM 与 APK 未提供，真实设备腿未跑。 负责人：ui-adapters + QA。
+- 现状：`PARTIAL`。mock / 夜跑作业就绪；KVM 与 APK 未提供，真实设备腿未跑。 负责人：infra。
 - 下一步：给 runner 开 KVM，构建表单 APK 并设 `vars.POLYPACK_WEAR_FORM_APK`；或接一台长期在线手表。
 - 阻塞：托管 runner 无 `/dev/kvm`；物理手表需 ADB 授权与固定连接。 运行位置：CI（KVM self-hosted）或物理设备。
 
@@ -258,7 +261,7 @@ xcodebuild archive -project PolyPackWatch.xcodeproj -scheme PolyPackWatch \
   CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY=
 ```
 - 证据：`xcodebuild` 的 `BUILD SUCCEEDED`；`.polypack/packages/watchos/export/Payload/<产品>.app` 存在；`Info.plist` / `PkgInfo` 结构断言；`.app` SHA-256；Xcode 版本。
-- 现状：`PARTIAL`。模板 10 文件与打包器 mock 断言真跑；macOS 真构建缺失，无 CI 作业。 负责人：platforms。
+- 现状：`PARTIAL`。模板 10 文件与打包器 mock 断言真跑；macOS 真构建缺失，无 CI 作业。 负责人：core。
 - 下一步：在 macos-14 增加 watchOS 作业（安装 Xcode 后跑上面两条 `xcodebuild`），或手动执行并归档。
 - 阻塞：需 macOS + Xcode；Linux 宿主只能返回 `poly::E_BND_0001` 与 R3 农场提示。 运行位置：CI（macos-14）可关闭。
 
@@ -274,7 +277,7 @@ fitbit-build --help
 cargo test -p poly-cli --test contract_m7_wear_js -- --nocapture
 ```
 - 证据：`fitbit-build --help` 退出码 0；`poly verify --target fitbit --json` 的 notes 不再含 `fitbit-build` 的 SKIP-with-print；`.fba` SHA-256 与结构断言输出。
-- 现状：`PARTIAL`。打包器与结构检查真跑；官方 CLI 自检缺席。 负责人：platforms + infra。
+- 现状：`PARTIAL`。打包器与结构检查真跑；官方 CLI 自检缺席。 负责人：infra。
 - 下一步：在 CI 安装 `@fitbit/sdk-cli`，把 `contract_m7_wear_js` 的 Fitbit 腿从 SKIP 变 REAL；注意官方 CLI 只做在场自检，不重编译本项目（本项目不做 TS / rollup）。
 - 阻塞：npm 包与账号可用性；无硬件要求。 运行位置：CI（ubuntu / macOS）可关闭。
 
@@ -291,7 +294,7 @@ cargo test -p poly-cli --test contract_m7_wear_js -- --nocapture
 # 模拟器：手动把 .polypack/packages/zepp/*.zab 装入 Zepp OS 模拟器并截图
 ```
 - 证据：`zeus --version` 输出；verify notes 不再含 `zeus` SKIP；模拟器安装 / 启动截图与 `.zab` SHA-256；模拟器版本。
-- 现状：`PARTIAL`。打包器与结构断言真跑；`zeus` 与模拟器腿均缺席。 负责人：platforms + QA。
+- 现状：`PARTIAL`。打包器与结构断言真跑；`zeus` 与模拟器腿均缺席。 负责人：core。
 - 下一步：CI 安装 zeus 关闭自检腿；模拟器腿由人工执行并把截图附到 ENV-13 issue。
 - 阻塞：模拟器是 GUI 应用，无法在 headless runner 自动安装；`zeus` 安装包名与授权以官方为准。 运行位置：`zeus` 自检可在 CI；模拟器安装需物理 GUI 宿主。
 
@@ -308,7 +311,7 @@ cd <生成目录>/round && monkeyc -e -w -r -o ../garmin-round.iq -y "$CIQ_DEVKE
 cd <生成目录>/square && monkeyc -e -w -r -o ../garmin-square.iq -y "$CIQ_DEVKEY" -f monkey.jungle
 ```
 - 证据：`npm run build` 输出 PASS 7 / FAIL 0 / SKIP 0；圆 / 方 `.iq` 文件与条目断言；`monkeyc --version`；devkey 指纹（不含私钥）；编译日志。
-- 现状：`PARTIAL`。转译与结构自检真跑；编译器腿 SKIP；`poly build --target garmin` 仍无内建 iq 打包器（G10 条件任务）。 负责人：platforms。
+- 现状：`PARTIAL`。转译与结构自检真跑；编译器腿 SKIP；`poly build --target garmin` 仍无内建 iq 打包器（G10 条件任务）。 负责人：core。
 - 下一步：在 CI 安装 Connect IQ SDK 并把 devkey 放 secret；关闭编译器腿。iq 打包器另立条件任务，不在本槽内伪装。
 - 阻塞：SDK 获取可能需 Garmin 账号；devkey 由开发者生成，不能入库。 运行位置：CI（ubuntu / macOS + SDK）可关闭编译器腿。
 
@@ -350,7 +353,7 @@ POLY_VAULT_REAL=1 cargo test -p poly-sign --test vault_real -- --nocapture
 poly build --target linux-reference --json
 ```
 - 证据（关闭前必须）：`vault_real` 往返输出不足以关闭载体；需要 CLI 侧 `plugin_granted` / `packaged` 与错误路径 `E_PLUGIN_0010` 的真实输出，且日志不含 token。
-- 现状：`OPEN`（环境槽：需真实 Vault 服务与凭据）；代码侧已接线，`vault_real` 门控仍为 `POLY_VAULT_REAL=1`。 负责人：release-sec / core。
+- 现状：`OPEN`（环境槽：需真实 Vault 服务与凭据）；代码侧已接线，`vault_real` 门控仍为 `POLY_VAULT_REAL=1`。 负责人：release-sec + core。
 - 下一步：在有 Vault 服务的环境按本卡跑真实 E2E（`vault_real` + CLI 信任根 / 发布），日志不得含 token。
 - 阻塞：需 Vault 服务与凭据；代码缺口已关闭。 运行位置：CI（Vault dev server）可关闭；当前无服务。
 
@@ -387,7 +390,7 @@ gh api repos/erikwang2013/polypack/branches/main/protection/required_status_chec
 # 目标：enforce_admins.enabled == true；或在 GA 记录有时限的例外与四眼复核
 ```
 - 证据：`gh api` 输出 `true`；GitHub Settings → Branches → main 截图；required checks 列表含 `secret-scan / ubuntu-latest`、`secret-scan / macos-14`、`secret-scan / windows-2022`。
-- 现状：`OPEN`。必过检查已设；admin 绕过仍开。 负责人：release-manager / repo admin。
+- 现状：`OPEN`。必过检查已设；admin 绕过仍开。 负责人：maintainer。
 - 下一步：管理员打开 “Do not allow bypassing the above settings”；如业务必须保留紧急通道，则在 GA §7 记录例外条件、审批人与复核记录。
 - 阻塞：需要仓库管理员权限；普通开发无法修改。 运行位置：HUMAN / GitHub 设置，不在代码仓内。
 
@@ -404,7 +407,7 @@ poly plugin check <dir>
 poly build --config <app>/polypack.toml --target pocket-notes
 ```
 - 证据：每位试用者的试用报告（环境、开始 / 结束时间、完成的命令、卡点原文、是否 1 天内出包）；汇总 issue；文档修订 PR 链接。
-- 现状：`OPEN`。尚无外部试用记录。 负责人：DevRel / PM。
+- 现状：`OPEN`。尚无外部试用记录。 负责人：docs。
 - 下一步：GA 发布后招募 3–5 人，按模板收集报告，把卡点回写到 GA / README / 模板。
 - 阻塞：需要真实外部人员与时间，不能由 agent 代跑。 运行位置：HUMAN；不在 CI。
 

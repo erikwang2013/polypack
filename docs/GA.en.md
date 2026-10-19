@@ -333,7 +333,7 @@ Boundary: the table above verifies the host load chain (SRI → signature verifi
 | macOS farm IPA R3 is an environment-slot SKIP | The Linux environment has no Xcode / codesign | Kept open per FARM-DEPLOY §9; replace after running on a macOS host |
 | Real cloud object storage (S3 / OSS) not run against a real cloud yet | S3-compatible backend implemented (SigV4 + OSS `x-oss-s3-compat`), mock contract verified | Implemented, mock-verified; the real-cloud environment slot (`POLYPACK_S3_REAL=1` + `POLYPACK_S3_TEST_URI`) stays open — no real-cloud verification is claimed before it runs |
 | Garmin has no real Connect IQ SDK / device evidence | The built-in iq packager has landed and performs structure self-checks only; real compilation / device behavior still needs the environment slots | Set `CIQ_MONKEYC` / `CIQ_HOME` / `CONNECTIQ_HOME` + `CIQ_DEVKEY` to run `monkeyc`; the `check_garmin_iq_structure` structure check is wired into verify; device walkthrough in [ENV-SLOTS.en.md](ENV-SLOTS.en.md) |
-| 8 planned platforms have no TargetSpec yet | Marked "planned" in the 49-target table | Detailed initiation and conditional tasks are in [INITIATIVES.en.md](INITIATIVES.en.md) §3 (M9-P1..P8); advance per ROADMAP and the generated table follows the registry |
+| 8 planned platforms have no TargetSpec yet | Marked "planned" in the 49-target table | Detailed initiation and conditional tasks are in [INITIATIVES.en.md](INITIATIVES.en.md) §3 (M9-P1..P8); platform verdicts are in [ADR 0006](decisions/0006-platform-decisions.md); advance per ROADMAP and the generated table follows the registry |
 
 ### 7.2 Follow-up actions
 
