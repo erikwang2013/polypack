@@ -20,52 +20,56 @@ Environment slots are tracked separately from code gaps: a slot closes with envi
 | `CI` | Completable on a hosted or self-hosted runner with credentials / toolchain / KVM |
 | `HOST` | Requires a physical device, GUI, LAN, or interactive login |
 | `HUMAN` | Requires an organizational process or human sign-off |
+| `CLOSED` | Real evidence archived and reviewed; the slot is closed |
 
 ## 2. Slot index
+| ID | Linked task | Slot | Status | Mode | Owner | Evidence | Existing CI |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| ENV-01 | T-M1-05 | Windows real Tauri sample + default Program Files launch | CLOSED | HOST | release-sec | run 39308849058 · windows-msi-real | rust-ci |
+| ENV-02 | T-M2-10 | macOS `codesign` + `notarytool` real execution | PARTIAL | CI | release-sec | §3 ENV-02 | mobile-contract |
+| ENV-03 | T-M2-13 / T-M8-09 | macOS farm worker → IPA | OPEN | HOST | infra + release-sec | §3 ENV-03 | — |
+| ENV-04 | T-M3-05 / T-M3-06 | WeChat / Alipay / Douyin devtools preview | PARTIAL | HOST | core + release-sec | §3 ENV-04 | miniprogram-contract |
+| ENV-05 | T-M4-15 | Roku real-device sideload | PARTIAL | HOST | core | §3 ENV-05 | — |
+| ENV-06 | T-M5-07 | OpenBSD VM install smoke | PARTIAL | CI | infra | §3 ENV-06 | bsd-ci |
+| ENV-07 | T-M5-08 | NetBSD `bmake` / pkgsrc | OPEN | CI | infra | §3 ENV-07 | — |
+| ENV-08 | T-M6-03 / T-M6-09 | QNX SDP + QEMU smoke | PARTIAL | CI | infra | §3 ENV-08 | embedded-ci |
+| ENV-09 | T-M6-05 | VxWorks `wr-cc` link leg | PARTIAL | CI | infra | §3 ENV-09 | embedded-ci |
+| ENV-10 | T-M7-04 | Wear OS device / emulator smoke | PARTIAL | CI | infra | §3 ENV-10 | wear-release-smoke |
+| ENV-11 | T-M7-05 / T-M7-06 | watchOS real `xcodebuild` | PARTIAL | CI | core + release-sec | §3 ENV-11 | — |
+| ENV-12 | T-M7-07 | Fitbit `fitbit-build` self-check | PARTIAL | CI | infra | §3 ENV-12 | — |
+| ENV-13 | T-M7-08 | Zepp `zeus` + simulator install | PARTIAL | HOST | core | §3 ENV-13 | — |
+| ENV-14 | T-M7-09 | Garmin Connect IQ SDK / devkey compile | PARTIAL | CI | core | §3 ENV-14 | — |
+| ENV-15 | T-M8-03 | keyring trust-root carrier | OPEN | CI | release-sec | §3 ENV-15 | — |
+| ENV-16 | T-M8-03 | Vault trust-root carrier | OPEN | CI | release-sec + core | §3 ENV-16 | — |
+| ENV-17 | T-M8-09 | Real S3 / OSS round-trip + farm second run | OPEN | CI | infra + release-sec | §3 ENV-17 | — |
+| ENV-18 | T-M2-12 | Branch protection admin bypass | OPEN | HUMAN | maintainer | §3 ENV-18 | secret-scan |
+| ENV-19 | GA §7.2 | Human external developer trial | OPEN | HUMAN | docs | §3 ENV-19 | — |
 
-| ID | Linked task | Slot | Status | Mode | Existing CI |
-| --- | --- | --- | --- | --- | --- |
-| ENV-01 | T-M1-05 | Windows real Tauri sample + default Program Files launch | PARTIAL | HOST | rust-ci |
-| ENV-02 | T-M2-10 | macOS `codesign` + `notarytool` real execution | PARTIAL | CI | mobile-contract |
-| ENV-03 | T-M2-13 / T-M8-09 | macOS farm worker → IPA | OPEN | HOST | — |
-| ENV-04 | T-M3-05 / T-M3-06 | WeChat / Alipay / Douyin devtools preview | PARTIAL | HOST | miniprogram-contract |
-| ENV-05 | T-M4-15 | Roku real-device sideload | PARTIAL | HOST | — |
-| ENV-06 | T-M5-07 | OpenBSD VM install smoke | PARTIAL | CI | bsd-ci |
-| ENV-07 | T-M5-08 | NetBSD `bmake` / pkgsrc | OPEN | CI | — |
-| ENV-08 | T-M6-03 / T-M6-09 | QNX SDP + QEMU smoke | PARTIAL | CI | embedded-ci |
-| ENV-09 | T-M6-05 | VxWorks `wr-cc` link leg | PARTIAL | CI | embedded-ci |
-| ENV-10 | T-M7-04 | Wear OS device / emulator smoke | PARTIAL | CI | wear-release-smoke |
-| ENV-11 | T-M7-05 / T-M7-06 | watchOS real `xcodebuild` | PARTIAL | CI | — |
-| ENV-12 | T-M7-07 | Fitbit `fitbit-build` self-check | PARTIAL | CI | — |
-| ENV-13 | T-M7-08 | Zepp `zeus` + simulator install | PARTIAL | HOST | — |
-| ENV-14 | T-M7-09 | Garmin Connect IQ SDK / devkey compile | PARTIAL | CI | — |
-| ENV-15 | T-M8-03 | keyring trust-root carrier | OPEN | CI | — |
-| ENV-16 | T-M8-03 | Vault trust-root carrier | OPEN | CI | — |
-| ENV-17 | T-M8-09 | Real S3 / OSS round-trip + farm second run | OPEN | CI | — |
-| ENV-18 | T-M2-12 | Branch protection admin bypass | OPEN | HUMAN | secret-scan |
-| ENV-19 | GA §7.2 | Human external developer trial | OPEN | HUMAN | — |
-
+Owners use only five roles: `release-sec` / `core` / `docs` / `infra` / `maintainer`; combinations use ` + `. The evidence column points at the §3 run card; the real evidence bundle is still archived per §4.2 and this table never fabricates evidence. Real per-slot close-out remains external work; unclosed slots keep their current status.
 ## 3. Slot run cards
 
 ### ENV-01 · Windows real Tauri sample + default Program Files launch
 
 - Linked task: T-M1-05 (Windows packagers), T-M1-03 (Tauri layout). Gap: the NSIS smoke uses a rustc fixture PE and a `/D=` temp directory; a real Tauri sample, the default `$PROGRAMFILES64\Pax Notes`, and Start-menu launch are unverified. `real_tauri_core_binary_resolves_injected_resources` currently pins `Host::Linux` and cannot produce Windows evidence.
 - Environment / toolchain / credentials: windows-2022 or a physical Windows 10/11 host, WebView2 Runtime, NSIS, WiX v3.14, Tauri CLI, a real Tauri sample project; no cloud credentials.
-- Gates: `POLY_TAURI_CORE_BIN=<real Tauri executable>`; the NSIS / MSI tests need no extra gate.
+- Gates: `POLY_TAURI_CORE_BIN=<real Tauri executable>`; the real MSI run also needs `POLY_MSI_REAL=1` and `POLY_MSI_REAL_OUT=<evidence dir>`; the NSIS tests need no extra gate.
 - Commands:
 ```powershell
 cargo test -p poly-bundle --test packagers_windows nsis_real_build_produces_pe_installer -- --nocapture
 cargo test -p poly-bundle --test packagers_windows nsis_install_launch_uninstall_smoke -- --nocapture
 $env:POLY_TAURI_CORE_BIN = "C:\work\pax-notes\target\release\pax-notes.exe"
 cargo test -p poly-bundle --test tauri_layout real_tauri_core_binary_resolves_injected_resources -- --nocapture
+$env:POLY_MSI_REAL = "1"; $env:POLY_MSI_REAL_OUT = "C:\work\msi-evidence"
+cargo test -p poly-bundle --test windows_msi_real -- --nocapture
 poly build --target windows
 msiexec /i ".polypack\packages\windows\Pax Notes_1.2.3_x64_en-US.msi" /qn
 & "$env:ProgramFiles\Pax Notes\pax-notes.exe" --version
 ```
+- Progress (2026-10-20): the real Tauri v2 sample `examples/windows-msi-app/`, `crates/poly-bundle/tests/windows_msi_real.rs`, and the rust-ci `windows-msi-real` job have landed; real MSI / install / launch / uninstall / residue evidence awaits the first `windows-2022` run, so the status stays `PARTIAL`.
 - Evidence: output of both NSIS tests; `--version` output and a window screenshot after installing the real sample into the default path; SHA-256 of `Pax Notes_1.2.3_x64-setup.exe`; the install directory is gone after uninstall. The current `tauri_layout` assertion is Linux-only; the Windows real-sample leg needs a new test or external script, and Linux output must not be presented as Windows evidence.
-- Status: `PARTIAL`. MSI / NSIS real compile plus temp-directory launch / uninstall run on rust-ci windows-2022; default path + real Tauri sample remain open. Owner: packagers + release-sec.
-- Next action: add a real Tauri sample fixture and a default-path smoke on windows-2022, or run the commands above on physical Windows and archive screenshots.
-- Blocker: writing to default Program Files needs elevation; observing GUI launch and the Start menu needs an interactive desktop, which a hosted runner service session cannot provide. Execution mode: CI can cover install and default-path launch; GUI observation needs physical Windows.
+- Status: `CLOSED` (2026-10-20). Run 39308849058's `windows-msi-real` job passed on windows-2022: build MSI → `msiexec /i /qn` → launch the installed copy with `--smoke` → `msiexec /x /qn` → check install-directory / Start-menu / HKCU / ARP residue; logs, MSI, `.wxs`, `smoke-marker.txt`, and digests are archived as CI artifacts. Owner: release-sec.
+- Next action: none (the slot is closed); re-run only when Windows / WebView2 / WiX versions change.
+- Blocker: none; visual GUI rendering still needs an interactive desktop, but install / default-path launch / exit / uninstall / residue are covered by CI.
 
 ### ENV-02 · macOS `codesign` + `notarytool` real execution
 
@@ -127,7 +131,7 @@ POLYPACK_ALIPAY_DEVTOOLS_LOGIN="$POLYPACK_ALIPAY_DEVTOOLS_LOGIN" \
 cargo test -p poly-cli --test contract_m3_devtools contract_devtools_real_preview -- --nocapture
 ```
 - Evidence: all three preview commands exit 0; WeChat / Alipay preview QR screenshot or URL; Douyin remote preview response; tool versions and logged-in account (redacted); full `contract_devtools_real_preview` output with no SKIP.
-- Status: `PARTIAL`. Mock and command assembly run; real preview depends on GUI login, and the miniprogram-contract `real` job only prints NOTE when vars / secrets are absent. Owner: ui-adapters + release-sec.
+- Status: `PARTIAL`. Mock and command assembly run; real preview depends on GUI login, and the miniprogram-contract `real` job only prints NOTE when vars / secrets are absent. Owner: core + release-sec.
 - Next action: log in to all three tools on macOS, set CLI paths and login state, run the module test, and save QR / URLs; prefer the passwordless Douyin token for CI.
 - Blocker: WeChat / Alipay login involves QR or 2FA and cannot be stored in the public repo; Douyin accounts also require qualification review. Execution mode: GUI login needs physical macOS; once login state exists the command leg can run in CI.
 
@@ -143,7 +147,7 @@ POLY_ROKU_REAL=1 ROKU_DEV_TARGET=<ip> ROKU_DEV_PASSWORD=<pwd> node scripts/build
 curl --connect-timeout 2 -s "http://<ip>:8060/"
 ```
 - Evidence: script prints `ECP 设备: <name>` and `plugin_install 侧载成功`; screenshot of the channel launching on the Roku; SHA-256 of `ui/adapters/roku/dist/polypack-spike-channel.zip`; device model / firmware.
-- Status: `PARTIAL`. Structure checks and zip layout run; real sideload is SKIP-with-print and has no CI job. Owner: packagers / QA.
+- Status: `PARTIAL`. Structure checks and zip layout run; real sideload is SKIP-with-print and has no CI job. Owner: core.
 - Next action: run the commands on a developer-mode Roku, screenshot, and archive; if the device can stay online, add a self-hosted runner job.
 - Blocker: a real Roku on the LAN plus its developer password; a hosted runner has no device network. Execution mode: physical device + same-LAN host; cannot run on hosted CI.
 
@@ -162,7 +166,7 @@ cd /usr/ports/x11/<port> && make package PACKAGES=/tmp/openbsd-packages
 pkg_add /tmp/openbsd-packages/<pkg>.tgz && pkg_info && pkg_check
 ```
 - Evidence: `make package` and `pkg_add` exit 0; `pkg_info` shows the package; `pkg_check` has no errors; green bsd-ci `openbsd` log and artifact.
-- Status: `PARTIAL`. The job is wired but the host lacks virtualization; only SKIP / failure logs exist, with no install evidence. Owner: infra + packagers.
+- Status: `PARTIAL`. The job is wired but the host lacks virtualization; only SKIP / failure logs exist, with no install evidence. Owner: infra.
 - Next action: add a KVM self-hosted runner label to bsd-ci, get one green run, then flip `continue-on-error` to false.
 - Blocker: hosted ubuntu-latest has no KVM; OpenBSD boot over TCG times out. Execution mode: CI (KVM self-hosted) can close it.
 
@@ -181,7 +185,7 @@ cd <generated pkgsrc dir> && bmake package
 pkg_add <artifact>.tgz && pkg_info && pkg_info -L <pkg>
 ```
 - Evidence: `bmake package` exit 0; `pkg_add` / `pkg_info` output; `.tgz` SHA-256; NetBSD version and `bmake -V MAKE_VERSION`.
-- Status: `OPEN`. pkgsrc generation and structure assertions run; the `bmake` leg is SKIP-with-print and has no CI job. Owner: packagers + infra.
+- Status: `OPEN`. pkgsrc generation and structure assertions run; the `bmake` leg is SKIP-with-print and has no CI job. Owner: infra.
 - Next action: add a `netbsd` job to bsd-ci (vmactions/netbsd-vm or self-hosted), run structure first, then `bmake package`.
 - Blocker: no NetBSD host; the first pkgsrc bootstrap and image bandwidth are large. Execution mode: CI (NetBSD VM / self-hosted) can close it.
 
@@ -200,7 +204,7 @@ poly build --target qnx --json
 POLYPACK_QNX_QEMU=/usr/bin/qemu-system-x86_64 poly verify --target qnx --json
 ```
 - Evidence: `doctor` finds `qcc` / `nto*-gcc`; build JSONL contains a `verified` event for `qnx-image-structure`; QEMU serial log and `result.json`; `.ifs` / static library SHA-256.
-- Status: `PARTIAL`. SDP probing, structure verification, and the CI matrix are wired; SDP is absent, so real compile / QEMU smoke SKIP. Owner: platforms + infra.
+- Status: `PARTIAL`. SDP probing, structure verification, and the CI matrix are wired; SDP is absent, so real compile / QEMU smoke SKIP. Owner: infra.
 - Next action: install SDP 7.1 on a self-hosted runner, set `vars.POLYPACK_QNX_SDP`, and remove QNX from the job-summary SKIP list after the first green run.
 - Blocker: QNX SDP requires a commercial license and cannot be downloaded into a hosted runner. Execution mode: CI (self-hosted runner + license) can close it.
 
@@ -218,7 +222,7 @@ poly init /tmp/poly-vx && cd /tmp/poly-vx
 poly build --target vxworks --json
 ```
 - Evidence: build JSONL contains a `verified` event for `vxworks-ld-check`; `check.sh` `wr-cc -c` and link commands exit 0; `nm` shows no unresolved symbols outside the allowlist; `.vxe` / library SHA-256; `wr-cc --version`.
-- Status: `PARTIAL`. Packager and structure assertions run; the `wr-cc` link leg SKIPs. Owner: platforms + infra.
+- Status: `PARTIAL`. Packager and structure assertions run; the `wr-cc` link leg SKIPs. Owner: infra.
 - Next action: install the Workbench SDK on a self-hosted runner, set `WR_CC`, run once, and archive `check.sh` output.
 - Blocker: the VxWorks SDK and license require a commercial purchase. Execution mode: CI (self-hosted runner) can close it.
 
@@ -237,7 +241,7 @@ node ui/smoke/wear/run.mjs --leg android --serial emulator-5554 \
   --apk "$POLYPACK_WEAR_FORM_APK" --logs /tmp/wear-logs
 ```
 - Evidence: `result.json` (schema `polypack/wear-smoke/v1`), `logcat.txt`, screenshots, UIAutomator dump, build summary with commit and APK SHA-256; green `wear-release-smoke` job with a 90-day artifact.
-- Status: `PARTIAL`. Mock / nightly jobs are ready; KVM and the APK are absent, so the real device leg has not run. Owner: ui-adapters + QA.
+- Status: `PARTIAL`. Mock / nightly jobs are ready; KVM and the APK are absent, so the real device leg has not run. Owner: infra.
 - Next action: enable KVM on the runner, build the form APK and set `vars.POLYPACK_WEAR_FORM_APK`; or attach a permanently online watch.
 - Blocker: hosted runners lack `/dev/kvm`; a physical watch needs ADB authorization and a stable connection. Execution mode: CI (KVM self-hosted) or physical device.
 
@@ -258,7 +262,7 @@ xcodebuild archive -project PolyPackWatch.xcodeproj -scheme PolyPackWatch \
   CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY=
 ```
 - Evidence: `xcodebuild` `BUILD SUCCEEDED`; `.polypack/packages/watchos/export/Payload/<product>.app` exists; `Info.plist` / `PkgInfo` structure assertions; `.app` SHA-256; Xcode version.
-- Status: `PARTIAL`. The 10-file template and packager mock assertions run; the macOS real build is missing and has no CI job. Owner: platforms.
+- Status: `PARTIAL`. The 10-file template and packager mock assertions run; the macOS real build is missing and has no CI job. Owner: core.
 - Next action: add a watchOS job on macos-14 (install Xcode, run both `xcodebuild` commands), or execute manually and archive.
 - Blocker: requires macOS + Xcode; a Linux host can only return `poly::E_BND_0001` with the R3 farm hint. Execution mode: CI (macos-14) can close it.
 
@@ -274,7 +278,7 @@ fitbit-build --help
 cargo test -p poly-cli --test contract_m7_wear_js -- --nocapture
 ```
 - Evidence: `fitbit-build --help` exit 0; `poly verify --target fitbit --json` notes no longer contain the `fitbit-build` SKIP-with-print; `.fba` SHA-256 and structure assertion output.
-- Status: `PARTIAL`. Packager and structure checks run; the official CLI self-check is absent. Owner: platforms + infra.
+- Status: `PARTIAL`. Packager and structure checks run; the official CLI self-check is absent. Owner: infra.
 - Next action: install `@fitbit/sdk-cli` in CI and turn the Fitbit leg of `contract_m7_wear_js` from SKIP to REAL; the official CLI only checks presence, it does not rebuild this project (which does no TS / rollup).
 - Blocker: npm package and account availability; no hardware requirement. Execution mode: CI (ubuntu / macOS) can close it.
 
@@ -291,7 +295,7 @@ cargo test -p poly-cli --test contract_m7_wear_js -- --nocapture
 # Simulator: manually install .polypack/packages/zepp/*.zab into the Zepp OS simulator and screenshot
 ```
 - Evidence: `zeus --version` output; verify notes no longer contain the `zeus` SKIP; simulator install / launch screenshot and `.zab` SHA-256; simulator version.
-- Status: `PARTIAL`. Packager and structure assertions run; both the `zeus` and simulator legs are absent. Owner: platforms + QA.
+- Status: `PARTIAL`. Packager and structure assertions run; both the `zeus` and simulator legs are absent. Owner: core.
 - Next action: install zeus in CI to close the self-check leg; run the simulator leg manually and attach screenshots to the ENV-13 issue.
 - Blocker: the simulator is a GUI app and cannot be installed automatically on a headless runner; the `zeus` package name and licensing follow official docs. Execution mode: the `zeus` self-check can run in CI; simulator install needs a physical GUI host.
 
@@ -308,7 +312,7 @@ cd <generated dir>/round && monkeyc -e -w -r -o ../garmin-round.iq -y "$CIQ_DEVK
 cd <generated dir>/square && monkeyc -e -w -r -o ../garmin-square.iq -y "$CIQ_DEVKEY" -f monkey.jungle
 ```
 - Evidence: `npm run build` prints PASS 7 / FAIL 0 / SKIP 0; round / square `.iq` files and entry assertions; `monkeyc --version`; devkey fingerprint (no private key); compile log.
-- Status: `PARTIAL`. Transpile and structure checks run; the compiler leg SKIPs; `poly build --target garmin` still has no built-in iq packager (G10 conditional task). Owner: platforms.
+- Status: `PARTIAL`. Transpile and structure checks run; the compiler leg SKIPs; `poly build --target garmin` still has no built-in iq packager (G10 conditional task). Owner: core.
 - Next action: install the Connect IQ SDK in CI and put the devkey in a secret; close the compiler leg. The iq packager is a separate conditional task and is not faked inside this slot.
 - Blocker: SDK access may require a Garmin account; the devkey is developer-generated and must not enter the repo. Execution mode: CI (ubuntu / macOS + SDK) can close the compiler leg.
 
@@ -350,7 +354,7 @@ POLY_VAULT_REAL=1 cargo test -p poly-sign --test vault_real -- --nocapture
 poly build --target linux-reference --json
 ```
 - Evidence (required before closure): the `vault_real` round-trip alone is insufficient; need real CLI-side `plugin_granted` / `packaged` and `E_PLUGIN_0010` error-path output, with no token in logs.
-- Status: `OPEN` (environment slot: needs a real Vault service and credentials); the code side is wired, and `vault_real` remains gated by `POLY_VAULT_REAL=1`. Owner: release-sec / core.
+- Status: `OPEN` (environment slot: needs a real Vault service and credentials); the code side is wired, and `vault_real` remains gated by `POLY_VAULT_REAL=1`. Owner: release-sec + core.
 - Next action: run the real E2E on a host with a Vault service (`vault_real` + CLI trust-root / publishing), with no token in logs.
 - Blocker: needs a Vault service and credentials; the code gap is closed. Execution mode: CI (Vault dev server) can close it; no service is available now.
 
@@ -387,7 +391,7 @@ gh api repos/erikwang2013/polypack/branches/main/protection/required_status_chec
 # Target: enforce_admins.enabled == true; or record a time-bounded exception and four-eyes review in GA
 ```
 - Evidence: `gh api` output `true`; screenshot of GitHub Settings → Branches → main; required-check list contains `secret-scan / ubuntu-latest`, `secret-scan / macos-14`, `secret-scan / windows-2022`.
-- Status: `OPEN`. Required checks are configured; the admin bypass remains open. Owner: release-manager / repo admin.
+- Status: `OPEN`. Required checks are configured; the admin bypass remains open. Owner: maintainer.
 - Next action: an admin enables "Do not allow bypassing the above settings"; if business requires an emergency path, record the exception conditions, approver, and review log in GA §7.
 - Blocker: requires repository admin permission; ordinary developers cannot change it. Execution mode: HUMAN / GitHub settings, not inside the code repository.
 
@@ -404,7 +408,7 @@ poly plugin check <dir>
 poly build --config <app>/polypack.toml --target pocket-notes
 ```
 - Evidence: a trial report per tester (environment, start / end time, commands completed, verbatim blockers, whether a package was produced within one day); a summary issue; links to documentation-fix PRs.
-- Status: `OPEN`. No external trial record yet. Owner: DevRel / PM.
+- Status: `OPEN`. No external trial record yet. Owner: docs.
 - Next action: after GA release, recruit 3–5 people, collect reports with the template, and write blockers back into GA / README / templates.
 - Blocker: requires real external people and time; an agent cannot stand in. Execution mode: HUMAN; not in CI.
 

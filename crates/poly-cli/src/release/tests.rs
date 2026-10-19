@@ -1,7 +1,7 @@
+use super::report;
 use super::*;
 use poly_targets::Host;
 
-/// 最小工程骨架（口径同 publish 测试）。
 fn fixture(tag: &str) -> (PathBuf, Project) {
     let root = std::env::temp_dir().join(format!("polypack-release-{tag}-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&root);
@@ -135,6 +135,13 @@ fn first_run_writes_receipt_and_same_manifest_rerun_is_noop() {
     assert_eq!(stored.schema_version, SCHEMA_VERSION);
     assert_eq!(stored.manifest_digest, prepared.manifest_digest);
     assert_eq!(stored.artifacts.len(), 1);
+    assert!(
+        stored
+            .sbom_digest
+            .as_deref()
+            .is_some_and(|digest| !digest.is_empty()),
+        "发布回执须记录产物集合的 SBOM 摘要（T-M9-03）"
+    );
 
     let second =
         release_target(&prepared, Some("keyring:release"), &backend, 200).expect("二跑须 no-op");
@@ -319,7 +326,6 @@ fn unknown_target_mapping_is_rejected() {
     );
 }
 
-/// 记录每次发布收到的目标与凭据引用（验证选择发生在 release_target 之前）。
 #[derive(Default)]
 struct RecordingBackend {
     seen: std::cell::RefCell<Vec<(String, Option<String>)>>,
@@ -364,8 +370,7 @@ fn different_targets_receive_their_own_credentials() {
     let _ = std::fs::remove_dir_all(&root);
 }
 
-/// T-M5-06：pkg 已接本地后端；本机无 pkg(8) 时如实报 E_RELEASE_0005 且不落回执。
-/// 有 pkg 的宿主（FreeBSD）跳过该分支断言——真跑与安装冒烟归 T-M5-09 VM。
+/// T-M5-06：无 pkg(8) 时报 E_RELEASE_0005 且不落回执；FreeBSD 宿主的真跑归 T-M5-09 VM。
 #[test]
 fn pkg_backend_requires_pkg_tool_and_leaves_no_receipt() {
     if poly_bundle::exec::tool_present("pkg") {
@@ -382,8 +387,7 @@ fn pkg_backend_requires_pkg_tool_and_leaves_no_receipt() {
     let _ = std::fs::remove_dir_all(&root);
 }
 
-/// T-M5-08：pkgsrc 已接本地后端；本机缺 pkg_info / pkg_admin 时如实报 E_RELEASE_0005
-/// 且不落回执。有 pkg_install 的宿主（NetBSD）跳过该分支断言——真跑归 T-M5-09 VM。
+/// T-M5-08：缺 pkg_info / pkg_admin 时报 E_RELEASE_0005 且不落回执；NetBSD 真跑归 T-M5-09 VM。
 #[test]
 fn pkgsrc_backend_requires_netbsd_tools_and_leaves_no_receipt() {
     if ["pkg_info", "pkg_admin"]
@@ -401,5 +405,102 @@ fn pkgsrc_backend_requires_netbsd_tools_and_leaves_no_receipt() {
     assert_eq!(err.code.to_string(), "poly::E_RELEASE_0005");
     assert!(err.message.contains("NetBSD"), "{}", err.message);
     assert!(!prepared.receipt.exists(), "失败不落回执");
+    let _ = std::fs::remove_dir_all(&root);
+}
+
+/// 宽松后端：接受任意仓库格式，只记录发布目标（`--changed` 选择测试用）。
+#[derive(Default)]
+struct CountBackend {
+    seen: std::cell::RefCell<Vec<String>>,
+}
+
+impl RepoBackend for CountBackend {
+    fn publish(&self, request: &RepoRequest<'_>) -> Result<(), Diagnostic> {
+        self.seen.borrow_mut().push(request.target.to_string());
+        Ok(())
+    }
+}
+
+fn release_changed_with(prepared: &Prepared, backend: &CountBackend) -> ChangedOutcome {
+    release_changed(prepared, Some("keyring:release"), backend, 100).expect("--changed 执行须成功")
+}
+
+#[test]
+fn changed_skips_matching_receipt_and_publishes_missing_one() {
+    let (root, project) = fixture("changed-mixed");
+    seed(&root, "fedora", "app-0.1.0.rpm", b"rpm-bytes");
+    seed(&root, "freebsd", "app-0.1.0.pkg", b"pkg-bytes");
+    let fedora = prepared(&root, &project, "fedora", "rpm");
+    let freebsd = prepared(&root, &project, "freebsd", "pkg");
+    let backend = CountBackend::default();
+    for prepared in [&fedora, &freebsd] {
+        assert!(matches!(
+            release_changed_with(prepared, &backend),
+            ChangedOutcome::Published(_)
+        ));
+    }
+    assert_eq!(backend.seen.borrow().as_slice(), ["fedora", "freebsd"]);
+
+    // fedora：改成无 cache_key 的旧回执（runs=7），必须按 manifest_digest 降级命中。
+    let mut old: serde_json::Value =
+        serde_json::from_slice(&std::fs::read(&fedora.receipt).expect("回执存在"))
+            .expect("回执可解析");
+    old.as_object_mut().expect("对象").remove("cache_key");
+    old["runs"] = serde_json::json!(7);
+    let old_bytes = serde_json::to_vec_pretty(&old).expect("序列化");
+    std::fs::write(&fedora.receipt, &old_bytes).expect("写旧回执");
+    // freebsd：删掉回执，模拟从未发布。
+    std::fs::remove_file(&freebsd.receipt).expect("删回执");
+
+    let ChangedOutcome::Skipped {
+        receipt,
+        key_source,
+    } = release_changed_with(&fedora, &backend)
+    else {
+        panic!("fedora 有匹配回执，须 skipped");
+    };
+    assert_eq!(key_source, KeySource::ManifestDigest, "旧回执降级判定");
+    let event = report::skipped_event(&fedora, &receipt, key_source);
+    assert_eq!(event["event"], "release-skipped", "skipped 是独立事件");
+    assert_eq!(event["target"], "fedora");
+    assert_eq!(event["key_source"], "manifest_digest");
+    assert_eq!(event["runs"], 7, "事件反映既有 runs，不递增");
+    assert_eq!(
+        std::fs::read(&fedora.receipt).expect("回执存在"),
+        old_bytes,
+        "skipped 不重写回执"
+    );
+    assert_eq!(backend.seen.borrow().len(), 2, "skipped 不触仓库");
+
+    assert!(matches!(
+        release_changed_with(&freebsd, &backend),
+        ChangedOutcome::Published(_)
+    ));
+    assert_eq!(
+        backend.seen.borrow().as_slice(),
+        ["fedora", "freebsd", "freebsd"]
+    );
+    let stored: Receipt =
+        serde_json::from_slice(&std::fs::read(&freebsd.receipt).expect("新回执存在"))
+            .expect("回执可解析");
+    assert_eq!(stored.runs, 1, "新目标首跑 runs=1");
+    assert!(stored.cache_key.is_some(), "新回执写入 cache_key");
+    // 新回执带 cache_key：产物未变即命中，回执零重写、runs 不递增。
+    let before = std::fs::read(&freebsd.receipt).expect("回执存在");
+    let ChangedOutcome::Skipped {
+        receipt,
+        key_source,
+    } = release_changed_with(&freebsd, &backend)
+    else {
+        panic!("freebsd 未变，须 skipped");
+    };
+    assert_eq!(key_source, KeySource::CacheKey);
+    assert_eq!(receipt.runs, 1);
+    assert_eq!(
+        std::fs::read(&freebsd.receipt).expect("回执存在"),
+        before,
+        "cache_key 命中同样不重写回执"
+    );
+    assert_eq!(backend.seen.borrow().len(), 3, "skipped 不触仓库");
     let _ = std::fs::remove_dir_all(&root);
 }

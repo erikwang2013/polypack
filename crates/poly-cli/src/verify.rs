@@ -64,6 +64,10 @@ pub struct Args {
     /// job summary 据告警如实列出；默认行为不变——全跳过是假绿，报 E_VERIFY_0002）。
     #[arg(long)]
     pub allow_skipped: bool,
+    /// 为有暂存产物的目标生成 SPDX 2.3 / CycloneDX 1.5 / in-toto provenance 三件套，
+    /// 落在 `<root>/.polypack/sbom/<target>/`（T-M9-01/02/03；不联网、不声明 SLSA 认证）。
+    #[arg(long)]
+    pub sbom: bool,
 }
 
 /// 执行 `poly verify`；返回进程退出码。
@@ -92,7 +96,12 @@ pub fn run(args: &Args, json: bool) -> Result<i32, Diagnostic> {
     if !args.reproducible {
         // 声明校验器通路（`poly build` 的 verify 阶段同源实现）
         let verified = verify_targets(&project, &job.targets, host, events.as_mut())?;
-        if verified == 0 {
+        let documented = if args.sbom {
+            generate_sboms(&project, &job, host, events.as_mut())?
+        } else {
+            0
+        };
+        if verified + documented == 0 {
             if args.allow_skipped {
                 warning(
                     events.as_mut(),
@@ -104,14 +113,18 @@ pub fn run(args: &Args, json: bool) -> Result<i32, Diagnostic> {
                 );
                 return Ok(0);
             }
-            return Err(Diagnostic::error(
-                codes::E_VERIFY_0002,
+            let message = if args.sbom {
+                format!(
+                    "{} 个入选目标都没有已接入的校验器或暂存产物可生成 SBOM（逐目标原因见上方告警）",
+                    job.targets.len()
+                )
+            } else {
                 format!(
                     "{} 个入选目标都没有已接入的校验器可跑（逐目标原因见上方告警）",
                     job.targets.len()
-                ),
-            )
-            .with_hint(
+                )
+            };
+            return Err(Diagnostic::error(codes::E_VERIFY_0002, message).with_hint(
                 "校验器按 TargetSpec.verify 声明注册：ios 的 codesign-verify / spctl、harmonyos 的 \
                  hap-sign-verify / hap-structure-check、quickapp 的 hap-toolkit-lint、web 系 TV 的 \
                  wgt-lint / ares-package / sandbox-selfcheck / sideload-structure-check、\
@@ -121,7 +134,11 @@ pub fn run(args: &Args, json: bool) -> Result<i32, Diagnostic> {
         }
         return Ok(0);
     }
-    reproducible(&project, &job, host, json, events.as_mut())
+    let code = reproducible(&project, &job, host, json, events.as_mut())?;
+    if args.sbom {
+        generate_sboms(&project, &job, host, events.as_mut())?;
+    }
+    Ok(code)
 }
 
 /// `--reproducible` 通路：同输入二跑比对（T-M2-06 验收口径）。
@@ -169,6 +186,150 @@ fn reproducible(
         ));
     }
     Ok(0)
+}
+
+// ---------------------------------------------------------------- SBOM（--sbom）
+
+/// `--sbom`：为每个有暂存产物的入选目标生成三件套；返回真的写了 SBOM 的目标数。
+///
+/// 不要求目标有「已接入的校验器」：SBOM 记录的是产物本身；但目标必须已 `poly build`
+/// （暂存目录有最终产物），缺产物按跳过处理并如实告警，与 verify 的跳过语义一致。
+fn generate_sboms(
+    project: &Project,
+    job: &JobSpec,
+    host: Host,
+    events: &mut dyn EventSink,
+) -> Result<usize, StageError> {
+    let mut documented = 0usize;
+    for spec in &job.targets {
+        if !spec.hosts.contains(&host) {
+            continue;
+        }
+        let staged = project::packages_root(&project.root).join(&spec.id);
+        let artifacts = staged_artifacts(&staged, &spec.package.format);
+        if artifacts.is_empty() {
+            warning(
+                events,
+                &format!(
+                    "目标 {} 未生成 SBOM：{} 下没有暂存产物（先跑 poly build；缺产物按跳过处理）",
+                    spec.id,
+                    staged.display()
+                ),
+            );
+            continue;
+        }
+        let target_spec = serde_json::to_string(spec)
+            .map_err(|err| sbom_failure(&spec.id, format!("目标声明序列化失败：{err}")))?;
+        let context = crate::sbom::Context::load(crate::sbom::Inputs {
+            project_root: &project.root,
+            core_crate: &project.config.core.crate_path,
+            name: &project.config.package.name,
+            version: &project.config.package.version,
+            target: &spec.id,
+            target_spec: &target_spec,
+            profile: match job.profile {
+                Profile::Ci => "ci",
+                Profile::Local => "local",
+            },
+            invocation: &format!("poly verify --sbom --target {}", spec.id),
+        })
+        .map_err(|err| sbom_failure(&spec.id, err.to_string()))?;
+        let out_dir = project.root.join(".polypack").join("sbom").join(&spec.id);
+        let set_digest = crate::sbom::digest_for_artifacts(&artifacts)
+            .map_err(|err| sbom_failure(&spec.id, err.to_string()))?;
+        for artifact in &artifacts {
+            let outputs = context
+                .generate(artifact, &out_dir)
+                .map_err(|err| sbom_failure(&spec.id, err.to_string()))?;
+            warning(
+                events,
+                &format!(
+                    "目标 {} 的 SBOM 已写入 {} / {} / {}（产物 {}，blake3 {}）",
+                    spec.id,
+                    outputs.spdx.display(),
+                    outputs.cdx.display(),
+                    outputs.provenance.display(),
+                    artifact.display(),
+                    outputs.artifact_blake3
+                ),
+            );
+        }
+        warning(
+            events,
+            &format!(
+                "目标 {} 的 SBOM 产物集合摘要：{set_digest}（{} 个产物；供 release 回执复用）",
+                spec.id,
+                artifacts.len()
+            ),
+        );
+        for checker in ["sbom-spdx", "sbom-cyclonedx", "sbom-provenance"] {
+            events.emit(&BuildEvent::Verified {
+                checker: checker.to_string(),
+                ok: true,
+            });
+        }
+        documented += 1;
+    }
+    Ok(documented)
+}
+
+/// 暂存目录里可识别的最终产物（安装包 / 静态站 / iOS .app），不把图标等中间件当产物。
+fn staged_artifacts(staged: &Path, format: &str) -> Vec<PathBuf> {
+    const EXTENSIONS: [&str; 24] = [
+        "apk", "aab", "apks", "zip", "ipa", "hap", "wgt", "ipk", "rpk", "fba", "zab", "iq", "deb",
+        "rpm", "appimage", "flatpak", "snap", "msi", "nsis", "dmg", "app", "pwa", "pkg", "bin",
+    ];
+    let mut artifacts = Vec::new();
+    let Ok(entries) = std::fs::read_dir(staged) else {
+        return artifacts;
+    };
+    let format = format.to_ascii_lowercase();
+    for entry in entries.flatten() {
+        let path = entry.path();
+        let name = entry.file_name().to_string_lossy().to_ascii_lowercase();
+        if path.is_file() {
+            let extension = path
+                .extension()
+                .and_then(|ext| ext.to_str())
+                .unwrap_or_default()
+                .to_ascii_lowercase();
+            if extension == format || EXTENSIONS.contains(&extension.as_str()) {
+                artifacts.push(path);
+            }
+        } else if name == "export" {
+            artifacts.extend(children_with_ext(&path.join("Payload"), "app"));
+        } else if name == "dist" && !path.join("index.html").is_file() {
+            artifacts.extend(children_with_ext(&path, "rpk"));
+        } else if name == "site"
+            || path.join("index.html").is_file()
+            || name.ends_with(".app")
+            || name.ends_with(".appdir")
+        {
+            artifacts.push(path);
+        }
+    }
+    artifacts.sort();
+    artifacts
+}
+
+fn children_with_ext(dir: &Path, extension: &str) -> Vec<PathBuf> {
+    std::fs::read_dir(dir)
+        .into_iter()
+        .flatten()
+        .flatten()
+        .map(|entry| entry.path())
+        .filter(|path| path.extension().and_then(|ext| ext.to_str()) == Some(extension))
+        .collect()
+}
+
+/// SBOM 生成失败 → 稳定诊断（E_VERIFY_0003；不降级成静默跳过）。
+fn sbom_failure(target: &str, message: String) -> StageError {
+    Diagnostic::error(
+        codes::E_VERIFY_0003,
+        format!("目标 {target} 生成 SBOM 失败：{message}"),
+    )
+    .with_hint("SBOM 依赖 Cargo.lock 与 cargo metadata --locked（离线）；先跑 poly build 再重试")
+    .into()
 }
 
 // ---------------------------------------------------------------- 声明校验器（verify 阶段）

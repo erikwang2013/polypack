@@ -18,7 +18,12 @@
 //!   零分叉同口径；
 //! - **渠道客户端缺席**（publish-client 的 T-M3-10 尚缺 builtin() 内快应用客户端）→
 //!   `E_PUBLISH_0002` 如实点名归属，绝不假装提审过；`--dry-run` 面不受影响，可先行验证
-//!   输入 / 凭据 / 定位 / 载具。
+//!   输入 / 凭据 / 定位 / 载具；
+//! - **metadata 管线**（M9-E5）：`--metadata-dir <store/metadata>` 读取
+//!   `<platform>/<locale>.toml`（wechat / alipay），校验后生成确定性材料对象（key 排序，
+//!   摘要 = canonical JSON 的 blake3，写入回执 `materials_digest`）；`--check-metadata`
+//!   只校验、不发布、不落回执。`--metadata-dir` 与旧的 `--materials <file>` **互斥**
+//!   （clap 拒绝同时给出；一处材料事实源）。违规一次报告全部（稳定码 + 可读消息）。
 //!
 //! 接口缺口（T-M3-12 报 'main'；main@cd1fcdb 后状态）：①`Channel::QuickApp` 备位已入主干
 //! （`from_id("quickapp-union-store")` 可反解）；②`builtin()` 仍为微信 / 支付宝 / 抖音三平台，
@@ -33,6 +38,7 @@ use std::sync::Arc;
 use base64::Engine;
 use poly_core::diagnostics::{Code, Diagnostic};
 use poly_core::{BuildEvent, CredentialRef, codes};
+use poly_publish::metadata::{self, DEFAULT_LOCALE, Platform};
 use poly_publish::secret::{CredentialProvider, EnvProvider, resolve_payload};
 use poly_publish::{
     Archive, AuditState, Package, PublishError, PublishFailure, PublishRequest, Publisher,
@@ -62,24 +68,34 @@ pub struct Args {
     /// 渠道 id（registry `publish` 名；缺省取目标声明的第一个）。
     #[arg(long)]
     pub channel: Option<String>,
-    /// 平台应用 id。
-    #[arg(long)]
-    pub appid: String,
-    /// 版本号。
-    #[arg(long)]
-    pub version: String,
+    /// 平台应用 id（`--check-metadata` 时不需要）。
+    #[arg(long, required_unless_present = "check_metadata")]
+    pub appid: Option<String>,
+    /// 版本号（`--check-metadata` 时不需要）。
+    #[arg(long, required_unless_present = "check_metadata")]
+    pub version: Option<String>,
     /// 版本描述（上传 / 提审都会带上）。
     #[arg(long, default_value = "")]
     pub description: String,
     /// 代码包路径（缺省 = 按目标产物落点定位快应用 `.rpk`；目录载体亦可）。
     #[arg(long)]
     pub package: Option<PathBuf>,
-    /// 凭据引用（`env:变量名`；变量值 = base64(JSON) 载荷，同 T-M2-11 模型）。
-    #[arg(long, value_name = "REF")]
-    pub credential: String,
-    /// 提审材料 JSON 文件（平台各自解释；快应用联盟为最小模型，待真账号联调）。
-    #[arg(long)]
+    /// 凭据引用（`env:变量名`；变量值 = base64(JSON) 载荷，同 T-M2-11 模型；
+    /// `--check-metadata` 时不需要）。
+    #[arg(long, value_name = "REF", required_unless_present = "check_metadata")]
+    pub credential: Option<String>,
+    /// 提审材料 JSON 文件（平台各自解释；与 `--metadata-dir` 互斥）。
+    #[arg(long, conflicts_with = "metadata_dir")]
     pub materials: Option<PathBuf>,
+    /// 商店 metadata 根目录（内含 `<platform>/<locale>.toml`；与 `--materials` 互斥）。
+    #[arg(long, value_name = "DIR", conflicts_with = "materials")]
+    pub metadata_dir: Option<PathBuf>,
+    /// metadata locale（缺省 `default`；请求缺失时回退 default 并显式告警）。
+    #[arg(long, default_value = DEFAULT_LOCALE)]
+    pub metadata_locale: String,
+    /// 只校验 metadata（不解析产物 / 凭据，不触网、不落回执）；违规 → 非零退出。
+    #[arg(long)]
+    pub check_metadata: bool,
     /// 平台 API 端点（快应用联盟商店必填：无公开 CI 端点，显式注入、无缺省域名）。
     #[arg(long, value_name = "URL")]
     pub api_base: Option<String>,
@@ -111,8 +127,14 @@ struct Prepared {
     payload_fields: Vec<String>,
     /// 显式注入的端点（快应用联盟必填）。
     api_base: Option<String>,
-    /// 提审材料（文件解析后）。
+    /// 提审材料（文件解析 / metadata 打包后）。
     materials: Option<serde_json::Value>,
+    /// 材料实际使用的 locale（`--metadata-dir`；旧 `--materials` 为 None）。
+    materials_locale: Option<String>,
+    /// 材料摘要（canonical JSON blake3；无材料 None）。
+    materials_digest: Option<String>,
+    /// metadata 加载告警（如 locale 回退）。
+    metadata_warnings: Vec<String>,
 }
 
 /// 执行 `poly publish`；返回进程退出码。
@@ -126,8 +148,18 @@ pub fn run(args: &Args, json: bool) -> Result<i32, Diagnostic> {
         )
         .with_hint("用 poly doctor 核对目标矩阵")
     })?;
+    // 只校验 metadata：在解析产物 / 凭据之前返回——不生成发布请求、不触网、不落回执。
+    if args.check_metadata {
+        return check_metadata(args, &spec, json);
+    }
+
     let providers: Vec<Box<dyn CredentialProvider>> = vec![Box::new(EnvProvider)];
     let prepared = prepare(args, &project, &spec, &providers)?;
+    for warning in &prepared.metadata_warnings {
+        eprintln!("publish 告警：{warning}");
+    }
+    let appid = required_flag(args.appid.as_deref(), "--appid")?;
+    let version = required_flag(args.version.as_deref(), "--version")?;
 
     if args.dry_run {
         project::report(
@@ -137,8 +169,8 @@ pub fn run(args: &Args, json: bool) -> Result<i32, Diagnostic> {
                 "event": "publish-dry-run",
                 "channel": prepared.channel,
                 "target": spec.id,
-                "appid": args.appid,
-                "version": args.version,
+                "appid": appid,
+                "version": version,
                 "package": prepared.package.display().to_string(),
                 "package_bytes": prepared.package_bytes,
                 "package_carrier": prepared.carrier,
@@ -149,6 +181,9 @@ pub fn run(args: &Args, json: bool) -> Result<i32, Diagnostic> {
                 "credential_fields": prepared.payload_fields,
                 "api_base": prepared.api_base,
                 "materials": prepared.materials.is_some(),
+                "materials_locale": prepared.materials_locale,
+                "materials_digest": prepared.materials_digest,
+                "metadata_warnings": prepared.metadata_warnings,
                 "note": "dry-run：只解析输入，未触网、未落回执（R4：自动化止步提审）",
             }),
         );
@@ -164,8 +199,8 @@ pub fn run(args: &Args, json: bool) -> Result<i32, Diagnostic> {
     // （pre-flight 摘要 / 回执键与其同源），rpk leg 至此除客户端外全通。
     let archive = Archive::new(&project.root);
     let mut request = PublishRequest::new(
-        args.appid.clone(),
-        args.version.clone(),
+        appid,
+        version,
         args.description.clone(),
         prepared.package.clone(),
         prepared.reference.clone(),
@@ -199,6 +234,7 @@ pub fn run(args: &Args, json: bool) -> Result<i32, Diagnostic> {
             "appid": receipt.appid,
             "version": receipt.version,
             "digest": receipt.digest,
+            "materials_digest": receipt.materials_digest,
             "state": receipt.state.to_string(),
             "runs": receipt.runs,
             "resumed_from": match outcome.resumed_from {
@@ -254,17 +290,7 @@ fn prepare(
     providers: &[Box<dyn CredentialProvider>],
 ) -> Result<Prepared, Diagnostic> {
     // 渠道：显式优先，否则取目标声明的第一个（快应用 = quickapp-union-store）。
-    let channel = args
-        .channel
-        .clone()
-        .or_else(|| spec.publish.first().cloned())
-        .ok_or_else(|| {
-            Diagnostic::error(
-                codes::E_PUBLISH_0001,
-                format!("目标 {} 未声明发布渠道（TargetSpec.publish 为空）", spec.id),
-            )
-            .with_hint("用 --channel 显式指定，或核对目标注册表的 publish 声明")
-        })?;
+    let channel = resolve_channel(args, spec)?;
 
     // 端点：快应用联盟商店无公开 CI 端点 → 必填、无缺省域名（不许猜一个域名去撞）。
     if channel == UNION_STORE_CHANNEL && args.api_base.is_none() {
@@ -302,35 +328,41 @@ fn prepare(
     } else {
         "dir"
     };
-    let receipt_key = poly_publish::receipt_key(&args.appid, &args.version, &digest);
+    let appid = required_flag(args.appid.as_deref(), "--appid")?;
+    let version = required_flag(args.version.as_deref(), "--version")?;
+    let receipt_key = poly_publish::receipt_key(appid, version, &digest);
 
     // 凭据引用（引用模型）：`env:VAR` → CredentialRef + EnvProvider 现取；只留形态不留值。
-    let (source, alias) = crate::retry::parse_credential(&args.credential)?;
+    let credential = required_flag(args.credential.as_deref(), "--credential")?;
+    let (source, alias) = crate::retry::parse_credential(credential)?;
     let reference = CredentialRef {
-        name: alias.unwrap_or_else(|| format!("{channel}.{}", args.appid)),
+        name: alias.unwrap_or_else(|| format!("{channel}.{appid}")),
         source,
     };
     let (payload, provider) = resolve_payload(&reference, providers).map_err(publish_error)?;
     let payload_fields = payload_fields(&payload)?;
 
-    // 提审材料（平台各自解释；快应用联盟为最小模型）。
-    let materials = match &args.materials {
-        Some(path) => {
-            let text = std::fs::read_to_string(path).map_err(|err| {
-                Diagnostic::error(
+    // 提审材料（平台各自解释）：`--materials` 与 `--metadata-dir` 互斥（一处事实源）。
+    let (materials, materials_locale, materials_digest, metadata_warnings) =
+        match (&args.materials, &args.metadata_dir) {
+            (Some(_), Some(_)) => {
+                return Err(Diagnostic::error(
                     codes::E_PUBLISH_0001,
-                    format!("提审材料 {} 不可读：{err}", path.display()),
+                    "--materials 与 --metadata-dir 互斥：只能选择一个材料来源",
                 )
-            })?;
-            Some(serde_json::from_str(&text).map_err(|err| {
-                Diagnostic::error(
-                    codes::E_PUBLISH_0001,
-                    format!("提审材料 {} 不是合法 JSON：{err}", path.display()),
-                )
-            })?)
-        }
-        None => None,
-    };
+                .with_hint(
+                    "--metadata-dir 走版本化目录（store/metadata/<platform>/<locale>.toml）；\
+                     --materials 保留旧单文件 JSON",
+                ));
+            }
+            (Some(path), None) => {
+                let value = read_materials(path)?;
+                let digest = metadata::materials_digest(&value);
+                (Some(value), None, Some(digest), Vec::new())
+            }
+            (None, Some(root)) => load_metadata_materials(args, &channel, root)?,
+            (None, None) => (None, None, None, Vec::new()),
+        };
 
     Ok(Prepared {
         channel,
@@ -344,7 +376,170 @@ fn prepare(
         payload_fields,
         api_base: args.api_base.clone(),
         materials,
+        materials_locale,
+        materials_digest,
+        metadata_warnings,
     })
+}
+
+/// 渠道解析：显式 `--channel` 优先，否则取目标声明的第一个。
+fn resolve_channel(args: &Args, spec: &TargetSpec) -> Result<String, Diagnostic> {
+    args.channel
+        .clone()
+        .or_else(|| spec.publish.first().cloned())
+        .ok_or_else(|| {
+            Diagnostic::error(
+                codes::E_PUBLISH_0001,
+                format!("目标 {} 未声明发布渠道（TargetSpec.publish 为空）", spec.id),
+            )
+            .with_hint("用 --channel 显式指定，或核对目标注册表的 publish 声明")
+        })
+}
+
+/// 必填参数（clap 已把 `--check-metadata` 之外的必填项把关；直达调用时给稳定诊断）。
+fn required_flag<'a>(value: Option<&'a str>, flag: &str) -> Result<&'a str, Diagnostic> {
+    value.ok_or_else(|| {
+        Diagnostic::error(
+            codes::E_PUBLISH_0001,
+            format!("缺少 {flag}（--check-metadata 之外必填）"),
+        )
+        .with_hint("补齐 --appid / --version / --credential；只校验 metadata 用 --check-metadata")
+    })
+}
+
+/// 旧 `--materials <file>`：读 JSON（形态错误 → 稳定输入诊断）。
+fn read_materials(path: &std::path::Path) -> Result<serde_json::Value, Diagnostic> {
+    let text = std::fs::read_to_string(path).map_err(|err| {
+        Diagnostic::error(
+            codes::E_PUBLISH_0001,
+            format!("提审材料 {} 不可读：{err}", path.display()),
+        )
+    })?;
+    serde_json::from_str(&text).map_err(|err| {
+        Diagnostic::error(
+            codes::E_PUBLISH_0001,
+            format!("提审材料 {} 不是合法 JSON：{err}", path.display()),
+        )
+    })
+}
+
+/// `--metadata-dir` 结果：材料值、实际 locale、材料摘要、加载告警。
+type MetadataMaterials = (
+    Option<serde_json::Value>,
+    Option<String>,
+    Option<String>,
+    Vec<String>,
+);
+
+/// `--metadata-dir`：校验整个 platform 目录，构建确定性材料（key 排序）。
+///
+/// 请求 locale 缺失 → 回退 `default` 并显式告警（INITIATIVES M9-E5 风险缓解口径）。
+fn load_metadata_materials(
+    args: &Args,
+    channel: &str,
+    root: &std::path::Path,
+) -> Result<MetadataMaterials, Diagnostic> {
+    let platform = Platform::from_channel(channel).ok_or_else(|| {
+        Diagnostic::error(
+            codes::E_PUBLISH_0001,
+            format!("渠道 {channel} 没有 metadata 规则（当前支持 wechat / alipay）"),
+        )
+        .with_hint("--metadata-dir 仅支持 store/metadata/{wechat,alipay}/<locale>.toml")
+    })?;
+    let dir = root.join(platform.id());
+    let set = metadata::load(platform, &dir).map_err(|err| {
+        Diagnostic::error(codes::E_PUBLISH_0001, format!("metadata 不可读：{err}")).with_hint(
+            "--metadata-dir 应指向 store/metadata 根目录（内含 <platform>/<locale>.toml）",
+        )
+    })?;
+    if !set.is_ok() {
+        return Err(metadata_diagnostic(&set));
+    }
+    let requested = args.metadata_locale.as_str();
+    let fallback = set.falls_back(requested);
+    let built = set.materials(requested).ok_or_else(|| {
+        Diagnostic::error(
+            codes::E_PUBLISH_0001,
+            format!("metadata 缺少 locale {requested} 且无 {DEFAULT_LOCALE} 可回退"),
+        )
+        .with_hint("补 <locale>.toml / default.toml 后重跑")
+    })?;
+    let warnings = if fallback {
+        vec![format!(
+            "metadata locale {requested} 缺失，已回退 {DEFAULT_LOCALE}（显式告警，不静默）"
+        )]
+    } else {
+        Vec::new()
+    };
+    Ok((
+        Some(built.value),
+        Some(built.locale),
+        Some(built.digest),
+        warnings,
+    ))
+}
+
+/// `--check-metadata`：校验全部 locale 并输出完整性报告；违规 → 非零退出（不发布）。
+fn check_metadata(args: &Args, spec: &TargetSpec, json: bool) -> Result<i32, Diagnostic> {
+    let channel = resolve_channel(args, spec)?;
+    let platform = Platform::from_channel(&channel).ok_or_else(|| {
+        Diagnostic::error(
+            codes::E_PUBLISH_0001,
+            format!("渠道 {channel} 没有 metadata 规则（当前支持 wechat / alipay）"),
+        )
+        .with_hint("用 --channel wechat-open-platform / alipay-open-platform 校验对应规则")
+    })?;
+    let root = args.metadata_dir.as_ref().ok_or_else(|| {
+        Diagnostic::error(
+            codes::E_PUBLISH_0001,
+            "--check-metadata 需要 --metadata-dir <store/metadata>",
+        )
+        .with_hint("示例：poly publish --check-metadata --metadata-dir store/metadata --channel wechat-open-platform")
+    })?;
+    let dir = root.join(platform.id());
+    let set = metadata::load(platform, &dir).map_err(|err| {
+        Diagnostic::error(codes::E_PUBLISH_0001, format!("metadata 不可读：{err}")).with_hint(
+            "--metadata-dir 应指向 store/metadata 根目录（内含 <platform>/<locale>.toml）",
+        )
+    })?;
+    let violations = set.violations();
+    project::report(
+        "publish",
+        json,
+        serde_json::json!({
+            "event": "publish-metadata-check",
+            "platform": platform.id(),
+            "channel": channel,
+            "metadata_dir": dir.display().to_string(),
+            "locales": set.locale_names(),
+            "ok": violations.is_empty(),
+            "violations": violations,
+            "note": "--check-metadata 只校验：不解析产物 / 凭据，不触网、不落回执、不发布",
+        }),
+    );
+    if violations.is_empty() {
+        Ok(0)
+    } else {
+        Err(metadata_diagnostic(&set))
+    }
+}
+
+/// 校验失败诊断：一次带出全部违规（稳定码 + 可读消息）。
+fn metadata_diagnostic(set: &metadata::MetadataSet) -> Diagnostic {
+    let violations = set.violations();
+    let rendered = violations
+        .iter()
+        .map(ToString::to_string)
+        .collect::<Vec<_>>()
+        .join("; ");
+    Diagnostic::error(
+        codes::E_PUBLISH_0001,
+        format!("metadata 校验失败（{} 项）：{rendered}", violations.len()),
+    )
+    .with_hint(
+        "按 poly-publish/src/metadata.rs 的规则表修正后重跑 poly publish --check-metadata\
+         （只校验，不会发布）",
+    )
 }
 
 /// 缺省定位：`<packages>/<target>/miniapp/dist/*.rpk`（hap-toolkit 产物；名序取尾，多个告警）。
@@ -532,13 +727,16 @@ mod tests {
             config: PathBuf::from("polypack.toml"),
             target: target.to_string(),
             channel: None,
-            appid: "com.polypack.fixture".to_string(),
-            version: "0.1.0".to_string(),
+            appid: Some("com.polypack.fixture".to_string()),
+            version: Some("0.1.0".to_string()),
             description: "契约测试".to_string(),
             package: None,
             // 条目名经 `keyring:条目名` 覆盖档案名（env 的变量名不覆盖）；后端用 memory 注入值
-            credential: "keyring:union".to_string(),
+            credential: Some("keyring:union".to_string()),
             materials: None,
+            metadata_dir: None,
+            metadata_locale: DEFAULT_LOCALE.to_string(),
+            check_metadata: false,
             api_base: None,
             dry_run: true,
         }
@@ -672,7 +870,11 @@ mod tests {
         );
         assert_eq!(
             prepared.receipt_key,
-            poly_publish::receipt_key(&a.appid, &a.version, driven.digest()),
+            poly_publish::receipt_key(
+                a.appid.as_deref().expect("fixture appid"),
+                a.version.as_deref().expect("fixture version"),
+                driven.digest(),
+            ),
             "回执键 = appid-版本-摘要前 16（驱动落回执同键）"
         );
         let _ = std::fs::remove_dir_all(&root);

@@ -64,11 +64,11 @@ This document covers 22 candidates: 7 incubation items, 8 planned platforms, 2 o
 
 ### M9-E3 · Incremental release `poly release --changed`
 
-- Status: candidate · unscheduled (ROADMAP suggests a pilot after M1 cache lands; the cache already exists, so a pilot can start earlier).
+- Status: candidate · partially delivered (T-M9-07/08 delivered 2026-10-20; the T-M9-09 CI example and measured savings are pending).
 - Trigger: multi-target CI release time becomes a bottleneck, or a repository with ≥ 5 targets releases at least weekly.
 - Why: `poly release` only accepts target / repo / credential / dry-run (`Args` in `crates/poly-cli/src/release.rs`) with no change detection; the existing no-op only compares a receipt `manifest_digest` inside one target, so CI still builds every target.
 - Goals: skip unchanged targets based on cache keys or receipt digests and emit stable skipped events and exit codes, cutting multi-target CI time. Non-goals: incremental compilation, partial artifact upload inside one target, changing release receipt semantics.
-- Design sketch: add `--changed` (optionally `--since <ref>`) to `Args`; before `prepare`, recompute keys from `CacheInputs` (`crates/poly-cache/src/digest.rs`) and compare with a new receipt `cache_key`, falling back to `manifest_digest` when absent; skipped goes through the JSON report instead of a fake Published event. Integration points: `crates/poly-cli/src/release.rs`, `crates/poly-cache/src/digest.rs`, the event stream in `crates/poly-cli/src/build.rs`. Alternatives: `git diff` detection (fragile across repos/generated files), mtime (unreliable).
+- Design sketch: `--changed` is implemented: after `prepare`, compare the receipt `cache_key` (currently equal to `manifest_digest`) with a `manifest_digest` fallback, plus repo root and repo kind; a hit emits a distinct `release-skipped` event, does not write the repo, does not rewrite the receipt, and does not increment `runs`; `key_source` names the fallback path. `--since <ref>` returns `E_PLAN_0002` because release has no per-target source/package mapping, with a hint to use `--changed` or pre-filter `--target`. Integration points: `crates/poly-cli/src/release.rs`, `release/report.rs`, `release/tests.rs`, `poly-cli/tests/release.rs`. Alternatives: `git diff` detection (fragile across repos/generated files), mtime (unreliable).
 - Deliverables: `--changed` and `--since`; receipt `cache_key` field; skipped JSON contract; CI example and measured savings.
 - Risks and mitigations: missing cache-key input causes a missed release → single-source key construction plus change-input table tests; old receipts lack `cache_key` → explicit warning and digest fallback; skipped mistaken for a successful release → strictly separate skipped and published events.
 - Decisions: use the cache key or the receipt digest as the primary key; whether `--changed` is on by default.
@@ -100,12 +100,12 @@ This document covers 22 candidates: 7 incubation items, 8 planned platforms, 2 o
 
 ### M9-E5 · Store metadata pipeline
 
-- Status: candidate · unscheduled.
+- Status: candidate · implemented (T-M9-13/14/15; author guide in [STORE-METADATA.en.md](STORE-METADATA.en.md)).
 - Trigger: after the first M2 / M3 store release works, listing copy or screenshots need multi-language maintenance.
 - Why: `poly publish --materials` accepts one JSON file (`crates/poly-cli/src/publish.rs`, `PublishRequest::with_materials`) with no versioned directory, field-length validation, screenshot specs, or locale completeness checks; every release hand-assembles JSON.
 - Goals: a versioned metadata directory in the repository, validated per platform / locale and deterministically packed into submission materials. Non-goals: generating screenshots, calling store listing APIs, replacing human review.
-- Design sketch: `store/metadata/<platform>/<locale>.toml` with title, short_description, full_description, keywords, screenshots, privacy_url, support_url; add a metadata validator in `crates/poly-publish`, wire `poly publish --check-metadata` and `--metadata-dir` into `materials`; record the packed digest in the receipt. Integration points: `crates/poly-publish/src/flow.rs`, `crates/poly-cli/src/publish.rs`, `crates/poly-publish/src/archive.rs`. Alternatives: external store CLIs, per-platform ad hoc JSON.
-- Deliverables: metadata schema and validator; `poly publish` wiring; locale completeness report; bilingual author guide.
+- Design sketch: `store/metadata/<platform>/<locale>.toml` is implemented (`schema = 1`; WeChat and Alipay rule sets, CJK counts as 2); validation reports every violation with stable `metadata.*` codes; `--metadata-dir` / `--check-metadata` / `--metadata-locale` are wired into `poly publish`, with `--materials` and `--metadata-dir` mutually exclusive; materials are key-sorted and their blake3(canonical JSON) digest is recorded in the receipt as `materials_digest`. Integration points: `crates/poly-publish/src/metadata.rs`, `flow.rs`, `archive.rs`, `crates/poly-cli/src/publish.rs`. Alternatives: external store CLIs, per-platform ad hoc JSON.
+- Deliverables: metadata schema and validator (delivered); `poly publish` wiring (delivered); locale completeness report (delivered); bilingual author guide (delivered, see [STORE-METADATA.en.md](STORE-METADATA.en.md)).
 - Risks and mitigations: platform field rules change → version the rule table and record sources; screenshot asset bloat → store paths and digests, not binaries; missing locales → fall back to the default locale with an explicit warning.
 - Decisions: metadata source of truth in the repository or a CMS; whether screenshots may be linked externally.
 - First step: pick 2 supported platforms, list their required listing fields and length limits, and land the schema first.
@@ -118,12 +118,12 @@ This document covers 22 candidates: 7 incubation items, 8 planned platforms, 2 o
 
 ### M9-E6 · GUI target matrix view / build history
 
-- Status: candidate · unscheduled.
+- Status: candidate · partially delivered (T-M9-16/17 delivered 2026-10-20; the T-M9-18 GUI is deferred because `app/` is not tracked, [ADR 0007](../decisions/0007-external-and-ui-decisions.md)).
 - Trigger: the M1 Tauri pipeline works and the `app/` console skeleton lands; or users explicitly ask for a visual build history.
 - Why: README describes `app/` as the target shape of the poly-gui console, but the directory is not tracked in the repository; `BuildEvent` (`crates/poly-core/src/events.rs`) only goes to stdout / JSON Lines with no persistent history, so "when did this target last build successfully" is unanswerable.
 - Goals: persist build events locally and show a target × recent-build matrix plus per-build details. Non-goals: multi-user server, cloud sync, remote farm scheduling UI.
-- Design sketch: the CLI appends events to `.polypack/history/events.jsonl` (schema_version, build_id, ts, target, event) with size-based rotation; the GUI reads through Tauri commands and aggregates the matrix; columns include target, latest status, duration, artifact digest, error code. Integration points: `crates/poly-core/src/events.rs`, `crates/poly-cli/src/build.rs`, new `app/`. Alternatives: parse CI logs (unreliable), SQLite (strong queries but too heavy for v1).
-- Deliverables: history write and rotation; query / aggregation command; matrix and detail views; privacy note (path redaction).
+- Design sketch: `HistoryRecord` (schema_version, build_id, ts, target, event, status, duration, artifact digest, error code) is written to `.polypack/history/events.jsonl`, rotating at 5 MiB / 10,000 records while keeping the newest records; paths are redacted to project-relative form before writing. `poly history [--target ID] [--limit N] [--json]` provides per-target aggregation; the GUI matrix/detail view (T-M9-18) waits for `app/`. Integration points: `crates/poly-core/src/events.rs`, `crates/poly-cli/src/build.rs`, `crates/poly-cli/src/history.rs`. Alternatives: parse CI logs (unreliable), SQLite (strong queries but too heavy for v1).
+- Deliverables: history write and rotation (delivered); query / aggregation command (delivered); matrix and detail views (deferred); privacy note (path redaction, delivered).
 - Risks and mitigations: event stream contains sensitive paths → redact before writing and keep relative paths only; unbounded history → count and size caps; GUI and CLI drift → one schema and golden samples.
 - Decisions: JSONL or SQLite; default retention; whether absolute host paths are recorded.
 - First step: define a persistable `HistoryRecord` schema in `crates/poly-core/src/events.rs` and share it between `poly build --json` and file writes.
@@ -136,7 +136,7 @@ This document covers 22 candidates: 7 incubation items, 8 planned platforms, 2 o
 
 ### M9-E7 · Pre-release device preview matrix
 
-- Status: candidate · unscheduled.
+- Status: candidate · unscheduled; decision recorded: build-vs-buy research first (T-M9-19); no device-farm code at this stage ([ADR 0007](../decisions/0007-external-and-ui-decisions.md)).
 - Trigger: M4 TV or M7 wearable smoke hits a device bottleneck, or store preview / real-device regression blocks releases.
 - Why: `poly smoke` and platform structure checks can SKIP without devices, but there is no device pool, lease, install/launch screenshot, or log archive; the pre-release device matrix is fully manual.
 - Goals: define a device pool and preview job model, then install, launch, screenshot, and collect logs on real devices / simulators with archived evidence. Non-goals: a full device-farm product, unattended review, promising devices for every target.
@@ -160,7 +160,7 @@ This document covers 22 candidates: 7 incubation items, 8 planned platforms, 2 o
 
 ### M9-P1 · Google Play Instant
 
-- Status: candidate · unscheduled; recommended close.
+- Status: candidate · unscheduled; verdict: close (retired, keep a row); see [ADR 0006](../decisions/0006-platform-decisions.md).
 - Trigger: Google officially restores Instant Apps intake and the Instant API (no sign of this today).
 - Current state: Google stopped accepting Instant Apps submissions in Dec 2025 and shut down Play services Instant APIs; README and `tools/gen-status-table.mjs` already say "discontinued", and there is no TargetSpec.
 - Feasibility: not feasible; there is no submission channel.
@@ -180,7 +180,7 @@ This document covers 22 candidates: 7 incubation items, 8 planned platforms, 2 o
 
 ### M9-P2 · Snapchat Mini
 
-- Status: candidate · unscheduled; recommended close (quarterly recheck).
+- Status: candidate · unscheduled; verdict: close with quarterly review (next 2027-01-20); see [ADR 0006](../decisions/0006-platform-decisions.md).
 - Trigger: Snap officially republishes verifiable Minis docs, SDK, and upload contract.
 - Current state: the official docs entry returns 404, developers.snap.com has no Minis docs; npm `@snapchat/minis-sdk` 3.0.5 (2022) is marked deprecating minis; no zip / manifest / packaging contract can be verified.
 - Feasibility: not feasible today; without a contract any packager is guesswork.
@@ -200,7 +200,7 @@ This document covers 22 candidates: 7 incubation items, 8 planned platforms, 2 o
 
 ### M9-P3 · LINE Mini App
 
-- Status: candidate · unscheduled; recommended conditional support (deploy mode, no TargetSpec).
+- Status: candidate · unscheduled; verdict: conditional (deploy mode only, no TargetSpec); see [ADR 0006](../decisions/0006-platform-decisions.md).
 - Trigger: a user clearly needs the LINE channel and accepts "hosted URL only, no local upload package".
 - Current state: LIFF apps are registered by hosted URL in the LINE Developers Console (LINE Login channel → LIFF; the endpoint URL must be HTTPS without fragments); there is no official local upload format or LIFF config file.
 - Feasibility: feasible as "deploy + config validation"; not feasible as platform artifact packaging.
@@ -220,7 +220,7 @@ This document covers 22 candidates: 7 incubation items, 8 planned platforms, 2 o
 
 ### M9-P4 · Sailfish OS
 
-- Status: candidate · unscheduled; recommended conditional support (needs sponsorship or a clear user).
+- Status: candidate · unscheduled; verdict: conditional (needs sponsorship / device commitment); see [ADR 0006](../decisions/0006-platform-decisions.md).
 - Trigger: a Sailfish user or sponsor commits test devices and a Jolla account.
 - Current state: the existing `linux-rpm` chain only emits a desktop Tauri RPM (`crates/poly-bundle/src/packagers/linux.rs`); it lacks a Qt / Silica QML host, the Sailfish SDK cross toolchain (armv7hl / aarch64), and harbour packaging / signing.
 - Feasibility: medium-high technically (RPM and Linux cross-compilation experience is reusable); market is niche.
@@ -241,7 +241,7 @@ This document covers 22 candidates: 7 incubation items, 8 planned platforms, 2 o
 
 ### M9-P5 · Ubuntu Touch
 
-- Status: candidate · unscheduled; recommended conditional support (needs sponsorship or a clear user).
+- Status: candidate · unscheduled; verdict: conditional (needs sponsorship / device commitment); see [ADR 0006](../decisions/0006-platform-decisions.md).
 - Trigger: an Ubuntu Touch user or sponsor commits test devices and an OpenStore release.
 - Current state: the existing Linux deb chain cannot produce a `.click` (format, AppArmor, and click manifest all differ); it lacks Clickable / the Ubuntu Touch SDK and a WebView shell.
 - Feasibility: medium technically; ecosystem and device base are small.
@@ -262,7 +262,7 @@ This document covers 22 candidates: 7 incubation items, 8 planned platforms, 2 o
 
 ### M9-P6 · PlayStation
 
-- Status: candidate · unscheduled; recommended NDA-gated.
+- Status: candidate · unscheduled; verdict: NDA-gated (no code without authorization); see [ADR 0006](../decisions/0006-platform-decisions.md).
 - Trigger: Sony grants authorized developer status and an NDA is signed, with the official SDK installable locally.
 - Current state: L7 planned target; the official SDK requires authorization, is never committed, and is only probed at a local path; there is no TargetSpec.
 - Feasibility: not feasible publicly; only implementable as a plugin inside an authorized environment.
@@ -282,7 +282,7 @@ This document covers 22 candidates: 7 incubation items, 8 planned platforms, 2 o
 
 ### M9-P7 · Xbox
 
-- Status: candidate · unscheduled; recommended NDA-gated.
+- Status: candidate · unscheduled; verdict: NDA-gated (no code without authorization); see [ADR 0006](../decisions/0006-platform-decisions.md).
 - Trigger: Microsoft grants authorized developer status and an NDA is signed, with the GDK installable locally.
 - Current state: L7 planned target; the GDK requires authorization, is never committed, and is only probed at a local path; there is no TargetSpec.
 - Feasibility: not feasible publicly; only implementable as a plugin inside an authorized environment.
@@ -302,7 +302,7 @@ This document covers 22 candidates: 7 incubation items, 8 planned platforms, 2 o
 
 ### M9-P8 · Nintendo Switch
 
-- Status: candidate · unscheduled; recommended NDA-gated.
+- Status: candidate · unscheduled; verdict: NDA-gated (no code without authorization); see [ADR 0006](../decisions/0006-platform-decisions.md).
 - Trigger: Nintendo grants authorized developer status and an NDA is signed, with NintendoSDK installable locally.
 - Current state: L7 planned target; NintendoSDK requires authorization, is never committed, and is only probed at a local path; there is no TargetSpec.
 - Feasibility: not feasible publicly; only implementable as a plugin inside an authorized environment.
@@ -326,7 +326,7 @@ This document covers 22 candidates: 7 incubation items, 8 planned platforms, 2 o
 
 ### M9-D1 · Plugin marketplace distribution: official registry vs decentralized index
 
-- Status: candidate · unscheduled.
+- Status: candidate · unscheduled; decision recorded: signed decentralized index ([ADR 0004](../decisions/0004-plugin-marketplace.md)).
 - Trigger: at least 3 third-party plugins, or the first external request for "how to discover / install plugins".
 - Why: ADR 0003 fixed the WASM sandbox and `target-spec/v1`, but plugins are distributed only as files (`crates/poly-plugin`, `crates/poly-cli/src/plugin_new.rs`) with no index, version resolution, revocation, or provenance display.
 - Goals: choose a distribution model and define a verifiable index format. Non-goals: a paid marketplace, hosted plugin execution, or changing the SRI / signature trust chain.
@@ -344,7 +344,7 @@ This document covers 22 candidates: 7 incubation items, 8 planned platforms, 2 o
 
 ### M9-D2 · Remote farm: self-hosted only vs hosted service
 
-- Status: candidate · unscheduled.
+- Status: candidate · unscheduled; decision recorded: self-hosted only for GA ([ADR 0005](../decisions/0005-farm-hosting.md)).
 - Trigger: external users lack macOS / Windows build hosts and explicitly ask for hosting; or self-hosted deployment support becomes a burden.
 - Why: farm v1 already has a protocol, isolation, shared cache, and deployment guide (`crates/poly-cli/src/farm.rs`, `docs/FARM.md`, `docs/FARM-DEPLOY.md`), but the ROADMAP principle says user code and keys are not hosted; hosting changes the trust boundary and business model.
 - Goals: make a clear "self-hosted only" or "hosted service" decision with boundaries. Non-goals: this document does not commit to implementing hosting or change current self-hosted capability.
@@ -365,9 +365,9 @@ This document covers 22 candidates: 7 incubation items, 8 planned platforms, 2 o
 
 ### M9-G1 · CLI distribution to crates.io / GitHub Releases
 
-- Status: candidate · partially landed (the GitHub Releases binary workflow has landed first; the crates.io release audit, signing, and installer are still pending).
+- Status: candidate · partially landed (GitHub Releases, the install script, optional secret-gated signing, and install-smoke have landed; the crates.io release audit, T-M9-45, is still open).
 - Trigger: GA release; external users want `poly` without a Rust toolchain.
-- Why: the root `Cargo.toml` version is `0.0.0`, `crates/poly-cli/Cargo.toml` declares the bin name `poly`, and the repository has `repository` metadata; previously there was no release workflow, so users could only build from source. `.github/workflows/release.yml` now builds all three hosts on a `v*` tag and attaches `SHA256SUMS.txt`, but the crates.io release audit, signing, and installer are not done.
+- Why: the root `Cargo.toml` version is `0.0.0`, `crates/poly-cli/Cargo.toml` declares the bin name `poly`, and the repository has `repository` metadata; previously there was no release workflow, so users could only build from source. `.github/workflows/release.yml` now builds all three hosts on a `v*` tag and attaches `SHA256SUMS.txt`; `scripts/install.sh` (mandatory SHA-256 + optional strict minisign verification), bilingual `docs/INSTALL`, secret-gated signing, and an install-smoke job have landed. The crates.io release audit (T-M9-45) is still open.
 - Goals: provide verifiable crates.io installation and GitHub Releases binaries with checksums and signatures. Non-goals: Homebrew / Scoop / apt repositories in v1.
 - Design sketch: first audit all publishable crates in dependency order with `cargo package` / `cargo publish --dry-run`; GitHub Actions builds linux x86_64 / aarch64, macOS x86_64 / aarch64, and Windows x86_64; publish `SHA256SUMS` and a GPG/minisign signature; the installer verifies before writing. The GitHub Releases leg has landed in minimal form (three-host build + `SHA256SUMS`); signing and the installer are still pending. Integration points: root `Cargo.toml`, `crates/poly-cli/Cargo.toml`, `.github/workflows/`. Alternatives: GitHub Releases only (partially landed), crates.io only (requires Rust).
 - Deliverables: release inventory and crate order; cross-platform build workflow (landed); checksums (landed) / signatures (pending); installer and bilingual docs.
@@ -383,9 +383,9 @@ This document covers 22 candidates: 7 incubation items, 8 planned platforms, 2 o
 
 ### M9-G2 · Human external developer trial protocol
 
-- Status: candidate · unscheduled.
+- Status: candidate · protocol landed (T-M9-48); the ≥3 human trials in T-M9-49 are external.
 - Trigger: after GA release; the first external developer is willing to participate.
-- Why: the GA §6 "add a target in one day" drill was run by an independent-context AI agent and explicitly did not study human usability; there is no recruitment, informed consent, task script, observation record, or issue triage process.
+- Why: the GA §6 "add a target in one day" drill was run by an independent-context AI agent and explicitly did not study human usability; there is no recruitment, informed consent, task script, observation record, or issue triage process. The protocol and templates now live in `docs/HUMAN-TRIAL.md` / `.en.md`; running them with humans cannot be done here.
 - Goals: establish a repeatable human trial protocol and complete trials with ≥ 3 external developers. Non-goals: a formal usability lab, collection of unrelated personal data.
 - Design sketch: the protocol covers recruitment criteria, informed consent, a 90-minute task script (scaffold → custom target → package), think-aloud notes, issue severity (blocker / friction / suggestion), and an anonymized report template; findings feed back into GA §7.2 and issues. Integration points: `docs/GA.md` §6 / §7.2, `.github/ISSUE_TEMPLATE`. Alternatives: a questionnaire only, or agent drills only (status quo).
 - Deliverables: trial protocol; consent and record templates; ≥ 3 anonymized reports; fix list.
@@ -400,9 +400,9 @@ This document covers 22 candidates: 7 incubation items, 8 planned platforms, 2 o
 
 ### M9-G3 · Environment-slot closure program
 
-- Status: candidate · unscheduled.
+- Status: candidate · ledger / owner / validator landed (T-M9-50, T-M9-52); the real per-slot closure in T-M9-51 remains external.
 - Trigger: now; close slots before any external claim of "verified".
-- Why: GA §7.1 and FARM-DEPLOY §9 still leave environment slots open for macOS IPA, real S3 / OSS, keyring / Vault, and Garmin iq; without a unified ledger, SKIP-with-print is easily misread as passing. `docs/ENV-SLOTS.md` has landed (ENV-01..ENV-19) and is the single source of truth.
+- Why: GA §7.1 and FARM-DEPLOY §9 still leave environment slots open for macOS IPA, real S3 / OSS, keyring / Vault, and Garmin iq; without a unified ledger, SKIP-with-print is easily misread as passing. `docs/ENV-SLOTS.md` has landed (ENV-01..ENV-19, with Owner/Evidence columns), and `tools/check-env-slots.mjs` is wired into docs-check; real per-slot closure still needs external environments and evidence.
 - Goals: every slot has an owner, missing capability, evidence path, closure criterion, and status; a SKIP without an owner may not enter release notes. Non-goals: fabricating environments or writing mock verification as real-environment verification.
 - Design sketch: the ledger is built (slot id, target, missing capability, owner, evidence path, status) from GA §7.1, FARM-DEPLOY §9, and target notes; closure evidence is real logs plus artifact digests; optionally add `tools/check-env-slots.mjs` to validate the ledger and doc references. Integration points: `docs/GA.md` §7.1, `docs/FARM-DEPLOY.md` §9, `.github/workflows/`. Alternatives: issue tracking only (not auditable).
 - Deliverables: environment-slot ledger (landed at `docs/ENV-SLOTS.md`); closure evidence for four slot classes; release checklist with no unexplained SKIP.
@@ -418,7 +418,8 @@ This document covers 22 candidates: 7 incubation items, 8 planned platforms, 2 o
 
 ### M9-G4 · MSI real-sample launch test
 
-- Status: candidate · unscheduled.
+- Status: candidate · delivered (the first `windows-2022` run passed on 2026-10-20: `windows-msi-real` in 6m30s).
+- Progress (2026-10-20): the real Tauri v2 sample `examples/windows-msi-app/`, the gated real-run test `crates/poly-bundle/tests/windows_msi_real.rs` (`POLY_MSI_REAL=1`, `POLY_TAURI_CORE_BIN`, `POLY_MSI_REAL_OUT`, codes `POLY_MSI_REAL_0001..0006`), and the rust-ci `windows-msi-real` job have landed; run 39308849058 passed, with MSI / install / launch / uninstall / residue evidence archived as CI artifacts. ENV-01 is now `CLOSED`.
 - Trigger: Windows L1 claims installability; or the first Windows user reports an install problem.
 - Why: `crates/poly-bundle/src/packagers/windows.rs` generates a WiX `.wxs` and calls candle / light, and comments suggest an `msiexec /i` smoke, but there is no evidence of install, launch, uninstall, and residue checks on a real sample.
 - Goals: use a real Tauri sample on a clean Windows environment to install → launch → uninstall → check residue and archive evidence. Non-goals: MSIX / Store packaging, a multi-language installer matrix.
@@ -435,7 +436,7 @@ This document covers 22 candidates: 7 incubation items, 8 planned platforms, 2 o
 
 ### M9-G5 · Branch protection admin bypass (external process)
 
-- Status: candidate · unscheduled.
+- Status: candidate · unscheduled; external action: repository owner must execute ([ADR 0007](../decisions/0007-external-and-ui-decisions.md)).
 - Trigger: now; T-M2-12 already records `enforce_admins=false`.
 - Why: required checks are configured, but admins can push directly and bypass secret-scan and other required checks; this is a process gap, not a code gap, and cannot be fixed inside the repository.
 - Goals: make admins subject to the same rules (or an org-level ruleset) and leave verifiable evidence. Non-goals: changing CI code or the required-check set.

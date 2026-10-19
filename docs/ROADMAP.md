@@ -579,8 +579,8 @@ CI 宿主 × 目标层矩阵：
 | E3 | **增量发布 `poly release --changed`** | 只重发变更目标（内容寻址缓存判定），多端 CI 时间砍一个量级 | M1 缓存落地后立即试点 | 基于 cache_key 的变更判定原型 |
 | E4 | **生产热更 / OTA 通道** | 补齐「发布 → 迭代」之外的线上更新通道 | 首批用户提出线上更新诉求 | 调研各端官方更新机制（Play In-App Updates / 小程序版本管理 / Tauri updater） |
 | E5 | **商店元数据管线** | listing 文案 / 截图 / 关键词的版本化与多语言管理 | M2/M3 首个商店发布跑通 | 定义 metadata 目录结构与校验器 |
-| E6 | **GUI 目标矩阵视图 / 构建历史** | poly-gui 从「控制台」升级为可用性仪表盘 | M1 Tauri 管线跑通 | 设计矩阵视图数据源（BuildEvent 流） |
-| E7 | **发布前设备预览矩阵** | 真机 / 模拟器矩阵预览（同时解决冒烟设备来源问题） | M4 TV 或 M7 穿戴冒烟遇到设备瓶颈 | 调研设备农场方案与成本 |
+| E6 | **GUI 目标矩阵视图 / 构建历史** | poly-gui 从「控制台」升级为可用性仪表盘 | M1 Tauri 管线跑通 | 设计矩阵视图数据源（BuildEvent 流）；决策见 [ADR 0007](decisions/0007-external-and-ui-decisions.md)（历史持久化优先，GUI 待 `app/` 落地） |
+| E7 | **发布前设备预览矩阵** | 真机 / 模拟器矩阵预览（同时解决冒烟设备来源问题） | M4 TV 或 M7 穿戴冒烟遇到设备瓶颈 | 调研设备农场方案与成本；决策见 [ADR 0007](decisions/0007-external-and-ui-decisions.md)（先做 build-vs-buy） |
 | E8 | **决策记录（ADR）** | 把「为什么这么选」存档（双语文档、不拆 crate、wasm 插件等既有决策） | 可立即开始 | 已有 `docs/decisions/`（模板 + 3 条回填）；后续按需追加 |
 
 ## 14. 开放问题（待决策）
@@ -589,4 +589,4 @@ CI 宿主 × 目标层矩阵：
 - **插件市场**：WASM 插件的分发形态（官方注册表 vs 去中心化索引）；
 - **远程农场**：仅自建（文档提供部署指南）还是提供托管服务。
 
-两项决策的分析、备选与候选任务见 [INITIATIVES.md](INITIATIVES.md) §4（M9-D1 / M9-D2）。
+两项决策的分析、备选与候选任务见 [INITIATIVES.md](INITIATIVES.md) §4（M9-D1 / M9-D2）。决策已记录：[ADR 0004](decisions/0004-plugin-marketplace.md)（去中心化签名插件索引）与 [ADR 0005](decisions/0005-farm-hosting.md)（GA 仅自托管农场）；托管 / BYOC 需新 ADR 并显式修订 §2 非目标。

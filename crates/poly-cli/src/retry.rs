@@ -106,21 +106,28 @@ fn publish_args(args: &Args) -> crate::publish::Args {
             .clone()
             .unwrap_or_else(|| "quickapp".to_string()),
         channel: args.channel.clone(),
-        appid: args
-            .appid
-            .clone()
-            .expect("clap 保证 --from publish 时 --appid 在场"),
-        version: args
-            .version
-            .clone()
-            .expect("clap 保证 --from publish 时 --version 在场"),
+        appid: Some(
+            args.appid
+                .clone()
+                .expect("clap 保证 --from publish 时 --appid 在场"),
+        ),
+        version: Some(
+            args.version
+                .clone()
+                .expect("clap 保证 --from publish 时 --version 在场"),
+        ),
         description: args.description.clone(),
         package: args.package.clone(),
-        credential: args
-            .credential
-            .clone()
-            .expect("clap 保证 --from publish 时 --credential 在场"),
+        credential: Some(
+            args.credential
+                .clone()
+                .expect("clap 保证 --from publish 时 --credential 在场"),
+        ),
         materials: args.materials.clone(),
+        // metadata 管线（M9-E5）不在 retry 的输入面：重跑沿用回执 + 原提审材料语义。
+        metadata_dir: None,
+        metadata_locale: poly_publish::metadata::DEFAULT_LOCALE.to_string(),
+        check_metadata: false,
         api_base: args.api_base.clone(),
         dry_run: false,
     }
@@ -133,6 +140,7 @@ fn verify(args: &Args, json: bool) -> Result<i32, Diagnostic> {
         reproducible: false,
         targets: args.target.iter().cloned().collect(),
         allow_skipped: false,
+        sbom: false,
     };
     crate::verify::run(&verify, json)
 }
@@ -297,10 +305,10 @@ mod tests {
         };
         let mapped = publish_args(&args);
         assert_eq!(mapped.target, "quickapp", "缺省 target 同 poly publish");
-        assert_eq!(mapped.appid, "wx1");
-        assert_eq!(mapped.version, "1.0.0");
+        assert_eq!(mapped.appid.as_deref(), Some("wx1"));
+        assert_eq!(mapped.version.as_deref(), Some("1.0.0"));
         assert_eq!(mapped.channel.as_deref(), Some("wechat-open-platform"));
-        assert_eq!(mapped.credential, "env:POLY_CRED");
+        assert_eq!(mapped.credential.as_deref(), Some("env:POLY_CRED"));
         assert!(!mapped.dry_run, "重跑走真腿");
     }
 }

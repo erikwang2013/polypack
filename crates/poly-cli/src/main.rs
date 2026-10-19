@@ -6,6 +6,7 @@ mod clean;
 mod dev;
 mod doctor;
 mod farm;
+mod history;
 mod init;
 mod mood;
 mod package;
@@ -15,6 +16,7 @@ mod providers;
 mod publish;
 mod release;
 mod retry;
+mod sbom;
 mod scan;
 mod sign;
 mod smoke;
@@ -49,6 +51,8 @@ enum Command {
     Init(init::Args),
     /// 按 polypack.toml 构建（compile 与 bundle(ui) 双支线，带内容寻址缓存）。
     Build(build::Args),
+    /// 构建历史：按目标查看最近 N 次状态 / 耗时 / 产物（`.polypack/history/events.jsonl`）。
+    History(history::Args),
     /// 启动 Web 宿主热预览（整页重载形态）。
     Dev(dev::Args),
     /// 清理构建缓存与产物快照（默认 dry-run）。
@@ -83,6 +87,7 @@ fn main() -> std::process::ExitCode {
         Command::Doctor(args) => doctor::run(&args, cli.json),
         Command::Init(args) => init::run(&args, cli.json),
         Command::Build(args) => build::run(&args, cli.json),
+        Command::History(args) => history::run(&args, cli.json),
         Command::Dev(args) => dev::run(&args, cli.json),
         Command::Clean(args) => clean::run(&args, cli.json),
         Command::Bridge(args) => bridge::run(&args, cli.json),

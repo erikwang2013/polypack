@@ -1,10 +1,11 @@
-//! `poly release`：多目标仓库发布编排（T-M5-11）。
+//! `poly release`：多目标仓库发布编排（T-M5-11；增量发布 T-M9-07）。
 //!
-//! 本层只落 poly-cli 自有面：目标解析（逗号 / 重复）、产物定位与清单摘要、回执 schema 与
-//! 固定落点（`<root>/.polypack/release/<target>/<version>-<digest16>.json`）、幂等判定与
-//! `E_RELEASE_*` 稳定错误码。仓库刷新/签名由 [`RepoBackend`] 承接（deb / rpm / pkg / pkgsrc
-//! 均走 [`repo::LocalBackend`]，缺宿主工具报 `E_RELEASE_0005`）；`--dry-run` 不触仓库。
-//! shortcut: 回执按「目标 + 清单摘要」单键，同键并发按单写者假设（后写赢）。
+//! 本层落 poly-cli 自有面：目标解析、产物定位与清单摘要、回执 schema/固定落点
+//! （`<root>/.polypack/release/<target>/<version>-<digest16>.json`）、幂等与
+//! `--changed` 判定、`E_RELEASE_*` 稳定错误码；仓库刷新/签名由 [`RepoBackend`] 承接
+//! （缺宿主工具报 `E_RELEASE_0005`）。`--dry-run` 不触仓库；`--changed` 命中回执时
+//! 输出 `release-skipped` 且不重写回执。shortcut: 回执按「目标 + 清单摘要」单键，
+//! 同键并发按单写者假设（后写赢）。
 
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -24,7 +25,11 @@ mod report;
 mod targets;
 
 use artifacts::collect_artifacts;
-use report::{report_dry_run, report_published};
+pub(crate) use report::RepoKind;
+use report::{
+    is_noop, load_receipt, no_op_receipt, report_dry_run, report_published, report_skipped,
+    save_receipt,
+};
 use targets::{apply_format_overrides, resolve_repo, resolve_targets};
 
 /// 回执 schema 版本（格式变更即升；读侧拒绝陌生版本）。
@@ -45,18 +50,29 @@ pub struct Args {
     /// 仓库根目录（相对路径按工程根解析；缺省 `<工程根>/.polypack/repo`）。
     #[arg(long, default_value = ".polypack/repo")]
     pub repo: PathBuf,
-    /// 签名凭据引用（可重复）。裸 `REF` 为全局缺省；`TARGET=REF` 按目标覆盖
-    /// （如 `--credential fedora=keyring:fedora-gpg`）。形态：env:VAR / keyring[:条目名]
-    /// / vault[:条目名]。dry-run 只报是否给出，值零落屏。
+    /// 签名凭据引用（可重复）：裸 `REF` 为全局缺省，`TARGET=REF` 按目标覆盖
+    /// （如 `fedora=keyring:fedora-gpg`）。形态 env:VAR / keyring[:条目] / vault[:条目]；
+    /// dry-run 只报是否给出，值零落屏。
     #[arg(long, value_name = "REF", action = clap::ArgAction::Append)]
     pub credential: Vec<String>,
     /// 只解析产物与幂等锚点，不写仓库、不落回执。
     #[arg(long)]
     pub dry_run: bool,
+    /// 只发布变更的目标：回执的 manifest_digest / cache_key、仓库根与仓库格式均与
+    /// 当前产物一致时输出 `release-skipped` 并跳过（不写仓库、不重写回执、runs 不递增）。
+    #[arg(long)]
+    pub changed: bool,
+    /// 变更基线 git 引用（配合 `--changed`）。当前发布模式不构建、回执也无按目标的
+    /// 源码/包路径映射，无法稳健用 git diff 判定；给出时返回 E_PLAN_0002 而非静默忽略。
+    #[arg(long, value_name = "REF")]
+    pub since: Option<String>,
 }
 
 /// 执行 `poly release`；返回进程退出码。
 pub fn run(args: &Args, json: bool) -> Result<i32, Diagnostic> {
+    if let Some(reference) = &args.since {
+        return Err(since_unavailable(reference));
+    }
     let project = project::load(&args.config)?;
     let registry = Registry::builtin();
     let mut specs = resolve_targets(&args.target, &registry)?;
@@ -74,10 +90,30 @@ pub fn run(args: &Args, json: bool) -> Result<i32, Diagnostic> {
         // deb / rpm / pkg / pkgsrc 都是本地自托管仓库后端（pkg(8) / pkgsrc 工具真跑需
         // FreeBSD / NetBSD 用户态）。
         let backend: Box<dyn RepoBackend> = Box::new(repo::LocalBackend);
-        let outcome = release_target(&prepared, credential, backend.as_ref(), unix_now())?;
+        let now = unix_now();
+        if args.changed {
+            match release_changed(&prepared, credential, backend.as_ref(), now)? {
+                ChangedOutcome::Skipped {
+                    receipt,
+                    key_source,
+                } => report_skipped(&prepared, &receipt, key_source, json),
+                ChangedOutcome::Published(outcome) => report_published(&prepared, &outcome, json),
+            }
+            continue;
+        }
+        let outcome = release_target(&prepared, credential, backend.as_ref(), now)?;
         report_published(&prepared, &outcome, json);
     }
     Ok(0)
+}
+
+/// `--since` 在本模式不可用：release 不构建，回执没有按目标的源码/包路径映射。
+fn since_unavailable(reference: &str) -> Diagnostic {
+    let message =
+        format!("--since {reference} 在当前模式不可用：发布不构建，回执无按目标的源码/包路径映射");
+    Diagnostic::error(codes::E_PLAN_0002, message).with_hint(
+        "改用 --changed（按回执 manifest_digest / cache_key 判定），或先按 git diff 选 --target",
+    )
 }
 
 /// `--credential` 解析结果：裸引用为全局缺省，`TARGET=REF` 按目标覆盖。
@@ -125,51 +161,12 @@ fn credential_error(message: impl Into<String>) -> Diagnostic {
         .with_hint("裸 REF 作全局缺省；TARGET=REF 按目标覆盖，左侧须是 --target 中的目标 id")
 }
 
-/// 仓库产物格式（本命令只编排有仓库语义的格式）。
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-enum RepoKind {
-    /// Debian / Ubuntu 系（`.deb` + Packages / Release / InRelease）。
-    Deb,
-    /// Fedora / RHEL 系（`.rpm` + repodata）。
-    Rpm,
-    /// FreeBSD pkg 仓库（`.pkg` + `packagesite`）。
-    Pkg,
-    /// NetBSD / DragonFly pkgsrc 仓库（`.tgz` + `pkg_summary.gz` + 逐包 GPG 签名）。
-    Pkgsrc,
-}
-
-impl RepoKind {
-    /// 目标声明的产物格式 → 仓库格式；其它格式不归本命令。
-    fn from_format(format: &str) -> Option<Self> {
-        match format {
-            "deb" => Some(Self::Deb),
-            "rpm" => Some(Self::Rpm),
-            "pkg" => Some(Self::Pkg),
-            "pkgsrc" => Some(Self::Pkgsrc),
-            _ => None,
-        }
-    }
-
-    /// 产物文件扩展名（也是回执里的稳定文本）。
-    fn extension(self) -> &'static str {
-        match self {
-            Self::Deb => "deb",
-            Self::Rpm => "rpm",
-            Self::Pkg => "pkg",
-            Self::Pkgsrc => "tgz",
-        }
-    }
-}
-
 /// 产物清单的一项（回执里只留可移植字段；`path` 仅本次执行用）。
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct Artifact {
     /// 相对产物目录的路径（`/` 分隔，跨平台稳定）。
     name: String,
-    /// 字节数。
     bytes: u64,
-    /// blake3 摘要（hex）。
     digest: String,
     /// 本次执行的绝对路径（不落回执）。
     #[serde(skip)]
@@ -179,53 +176,45 @@ struct Artifact {
 /// 发布回执（目标 + 版本 + 清单摘要一份；永久保留）。
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct Receipt {
-    /// schema 版本（= [`SCHEMA_VERSION`]）。
     schema_version: u32,
-    /// 目标 id。
     target: String,
-    /// 工程版本。
     version: String,
     /// 仓库根（绝对路径；换仓库即不同发布）。
     repo: String,
-    /// 仓库格式。
     repo_kind: RepoKind,
-    /// 产物集合清单摘要（blake3 hex；与文件系统顺序无关）。
     manifest_digest: String,
-    /// 本次入库的产物集合。
+    /// 变更判定键（可选：旧回执缺省，读侧降级到 `manifest_digest`；本期值与清单摘要同源）。
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    cache_key: Option<String>,
+    /// 产物集合的 SBOM 摘要（可选：旧回执缺省；发布时由 `poly sbom` 同一实现计算）。
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    sbom_digest: Option<String>,
     artifacts: Vec<Artifact>,
     /// 本键累计执行次数（首跑 1；no-op 也 +1——如实记录被跑过几次）。
     runs: u64,
-    /// 首次执行时刻（unix 秒）。
     first_unix: u64,
-    /// 最近一次执行时刻（unix 秒）。
     last_unix: u64,
 }
 
 /// 一次发布的解析结果（dry-run 与真腿共用）。
 #[derive(Debug)]
 struct Prepared {
-    /// 目标 id。
     target: String,
-    /// 工程版本。
     version: String,
     /// 仓库根（绝对路径）。
     repo: PathBuf,
     kind: RepoKind,
-    /// 目标声明的签名凭据档案（`TargetSpec.signing`；T-M5-05 仓库签名用）。
     signing: Option<String>,
-    /// 产物集合（按名排序）。
     artifacts: Vec<Artifact>,
-    /// 清单摘要（blake3 hex）。
     manifest_digest: String,
-    /// 回执落点。
+    /// 变更判定键（本期与清单摘要同源；未来可替换为构建缓存键）。
+    cache_key: String,
     receipt: PathBuf,
 }
 
 #[derive(Debug)]
 struct Outcome {
-    /// 是否命中 no-op（同清单摘要 + 同仓库）。
     cache_hit: bool,
-    /// 本键累计执行次数（含本次）。
     runs: u64,
 }
 
@@ -237,12 +226,9 @@ trait RepoBackend {
 
 /// 一次仓库发布的输入（凭据只传引用，不含明文值）。
 struct RepoRequest<'a> {
-    /// 目标 id。
     target: &'a str,
-    /// 仓库根。
     repo: &'a Path,
     kind: RepoKind,
-    /// 目标声明的签名凭据档案。
     signing: Option<&'a str>,
     artifacts: &'a [Artifact],
     /// 签名凭据引用（未给 = 后端按目标声明解析）。
@@ -330,6 +316,7 @@ fn prepare(project: &Project, spec: &TargetSpec, repo: &Path) -> Result<Prepared
         kind,
         signing: spec.signing.clone(),
         artifacts,
+        cache_key: manifest_digest.clone(),
         manifest_digest,
         receipt,
     })
@@ -369,74 +356,85 @@ fn file_part(part: &str) -> String {
     }
 }
 
-/// 回执命中判定：清单摘要、仓库根、仓库格式三者一致才 no-op。
-fn is_noop(receipt: &Receipt, prepared: &Prepared) -> bool {
-    receipt.manifest_digest == prepared.manifest_digest
-        && receipt.repo == prepared.repo.display().to_string()
-        && receipt.repo_kind == prepared.kind
+/// 回执命中使用的变更键来源（旧回执无 `cache_key` 时降级到清单摘要）。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum KeySource {
+    CacheKey,
+    ManifestDigest,
 }
 
-/// 读回执并判命中（dry-run 的命中预测；读失败照常报错）。
-fn no_op_receipt(prepared: &Prepared) -> Result<Option<Receipt>, Diagnostic> {
-    Ok(load_receipt(&prepared.receipt, prepared)?.filter(|receipt| is_noop(receipt, prepared)))
+impl KeySource {
+    fn as_str(self) -> &'static str {
+        match self {
+            Self::CacheKey => "cache_key",
+            Self::ManifestDigest => "manifest_digest",
+        }
+    }
 }
 
-/// 读回执：不存在 → `Ok(None)`；形态非法 / 版本陌生 / 身份不符 → `E_RELEASE_0003`。
-fn load_receipt(path: &Path, prepared: &Prepared) -> Result<Option<Receipt>, Diagnostic> {
-    let bytes = match std::fs::read(path) {
-        Ok(bytes) => bytes,
-        Err(err) if err.kind() == std::io::ErrorKind::NotFound => return Ok(None),
-        Err(err) => return Err(receipt_error(path, format!("回执不可读：{err}"))),
+/// `--changed` 的单目标结果：跳过时带回执（零写入）与键来源。
+#[derive(Debug)]
+enum ChangedOutcome {
+    Skipped {
+        receipt: Receipt,
+        key_source: KeySource,
+    },
+    Published(Outcome),
+}
+
+/// `--changed` 判定：回执命中 → `Some`；无回执 / 键或仓库不符 → `None`（照常发布）。
+fn changed_receipt(prepared: &Prepared) -> Result<Option<(Receipt, KeySource)>, Diagnostic> {
+    let Some(receipt) = load_receipt(&prepared.receipt, prepared)? else {
+        return Ok(None);
     };
-    let receipt: Receipt = serde_json::from_slice(&bytes)
-        .map_err(|err| receipt_error(path, format!("回执 JSON 非法：{err}")))?;
-    if receipt.schema_version != SCHEMA_VERSION {
-        return Err(receipt_error(
-            path,
-            format!(
-                "回执 schema 版本 {} 与本期 {SCHEMA_VERSION} 不符（格式固定；迁移后重跑）",
-                receipt.schema_version
-            ),
-        ));
+    if !is_noop(&receipt, prepared) {
+        return Ok(None);
     }
-    if receipt.target != prepared.target || receipt.version != prepared.version {
-        return Err(receipt_error(
-            path,
-            format!(
-                "回执身份（{} {}）与路径不符",
-                receipt.target, receipt.version
-            ),
-        ));
-    }
-    Ok(Some(receipt))
+    let key_source = if receipt.cache_key.as_deref() == Some(prepared.cache_key.as_str()) {
+        KeySource::CacheKey
+    } else {
+        KeySource::ManifestDigest
+    };
+    Ok(Some((receipt, key_source)))
 }
 
-/// 回执错误统一口径（永久保留，不静默重建）。
-fn receipt_error(path: &Path, message: String) -> Diagnostic {
-    Diagnostic::error(
-        codes::E_RELEASE_0003,
-        format!("{}：{message}", path.display()),
-    )
-    .with_hint("回执永久保留：修复或迁移后重跑；勿手改 schema 版本")
-}
-
-/// 原子落盘（同目录临时文件 + rename）。
-fn save_receipt(path: &Path, receipt: &Receipt) -> Result<(), Diagnostic> {
-    let dir = path.parent().expect("回执路径必有父目录");
-    std::fs::create_dir_all(dir)
-        .map_err(|err| receipt_error(dir, format!("回执目录不可建：{err}")))?;
-    let json = serde_json::to_vec_pretty(receipt).expect("回执序列化不会失败");
-    let tmp = path.with_extension("json.tmp");
-    std::fs::write(&tmp, &json).map_err(|err| receipt_error(&tmp, format!("回执不可写：{err}")))?;
-    std::fs::rename(&tmp, path).map_err(|err| receipt_error(path, format!("回执落盘失败：{err}")))
+/// `--changed` 单目标执行：命中即 Skipped（不触仓库、不重写回执、runs 不递增）；
+/// 否则发布并写入 cache_key（供下次增量判定）。
+fn release_changed(
+    prepared: &Prepared,
+    credential: Option<&str>,
+    backend: &dyn RepoBackend,
+    now: u64,
+) -> Result<ChangedOutcome, Diagnostic> {
+    if let Some((receipt, key_source)) = changed_receipt(prepared)? {
+        return Ok(ChangedOutcome::Skipped {
+            receipt,
+            key_source,
+        });
+    }
+    Ok(ChangedOutcome::Published(publish_target(
+        prepared, credential, backend, now, true,
+    )?))
 }
 
 /// 发布一个目标：同键命中即 no-op（runs+1）；否则经后端入库后落回执。
+/// 不带 `--changed` 时回执字节与旧版本一致（不写 cache_key）。
 fn release_target(
     prepared: &Prepared,
     credential: Option<&str>,
     backend: &dyn RepoBackend,
     now: u64,
+) -> Result<Outcome, Diagnostic> {
+    publish_target(prepared, credential, backend, now, false)
+}
+
+/// 发布实现；`record_cache_key` 仅 `--changed` 路径为 true。
+fn publish_target(
+    prepared: &Prepared,
+    credential: Option<&str>,
+    backend: &dyn RepoBackend,
+    now: u64,
+    record_cache_key: bool,
 ) -> Result<Outcome, Diagnostic> {
     let existing = load_receipt(&prepared.receipt, prepared)?;
     if let Some(hit) = existing
@@ -463,6 +461,17 @@ fn release_target(
     };
     backend.publish(&request)?;
 
+    // T-M9-03：回执记录产物集合的 SBOM 摘要（与 `poly verify --sbom` 同一实现）。
+    let artifact_paths: Vec<PathBuf> = prepared
+        .artifacts
+        .iter()
+        .map(|artifact| artifact.path.clone())
+        .collect();
+    let sbom_digest = crate::sbom::digest_for_artifacts(&artifact_paths).map_err(|err| {
+        Diagnostic::error(codes::E_RELEASE_0005, format!("SBOM 摘要计算失败：{err}"))
+            .with_hint("核对待发布产物路径可读；SBOM 摘要用于发布回执审计")
+    })?;
+
     let mut receipt = existing.unwrap_or_else(|| Receipt {
         schema_version: SCHEMA_VERSION,
         target: prepared.target.clone(),
@@ -470,6 +479,8 @@ fn release_target(
         repo: prepared.repo.display().to_string(),
         repo_kind: prepared.kind,
         manifest_digest: prepared.manifest_digest.clone(),
+        cache_key: None,
+        sbom_digest: None,
         artifacts: Vec::new(),
         runs: 0,
         first_unix: now,
@@ -478,6 +489,8 @@ fn release_target(
     receipt.repo = prepared.repo.display().to_string();
     receipt.repo_kind = prepared.kind;
     receipt.manifest_digest = prepared.manifest_digest.clone();
+    receipt.cache_key = record_cache_key.then(|| prepared.cache_key.clone());
+    receipt.sbom_digest = Some(sbom_digest);
     receipt.artifacts = prepared.artifacts.clone();
     receipt.runs += 1;
     receipt.last_unix = now;
@@ -488,7 +501,6 @@ fn release_target(
     })
 }
 
-/// 当前 unix 秒。
 fn unix_now() -> u64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)

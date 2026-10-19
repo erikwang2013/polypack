@@ -31,9 +31,20 @@ fn help_lists_release_surface() {
     let out = poly(&root, &["release", "--help"]);
     assert_eq!(out.status.code(), Some(0), "--help 恒 0");
     let stdout = String::from_utf8_lossy(&out.stdout);
-    for flag in ["--target", "--repo", "--credential", "--dry-run"] {
+    for flag in [
+        "--target",
+        "--repo",
+        "--credential",
+        "--dry-run",
+        "--changed",
+        "--since",
+    ] {
         assert!(stdout.contains(flag), "help 须含 {flag}：{stdout}");
     }
+    assert!(
+        stdout.contains("release-skipped"),
+        "help 须说明 skipped 事件：{stdout}"
+    );
     for syntax in ["TARGET=REF", "env:VAR"] {
         assert!(
             stdout.contains(syntax),
@@ -340,5 +351,110 @@ fn rerun_with_matching_receipt_is_published_noop() {
             .expect("回执可解析");
     assert_eq!(stored["runs"], 2);
     assert_eq!(stored["first_unix"], 100, "首跑时刻保留");
+    let _ = std::fs::remove_dir_all(&root);
+}
+
+/// 两个目标都写旧格式回执（无 cache_key）：`--changed` 按 manifest_digest 全部跳过。
+#[test]
+fn changed_skips_all_unchanged_targets_and_leaves_receipts_untouched() {
+    let root = fixture_two_rpm("changed-all-skip");
+    let dry = poly(
+        &root,
+        &["release", "--target", "linux,web", "--dry-run", "--json"],
+    );
+    assert_eq!(dry.status.code(), Some(0));
+    let mut receipts = Vec::new();
+    for line in String::from_utf8_lossy(&dry.stdout)
+        .lines()
+        .filter(|line| !line.trim().is_empty())
+    {
+        let value: serde_json::Value = serde_json::from_str(line).expect("dry-run JSON");
+        assert_eq!(value["event"], "release-dry-run");
+        let receipt_path = PathBuf::from(value["receipt"].as_str().expect("回执路径"));
+        let receipt = serde_json::json!({
+            "schema_version": 1,
+            "target": value["target"].clone(),
+            "version": value["version"].clone(),
+            "repo": value["repo"].clone(),
+            "repo_kind": value["repo_kind"].clone(),
+            "manifest_digest": value["manifest_digest"].clone(),
+            "artifacts": value["artifacts"].clone(),
+            "runs": 4,
+            "first_unix": 100,
+            "last_unix": 200,
+        });
+        std::fs::create_dir_all(receipt_path.parent().expect("父目录")).expect("建目录");
+        let bytes = serde_json::to_vec_pretty(&receipt).expect("序列化");
+        std::fs::write(&receipt_path, &bytes).expect("写回执");
+        receipts.push((receipt_path, bytes, value["target"].clone()));
+    }
+    assert_eq!(receipts.len(), 2, "两个目标各一条 dry-run 事件");
+
+    let out = poly(
+        &root,
+        &["release", "--target", "linux,web", "--changed", "--json"],
+    );
+    assert_eq!(
+        out.status.code(),
+        Some(0),
+        "全部 skipped 须退出 0：{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    let text = String::from_utf8_lossy(&out.stdout);
+    let events: Vec<serde_json::Value> = text
+        .lines()
+        .filter(|line| !line.trim().is_empty())
+        .map(|line| serde_json::from_str(line).expect("JSON Lines"))
+        .collect();
+    assert_eq!(events.len(), 2, "{text}");
+    for (event, (_, _, target)) in events.iter().zip(&receipts) {
+        assert_eq!(event["event"], "release-skipped");
+        assert_eq!(event["target"].as_str(), target.as_str());
+        assert_eq!(event["key_source"], "manifest_digest", "旧回执降级");
+        assert_eq!(event["runs"], 4, "skipped 不递增 runs");
+    }
+    for (path, bytes, _) in &receipts {
+        assert_eq!(
+            &std::fs::read(path).expect("回执存在"),
+            bytes,
+            "skipped 不重写回执"
+        );
+    }
+
+    // 人读通道同样输出独立 skipped 事件，不伪装成 published。
+    let human = poly(&root, &["release", "--target", "linux,web", "--changed"]);
+    assert_eq!(human.status.code(), Some(0));
+    let stdout = String::from_utf8_lossy(&human.stdout);
+    assert_eq!(stdout.matches("release-skipped").count(), 2, "{stdout}");
+    assert!(
+        !stdout.contains("· published"),
+        "不得混入 published：{stdout}"
+    );
+    let _ = std::fs::remove_dir_all(&root);
+}
+
+#[test]
+fn since_reports_clear_diagnostic_instead_of_silent_ignore() {
+    let root = fixture("since");
+    let out = poly(
+        &root,
+        &[
+            "release",
+            "--target",
+            "linux",
+            "--changed",
+            "--since",
+            "HEAD",
+            "--dry-run",
+        ],
+    );
+    assert_eq!(out.status.code(), Some(1), "--since 不支持须失败");
+    let stderr = String::from_utf8_lossy(&out.stderr);
+    assert!(stderr.contains("poly::E_PLAN_0002"), "{stderr}");
+    assert!(stderr.contains("--since"), "诊断须点名 --since：{stderr}");
+    assert!(
+        stderr.contains("--changed"),
+        "修复提示指向 --changed：{stderr}"
+    );
     let _ = std::fs::remove_dir_all(&root);
 }
