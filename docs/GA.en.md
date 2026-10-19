@@ -306,7 +306,16 @@ The cases use a real gpg keypair generated inside the test process, a one-shot `
 
 Expected: `test result: ok. 8 passed; 0 failed`. Measured locally on 2026-10-19: 8/8 (test body 5.05s, excluding compilation). On a host without gpg or on Windows MSYS the tests print SKIP, and the wrapper prints SKIP instead of PASS.
 
-Boundary: this step verifies the host load chain (SRI → signature verification → component parsing → instantiation); the CLI path that resolves the trust root from keyring / env and loads a real built artifact is not part of this step.
+CLI end-to-end supplement (env credential carrier + real component artifact, 2026-10-19):
+
+```bash
+CARGO_TARGET_DIR=target cargo test -p poly-cli --test plugin_trust_root_env
+# test result: ok. 1 passed; 0 failed
+```
+
+`cli_resolves_trust_root_from_env_and_loads_signed_plugin` creates a temporary project whose `[[plugins]]` points at the repository's real component fixture `crates/poly-plugin/tests/fixtures/reference-plugin.wasm` (compiled by `guests/build.sh` and committed), and writes a detached signature with a gpg keypair inside a one-shot 0700 GNUPGHOME. The config contains only `trust_root = { name = "plugin-trust-root", source = { env = { variable = "POLYPACK_PLUGIN_TRUST_ROOT" } } }`; the public-key payload `base64(JSON) {"public_key":"<base64>"}` is injected through the child process environment. The positive run `poly build --target linux-reference --json` asserts the plugin is accepted (`plugin_granted`), the target declared by `describe` is available, and the `packaged` (`reference-bin`) event and staged artifact land on disk; the negative runs use a different public key and a missing environment variable to assert `E_PLUGIN_0009` / `E_PLUGIN_0010` respectively. A host without gpg prints SKIP; a missing fixture fails at compile time and is never silently skipped.
+
+Boundary: the table above verifies the host load chain (SRI → signature verification → component parsing → instantiation); the CLI path that resolves the trust root via the env carrier and loads a real component artifact is now automated by `plugin_trust_root_env` above. The keyring (requires the host Secret Service / Keychain / Credential Manager) and Vault (requires a Vault service and client wiring) carriers remain environment slots and are not part of the automated gate; the fixture is not rebuilt during the test (the template → `build.sh` real compile chain is covered separately by the `POLY_CONTRACT_REAL=1` case in `poly-cli`).
 
 ## 7. Known gaps and follow-ups
 
@@ -316,7 +325,7 @@ Boundary: this step verifies the host load chain (SRI → signature verification
 |---|---|---|
 | No standalone `poly plugin check` | Authors must manually chain build / test / digest / build | Fixed: `poly plugin check <dir>` validates scaffold files / WIT sync / artifact digest in one command (a missing artifact is a warning only) |
 | Template WIT and host WIT are not auto-compared | Interface upgrades must sync the template copy by hand | Fixed: `tools/check-docs.mjs` now byte-compares template WIT against host WIT; `poly plugin check` applies the same check to a project |
-| Signature / trust root not exercised end to end in the drill | The drill covered only the SRI negative case | Fixed (2026-10-19): §6.6 `tools/plugin-signature-drill.sh` runs the chain for real, 8/8 (valid / tampered / missing / wrong key / SRI first / unavailable root / no leaks / config reference). Remaining: the CLI resolving the trust root from keyring / env and loading a real built artifact is not part of this step |
+| Signature / trust root not exercised end to end in the drill | The drill covered only the SRI negative case | Fixed (2026-10-19): §6.6 `tools/plugin-signature-drill.sh` runs the chain for real, 8/8 (valid / tampered / missing / wrong key / SRI first / unavailable root / no leaks / config reference); the same section's `plugin_trust_root_env` now automates the CLI env carrier + real component artifact through `poly build` pass / fail paths (valid signature packages, wrong key `E_PLUGIN_0009`, missing env `E_PLUGIN_0010`). Remaining: the keyring / Vault carriers require the host Secret Service / Keychain / Credential Manager or a Vault service and remain environment slots |
 | macOS farm IPA R3 is an environment-slot SKIP | The Linux environment has no Xcode / codesign | Kept open per FARM-DEPLOY §9; replace after running on a macOS host |
 | Real cloud object storage (S3 / OSS) not run against a real cloud yet | S3-compatible backend implemented (SigV4 + OSS `x-oss-s3-compat`), mock contract verified | Implemented, mock-verified; the real-cloud environment slot (`POLYPACK_S3_REAL=1` + `POLYPACK_S3_TEST_URI`) stays open — no real-cloud verification is claimed before it runs |
 | Garmin has no builtin iq packager | `poly build --target garmin` SKIP-with-print at the package stage | Recorded experimental gap; conditional task |
@@ -327,7 +336,7 @@ Boundary: this step verifies the host load chain (SRI → signature verification
 | Action | Trigger | Acceptance |
 |---|---|---|
 | Human external developer trial | After GA publication | Record blockers and write them back to the docs |
-| CLI trust-root carrier end to end | Next drill involving signed releases | keyring / env trust-root resolution + `poly build` against a real plugin artifact, pass and fail paths |
+| Keyring / Vault trust-root carriers end to end | Next drill involving signed releases (requires the host Secret Service / Keychain / Credential Manager or a Vault service) | keyring / Vault trust-root resolution + `poly build` against a real plugin artifact, pass and fail paths (the env carrier is already automated by §6.6 `plugin_trust_root_env`) |
 | macOS worker + real IPA run | A macOS host is available | FARM-DEPLOY §9 logs and artifacts archived |
 | Real-cloud object storage second-run hit | An S3 / OSS bucket and credentials are available | Set `POLYPACK_S3_REAL=1` + `POLYPACK_S3_TEST_URI` and run `tests/s3_real.rs`, then a two-worker second-run hit |
 | Garmin iq packager | Conditional task triggered | Artifact structure check and real-device evidence |
