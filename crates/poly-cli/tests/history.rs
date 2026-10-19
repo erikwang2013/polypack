@@ -71,10 +71,29 @@ fn json_lines(output: &Output) -> Vec<serde_json::Value> {
     parse_lines(&String::from_utf8_lossy(&output.stdout))
 }
 
+/// 当前宿主可构建的桌面目标（真实构建测试不能硬编码 linux）。
+fn host_target() -> &'static str {
+    if cfg!(target_os = "windows") {
+        "windows"
+    } else if cfg!(target_os = "macos") {
+        "macos"
+    } else {
+        "linux"
+    }
+}
+
 fn init_project(tag: &str) -> TempDir {
     let project = TempDir::new(tag);
     let init = poly(&["init"], project.path());
     assert!(init.status.success(), "poly init 失败：{}", combined(&init));
+    // Windows 主 rust 作业只预装 NSIS（WiX 在 windows-msi-real 作业），
+    // 这里用 NSIS 格式，避免真实构建测试因缺 candle/light 而误红。
+    if cfg!(target_os = "windows") {
+        let config = project.path().join("polypack.toml");
+        let mut text = std::fs::read_to_string(&config).expect("读 polypack.toml");
+        text.push_str("\n[targets.windows]\nformat = \"nsis\"\n");
+        std::fs::write(&config, text).expect("写 polypack.toml");
+    }
     project
 }
 
@@ -186,7 +205,10 @@ fn history_filters_limits_and_renders_both_channels() {
 #[test]
 fn build_appends_redacted_history_records() {
     let project = init_project("build");
-    let build = poly(&["build", "--json", "--target", "linux"], project.path());
+    let build = poly(
+        &["build", "--json", "--target", host_target()],
+        project.path(),
+    );
     assert!(
         build.status.success(),
         "poly build 失败：{}",
@@ -243,7 +265,10 @@ fn failed_build_is_recorded_with_error_code() {
     )
     .expect("损坏 core 源码可写");
 
-    let build = poly(&["build", "--json", "--target", "linux"], project.path());
+    let build = poly(
+        &["build", "--json", "--target", host_target()],
+        project.path(),
+    );
     assert!(
         !build.status.success(),
         "损坏的 core 必须构建失败：{}",
