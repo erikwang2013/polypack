@@ -276,6 +276,9 @@ fn native_desktop_target(job: &JobSpec) -> Option<&TargetSpec> {
 }
 
 /// compile 支线的缓存键输入：核心 crate 源树 + 其锁文件 + 目标声明 + 工具链 + profile。
+///
+/// M9-E2：`app_id` 固定传 `None`。键只由 core 内容与构建参数决定，工作区两个成员指向同一
+/// 共享 core 时得到同一键，配合共享缓存根即可复用编译产物（输出路径仍按应用隔离）。
 pub fn compile_key(
     project: &Project,
     target: &TargetSpec,
@@ -288,10 +291,13 @@ pub fn compile_key(
         target_spec: serde_json::to_string(target).expect("TargetSpec 可序列化"),
         toolchain: toolchain_version()?,
         profile: profile.to_string(),
+        app_id: None,
     }))
 }
 
 /// bundle 支线的缓存键输入：UI 源树 + UI 锁文件 + 影响 manifest 的配置 + 引擎 + profile。
+///
+/// M9-E2：工作区成员混入 `app_id`，UI 产物缓存按应用隔离；单应用仍为 `None`，键不变。
 pub fn bundle_key(
     project: &Project,
     engine: &UiEngine,
@@ -308,6 +314,7 @@ pub fn bundle_key(
         target_spec: spec.to_string(),
         toolchain: format!("{engine:?}"),
         profile: profile.to_string(),
+        app_id: project.app_id.clone(),
     }))
 }
 

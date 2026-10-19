@@ -2,6 +2,7 @@
 
 mod bridge;
 mod build;
+mod build_artifacts;
 mod clean;
 mod dev;
 mod doctor;

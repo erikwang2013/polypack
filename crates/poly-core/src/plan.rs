@@ -56,10 +56,26 @@ pub enum StageOutcome {
 
 /// 项目上下文：`polypack.toml` 的装载结果与项目根目录。
 pub struct Project {
-    /// 项目根目录（`polypack.toml` 所在目录）。
+    /// 项目根目录（`polypack.toml` 所在目录；配置内相对路径的基准）。
     pub root: PathBuf,
     /// 已装载并校验的配置。
     pub config: PolypackConfig,
+    /// 工作区根目录（M9-E2）；仅 `[workspace]` 成员有值。配置相对路径仍以 `root` 为基准。
+    pub workspace_root: Option<PathBuf>,
+    /// 工作区成员应用 id；单应用为 `None`。
+    pub app_id: Option<String>,
+}
+
+impl Project {
+    /// 单应用项目（无工作区上下文）：`root` 同时是配置根与 `.polypack/` 状态根。
+    pub fn new(root: PathBuf, config: PolypackConfig) -> Self {
+        Self {
+            root,
+            config,
+            workspace_root: None,
+            app_id: None,
+        }
+    }
 }
 
 /// 阶段执行上下文。
@@ -436,6 +452,7 @@ mod tests {
     fn not_yet_stage_reports_skipped() {
         let job = JobSpec {
             id: "t".to_string(),
+            app_id: None,
             profile: Profile::Local,
             targets: Vec::new(),
             excluded: Vec::new(),

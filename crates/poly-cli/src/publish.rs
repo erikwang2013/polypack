@@ -547,7 +547,7 @@ fn locate_rpk(
     project: &poly_core::Project,
     spec: &TargetSpec,
 ) -> Result<(PathBuf, Option<u64>), Diagnostic> {
-    let dist = project::packages_root(&project.root)
+    let dist = project::app_packages_root(project)
         .join(&spec.id)
         .join(MINIAPP_DIR)
         .join(DIST_DIR);

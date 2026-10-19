@@ -719,6 +719,7 @@ pub fn cache_key(
                 .unwrap_or_else(|| "wasm-opt:none".to_string())
         ),
         profile: profile.to_string(),
+        app_id: None,
     }))
 }
 

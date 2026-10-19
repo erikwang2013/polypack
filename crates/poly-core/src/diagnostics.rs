@@ -40,6 +40,14 @@ pub mod codes {
     pub const E_CFG_0001: Code = Code::new("poly::E_CFG_0001");
     /// 配置文件解析失败。
     pub const E_CFG_0002: Code = Code::new("poly::E_CFG_0002");
+    /// 工作区声明非法（成员为空 / 绝对路径 / 成员 id 重复）。
+    pub const E_WS_0001: Code = Code::new("poly::E_WS_0001");
+    /// 工作区成员目录或成员 `polypack.toml` 缺失。
+    pub const E_WS_0002: Code = Code::new("poly::E_WS_0002");
+    /// 工作区成员路径越出工作区根（含符号链接逃逸）。
+    pub const E_WS_0003: Code = Code::new("poly::E_WS_0003");
+    /// `--app` 指定的工作区成员不存在。
+    pub const E_WS_0004: Code = Code::new("poly::E_WS_0004");
     /// 目标不存在。
     pub const E_TGT_0001: Code = Code::new("poly::E_TGT_0001");
     /// 目标不可达（宿主 / 授权 / 凭据）。

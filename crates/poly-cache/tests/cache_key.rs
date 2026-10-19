@@ -23,6 +23,7 @@ fn inputs(root: &Path) -> CacheInputs {
         target_spec: "linux-x64: deb, msi".into(),
         toolchain: "rustc 1.99.0".into(),
         profile: "ci".into(),
+        app_id: None,
     }
 }
 
@@ -72,6 +73,7 @@ fn cache_key_has_no_field_boundary_ambiguity() {
         target_spec: "ab".into(),
         toolchain: "c".into(),
         profile: "ci".into(),
+        app_id: None,
     };
     let shifted = CacheInputs {
         target_spec: "a".into(),

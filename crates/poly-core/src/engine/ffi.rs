@@ -227,6 +227,7 @@ pub extern "C" fn poly_engine_cache_key(
         target_spec: String::from(target_spec),
         toolchain: String::from(toolchain),
         profile: String::from(profile),
+        app_id: None,
     });
     match CString::new(key.as_str()) {
         Ok(text) => text.into_raw(),

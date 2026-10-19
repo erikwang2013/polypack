@@ -259,6 +259,7 @@ pub fn bridge_cache_key(
         target_spec: format!("{BRIDGE_SCHEMA}/{}", lang.id()),
         toolchain: format!("{BRIDGE_SCHEMA}+{}+{interface}", lang.engine().id()),
         profile: profile.to_string(),
+        app_id: None,
     }))
 }
 

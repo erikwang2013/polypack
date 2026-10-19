@@ -5,14 +5,15 @@
 use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
-use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
+use std::time::{Duration, Instant, SystemTime};
 
-use poly_cache::{Cache, LocalStore, RetentionPolicy, enforce_retention};
+use poly_cache::Cache;
 use poly_core::events::{HistoryRecord, HistoryStatus};
 use poly_core::{BuildEvent, Diagnostic, EventSink, PluginGrant, Profile, pipeline};
 use poly_targets::{TargetRequest, current_host};
 use sha2::{Digest, Sha256};
 
+use crate::build_artifacts::{enforce_retention_policy, snapshot_artifacts};
 use crate::project;
 
 /// 构建 profile。
@@ -53,15 +54,44 @@ pub struct Args {
     /// 构建 profile。
     #[arg(long, value_enum, default_value_t = ProfileArg::Local)]
     pub profile: ProfileArg,
+    /// 构建工作区根 `[workspace]` 声明的全部成员应用。
+    #[arg(long, conflicts_with = "app")]
+    pub workspace: bool,
+    /// 只构建工作区中的指定成员应用（id = 成员目录名）。
+    #[arg(long, value_name = "ID", conflicts_with = "workspace")]
+    pub app: Option<String>,
 }
 
 /// 执行一次构建；返回进程退出码。
+///
+/// 选择器：`--workspace` 依声明序构建全部成员；`--app <id>` 只构建一个成员；
+/// 两者都不给时走单应用路径，行为与 M9 之前完全一致。
 pub fn run(args: &Args, json: bool) -> Result<i32, Diagnostic> {
+    if !args.workspace && args.app.is_none() {
+        let project = project::load(&args.config)?;
+        let mut events = project::sink(json);
+        return run_project(&project, args, json, events.as_mut());
+    }
+
+    let workspace = poly_core::workspace::discover(&args.config)?;
+    let mut events = project::sink(json);
+    for app in workspace.select(args.app.as_deref())? {
+        run_project(&app.project, args, json, events.as_mut())?;
+    }
+    Ok(0)
+}
+
+/// 单个项目（单应用或工作区成员）的完整构建。
+fn run_project(
+    project: &poly_core::Project,
+    args: &Args,
+    json: bool,
+    events: &mut dyn EventSink,
+) -> Result<i32, Diagnostic> {
     let started = Instant::now();
     let started_wall = SystemTime::now();
-    let project = project::load(&args.config)?;
     // T-M8-05：目标表来自统一 provider 注册表（官方目标 + `[[plugins]]` 插件同表）。
-    let registry = crate::providers::target_registry(&project)?;
+    let registry = crate::providers::target_registry(project)?;
     let hosts: Vec<_> = current_host().into_iter().collect();
     // 缺省与 `--target all` 同为「当前宿主可达的全部已声明目标」（§4.3）
     let request = if args.targets.is_empty() || args.targets.iter().any(|id| id == "all") {
@@ -69,12 +99,14 @@ pub fn run(args: &Args, json: bool) -> Result<i32, Diagnostic> {
     } else {
         TargetRequest::Explicit(args.targets.clone())
     };
-    let job = project
+    let mut job = project
         .config
         .to_job(&registry, &request, args.profile.profile(), &hosts)
         .map_err(|err| err.diagnostic)?;
+    // M9-E2：工作区成员 id 随 JobSpec 下传；单应用保持 None（序列化省略）。
+    job.app_id = project.app_id.clone();
 
-    let cache = Arc::new(Cache::from_root(project::cache_root(&project.root)));
+    let cache = Arc::new(Cache::from_root(project::app_cache_root(project)));
     // package / sign / verify 三个阶段由 CLI 注入：打包器矩阵在 poly-bundle、签名链与校验器
     // 在 poly-sign，poly-core 不得依赖它们（依赖方向约束）
     let plan = pipeline::plan_with_stages(
@@ -86,29 +118,28 @@ pub fn run(args: &Args, json: bool) -> Result<i32, Diagnostic> {
             verify: Some(|| Box::new(crate::verify::VerifyStage)),
         },
     )?;
-    let mut events = project::sink(json);
-    emit_plugin_grants(events.as_mut(), &job.plugins);
+    emit_plugin_grants(events, &job.plugins);
     // 事件透传的同时旁路记录告警，供历史状态判定（T-M9-16）；不改变 stdout 事件流。
     let (outcome, warnings, warned_targets) = {
         let mut recorder = RecordingSink {
-            inner: events.as_mut(),
+            inner: &mut *events,
             warnings: Vec::new(),
             warned_targets: BTreeSet::new(),
         };
-        let outcome = plan.run_with(Some(&project), &job, &mut recorder);
+        let outcome = plan.run_with(Some(project), &job, &mut recorder);
         (outcome, recorder.warnings, recorder.warned_targets)
     };
 
     if outcome.is_ok() {
         // 产物快照（每目标一份）与 [retention] 自动淘汰：失败只告警，不影响构建结果
-        snapshot_artifacts(&project, &job.targets, events.as_mut());
-        enforce_retention_policy(&project, events.as_mut());
+        snapshot_artifacts(project, &job.targets, events);
+        enforce_retention_policy(project, events);
     }
 
     // 成功与失败都落一条每目标记录；历史写失败只告警，绝不改变构建结果（§5.5）。
     record_history(
         HistoryContext {
-            project: &project,
+            project,
             job: &job,
             warnings: &warnings,
             warned_targets: &warned_targets,
@@ -116,15 +147,20 @@ pub fn run(args: &Args, json: bool) -> Result<i32, Diagnostic> {
             started_wall,
             elapsed: started.elapsed(),
         },
-        events.as_mut(),
+        events,
     );
 
     outcome.map_err(Diagnostic::from)?;
 
     if !json {
         let stats = cache.stats();
+        let label = project
+            .app_id
+            .as_deref()
+            .map(|id| format!("[{id}] "))
+            .unwrap_or_default();
         println!(
-            "构建完成：{} 个目标；缓存命中 {}/{}（{:.0}%）；耗时 {:.2}s",
+            "{label}构建完成：{} 个目标；缓存命中 {}/{}（{:.0}%）；耗时 {:.2}s",
             job.targets.len(),
             stats.hits,
             stats.hits + stats.misses,
@@ -187,7 +223,7 @@ fn record_history(context: HistoryContext<'_>, events: &mut dyn EventSink) {
     let ts = crate::history::now_millis();
     let build_id = format!("build-{ts}-{}", std::process::id());
     let duration_ms = u64::try_from(context.elapsed.as_millis()).unwrap_or(u64::MAX);
-    let packages = project::packages_root(&context.project.root);
+    let packages = project::app_packages_root(context.project);
 
     let records: Vec<HistoryRecord> = context
         .job
@@ -309,142 +345,6 @@ fn path_key(root: &Path, path: &Path) -> String {
         .unwrap_or(path)
         .to_string_lossy()
         .replace('\\', "/")
-}
-
-/// 产物快照：`<root>/.polypack/artifacts/<target>/build-<millis>/{core,dist}`，每目标保留
-/// `[retention].artifact_builds` 次（LRU = 快照名序，时间戳宽度固定）。
-fn snapshot_artifacts(
-    project: &poly_core::Project,
-    targets: &[poly_targets::TargetSpec],
-    events: &mut dyn EventSink,
-) {
-    let artifacts = project::artifacts_root(&project.root);
-    let build_id = format!(
-        "build-{}",
-        SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .map(|since| since.as_millis())
-            .unwrap_or(0)
-    );
-    let dist = project.root.join("dist");
-    let core_artifact = pipeline::artifact_path(project).ok();
-
-    for target in targets {
-        let dir = artifacts.join(&target.id).join(&build_id);
-        let mut copied = Vec::new();
-        if let Some(artifact) = &core_artifact
-            && artifact.is_file()
-        {
-            let dest = dir.join("core").join(file_name(artifact));
-            if copy_file(artifact, &dest).is_ok() {
-                copied.push("core");
-            }
-        }
-        if dist.is_dir() && copy_dir(&dist, &dir.join("dist")).is_ok() {
-            copied.push("dist");
-        }
-        // 打包产物（`.polypack/packages/<target>` = 最新一份）复制进快照留档；原件保留，
-        // 打包器告警里给用户的路径才指向真实存在的产物
-        let staged = project::packages_root(&project.root).join(&target.id);
-        if staged.is_dir() && copy_dir(&staged, &dir.join("packages")).is_ok() {
-            copied.push("packages");
-        }
-        if copied.is_empty() {
-            let _ = std::fs::remove_dir_all(&dir);
-            continue;
-        }
-        prune_snapshots(
-            &artifacts.join(&target.id),
-            project.config.retention.artifact_builds,
-            events,
-        );
-    }
-}
-
-/// 每目标保留最近 `keep` 次快照（按名称序 = 时间序），其余删除。
-fn prune_snapshots(target_dir: &Path, keep: u32, events: &mut dyn EventSink) {
-    let Ok(entries) = std::fs::read_dir(target_dir) else {
-        return;
-    };
-    let mut snapshots: Vec<PathBuf> = entries
-        .filter_map(Result::ok)
-        .map(|entry| entry.path())
-        .filter(|path| path.is_dir())
-        .collect();
-    snapshots.sort();
-    let keep = keep as usize;
-    while snapshots.len() > keep {
-        let oldest = snapshots.remove(0);
-        let freed = project::dir_size(&oldest)
-            .map(|(bytes, _)| bytes)
-            .unwrap_or(0);
-        if std::fs::remove_dir_all(&oldest).is_ok() {
-            events.emit(&BuildEvent::Warning {
-                stage: "retention".to_string(),
-                message: format!(
-                    "产物快照超限（每目标保留 {keep} 次），已淘汰 {}（释放 {}）",
-                    oldest.display(),
-                    project::human_bytes(freed)
-                ),
-            });
-        }
-    }
-}
-
-/// 构建缓存 `[retention]`：先按天数过期、再按容量 LRU 淘汰（§5.5）。
-fn enforce_retention_policy(project: &poly_core::Project, events: &mut dyn EventSink) {
-    let policy = RetentionPolicy {
-        cache_days: project.config.retention.cache_days,
-        cache_gib: project.config.retention.cache_gib,
-    };
-    match enforce_retention(
-        &LocalStore::new(project::cache_root(&project.root)),
-        &policy,
-    ) {
-        Ok(eviction) if !eviction.removed.is_empty() => events.emit(&BuildEvent::Warning {
-            stage: "retention".to_string(),
-            message: format!(
-                "构建缓存超限（{} 天 / {} GiB），LRU 淘汰 {} 项（释放 {}）",
-                policy.cache_days,
-                policy.cache_gib,
-                eviction.removed.len(),
-                project::human_bytes(eviction.freed_bytes)
-            ),
-        }),
-        Ok(_) => {}
-        Err(err) => events.emit(&BuildEvent::Warning {
-            stage: "retention".to_string(),
-            message: format!("缓存保留策略执行失败（不阻断构建）: {err}"),
-        }),
-    }
-}
-
-fn file_name(path: &Path) -> String {
-    path.file_name()
-        .map(|name| name.to_string_lossy().into_owned())
-        .unwrap_or_else(|| "artifact".to_string())
-}
-
-fn copy_file(from: &Path, to: &Path) -> std::io::Result<()> {
-    if let Some(parent) = to.parent() {
-        std::fs::create_dir_all(parent)?;
-    }
-    std::fs::copy(from, to).map(|_| ())
-}
-
-fn copy_dir(from: &Path, to: &Path) -> std::io::Result<()> {
-    std::fs::create_dir_all(to)?;
-    for entry in std::fs::read_dir(from)? {
-        let entry = entry?;
-        let path = entry.path();
-        let target = to.join(entry.file_name());
-        if path.is_dir() {
-            copy_dir(&path, &target)?;
-        } else {
-            std::fs::copy(&path, &target)?;
-        }
-    }
-    Ok(())
 }
 
 #[cfg(test)]

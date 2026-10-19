@@ -83,10 +83,7 @@ fn staged_project(tag: &str) -> (TempDir, Project) {
         "[package]\nname = \"fixture-app\"\nversion = \"0.0.1\"\n[ui]\nframework = \"react\"\nentry = \"index.html\"\n[core]\ncrate = \"core\"\n",
     )
     .expect("配置合法");
-    let project = Project {
-        root: temp.path().to_path_buf(),
-        config,
-    };
+    let project = Project::new(temp.path().to_path_buf(), config);
     (temp, project)
 }
 

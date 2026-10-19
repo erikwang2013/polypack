@@ -174,9 +174,7 @@ fn sign_android(
             &format!(
                 "目标 {} 未签名：{} 下没有未签名 APK（package 阶段未产出或已跳过）",
                 spec.id,
-                project::packages_root(&project.root)
-                    .join(&spec.id)
-                    .display()
+                project::app_packages_root(project).join(&spec.id).display()
             ),
         );
         return Ok(false);
@@ -240,9 +238,7 @@ fn sign_harmony(
             &format!(
                 "目标 {} 未签名：{} 下没有未签名 HAP（package 阶段未产出或已跳过）",
                 spec.id,
-                project::packages_root(&project.root)
-                    .join(&spec.id)
-                    .display()
+                project::app_packages_root(project).join(&spec.id).display()
             ),
         );
         return Ok(false);
@@ -378,7 +374,7 @@ fn warning(events: &mut dyn EventSink, message: &str) {
 
 /// iOS 打包器落 `.app` 的位置（打包器只认产品名，不派生 kebab：`export/Payload/<产品名>.app`）。
 pub(crate) fn ios_app(project: &poly_core::Project, spec: &TargetSpec) -> PathBuf {
-    project::packages_root(&project.root)
+    project::app_packages_root(project)
         .join(&spec.id)
         .join("export")
         .join("Payload")
@@ -401,7 +397,7 @@ pub(crate) fn unsigned_hap(project: &poly_core::Project, spec: &TargetSpec) -> O
 
 /// 打包暂存目录里的未签名产物：命名约定优先，缺失时退化为 `*-unsigned.<ext>` 扫描。
 fn find_unsigned(project: &poly_core::Project, spec: &TargetSpec, ext: &str) -> Option<PathBuf> {
-    let staged = project::packages_root(&project.root).join(&spec.id);
+    let staged = project::app_packages_root(project).join(&spec.id);
     let preferred = staged.join(unsigned_name_for(project, ext));
     if preferred.is_file() {
         return Some(preferred);
@@ -501,10 +497,7 @@ mod tests {
         .expect("写核心 crate 清单");
         let config =
             poly_core::config::PolypackConfig::parse(FIXTURE_TOML).expect("fixture 配置应合法");
-        let project = poly_core::Project {
-            root: root.clone(),
-            config,
-        };
+        let project = poly_core::Project::new(root.clone(), config);
         (root, project)
     }
 
@@ -521,6 +514,7 @@ mod tests {
     fn job() -> JobSpec {
         JobSpec {
             id: "t".to_string(),
+            app_id: None,
             profile: Profile::Local,
             targets: Vec::new(),
             excluded: Vec::new(),

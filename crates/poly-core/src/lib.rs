@@ -34,6 +34,8 @@ pub mod plan;
 pub mod scan;
 #[cfg(feature = "std")]
 pub mod web;
+#[cfg(feature = "std")]
+pub mod workspace;
 
 #[cfg(feature = "std")]
 pub use budget::{SizeVerdict, size_verdict};
@@ -53,3 +55,5 @@ pub use job::{
 pub use plan::{Plan, Project, Stage, StageContext, StageError, StageNode, StageOutcome};
 #[cfg(feature = "std")]
 pub use web::{UiBuild, UiEngine, build_ui, detect_engine, ui_dir, write_manifest};
+#[cfg(feature = "std")]
+pub use workspace::{Workspace, WorkspaceApp, WorkspaceConfig, WorkspaceSection};

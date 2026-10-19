@@ -65,6 +65,7 @@ fn same_job_resolves_via_keyring_and_vault_backends() {
     let payload = common::payload(b"pkcs12-bytes-of-pax", PASS, Some("pax"), Some(PASS));
     let job = JobSpec {
         id: "android-release".to_string(),
+        app_id: None,
         profile: Profile::Ci,
         targets: Vec::new(),
         excluded: Vec::new(),

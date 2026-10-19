@@ -72,10 +72,7 @@ fn project(root: &Path) -> Project {
         "[package]\nname = \"fixture-app\"\nversion = \"0.0.1\"\n[ui]\nframework = \"react\"\nentry = \"index.html\"\n[core]\ncrate = \"core\"\n",
     )
     .expect("配置合法");
-    Project {
-        root: root.to_path_buf(),
-        config,
-    }
+    Project::new(root.to_path_buf(), config)
 }
 
 /// 断言诊断码与提示（提示里必须给出可执行的下一步）。

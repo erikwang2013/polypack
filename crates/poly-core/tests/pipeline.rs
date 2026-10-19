@@ -61,10 +61,7 @@ fn project(root: &Path) -> Project {
          [core]\ncrate = \"core\"\n",
     )
     .expect("配置合法");
-    Project {
-        root: root.to_path_buf(),
-        config,
-    }
+    Project::new(root.to_path_buf(), config)
 }
 
 /// 最小 UI（静态打包即可产出）。
@@ -92,6 +89,7 @@ fn native_desktop_target() -> TargetSpec {
 fn job(targets: Vec<TargetSpec>) -> JobSpec {
     JobSpec {
         id: "pipeline-test".to_string(),
+        app_id: None,
         profile: Profile::Local,
         targets,
         excluded: Vec::new(),

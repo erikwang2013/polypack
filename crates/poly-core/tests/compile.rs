@@ -74,15 +74,13 @@ fn project(root: &Path) -> Project {
         "[package]\nname = \"fixture-app\"\nversion = \"0.0.1\"\n[ui]\nframework = \"react\"\nentry = \"index.html\"\n[core]\ncrate = \"core\"\n",
     )
     .expect("配置合法");
-    Project {
-        root: root.to_path_buf(),
-        config,
-    }
+    Project::new(root.to_path_buf(), config)
 }
 
 fn job(targets: Vec<TargetSpec>) -> JobSpec {
     JobSpec {
         id: "compile-test".to_string(),
+        app_id: None,
         profile: Profile::Local,
         targets,
         excluded: Vec::new(),

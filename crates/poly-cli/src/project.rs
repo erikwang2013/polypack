@@ -26,10 +26,7 @@ pub fn load(config: &Path) -> Result<Project, Diagnostic> {
         .filter(|dir| !dir.as_os_str().is_empty())
         .unwrap_or(Path::new("."))
         .to_path_buf();
-    Ok(Project {
-        root,
-        config: config_model,
-    })
+    Ok(Project::new(root, config_model))
 }
 
 /// 构建缓存根目录：`<root>/.polypack/cache`。
@@ -45,6 +42,35 @@ pub fn artifacts_root(root: &Path) -> PathBuf {
 /// 打包暂存根目录：`<root>/.polypack/packages`（每次构建重写，构建后被快照收走）。
 pub fn packages_root(root: &Path) -> PathBuf {
     root.join(".polypack").join("packages")
+}
+
+/// 本次构建的缓存根：单应用 = `<root>/.polypack/cache`；
+/// 工作区成员 = `<workspace>/.polypack/cache`（所有成员共享，compile 键不含 app id）。
+pub fn app_cache_root(project: &poly_core::Project) -> PathBuf {
+    cache_root(state_root(project))
+}
+
+/// 本次构建的产物快照根：工作区成员隔离到 `<workspace>/.polypack/artifacts/<app>`。
+pub fn app_artifacts_root(project: &poly_core::Project) -> PathBuf {
+    scoped_by_app(artifacts_root(state_root(project)), project)
+}
+
+/// 本次构建的打包暂存根：工作区成员隔离到 `<workspace>/.polypack/packages/<app>`。
+pub fn app_packages_root(project: &poly_core::Project) -> PathBuf {
+    scoped_by_app(packages_root(state_root(project)), project)
+}
+
+/// `.polypack/` 状态根：工作区成员用工作区根，单应用用项目根。
+fn state_root(project: &poly_core::Project) -> &Path {
+    project.workspace_root.as_deref().unwrap_or(&project.root)
+}
+
+/// 单应用不加层级（布局与 M9 之前逐字节一致）；工作区成员追加 app id。
+fn scoped_by_app(base: PathBuf, project: &poly_core::Project) -> PathBuf {
+    match &project.app_id {
+        Some(id) => base.join(id),
+        None => base,
+    }
 }
 
 /// 事件接收端：`--json` 走 JSON Lines，否则人读输出（均写 stdout）；

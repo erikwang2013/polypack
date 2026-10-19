@@ -134,6 +134,11 @@ impl Default for TimeBudgets {
 pub struct JobSpec {
     /// 请求标识。
     pub id: String,
+    /// 工作区成员应用 id（M9-E2）；单应用 / 非工作区构建为 `None`。
+    ///
+    /// 序列化时省略，旧 JobSpec JSON 与单应用产物保持逐字节兼容。
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub app_id: Option<String>,
     /// 构建 profile。
     pub profile: Profile,
     /// 已解析的目标（含排除清单的决策结果，见 §4.3 `--target all` 语义）。

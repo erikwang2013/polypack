@@ -362,10 +362,7 @@ pub fn execute_job(
 ) -> Result<ExecOutcome, StageError> {
     let config = PolypackConfig::load(&project_root.join("polypack.toml"))
         .map_err(|err| err.diagnostic())?;
-    let project = Project {
-        root: project_root.to_path_buf(),
-        config,
-    };
+    let project = Project::new(project_root.to_path_buf(), config);
     let profile = match spec.profile {
         Profile::Ci => "ci",
         Profile::Local => "local",

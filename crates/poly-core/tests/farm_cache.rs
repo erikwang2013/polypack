@@ -84,10 +84,10 @@ fn job_spec(hosts: &[Host], targets: &[&str]) -> JobSpec {
 
 /// 工程上下文（缓存键计算的输入面）。
 fn project(root: &Path) -> Project {
-    Project {
-        root: root.to_path_buf(),
-        config: PolypackConfig::parse(CONFIG_TEXT).expect("夹具配置合法"),
-    }
+    Project::new(
+        root.to_path_buf(),
+        PolypackConfig::parse(CONFIG_TEXT).expect("夹具配置合法"),
+    )
 }
 
 /// 本机宿主（测试运行地必被识别）。
@@ -122,6 +122,7 @@ fn same_input_same_cache_key_across_build_locations() {
         target_spec: "{\"id\":\"web\",\"ui\":[\"react-dom\"]}".to_string(),
         toolchain: "rustc-fixture|linux".to_string(),
         profile: "ci".to_string(),
+        app_id: None,
     };
     assert_eq!(
         cache_key(&inputs(&site_a)),

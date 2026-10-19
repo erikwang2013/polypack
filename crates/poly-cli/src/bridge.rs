@@ -143,7 +143,7 @@ fn generate(args: &GenerateArgs, json: bool) -> Result<i32, Diagnostic> {
     }
     let mut events = project::sink(json);
     let outputs = if args.cache {
-        let cache = Cache::from_root(project::cache_root(&project.root));
+        let cache = Cache::from_root(project::app_cache_root(&project));
         let source = bridge::interface_source(&project).map_err(err)?;
         let interface = bridge::interface_digest(&source).map_err(err)?;
         let keys = bridge::bridge_cache_keys(&project, &interface, "local", &langs).map_err(err)?;
@@ -227,7 +227,7 @@ fn assemble_aar(args: &AarArgs, json: bool) -> Result<i32, Diagnostic> {
     })?;
 
     let mut events = project::sink(json);
-    let cache = Cache::from_root(project::cache_root(&project.root));
+    let cache = Cache::from_root(project::app_cache_root(&project));
     let engine = "ndk-cargo";
     let key = if args.no_cache {
         None
@@ -368,7 +368,7 @@ fn build_wasm(args: &WasmArgs, json: bool) -> Result<i32, Diagnostic> {
                 .map_err(err)?,
         )
     };
-    let cache = Cache::from_root(project::cache_root(&project.root));
+    let cache = Cache::from_root(project::app_cache_root(&project));
 
     // 命中：还原分发树，跳过 shim 编译与胶水生成
     if let Some(key) = &key
