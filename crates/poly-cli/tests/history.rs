@@ -87,11 +87,12 @@ fn init_project(tag: &str) -> TempDir {
     let init = poly(&["init"], project.path());
     assert!(init.status.success(), "poly init 失败：{}", combined(&init));
     // Windows 主 rust 作业只预装 NSIS（WiX 在 windows-msi-real 作业），
-    // 这里用 NSIS 格式，避免真实构建测试因缺 candle/light 而误红。
+    // 这里把模板已有的 windows 格式从 msi 换成 nsis，避免真实构建测试因缺
+    // candle/light 而误红。不能追加新的 [targets.windows] 表（重复键）。
     if cfg!(target_os = "windows") {
         let config = project.path().join("polypack.toml");
-        let mut text = std::fs::read_to_string(&config).expect("读 polypack.toml");
-        text.push_str("\n[targets.windows]\nformat = \"nsis\"\n");
+        let text = std::fs::read_to_string(&config).expect("读 polypack.toml");
+        let text = text.replace("format = \"msi\"", "format = \"nsis\"");
         std::fs::write(&config, text).expect("写 polypack.toml");
     }
     project
