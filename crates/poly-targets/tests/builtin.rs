@@ -98,8 +98,9 @@ fn builtin_has_seven_valid_targets() {
     );
     assert_eq!(
         registry.all().count(),
-        41,
-        "M7 起内建 = L1 七 + L2 小程序族四（wechat / alipay / douyin / quickapp）+ \
+        43,
+        "M7 起内建 = L1 七 + L2 小程序族四（wechat / alipay / douyin / quickapp）+ L2 HTML5 \
+         二（tiktok-minis / facebook-instant-games※实验）+ \
          L3 电视族九（tvos + android-tv / fire-tv + tizen-tv / webos-tv / vidaa-tv / smartcast-tv \
          + roku※实验，T-M4-04/07/08/09/10/12 + harmonyos-tv，T-M4-14）+ L4 GrapheneOS / KaiOS \
          （grapheneos；kaios）+ L5 OpenBSD / FreeBSD / NetBSD（T-M5-07/06/08）+\
@@ -141,11 +142,18 @@ fn builtin_ids_are_the_l1_set() {
         .filter(|spec| spec.tier == 2)
         .map(|spec| spec.id.clone())
         .collect();
-    let expected_l2: BTreeSet<String> = ["wechat", "alipay", "douyin", "quickapp"]
-        .map(String::from)
-        .into_iter()
-        .collect();
-    assert_eq!(l2, expected_l2, "L2 恰为小程序族四目标");
+    let expected_l2: BTreeSet<String> = [
+        "wechat",
+        "alipay",
+        "douyin",
+        "quickapp",
+        "tiktok-minis",
+        "facebook-instant-games",
+    ]
+    .map(String::from)
+    .into_iter()
+    .collect();
+    assert_eq!(l2, expected_l2, "L2 = 小程序族四 + HTML5 平台二");
 
     let l3: BTreeSet<String> = registry
         .all()
@@ -230,13 +238,22 @@ fn every_l1_target_has_verifier_and_publisher() {
     for spec in Registry::builtin().all() {
         assert!(!spec.verify.is_empty(), "{} 缺少产物校验器", spec.id);
         if spec.publish.is_empty() {
-            // 唯一例外：KaiStore 尚无 poly-publish 客户端（Channel 枚举不含 kaistore），
-            // 空 publish 必须在 notes 如实说明，绝不编造渠道。
-            assert_eq!(spec.id, "kaios", "{} 缺少发布渠道", spec.id);
+            // 例外：KaiStore / TikTok Minis / Facebook Instant Games 尚无 poly-publish
+            // 客户端（Channel 枚举不含对应渠道），空 publish 必须在 notes 如实说明，
+            // 绝不编造渠道。
+            assert!(
+                matches!(
+                    spec.id.as_str(),
+                    "kaios" | "tiktok-minis" | "facebook-instant-games"
+                ),
+                "{} 缺少发布渠道",
+                spec.id
+            );
             let notes = spec.notes.as_deref().unwrap_or_default();
             assert!(
-                notes.contains("KaiStore") && notes.contains("poly-publish"),
-                "kaios: 空 publish 须在 notes 说明缺失的客户端：{notes}"
+                notes.contains("poly-publish"),
+                "{}: 空 publish 须在 notes 说明缺失的客户端：{notes}",
+                spec.id
             );
             continue;
         }
@@ -277,8 +294,15 @@ fn linux_host_resolves_four_l1_targets_from_all() {
         .collect();
     assert_eq!(
         l2,
-        BTreeSet::from(["wechat", "alipay", "douyin", "quickapp"]),
-        "小程序族四目标应全部入选"
+        BTreeSet::from([
+            "wechat",
+            "alipay",
+            "douyin",
+            "quickapp",
+            "tiktok-minis",
+            "facebook-instant-games"
+        ]),
+        "小程序族四 + HTML5 平台二应全部入选"
     );
     // L3 电视三目标同声明三宿主（Android / HarmonyOS 链）→ Linux 宿主下也全部入选；
     // L3 web 系 TV 四目标声明三宿主（web 运行时，同 web 的宿主面）→ 任何宿主下都入选
@@ -430,6 +454,49 @@ fn builtin_matches_roadmap_3_3_mini_programs() {
         );
         assert_eq!(spec.hosts.len(), 3, "{id}: Taro 编译不绑定本地宿主");
         assert!(spec.notes.is_some(), "{id}: 需边界 / 降级说明");
+    }
+}
+
+/// L2 HTML5 平台（TikTok Minis / Facebook Instant Games）：runtime / bridge = `html5`，
+/// react-dom 静态产物 + 确定性 zip；平台侧沙箱 / 审核不可得 → experimental，notes 引用
+/// 来源并如实说明无发布客户端。
+#[test]
+fn builtin_matches_html5_l2_platforms() {
+    let registry = Registry::builtin();
+    for (id, builder, verify) in [
+        (
+            "tiktok-minis",
+            "tiktok-minis",
+            "tiktok-minis-structure-check",
+        ),
+        (
+            "facebook-instant-games",
+            "facebook-instant-games",
+            "facebook-instant-games-structure-check",
+        ),
+    ] {
+        let spec = registry.get(id).unwrap_or_else(|| panic!("缺少目标 {id}"));
+        assert_eq!(spec.tier, 2, "{id}: L2");
+        assert_eq!(spec.runtime, Runtime::Html5, "{id}: HTML5 运行时");
+        assert_eq!(spec.bridge, Bridge::Html5, "{id}: HTML5 桥");
+        assert_eq!(
+            spec.ui.iter().map(String::as_str).collect::<Vec<_>>(),
+            ["react-dom"],
+            "{id}: ui"
+        );
+        assert_eq!(spec.package.format, "zip", "{id}: package.format");
+        assert_eq!(spec.package.builder, builder, "{id}: package.builder");
+        assert_eq!(
+            spec.verify.first().map(String::as_str),
+            Some(verify),
+            "{id}: verify"
+        );
+        assert!(spec.signing.is_none(), "{id}: 签名 / 审核在平台侧");
+        assert!(spec.experimental, "{id}: 平台侧沙箱不可得 → experimental");
+        assert_eq!(spec.hosts.len(), 3, "{id}: 三宿主");
+        let notes = spec.notes.as_deref().unwrap_or_default();
+        assert!(notes.contains("SKIP-with-print"), "{id}: {notes}");
+        assert!(notes.contains("poly-publish"), "{id}: {notes}");
     }
 }
 

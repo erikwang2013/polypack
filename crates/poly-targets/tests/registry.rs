@@ -3,7 +3,9 @@
 use std::collections::BTreeSet;
 
 use poly_targets::spec::id_is_valid;
-use poly_targets::{Host, Registry, SpecError, TargetRegistry, TargetRequest, TargetSpec};
+use poly_targets::{
+    Bridge, Host, Registry, Runtime, SpecError, TargetRegistry, TargetRequest, TargetSpec,
+};
 
 /// 内建目标（L1 七 + L2 小程序族四 + L3 电视族八 + L5 发行版三 / OpenBSD / FreeBSD /
 /// NetBSD / ChromeOS 双轨 + L6 七）+ 一个 L7 占位目标（用于覆盖厂商授权排除分支）。
@@ -33,6 +35,7 @@ fn all_on_linux_excludes_windows_only_and_l7_with_reasons() {
     assert_eq!(
         selected,
         // L1 宿主可达者 + L2 小程序族四（Taro 编译不绑定本地宿主，任何宿主下都入选）
+        // + L2 HTML5 平台二（react-dom 静态产物 + zip，三宿主声明）
         // + L3 电视三（复用 Android / HarmonyOS 工具链，三宿主声明）+ roku（三宿主声明）
         // + L3 web 系 TV 四（T-M4-08/09/10，web 运行时三宿主全可达）
         // + L4 GrapheneOS（复用 Android APK 链）/ KaiOS（web 栈 zip，均三宿主声明）
@@ -49,6 +52,8 @@ fn all_on_linux_excludes_windows_only_and_l7_with_reasons() {
             "alipay",
             "douyin",
             "quickapp",
+            "tiktok-minis",
+            "facebook-instant-games",
             "android-tv",
             "fire-tv",
             "harmonyos-tv",
@@ -178,14 +183,14 @@ fn allow_unreachable_keeps_all_targets() {
     let selected = selected_ids(&registry_with_l7(), &[Host::Linux], true);
     assert_eq!(
         selected.len(),
-        42, // L1 七 + L2 四 + L3 电视族九 + L4 二 + L5 八 + L6 十一 + L7 一
+        44, // L1 七 + L2 六 + L3 电视族九 + L4 二 + L5 八 + L6 十一 + L7 一
         "allow_unreachable 下 All 应全选: {selected:?}"
     );
 
     // 未开 allow_unreachable 时排除清单非空，两态互为对照
     assert_eq!(
         selected_ids(&registry_with_l7(), &[Host::Linux], false).len(),
-        36 // L1 四（Linux 可达）+ L2 四 + L3 电视族八（三 + web 系四 + roku）+ L4 二
+        38 // L1 四（Linux 可达）+ L2 六 + L3 电视族八（三 + web 系四 + roku）+ L4 二
            // + L5 八 + L6 十（AAOS + Wear + QNX + AUTOSAR + VxWorks + Zephyr + FreeRTOS
            // + Garmin + Fitbit + Zepp）——tvos / watchos 为 macOS 专宿主；chromeos 双轨均 Linux 可达
     );
@@ -296,6 +301,20 @@ fn full_spec_toml_roundtrip() {
 fn unknown_enum_values_fail_to_decode() {
     assert!(toml::from_str::<TargetSpec>(&minimal_toml("jit", "linux")).is_err());
     assert!(toml::from_str::<TargetSpec>(&minimal_toml("native", "beos")).is_err());
+}
+
+/// HTML5 运行时 / 桥：serde 名为 `html5`（Runtime lowercase / Bridge kebab-case）。
+#[test]
+fn html5_runtime_and_bridge_roundtrip() {
+    let mut spec: TargetSpec =
+        toml::from_str(&minimal_toml("html5", "linux")).expect("html5 运行时应可解析");
+    assert_eq!(spec.runtime, Runtime::Html5);
+    spec.bridge = Bridge::Html5;
+    let encoded = toml::to_string(&spec).expect("HTML5 目标应可序列化");
+    assert!(encoded.contains("runtime = \"html5\""), "{encoded}");
+    assert!(encoded.contains("bridge = \"html5\""), "{encoded}");
+    let decoded: TargetSpec = toml::from_str(&encoded).expect("往返应可解析");
+    assert_eq!(decoded, spec);
 }
 
 /// 最小合法 TOML（仅必填字段），用于解析侧边界测试。

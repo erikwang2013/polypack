@@ -47,23 +47,12 @@ const PLATFORMS = [
   declaredRow(1, 'Linux', 'Linux', 'linux'),
   declaredRow(1, 'Web', 'Web', 'web'),
 
-  // ── L2 小程序与即时应用（9）：后 5 个为规划平台 ──
+  // ── L2 小程序与即时应用（9）：后 3 个为规划平台 ──
   declaredRow(2, '微信小程序', 'WeChat Mini Program', 'wechat'),
   declaredRow(2, '支付宝小程序', 'Alipay Mini Program', 'alipay'),
   declaredRow(2, '抖音小程序', 'Douyin Mini Program', 'douyin'),
   declaredRow(2, '快应用', 'Quick App (快应用)', 'quickapp'),
-  plannedRow(2, 'TikTok Minis', 'TikTok Minis', {
-    runtime: bi('HTML5 + Minis 桥', 'HTML5 + Minis bridge'),
-    bridge: bi('HTML5', 'HTML5'),
-    artifact: bi('zip', 'zip'),
-    signing: bi('平台侧', 'platform-side'),
-    verify: bi('平台沙箱自检', 'platform sandbox self-check'),
-    publish: bi('TikTok 平台', 'TikTok platform'),
-    notes: bi(
-      '规划中：尚未声明 TargetSpec；经 HTML5 + Minis 桥接入，zip 由平台侧审核。',
-      'Planned: no TargetSpec yet; delivered through the HTML5 + Minis bridge; the zip is reviewed platform-side.',
-    ),
-  }),
+  declaredRow(2, 'TikTok Minis', 'TikTok Minis', 'tiktok-minis'),
   plannedRow(2, 'Google Play Instant', 'Google Play Instant', {
     runtime: bi('native', 'native'),
     bridge: bi('uniffi', 'uniffi'),
@@ -76,18 +65,7 @@ const PLATFORMS = [
       'Planned · discontinued: Google stopped accepting Instant Apps submissions and shut down Play services Instant APIs in Dec 2025; kept planned, no TargetSpec.',
     ),
   }),
-  plannedRow(2, 'Facebook Instant Games', 'Facebook Instant Games', {
-    runtime: bi('HTML5', 'HTML5'),
-    bridge: bi('HTML5', 'HTML5'),
-    artifact: bi('zip', 'zip'),
-    signing: bi('无', 'none'),
-    verify: bi('Meta 沙箱自检', 'Meta sandbox self-check'),
-    publish: bi('Meta 平台', 'Meta platform'),
-    notes: bi(
-      '规划中：HTML5 运行时，Meta 沙箱自检；尚未声明 TargetSpec。',
-      'Planned: HTML5 runtime with Meta sandbox self-check; no TargetSpec yet.',
-    ),
-  }),
+  declaredRow(2, 'Facebook Instant Games', 'Facebook Instant Games', 'facebook-instant-games'),
   plannedRow(2, 'Snapchat Mini', 'Snapchat Mini', {
     runtime: bi('HTML5', 'HTML5'),
     bridge: bi('HTML5', 'HTML5'),
@@ -96,8 +74,8 @@ const PLATFORMS = [
     verify: bi('Snap 沙箱自检', 'Snap sandbox self-check'),
     publish: bi('Snap 平台', 'Snap platform'),
     notes: bi(
-      '规划中：HTML5 运行时，Snap 沙箱自检；尚未声明 TargetSpec。',
-      'Planned: HTML5 runtime with Snap sandbox self-check; no TargetSpec yet.',
+      '规划中：Snap Minis 官方文档入口（docs.snap.com/minis/getting-started/home/）已 404，developers.snap.com 站点地图无 Minis 文档；npm @snapchat/minis-sdk（3.0.5，2022）已标注「deprecating minis」——官方 zip / manifest / 打包契约不可核验，不声明 TargetSpec。',
+      'Planned: the official Snap Minis docs entry (docs.snap.com/minis/getting-started/home/) returns 404 and the developers.snap.com sitemap has no Minis docs; npm @snapchat/minis-sdk (3.0.5, 2022) is marked "deprecating minis" — no verifiable official zip / manifest / packaging contract, so no TargetSpec.',
     ),
   }),
   plannedRow(2, 'LINE Mini App', 'LINE Mini App', {
@@ -108,8 +86,8 @@ const PLATFORMS = [
     verify: bi('LIFF 配置检查', 'LIFF config check'),
     publish: bi('LINE 平台', 'LINE platform'),
     notes: bi(
-      '规划中：LIFF（web）承载，HTTPS / 平台 TLS；尚未声明 TargetSpec。',
-      'Planned: delivered as LIFF (web) over HTTPS / platform TLS; no TargetSpec yet.',
+      '规划中：LIFF 应用由 LINE Developers Console 托管 URL 注册（LINE Login 渠道 → LIFF；Endpoint URL 须 HTTPS 且不得含 fragment），官方无本地上传包格式或 LIFF 配置文件——「静态包 + LIFF 配置」无法作为平台产物诚实生成，不声明 TargetSpec。',
+      'Planned: LIFF apps are registered as hosted URLs in the LINE Developers Console (LINE Login channel → LIFF; the endpoint URL must be HTTPS without fragments); there is no official uploaded package format or LIFF config file — "static bundle + LIFF config" cannot be honestly generated as a platform artifact, so no TargetSpec.',
     ),
   }),
 

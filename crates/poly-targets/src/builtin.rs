@@ -403,6 +403,63 @@ pub fn builtin() -> Vec<TargetSpec> {
                     .to_string(),
             ),
         },
+        // ---- L2 HTML5 平台（TikTok Minis / Facebook Instant Games）：react-dom 静态产物 +
+        // 平台配置 → 确定性 zip。平台侧沙箱 / 商店审核本机不可得，experimental = true；
+        // 结构自检与 verify 腿同一实现，绝不声明商店受理。字段来源见 notes 的官方链接。
+        TargetSpec {
+            id: "tiktok-minis".to_string(),
+            tier: 2,
+            hosts: vec![Host::Win, Host::Linux, Host::Macos],
+            runtime: Runtime::Html5,
+            bridge: Bridge::Html5,
+            ui: vec!["react-dom".to_string()],
+            package: PackageSpec {
+                format: "zip".to_string(),
+                builder: "tiktok-minis".to_string(),
+            },
+            signing: None,
+            verify: vec!["tiktok-minis-structure-check".to_string()],
+            publish: Vec::new(),
+            experimental: true,
+            notes: Some(
+                "HTML5 页面（react-dom）→ 确定性 zip：包根 minis.config.json（build 块，dev \
+                 删除）+ minis.manifest.json（resource_list 由包内文件生成，.map 不计）+ UI \
+                 dist；结构自检与 verify 腿 tiktok-minis-structure-check 同一实现。字段 / 产物\
+                 形态按 TikTok Minis CLI @tiktok-minis/cli 1.2.0 \
+                 （https://www.npmjs.com/package/@tiktok-minis/cli）build 输出核对；index.html \
+                 须由 UI 构建带入 TTMinis SDK 引用（打包器不注入 clientKey）。本机无 TikTok \
+                 开发者平台沙箱 / 上传入口——平台侧审核 SKIP-with-print，不声明商店受理；\
+                 poly-publish 无 tiktok-minis 客户端（publish 留空）"
+                    .to_string(),
+            ),
+        },
+        TargetSpec {
+            id: "facebook-instant-games".to_string(),
+            tier: 2,
+            hosts: vec![Host::Win, Host::Linux, Host::Macos],
+            runtime: Runtime::Html5,
+            bridge: Bridge::Html5,
+            ui: vec!["react-dom".to_string()],
+            package: PackageSpec {
+                format: "zip".to_string(),
+                builder: "facebook-instant-games".to_string(),
+            },
+            signing: None,
+            verify: vec!["facebook-instant-games-structure-check".to_string()],
+            publish: Vec::new(),
+            experimental: true,
+            notes: Some(
+                "HTML5 页面（react-dom）→ 确定性 zip：包根 index.html + fbapp-config.json\
+                 （instant_games：platform_version=RICH_GAMEPLAY / orientation=LANDSCAPE / \
+                 navigation_menu_version=NAV_FLOATING）+ UI dist；结构自检与 verify 腿 \
+                 facebook-instant-games-structure-check 同一实现。字段按官方 Bundle Config \
+                 文档 https://developers.facebook.com/docs/games/instant-games/bundle-config；\
+                 index.html 须引用 connect.facebook.net 的 fbinstant SDK。本机无 Meta 应用后台 \
+                 / 沙箱——平台侧审核 SKIP-with-print，不声明商店受理；poly-publish 无 \
+                 facebook-instant-games 客户端（publish 留空）"
+                    .to_string(),
+            ),
+        },
         // ---- L3 电视与大屏（T-M4-04，ROADMAP §3.4 前两行）：Android TV / Fire TV ----
         // 两目标复用同一条 Android 打包链（format = `apk`、builder = `android-aapt2`），
         // 签名引用与校验器同 Android（§3.4「同 Android」列）；差异只在清单形态（Leanback）

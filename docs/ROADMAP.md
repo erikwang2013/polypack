@@ -57,7 +57,7 @@
 
 ### 3.1.1 49 目标现状表（生成）
 
-下表是 49 个平台现状的单一事实源：39 行由 `TargetSpec` 逐字段生成（41 个已声明目标；RTOS、Chrome OS 行各合并两个），10 行规划平台显式标注「规划中」，字段来自 `tools/gen-status-table.mjs` 的声明清单。请勿手改：`node tools/gen-status-table.mjs` 生成；`--check` 在漂移时失败。平台矩阵增删按第 11 节第 4 条同步。
+下表是 49 个平台现状的单一事实源：41 行由 `TargetSpec` 逐字段生成（43 个已声明目标；RTOS、Chrome OS 行各合并两个），8 行规划平台显式标注「规划中」，字段来自 `tools/gen-status-table.mjs` 的声明清单。请勿手改：`node tools/gen-status-table.mjs` 生成；`--check` 在漂移时失败。平台矩阵增删按第 11 节第 4 条同步。
 
 <!-- BEGIN GENERATED: status-49 -->
 | 等级 | 平台 | 运行时 | 桥 | 打包器与产物 | 签名 | 产物校验 | 发布渠道 | experimental | notes |
@@ -73,11 +73,11 @@
 | L2 | 支付宝小程序（`alipay`） | `wasm` | `wasm-bindgen` | `alipay` · `taro-alipay` | — | `alipay-devtools-cli` | `alipay-open-platform` | `false` | 小程序代码包（Taro 编译）；wasm 进宿主沙箱（T-M3-07） |
 | L2 | 抖音小程序（`douyin`） | `wasm` | `wasm-bindgen` | `tt` · `taro-tt` | — | `douyin-devtools-cli` | `douyin-open-platform` | `false` | 小程序代码包（Taro 编译，平台 `tt`）；wasm 进宿主沙箱（T-M3-07） |
 | L2 | 快应用（`quickapp`） | `wasm` | `wasm-bindgen` | `rpk` · `hap-toolkit` | — | `hap-toolkit-lint` | `quickapp-union-store` | `false` | 快应用 `.rpk`（hap-toolkit 构建）；lint 入 verify、提审走联盟商店（T-M3-12） |
-| L2 | TikTok Minis（规划中） | HTML5 + Minis 桥 | HTML5 | zip | 平台侧 | 平台沙箱自检 | TikTok 平台 | — | 规划中：尚未声明 TargetSpec；经 HTML5 + Minis 桥接入，zip 由平台侧审核。 |
+| L2 | TikTok Minis（`tiktok-minis`） | `html5` | `html5` | `zip` · `tiktok-minis` | — | `tiktok-minis-structure-check` | — | `true` | HTML5 页面（react-dom）→ 确定性 zip：包根 minis.config.json（build 块，dev 删除）+ minis.manifest.json（resource_list 由包内文件生成，.map 不计）+ UI dist；结构自检与 verify 腿 tiktok-minis-structure-check 同一实现。字段 / 产物形态按 TikTok Minis CLI @tiktok-minis/cli 1.2.0 （https://www.npmjs.com/package/@tiktok-minis/cli）build 输出核对；index.html 须由 UI 构建带入 TTMinis SDK 引用（打包器不注入 clientKey）。本机无 TikTok 开发者平台沙箱 / 上传入口——平台侧审核 SKIP-with-print，不声明商店受理；poly-publish 无 tiktok-minis 客户端（publish 留空） |
 | L2 | Google Play Instant（规划中） | native | uniffi | instant-aab · android-aapt2 | android-keystore | bundletool-validate | google-play | — | 规划中 · 已停服：Google 自 2025-12 起停止受理 Instant Apps 发布、Play services Instant API 停用；保留规划，不声明 TargetSpec。 |
-| L2 | Facebook Instant Games（规划中） | HTML5 | HTML5 | zip | 无 | Meta 沙箱自检 | Meta 平台 | — | 规划中：HTML5 运行时，Meta 沙箱自检；尚未声明 TargetSpec。 |
-| L2 | Snapchat Mini（规划中） | HTML5 | HTML5 | zip | 无 | Snap 沙箱自检 | Snap 平台 | — | 规划中：HTML5 运行时，Snap 沙箱自检；尚未声明 TargetSpec。 |
-| L2 | LINE Mini App（规划中） | LIFF（web） | HTTPS | 静态包 + LIFF 配置 | HTTPS / 平台 TLS | LIFF 配置检查 | LINE 平台 | — | 规划中：LIFF（web）承载，HTTPS / 平台 TLS；尚未声明 TargetSpec。 |
+| L2 | Facebook Instant Games（`facebook-instant-games`） | `html5` | `html5` | `zip` · `facebook-instant-games` | — | `facebook-instant-games-structure-check` | — | `true` | HTML5 页面（react-dom）→ 确定性 zip：包根 index.html + fbapp-config.json（instant_games：platform_version=RICH_GAMEPLAY / orientation=LANDSCAPE / navigation_menu_version=NAV_FLOATING）+ UI dist；结构自检与 verify 腿 facebook-instant-games-structure-check 同一实现。字段按官方 Bundle Config 文档 https://developers.facebook.com/docs/games/instant-games/bundle-config；index.html 须引用 connect.facebook.net 的 fbinstant SDK。本机无 Meta 应用后台 / 沙箱——平台侧审核 SKIP-with-print，不声明商店受理；poly-publish 无 facebook-instant-games 客户端（publish 留空） |
+| L2 | Snapchat Mini（规划中） | HTML5 | HTML5 | zip | 无 | Snap 沙箱自检 | Snap 平台 | — | 规划中：Snap Minis 官方文档入口（docs.snap.com/minis/getting-started/home/）已 404，developers.snap.com 站点地图无 Minis 文档；npm @snapchat/minis-sdk（3.0.5，2022）已标注「deprecating minis」——官方 zip / manifest / 打包契约不可核验，不声明 TargetSpec。 |
+| L2 | LINE Mini App（规划中） | LIFF（web） | HTTPS | 静态包 + LIFF 配置 | HTTPS / 平台 TLS | LIFF 配置检查 | LINE 平台 | — | 规划中：LIFF 应用由 LINE Developers Console 托管 URL 注册（LINE Login 渠道 → LIFF；Endpoint URL 须 HTTPS 且不得含 fragment），官方无本地上传包格式或 LIFF 配置文件——「静态包 + LIFF 配置」无法作为平台产物诚实生成，不声明 TargetSpec。 |
 | L3 | Android TV（`android-tv`） | `native` | `uniffi` | `apk` · `android-aapt2` | `android-keystore` | `apksigner-verify`, `bundletool-validate` | `google-play-tv` | `false` | Leanback 清单（android.software.leanback） |
 | L3 | Apple tvOS（`tvos`） | `native` | `uniffi` | `ipa` · `tvos-xcodebuild` | `apple-codesign` | `codesign-verify`, `spctl` | `app-store-connect` | `false` | RN-tvOS 承载 UI；需 macOS 宿主 |
 | L3 | HarmonyOS TV（`harmonyos-tv`） | `native` | `napi` | `hap` · `harmonyos-hvigor` | `harmonyos-hap-sign` | `hap-sign-verify`, `hap-structure-check` | `appgallery-connect` | `false` | RNOH TV 形态（T-M4-14：deviceTypes 含 `tv`、焦点 / 安全区复用 adapter-tv）；复用 HarmonyHap 打包链；无 hdc TV 设备——真机焦点走查 SKIP；发布走 AppGallery Connect（华为视频商店无独立渠道 id） |
@@ -133,11 +133,11 @@
 | 支付宝小程序 | 同上 | 小程序代码包（Taro） | 平台侧 | 支付宝开发者工具 CLI | 支付宝开放平台 | |
 | 抖音小程序 | 同上 | 小程序代码包（Taro） | 平台侧 | 抖音开发者工具 CLI | 抖音开放平台 | |
 | 快应用 | wasm / JS（Taro 快应用目标） | `.rpk` | 平台侧 | hap-toolkit lint | 快应用联盟商店 | |
-| TikTok Minis | HTML5 + Minis 桥 | zip | 平台侧 | 平台沙箱自检 | TikTok 平台 | |
+| TikTok Minis | HTML5（无 Rust 核心） | zip（`minis.config.json` + `minis.manifest.json` + UI dist） | 平台侧 | `tiktok-minis-structure-check`（结构自检；平台沙箱 SKIP） | TikTok 平台 | ※实验：平台侧沙箱 / 提审不可得，不声明商店受理 |
 | Google Play Instant | native（复用 Android） | Instant-enabled AAB | 同 Android | bundletool validate | Google Play | ※已停服：Google 自 2025-12 起不再受理 Instant Apps 发布（Play services Instant API 停用），保留规划、不声明 TargetSpec |
-| Facebook Instant Games | HTML5 | zip | 无 | Meta 沙箱自检 | Meta 平台 | |
-| Snapchat Mini | HTML5 | zip | 无 | Snap 沙箱自检 | Snap 平台 | |
-| LINE Mini App | LIFF（web） | 静态包 + LIFF 配置 | HTTPS / 平台 TLS | LIFF 配置检查 | LINE 平台 | |
+| Facebook Instant Games | HTML5（无 Rust 核心） | zip（包根 `index.html` + `fbapp-config.json` + UI dist） | 无 | `facebook-instant-games-structure-check`（结构自检；Meta 沙箱 SKIP） | Meta 平台 | ※实验：平台侧沙箱 / 提审不可得，不声明商店受理 |
+| Snapchat Mini | HTML5 | zip | 无 | Snap 沙箱自检 | Snap 平台 | 规划中：官方 Minis 文档 / 打包契约不可核验（Minis 文档 404；SDK 已标注 deprecating minis），不声明 TargetSpec |
+| LINE Mini App | LIFF（web） | 静态包 + LIFF 配置 | HTTPS / 平台 TLS | LIFF 配置检查 | LINE 平台 | 规划中：LIFF 应用由 Console 托管 URL 注册，官方无本地上传包 / LIFF 配置文件，不声明 TargetSpec |
 
 ### 3.4 L3 逐平台明细（9）
 

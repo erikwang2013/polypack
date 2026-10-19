@@ -138,6 +138,7 @@ fn parse_runtime(value: &str) -> Result<Runtime, ProviderError> {
         "native" => Ok(Runtime::Native),
         "wasm" => Ok(Runtime::Wasm),
         "staticlib" => Ok(Runtime::Staticlib),
+        "html5" => Ok(Runtime::Html5),
         "none" => Ok(Runtime::None),
         other => Err(contract_error(format!("插件声明了未知 runtime {other:?}"))),
     }
@@ -150,6 +151,7 @@ fn parse_bridge(value: &str) -> Result<Bridge, ProviderError> {
         "wasm-bindgen" => Ok(Bridge::WasmBindgen),
         "cffi" => Ok(Bridge::Cffi),
         "tauri-ipc" => Ok(Bridge::TauriIpc),
+        "html5" => Ok(Bridge::Html5),
         "none" => Ok(Bridge::None),
         other => Err(contract_error(format!("插件声明了未知 bridge {other:?}"))),
     }
