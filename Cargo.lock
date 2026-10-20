@@ -1519,7 +1519,7 @@ dependencies = [
 
 [[package]]
 name = "poly-bundle"
-version = "1.13.1"
+version = "1.14.0"
 dependencies = [
  "flate2",
  "md-5",
@@ -1533,7 +1533,7 @@ dependencies = [
 
 [[package]]
 name = "poly-cache"
-version = "1.13.1"
+version = "1.14.0"
 dependencies = [
  "blake3",
  "hmac 0.12.1",
@@ -1548,7 +1548,7 @@ dependencies = [
 
 [[package]]
 name = "poly-cli"
-version = "1.13.1"
+version = "1.14.0"
 dependencies = [
  "base64 0.22.1",
  "blake3",
@@ -1572,7 +1572,7 @@ dependencies = [
 
 [[package]]
 name = "poly-core"
-version = "1.13.1"
+version = "1.14.0"
 dependencies = [
  "poly-cache",
  "poly-targets",
@@ -1587,7 +1587,7 @@ dependencies = [
 
 [[package]]
 name = "poly-plugin"
-version = "1.13.1"
+version = "1.14.0"
 dependencies = [
  "base64 0.22.1",
  "blake3",
@@ -1603,7 +1603,7 @@ dependencies = [
 
 [[package]]
 name = "poly-publish"
-version = "1.13.1"
+version = "1.14.0"
 dependencies = [
  "base64 0.22.1",
  "blake3",
@@ -1623,7 +1623,7 @@ dependencies = [
 
 [[package]]
 name = "poly-sign"
-version = "1.13.1"
+version = "1.14.0"
 dependencies = [
  "base64 0.22.1",
  "keyring",
@@ -1638,7 +1638,7 @@ dependencies = [
 
 [[package]]
 name = "poly-targets"
-version = "1.13.1"
+version = "1.14.0"
 dependencies = [
  "schemars",
  "serde",
@@ -1648,7 +1648,7 @@ dependencies = [
 
 [[package]]
 name = "poly-toolchain"
-version = "1.13.1"
+version = "1.14.0"
 dependencies = [
  "serde",
  "thiserror",

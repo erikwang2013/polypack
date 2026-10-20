@@ -365,19 +365,19 @@
 
 ### M9-G1 · CLI 分发到 crates.io / GitHub Releases
 
-- 状态：候选 · 部分落地（GitHub Releases + install script + 签名 / install-smoke 已落地；T-M9-45 审计已落地：workspace 1.13.1、crate 元数据、`cargo package --list` 9/9；crates.io 实际发布因 `poly-cli` / `poly-core` 名称占用与 `publish = false` 关闭）。
+- 状态：候选 · 部分落地（GitHub Releases + install script + 签名 / install-smoke 已落地；T-M9-45 审计已落地：workspace 1.14.0、crate 元数据、`cargo package --list` 9/9；crates.io 实际发布因 `poly-cli` / `poly-core` 名称占用与 `publish = false` 关闭）。
 - 触发条件：GA 发布；外部用户要求不装 Rust 工具链即可使用 `poly`。
 - 背景与问题：根 `Cargo.toml` 版本为 `0.0.0`，`crates/poly-cli/Cargo.toml` 的 bin 名为 `poly`，仓库有 `repository` 元数据；此前没有发布工作流，用户只能源码构建。现已落 `.github/workflows/release.yml`（`v*` tag 三宿主构建 + `SHA256SUMS.txt`）、`scripts/install.sh`（强制 SHA-256 + 可选 minisign 严格验签）、双语 `docs/INSTALL`、secret-gated 签名与 install-smoke；`docs/CRATES-IO` 记录了发布顺序、元数据与阻塞：`poly-cli`（已被占用）与 `poly-core`（已被占用）需改名或取得所有权，且全部 crate 仍 `publish = false`。
 - 目标：提供可验证的 crates.io 安装与 GitHub Releases 二进制，带校验和与签名。非目标：首版不做 Homebrew / Scoop / apt 仓库。
 - 方案概览：先按依赖顺序 `cargo package` / `cargo publish --dry-run` 审计全部可发布 crate；GitHub Actions 构建 linux x86_64 / aarch64、macOS x86_64 / aarch64、Windows x86_64；发布 `SHA256SUMS` 与 GPG/minisign 签名；安装脚本验签后落盘。审计已完成（`cargo package --list` 9/9，`cargo publish --dry-run` 被 `publish = false` 拒绝）；GitHub Releases 腿已落地（三宿主构建 + `SHA256SUMS` + secret-gated minisign 签名 + install-smoke），安装脚本与双语文档已落地。crates.io 上传保持关闭，等待名称与 token 的维护者决策。集成点：根 `Cargo.toml`、`crates/poly-cli/Cargo.toml`、`.github/workflows/`、`docs/CRATES-IO`。备选：只发 GitHub Releases（已落地）、只发 crates.io（需 Rust，阻塞）。
 - 交付物：发布清单与 crate 顺序（已交付，`docs/CRATES-IO`）；跨平台构建工作流（已交付）；校验和 / 签名（已交付，签名 secret-gated）；安装脚本与双语文档（已交付）；crates.io 实际发布（阻塞：名称占用、`publish = false`、无 token）。
-- 风险与缓解：crate 名 / 二进制名 `poly` 冲突 → 已查占位并准备备用名（`polypack-cli` / `polypack-engine`）；版本号曾为 0.0.0 → 已提升到 1.13.1 并与 tag 对齐；供应链 → 签名 + 可复现构建说明。
+- 风险与缓解：crate 名 / 二进制名 `poly` 冲突 → 已查占位并准备备用名（`polypack-cli` / `polypack-engine`）；版本号曾为 0.0.0 → 已提升到 1.14.0 并与 tag 对齐；供应链 → 签名 + 可复现构建说明。
 - 决策项：crates.io 与 Releases 是否都做；二进制名冲突时是否改名。
 - 首步动作：跑 `cargo package --list` 与 `cargo publish --dry-run`，列出阻塞发布的 crate 元数据。
 
 | 任务 | 标题 | 角色 | 依赖 | 人日 | 验收 |
 | --- | --- | --- | --- | --- | --- |
-| T-M9-45 ✅ | crate 发布审计与版本策略 | release | — | 2 | 审计完成：元数据 9/9、`cargo package --list` 9/9、版本 1.13.1；实际发布因名称占用 / `publish = false` / 无 token 关闭 |
+| T-M9-45 ✅ | crate 发布审计与版本策略 | release | — | 2 | 审计完成：元数据 9/9、`cargo package --list` 9/9、版本 1.14.0；实际发布因名称占用 / `publish = false` / 无 token 关闭 |
 | T-M9-46 ✅ | 跨平台 Release 工作流与签名 | release + coder | T-M9-45 | 5 | 三宿主产物可下载；SHA256SUMS 与 secret-gated 签名验证通过 |
 | T-M9-47 ✅ | 安装脚本与文档 | docs + tester | T-M9-45, T-M9-46 | 2 | install-smoke 跑通 `poly --version`；双语 INSTALL 可复现 |
 
