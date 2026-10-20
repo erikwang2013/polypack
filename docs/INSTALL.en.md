@@ -32,7 +32,7 @@ poly --version
 Download the matching asset from the GitHub Release and extract it:
 
 ```bash
-TAG=v1.13.1
+TAG=v1.14.0
 TARGET=x86_64-unknown-linux-gnu
 curl -fsSLO "https://github.com/erikwang2013/polypack/releases/download/$TAG/poly-$TARGET.tar.gz"
 tar -xzf "poly-$TARGET.tar.gz"
@@ -65,7 +65,7 @@ Environment variables:
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
-| `POLY_VERSION` | latest Release | Pin a tag (`v1.13.1` or `1.11.0`) |
+| `POLY_VERSION` | latest Release | Pin a tag (`v1.14.0` or `1.14.0`) |
 | `POLY_INSTALL_DIR` | `~/.local/bin` | Install directory |
 | `POLY_REPO` | `erikwang2013/polypack` | GitHub repository |
 | `POLY_RELEASE_BASE_URL` | GitHub Release URL | Mirror / offline-test base URL |
@@ -81,7 +81,7 @@ Signing is an optional release step: the Release workflow signs and uploads `SHA
 | Check | Current state | Consequence |
 | --- | --- | --- |
 | workspace crate `publish` | `false` for every crate | `cargo install poly-cli` does not work |
-| root manifest version | `1.13.1` | aligned with the latest tag |
+| root manifest version | `1.14.0` | aligned with the latest tag |
 | release audit | `cargo package --list` 9/9 passed; `cargo publish --dry-run` refused by `publish = false` | audit complete, actual publishing closed |
 | name availability | `poly-cli` and `poly-core` are taken by others | rename or obtain ownership before publishing |
 | crates.io token | none in the repository or CI | no publishing secret configured |

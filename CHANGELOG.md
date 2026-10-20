@@ -4,7 +4,7 @@
 版本号自 v1.0.0 起按语义化版本递增（tag 与 GitHub Release 名称一致，见 [README](README.md#路线图)）。
 Notable changes are recorded here; since v1.0.0, tags and releases follow `vX.Y.Z` semantic increments.
 
-## [Unreleased]
+## [1.14.0] — 2026-10-21
 
 ### Added
 - **SBOM 使用文档与真实样例**：新增双语 `docs/SBOM` 与 `docs/samples/sbom/web/`（SPDX 2.3 / CycloneDX 1.5 / in-toto，二跑字节一致）；`tools/check-docs.mjs` 增至 19 对。
@@ -25,9 +25,9 @@ Notable changes are recorded here; since v1.0.0, tags and releases follow `vX.Y.
 
 *rustls-webpki 0.103.16: fixes RUSTSEC-2026-0382 (certificate paths could accept distrusted emSign intermediates with now-public private keys); upgraded with `cargo update -p rustls-webpki`, and `cargo deny check advisories` passes.*
 - **发布工作流版本闸门**：构建前校验 tag 与 `poly-cli` Cargo 版本一致；install-smoke 断言安装后的 `poly --version` 等于 tag，避免再次发布版本号错误的二进制。
-- **文档更正**：ENV-01 进度 / 矩阵 / GUI 腿改为与实际 CI 证据一致；ENV-14 与 README 的 Garmin 文案改为「内建 iq 打包器已交付，剩余 monkeyc/devkey 编译腿」；安装示例从 `v1.11.0` 更新到 `v1.13.1`；ADR 0006 / 0008 增加后续更新说明；INITIATIVES / TASKS 的 E1 交付状态与 M9 总述更新；`release.rs` 注释改为 `poly verify --sbom`。
+- **文档更正**：ENV-01 进度 / 矩阵 / GUI 腿改为与实际 CI 证据一致；ENV-14 与 README 的 Garmin 文案改为「内建 iq 打包器已交付，剩余 monkeyc/devkey 编译腿」；安装示例从 `v1.11.0` 更新到 `v1.14.0`；ADR 0006 / 0008 增加后续更新说明；INITIATIVES / TASKS 的 E1 交付状态与 M9 总述更新；`release.rs` 注释改为 `poly verify --sbom`。
 
-*Release workflow version gate: before building, the tag is checked against the `poly-cli` Cargo version, and install-smoke asserts the installed `poly --version` matches the tag, preventing another wrong-version binary. Documentation corrections: ENV-01 progress / matrix / GUI leg now match the actual CI evidence; ENV-14 and README describe the delivered Garmin iq packager with only the monkeyc/devkey compile leg remaining; install examples move from `v1.11.0` to `v1.13.1`; ADR 0006 / 0008 gain follow-up notes; INITIATIVES / TASKS record E1 delivery and the M9 summary; the `release.rs` comment now says `poly verify --sbom`.*
+*Release workflow version gate: before building, the tag is checked against the `poly-cli` Cargo version, and install-smoke asserts the installed `poly --version` matches the tag, preventing another wrong-version binary. Documentation corrections: ENV-01 progress / matrix / GUI leg now match the actual CI evidence; ENV-14 and README describe the delivered Garmin iq packager with only the monkeyc/devkey compile leg remaining; install examples move from `v1.11.0` to `v1.14.0`; ADR 0006 / 0008 gain follow-up notes; INITIATIVES / TASKS record E1 delivery and the M9 summary; the `release.rs` comment now says `poly verify --sbom`.*
 
 ## [1.13.1] — 2026-10-20
 
