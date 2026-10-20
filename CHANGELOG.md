@@ -4,7 +4,7 @@
 版本号自 v1.0.0 起按语义化版本递增（tag 与 GitHub Release 名称一致，见 [README](README.md#路线图)）。
 Notable changes are recorded here; since v1.0.0, tags and releases follow `vX.Y.Z` semantic increments.
 
-## [Unreleased]
+## [1.13.1] — 2026-10-20
 
 ### Added
 - **ENV-15 keyring 信任根载体（已关闭）**：新增 Linux CLI E2E `plugin_trust_root_keyring`（隔离 Secret Service 播种 → `source = "keyring"` → `plugin_granted` / `packaged` → 删除后 `E_PLUGIN_0010`）与 rust-ci `keyring-real` 作业（dbus-run-session + gnome-keyring，SKIP 即失败）；run 39409593528 通过。

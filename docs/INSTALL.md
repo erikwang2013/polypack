@@ -81,7 +81,7 @@ bash install.sh
 | 检查项 | 现状 | 结论 |
 | --- | --- | --- |
 | workspace crate `publish` | 全部为 `false` | `cargo install poly-cli` 不可用 |
-| 根清单版本 | `1.13.0` | 已与最新 tag 对齐 |
+| 根清单版本 | `1.13.1` | 已与最新 tag 对齐 |
 | 发布审计 | `cargo package --list` 9/9 通过；`cargo publish --dry-run` 被 `publish = false` 拒绝 | 审计已完成，实际发布关闭 |
 | 名称可用性 | `poly-cli`、`poly-core` 已被他人占用 | 发布前需改名或取得所有权 |
 | crates.io token | 仓库与 CI 均无 | 未配置发布 secret |
