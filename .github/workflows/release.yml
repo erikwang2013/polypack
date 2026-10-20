@@ -35,6 +35,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
       - name: 校验 tag 与 Cargo 版本一致
         shell: bash
         run: |
@@ -46,9 +49,6 @@ jobs:
             exit 1
           fi
           echo "版本一致：v$version"
-
-      - name: Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
 
       - name: 构建缓存
         uses: Swatinem/rust-cache@v2
