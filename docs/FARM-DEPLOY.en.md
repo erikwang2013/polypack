@@ -287,11 +287,14 @@ POLY=target/debug/poly DRILL_OUT=target/farm-drill tools/farm-drill.sh
 
 The script creates its own static-UI fixtures (three independent project copies, no node / network) and archives output under `$DRILL_OUT` (`transcript.log` + `logs/`). Every executed command is printed with its actual paths and can be copied to rerun.
 
+The script creates `farm/`, `cache/`, `work/`, `logs/` and the three project fixtures under `$DRILL_OUT`. Rerunning with the same `DRILL_OUT` clears those self-created paths and rewrites `transcript.log`; a non-empty directory without this script's archive marker is refused. The archive is retained until the operator deletes it. On the success path the worker removes its work root; if the drill is interrupted by a signal, `polypack-farm-work-*` may remain — clean up per §10. The §11.1 preflight runs before the rounds.
+
 ### 8.2 Pass criteria
 
 The drill log must end with these lines (all really executed):
 
 ```text
+PASS preflight: dir permissions, path isolation and poly scan
 PASS round 1: two targets completed on two workers
 PASS round 2: shared-cache hit 1/1 on a fresh project copy
 PASS cache format: POLYPACK-FARM-OBJECT v0
@@ -301,6 +304,7 @@ PASS isolation: no task work directories left behind
 PASS SKIP printed (environment slot); no macOS claims made
 ```
 
+- Preflight: before the rounds, `tools/farm-preflight.sh` runs static checks on the temporary farm / cache / work directories and `site-a` (permissions, path distinctness, `poly scan`); any FAIL aborts the drill.
 - Round 1: the `web` and `vidaa-tv` jobs land on two different workers and `dist/index.html` is merged into the result.
 - Round 2: a **fresh** project copy (empty local cache) reports `缓存命中 1/1` on another worker; the hit can only come from the shared CAS.
 - Round 3: the sentinel travels only through an `env:` variable; scanning the farm, work, project directories and both logs finds zero hits.
@@ -346,7 +350,42 @@ Pass criteria: the origin prints `worker 已注册：mac-01（aarch64-apple-darw
 
 Farm-directory IO failures report `poly::E_IO_0001` (check existence and permissions on both sides). Shared-cache / S3 warnings (§6.3) are not build failures; if they persist, fix the mount / permissions / endpoint and credentials before looking at hit rates.
 
-## 11. References
+## 11. Production hardening checklist (self-hosted)
+
+ADR 0005 makes GA self-hosted only: the project ships software and deployment guidance; machines, network, credentials and data belong to the operator. This table consolidates the controls the operator must own; the "Implementation / verification" column points at a runnable command or an existing section, and items marked **manual** have no built-in control and must be part of the deployment process. The §11.1 preflight covers permissions, paths and credential variables; real builds, networking and production hosts still need operator validation (this repository's drill only reaches the Linux two-worker case, see §8–§9).
+
+| # | Hardening item | Requirement | Implementation / verification | Automation |
+|---|---|---|---|---|
+| 1 | TLS / reverse-proxy auth | `poly farm` has no network listener: transport is a same-directory mailbox pair (§1) and the protocol itself has no TLS or authentication. Across untrusted networks, share the directory only over a VPN / SSH tunnel or an authenticated NFSv4 / SMB mount; never expose the farm directory through an unauthenticated web server or public SMB / NFS. HTTP / SSH transport and mTLS are M3+ and do not exist today. | §1, §2; confirm no `poly` listening port | Manual; preflight warns on network filesystems (§11.1) |
+| 2 | Directory permissions | Set the farm / cache directories to `2770` with a shared group per §3.1; keep them separate; `--work-dir` is a local, worker-private directory where the worker creates a 0700 child per job and removes it at job end. | §3.1, §5.1; `stat -c '%a %U:%G'`; `tools/farm-preflight.sh` checks writability, non-world-writable mode and distinct paths | Preflight |
+| 3 | Cache namespace isolation | Cache keys are content-addressed and carry no tenant / origin identity: projects in different trust boundaries must use a separate cache root or S3 `<prefix>`; never point mutually untrusted teams at one cache. Farm, cache and work directories must not overlap. | §6.1, §6.2; per-team `--cache` path / prefix; S3 IAM scoped to that prefix (§6.2 least privilege) | Preflight checks distinct paths; S3 prefix and multi-tenant isolation are **manual** |
+| 4 | Credential backend (no plaintext on disk) | Use only the macOS keychain (`apple-codesign`, §7.2) or `--credential NAME=env:VAR` memory injection (§7.3); plaintext must not enter the repository, argv, `polypack.toml`, plans, logs or backups. The Vault source needs caller wiring; the farm CLI does not wire one today. | §7.2, §7.3; preflight verifies the variables exist and are non-empty without printing values | Preflight + `poly scan` |
+| 5 | `poly scan` sentinel | Scan for plaintext credentials before commit and in CI: `poly scan --dir <project>` (optionally `--history`); `poly scan --install-hook` installs a pre-commit hook; CI also has `secret-scan.yml`. `poly farm worker` does **not** run the scan automatically. | §7.1; `poly scan --dir /srv/proj --history`; preflight runs `poly scan` when given `--project` | Command + preflight |
+| 6 | Worker isolation / one-shot work directories | One 0700 private directory per job, whose name carries no job identifier, removed at job end; the work root is removed at worker exit; the container boundary is optional and the operator verifies it. | §5.1, §5.2; `--work-dir`; the isolation check in `tools/farm-drill.sh` | Drill |
+| 7 | Upgrade / rollback | Build both sides from the same commit; `poly --version` must match. Upgrade the origin first (a v1 master accepts `farm/v0` workers), then replace workers one at a time; install to a temporary name and `mv` it into place, keeping the previous binary. Roll back in reverse: workers first, then the origin. | §2; `poly --version`; `poly farm worker --help` / `poly farm submit --help` to confirm flags | Manual |
+| 8 | Backup | Back up project sources, `polypack.toml` and the authoritative copy of signing material (back up the keychain the Apple way or keep it reproducible); farm mailboxes and the CAS are disposable intermediates and need no backup. Never write plaintext keys into a backup. | §6.1 (cache is rebuildable), §7.2 (keychain); `rsync` / snapshots are the operator's choice | Manual |
+| 9 | Logging / monitoring | Collect worker and submit stdout (`--json` emits JSON Lines); monitor registration failures, job error codes (§10), cache-degradation warnings (§6.3), disk usage of farm / cache / work, and leftover `polypack-farm-work-*`. There is no built-in metrics / alerting endpoint. | §8.1 drill archive; §10 error codes; `--json` | Manual |
+| 10 | Rate / concurrency limits | Concurrency = the number of worker processes running per target; each process runs one job at a time. `--jobs N` caps jobs per session (N=1 suits one-shot / untrusted batches), `--jobs 0` is unlimited; `--idle` bounds waiting, `--wait` / `--retries` bound origin waits and retries. There is no built-in queue quota or token bucket; use systemd / cgroup / `ulimit` for resource limits. | §4.1, §4.2, §5.1 | Manual; the drill verifies multi-worker concurrency |
+
+### 11.1 Preflight
+
+`tools/farm-preflight.sh` is the runnable static preflight for the table above: read-only checks for directory existence / writability / non-world-writable mode, distinct farm / cache / work paths, a local work directory, the environment variables referenced by `--credential`, the environment variables required by an S3 cache, and one `poly scan` over `--project`. It does not access the network, print credential values or leave long-lived files.
+
+```bash
+# Run on the origin and the build site separately; --project is that machine's project copy
+POLY=/usr/local/bin/poly tools/farm-preflight.sh \
+  --project /srv/proj \
+  --credential android-keystore=env:POLYPACK_ANDROID_KEYSTORE_B64 \
+  /srv/polypack-farm /srv/polypack-cache /var/tmp/polypack-work
+```
+
+- Positional arguments: farm directory, cache (shared directory / `local` / `s3://<bucket>[/<prefix>]`), and the worker's `--work-dir`; create the directories per §3.1 / §3.2 first.
+- `--credential` is repeatable and only checks that the corresponding environment variable is set and non-empty; deployments not using that backend may omit it.
+- Exit code 0 = no FAIL; 1 = at least one FAIL; 2 = usage error. WARN does not change the exit code but should be addressed.
+- A passing preflight only means the static configuration is sound, not that a build is verified: real builds, cache hits, credential injection and degradation are covered by the §8 drill; macOS / IPA and production-host drills remain external in §9.
+- `tools/farm-drill.sh` runs the same preflight on its temporary directories before the rounds and writes the result into `transcript.log` (§8.2).
+
+## 12. References
 
 - [FARM.en.md](FARM.en.md): frames, origin / build-site model, signature verification guidance.
 - `crates/poly-cli/src/farm.rs`: `worker` / `submit` flags and scheduling entry points.
@@ -356,3 +395,4 @@ Farm-directory IO failures report `poly::E_IO_0001` (check existence and permiss
 - `crates/poly-cache/tests/s3_contract.rs`: mock-S3 wire contract (independent SigV4 recomputation); `tests/s3_real.rs` is the real-cloud environment slot (`POLYPACK_S3_REAL=1`).
 - `crates/poly-sign/src/secret.rs`, `crates/poly-sign/src/inject.rs`: credential backend contract and memory injection.
 - `tools/farm-drill.sh`: the executable drill for §8.
+- `tools/farm-preflight.sh`: the production preflight for §11.1.
