@@ -41,7 +41,7 @@
 | ENV-14 | T-M7-09 | Garmin Connect IQ SDK / devkey 编译 | PARTIAL | CI | core | §3 ENV-14 | — |
 | ENV-15 | T-M8-03 | keyring 信任根载体 | CLOSED | CI | release-sec | run 39409593528 · keyring-real | rust-ci · keyring-real |
 | ENV-16 | T-M8-03 | Vault 信任根载体 | CLOSED | CI | release-sec + core | run 39414212765 · vault-real | rust-ci · vault-real |
-| ENV-17 | T-M8-09 | 真实 S3 / OSS 往返与农场二跑 | OPEN | CI | infra + release-sec | §3 ENV-17 | — |
+| ENV-17 | T-M8-09 | 真实 S3 / OSS 往返与农场二跑 | PARTIAL | CI | infra + release-sec | §3 ENV-17 + s3-real | rust-ci · s3-real |
 | ENV-18 | T-M2-12 | Branch protection admin bypass | CLOSED | HUMAN | maintainer | §3 ENV-18 | secret-scan |
 | ENV-19 | GA §7.2 | 人类外部开发者试用 | OPEN | HUMAN | docs | §3 ENV-19 | — |
 | ENV-20 | T-M9-21 | 真机设备预览（Android + Android TV） | OPEN | HOST | core + infra | §3 ENV-20 | — |
@@ -358,24 +358,27 @@ POLY_VAULT_REAL=1 cargo test -p poly-cli --test plugin_trust_root_vault -- --noc
 
 ### ENV-17 · 真实 S3 / OSS 往返与农场二跑
 
-- 关联任务：T-M8-09（远程农场部署指南）。 缺口：S3 兼容后端与 mock 契约已验证；真实桶上的 PUT / GET / LIST / DELETE 与两 worker 二跑命中未跑。
-- 环境 / 工具链 / 凭据：S3 兼容桶（AWS S3 / MinIO / 阿里云 OSS S3 兼容）、endpoint / region / access key / secret / 可选 session token、桶写权限。
+- 关联任务：T-M8-09（远程农场部署指南）。 缺口：S3 兼容后端与 mock 契约已验证；真实桶上的 PUT / GET / LIST / DELETE 与两 worker 二跑命中未跑。2026-10-20：rust-ci `s3-real` 作业已接线（MinIO，Linux 腿），`s3_real` 往返与 `farm_cache` 的 S3 二跑测试（复用仓库现有静态 Web 夹具）都在作业内运行；首跑证据待归档，状态保持 `PARTIAL`。
+- 环境 / 工具链 / 凭据：CI 用 MinIO（server 由归档官方源码构建，mc 用官方 GitHub release 二进制并核对已发布 SHA-256）；也可指向 AWS S3 / 阿里云 OSS S3 兼容端点，endpoint / region / access key / secret / 可选 session token、桶写权限。
 - 开关：`POLYPACK_S3_REAL=1`、`POLYPACK_S3_TEST_URI=s3://<bucket>[/<prefix>]`、`POLYPACK_S3_ENDPOINT`、`POLYPACK_S3_REGION`、`POLYPACK_S3_ACCESS_KEY_ID`、`POLYPACK_S3_SECRET_ACCESS_KEY`、`POLYPACK_S3_SESSION_TOKEN`、`POLYPACK_S3_PATH_STYLE`、`POLYPACK_S3_OSS_COMPAT=1`（OSS）。
 - 命令：
 ```sh
-POLYPACK_S3_REAL=1 POLYPACK_S3_TEST_URI=s3://bucket/ci-prefix \
-POLYPACK_S3_ENDPOINT=https://s3.example.com POLYPACK_S3_REGION=us-east-1 \
+# CI（rust-ci s3-real）：MinIO 监听 127.0.0.1:9000，桶 polypack-ci
+POLYPACK_S3_REAL=1 POLYPACK_S3_TEST_URI=s3://polypack-ci/ci-prefix \
+POLYPACK_S3_ENDPOINT=http://127.0.0.1:9000 POLYPACK_S3_REGION=us-east-1 \
 POLYPACK_S3_ACCESS_KEY_ID=... POLYPACK_S3_SECRET_ACCESS_KEY=... \
 cargo test -p poly-cache --test s3_real -- --nocapture
-# 两 worker 二跑（同一桶前缀作为共享缓存）
-poly farm worker --dir /srv/farm --id w1 --target web --cache s3://bucket/ci-prefix
-for i in 1 2; do poly farm submit --dir /srv/farm --config /srv/proj/polypack.toml \
-  --target web --cache s3://bucket/ci-prefix --wait 600; done
+# 两 worker 二跑：同一桶前缀作为共享缓存，二跑必须 1/1 命中
+POLYPACK_S3_REAL=1 POLYPACK_S3_TEST_URI=s3://polypack-ci/ci-prefix \
+POLYPACK_S3_ENDPOINT=http://127.0.0.1:9000 POLYPACK_S3_REGION=us-east-1 \
+POLYPACK_S3_ACCESS_KEY_ID=... POLYPACK_S3_SECRET_ACCESS_KEY=... \
+cargo test -p poly-cli --test farm_cache \
+  shared_cache_hits_across_worker_processes_on_s3 -- --nocapture
 ```
-- 证据：`s3_real` 的 PUT / GET / LIST / DELETE 全绿；桶对象列表截图或 `aws s3 ls`；第二跑 `cache hit 1/1`；对象 key / bytes 与本地摘要一致；凭据不出现在日志。
-- 现状：`OPEN`。gate 与测试已就绪；无真实桶、无 CI 作业。 负责人：infra + release-sec。
-- 下一步：准备专用测试桶与前缀，配 secrets，跑单测后再跑两 worker 二跑；把结果写回 GA §7.2。
-- 阻塞：真实云账号 / 桶 / 凭据；测试桶需可删对象。 运行位置：CI（secrets + 出网）可关闭。
+- 证据：`s3_real` 的 PUT / GET / LIST / DELETE 全绿；`farm_cache` S3 腿首跑 `缓存命中 0/1`、二跑 `1/1` 且两侧缓存键相同；作业内 SKIP 即失败，并要求两条 `... ok`；对象列表由 `mc ls` 记录。首跑 run id 待回填。
+- 现状：`PARTIAL`（2026-10-20）。两条真实腿已接线到 rust-ci `s3-real`，尚无 CI 首跑证据，不得标记 CLOSED。 负责人：infra + release-sec。
+- 下一步：观察首个 `s3-real` 作业通过后，把 run id 回填 §2 与本卡再关闭；真实云（AWS / 阿里云 OSS）另行取证，不得用 MinIO 结果冒充。
+- 阻塞：dl.min.io 已停止分发社区版 MinIO（所有 release 与 hotfix 均 410 Gone），server 只能从归档源码构建；真实云账号 / 桶 / 凭据仍需另行提供。 运行位置：CI（MinIO 本地环回）可关闭 S3 兼容腿。
 
 ### ENV-18 · Branch protection admin bypass
 
@@ -486,7 +489,7 @@ poly preview --dry-run --target android --device android-phone --device android-
 | ENV-14 | — | — | 无 Connect IQ 作业 |
 | ENV-15 | `.github/workflows/rust-ci.yml` | `keyring-real` | Secret Service 真跑（run 39409593528）：`keyring_real` 真写 / 真读 / 真删 + CLI keyring 信任根 `plugin_granted` / `packaged` / `E_PLUGIN_0010`；作业内 SKIP 即失败 |
 | ENV-16 | `.github/workflows/rust-ci.yml` | `vault-real` | Vault dev（KV v2，run 39414212765）：`vault_real` 真读写 / 404 / 403 脱敏 + CLI Vault 信任根 `plugin_granted` / `packaged` / `E_PLUGIN_0010`；作业内 SKIP 即失败 |
-| ENV-17 | — | — | 无 S3 作业 |
+| ENV-17 | `.github/workflows/rust-ci.yml` | `s3-real` | MinIO（127.0.0.1:9000）：`s3_real` PUT / GET / LIST / DELETE + `farm_cache` 两 worker 共享桶二跑 1/1；作业内 SKIP 即失败；首跑待归档 |
 | ENV-18 | `.github/workflows/secret-scan.yml` | `scan`（3 宿主） | 提供 required checks；admin bypass 已于 2026-10-20 关闭，设置不在工作流 |
 | ENV-19 | — | — | 人工试用，无工作流 |
 | ENV-20 | — | — | 无设备预览作业；`poly preview --dry-run` 已交付 |
@@ -511,7 +514,7 @@ poly preview --dry-run --target android --device android-phone --device android-
 | --- | --- | --- |
 | Vault 默认后端链 | 已关闭（代码） | `default_backends()` 已按环境装配 Vault；ENV-16 只剩真实服务 E2E |
 | Garmin 内建 iq 打包器 | 已交付 | `poly build --target garmin` 已有内建打包器；ENV-14 只关编译器 / 真机腿 |
-| 缺失的 CI 作业 | 基建 | NetBSD / S3 / watchOS / Fitbit / Zepp / Garmin / Roku 目前只有执行卡，没有工作流 |
+| 缺失的 CI 作业 | 基建 | NetBSD / watchOS / Fitbit / Zepp / Garmin / Roku 目前只有执行卡，没有工作流 |
 
 ## 8. 参考
 
