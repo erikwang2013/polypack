@@ -160,10 +160,7 @@ fn validate_endpoint(endpoint: &str) -> Result<(), Diagnostic> {
             "endpoint 不能包含 fragment（#…）：{endpoint}"
         )));
     }
-    let authority = rest
-        .split(|c| c == '/' || c == '?')
-        .next()
-        .unwrap_or_default();
+    let authority = rest.split(['/', '?']).next().unwrap_or_default();
     if authority.is_empty() {
         return Err(input_error(format!("endpoint 缺少主机名：{endpoint}")));
     }

@@ -1,6 +1,6 @@
 # Multi-app workspace (M9-E2)
 
-> Status: code and tests delivered (T-M9-04/05/06); single-app behavior and cache keys are unchanged. `poly retry` / `poly verify` do not yet accept `--workspace` / `--app`.
+> Status: code and tests delivered (T-M9-04/05/06); single-app behavior and cache keys are unchanged. `poly build`, `poly verify`, and `poly retry` all accept `--workspace` / `--app`.
 
 ## 1. Layout
 
@@ -64,6 +64,10 @@ poly build --app notes
 
 # Combine with a target
 poly build --workspace --target linux
+
+# Verify / retry also accept the workspace selectors
+poly verify --workspace
+poly retry --from verify --app notes
 ```
 
 `--workspace` and `--app` are mutually exclusive; neither flag keeps the single-app behavior. Outputs and snapshots are isolated per app:
@@ -89,7 +93,6 @@ The shared core compile cache key excludes the app id (reused across apps); the 
 
 ## 6. Known limitations
 
-- `poly retry` / `poly verify` do not accept `--workspace` / `--app`; pointing them at a member config uses the member-local `.polypack`.
 - No cross-app task graph, target inheritance, or concurrent scheduling; members build sequentially.
 - Member ids are directory names; renaming a directory changes the app id and cache keys.
 - Build history currently lands under each member root, not aggregated at the workspace root.

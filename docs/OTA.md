@@ -1,6 +1,6 @@
 # OTA / 生产热更通道（M9-E4）
 
-> 状态：T-M9-10 调研矩阵与 T-M9-11 签名清单已落地；T-M9-12 的 Tauri 真机安装 / 回滚演练属环境门控，未在仓库内伪造。
+> 状态：T-M9-10 调研矩阵、T-M9-11 签名清单与 T-M9-12 真实演练均已完成；`examples/updater-app` + `scripts/drill.ps1` 经 rust-ci `windows-updater-real` 在 windows-2022 run 39395255929 通过（安装 0.1.0 → 更新 0.1.1 → 回滚 0.1.0）。
 > 检索日期：2026-10-20。无法直连的官方页面在表中显式标注「未直连」，其细节不作为已验证事实。
 
 ## 1. 各端更新机制矩阵
@@ -70,11 +70,11 @@ poly update check --manifest latest.json \
 2. 回滚时把目标旧版本的 `<version>.json` 复制为 `latest.json`，连同其 `.sig` 上传。签名覆盖的是同一份字节，无需重新签名。
 3. 客户端必须允许降级：Tauri 静态清单默认执行内置版本检查，旧版本不会自动安装；需切到独立回滚渠道，或由动态更新服务器覆写版本比较。
 4. 回滚后在下一次发布中提升补丁号，避免版本号回退造成后续更新判定混乱。
-5. 本仓库只演练「清单恢复 + 验签通过」；真实安装与降级属 T-M9-12 环境门控。
+5. 仓库内已提供真实演练装置：`examples/updater-app` 的 `--smoke-update` 模式与 `scripts/drill.ps1` 在 windows-2022 上完成「安装 0.1.0 → 更新 0.1.1 → 恢复 0.1.0 清单 → 回滚」；回滚腿使用样例内演练专用的「版本不同即可」比较器，生产默认仍只接受更新版本。Linux 侧只验证编译与清单链路；真实链路由 rust-ci `windows-updater-real` 作业产出，run 39395255929 已通过。
 
 ## 5. 环境门控与未验证项
 
-- **Tauri 二进制更新 / 回滚**：需要真实 Tauri 应用、Tauri 密钥对与可安装的产物；本仓库不执行、不伪造。`poly update check` 只验证清单结构与 GPG 签名。
+- **Tauri 二进制更新 / 回滚**：已由 `examples/updater-app`、`examples/updater-app/scripts/drill.ps1` 与 rust-ci `windows-updater-real` 作业覆盖（一次性 Tauri 密钥、真实 NSIS 安装 / 更新 / 回滚、证据归档）；windows-2022 run 39395255929 已通过。`poly update check` 本身仍只验证清单结构与 GPG 签名。
 - **Google Play staged rollout / Play App Signing**：官方页在本次环境不可达，表中相应细节来自检索摘要，标为未直连；已直连的只有 In-App Updates 的 flexible / immediate 流程。
 - **Apple 降级**：官方文档未提供版本降级；只能暂停分阶段发布或用新版本恢复。
 - **微信百分比灰度**：本次直连的版本管理与更新机制页面未列出百分比灰度入口，故不写入矩阵承诺。

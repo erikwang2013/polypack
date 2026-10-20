@@ -64,12 +64,12 @@
 
 ### M9-E3 · 增量发布 `poly release --changed`
 
-- 状态：候选 · 部分交付（T-M9-07/08 已交付 2026-10-20；T-M9-09 的 CI 示例与节时实测待补）。
+- 状态：候选 · 已交付（T-M9-07/08/09 于 2026-10-20 交付；5 目标实测见 [RELEASE-CHANGED](RELEASE-CHANGED.md)）。
 - 触发条件：多目标 CI 发布耗时成为瓶颈，或目标数 ≥ 5 的仓库每周发布 ≥ 1 次。
 - 背景与问题：`poly release` 只接受 target / repo / credential / dry-run（`crates/poly-cli/src/release.rs` 的 `Args`），没有变更判定；现有 no-op 只在单目标内比较回执 `manifest_digest`，CI 仍要构建全部目标。
 - 目标：按缓存键或回执摘要跳过未变更目标，输出稳定的 skipped 事件与退出码，减少多端 CI 时间。非目标：不做增量编译、不做单目标内部分产物上传、不改变发布回执语义。
 - 方案概览：已实现 `--changed`：在 `prepare` 后比较回执 `cache_key`（当前等于 `manifest_digest`）并回退 `manifest_digest`，同时校验 repo 根与仓库格式；命中时发独立 `release-skipped` 事件，不写仓库、不重写回执、不递增 `runs`，`key_source` 标明降级路径。`--since <ref>` 因 release 没有 per-target source/package 映射而返回 `E_PLAN_0002`，提示用 `--changed` 或预筛 `--target`。集成点：`crates/poly-cli/src/release.rs`、`release/report.rs`、`release/tests.rs`、`poly-cli/tests/release.rs`。备选：`git diff` 判定（跨仓库/生成文件脆弱）、mtime（不可靠）。
-- 交付物：`--changed` 与 `--since`；回执 `cache_key` 字段；skipped JSON 契约；CI 示例与节时实测。
+- 交付物：`--changed` 与 `--since`（已交付）；回执 `cache_key` 字段（已交付）；skipped JSON 契约（已交付）；CI 示例与节时实测（已交付：后端调用 5→1，墙钟节省 73–81%）。
 - 风险与缓解：缓存键缺输入导致漏发 → 键构造单源 + 变更输入表测试；回执旧版本无 `cache_key` → 明确降级到摘要并告警；跳过被误认为成功发布 → skipped 与 published 事件严格区分。
 - 决策项：判定主键用缓存键还是回执摘要；`--changed` 是否默认开启。
 - 首步动作：在 `crates/poly-cli/src/release.rs` 写一个只读原型，打印每个目标的当前键与回执键差异。
@@ -82,12 +82,12 @@
 
 ### M9-E4 · 生产热更 / OTA 通道
 
-- 状态：候选 · 部分交付（T-M9-10/11 已交付；T-M9-12 的 Tauri 真实安装 / 回滚为环境门控）。
+- 状态：候选 · 已交付（T-M9-10/11/12 已交付；windows-2022 run 39395255929 的 `windows-updater-real` 真实更新 / 回滚通过）。
 - 触发条件：首批用户提出线上更新诉求，且目标平台允许自管更新通道。
 - 背景与问题：流水线止于 publish；发布后的版本迭代没有清单、签名、灰度或回滚语义。各端机制不同（Tauri updater、Play In-App Updates、App Store 分阶段发布、小程序版本管理），不能用一个包打天下。
 - 目标：定义签名的更新清单与渠道 / 回滚模型，先覆盖自托管 Tauri 目标，再给出各平台机制矩阵。非目标：不做通用二进制 delta、不绕过商店审核、不承诺所有目标可自更新。
 - 方案概览：已实现 `poly update manifest --channel <name>`：校验 channel/version/platform/base URL/pub_date，选定唯一产物并嵌入其 Tauri `.sig`，输出确定性的 Tauri v2 `latest.json`（排序键、两空格、尾换行），用 `GpgSigner` 生成 GPG 分离签名，同时保留 `<version>.json` / `.sig` 供回滚；`poly update check` 做 schema 校验与可选信任根验签。平台矩阵与来源日期见 [OTA](OTA.md)。集成点：`crates/poly-cli/src/update.rs`、`update/manifest.rs`、`crates/poly-sign`。备选：只写调研文档、完全交给各端工具链。
-- 交付物：机制矩阵（已交付）；更新清单 schema 与签名（已交付）；Tauri 自托管通道真实安装 / 回滚演练（环境门控，未执行）；回滚手册（已交付，见 [OTA](OTA.md)）。
+- 交付物：机制矩阵（已交付）；更新清单 schema 与签名（已交付）；Tauri 自托管通道真实安装 / 回滚演练装置与 CI 作业（已交付并通过首跑：run 39395255929，见 `examples/updater-app`）；回滚手册（已交付，见 [OTA](OTA.md)）。
 - 风险与缓解：签名密钥泄露 → 复用引用模型与一次性签名环境；灰度失控 → 清单支持百分比/白名单但先只做单渠道；商店政策变化 → 矩阵标注来源日期，不写死。
 - 决策项：GA 支持哪些更新渠道；更新签名是否复用发布密钥；是否提供托管清单服务。
 - 首步动作：做一次逐端机制调研并写成矩阵，明确「可自更新 / 仅商店更新 / 不可更新」三类。
@@ -96,7 +96,7 @@
 | --- | --- | --- | --- | --- | --- |
 | T-M9-10 | 各端更新机制矩阵 | researcher | — | 3 | 覆盖 Tauri / Play / App Store / 小程序 / 自托管；每条有官方来源与日期 |
 | T-M9-11 | 清单 schema、签名与回滚设计 | architect | T-M9-10 | 4 | schema 版本化；签名与验签路径明确；回滚步骤可演练 |
-| T-M9-12 | Tauri 自托管通道原型 | coder | T-M9-11 | 6 | 旧版本检测到新清单、验签、更新、回滚各 1 次真实演练通过 |
+| T-M9-12 ✅ | Tauri 自托管通道原型 | coder | T-M9-11 | 6 | 旧版本检测到新清单、验签、更新、回滚各 1 次真实演练通过（run 39395255929） |
 
 ### M9-E5 · 商店元数据管线
 
@@ -118,12 +118,12 @@
 
 ### M9-E6 · GUI 目标矩阵视图 / 构建历史
 
-- 状态：候选 · 部分交付（T-M9-16/17 已交付 2026-10-20；T-M9-18 GUI 因 `app/` 未跟踪延后，[ADR 0007](../decisions/0007-external-and-ui-decisions.md)）。
+- 状态：候选 · 已交付（T-M9-16/17 与 T-M9-18 均于 2026-10-20 交付；T-M9-18 GUI 已落 `app/`（Tauri v2 + 静态前端），满足 [ADR 0007](../decisions/0007-external-and-ui-decisions.md) 的 `app/` 跟踪条件；真实 Tauri 窗口启动为环境门控）。
 - 触发条件：M1 Tauri 管线跑通且 `app/` 控制台骨架落地；或用户明确要求可视化构建历史。
-- 背景与问题：README 把 `app/` 描述为 poly-gui 控制台目标形态，但当前仓库未跟踪该目录；`BuildEvent`（`crates/poly-core/src/events.rs`）只经 stdout / JSON Lines 输出，没有持久历史，无法回答「某目标最近一次成功构建是什么时候」。
+- 背景与问题：README 把 `app/` 描述为 poly-gui 控制台目标形态，但此前仓库未跟踪该目录；`BuildEvent`（`crates/poly-core/src/events.rs`）只经 stdout / JSON Lines 输出，没有持久历史，无法回答「某目标最近一次成功构建是什么时候」。
 - 目标：本地持久化构建事件，提供目标 × 最近构建的矩阵视图与单次构建详情。非目标：不做多用户服务端、不做云端同步、不做远程农场调度 UI。
-- 方案概览：已实现 `HistoryRecord`（schema_version、build_id、ts、target、event、status、duration、artifact 摘要、错误码）写入 `.polypack/history/events.jsonl`，按 5 MiB / 10000 条双上限轮转并保留最新记录；路径落盘前脱敏为项目相对路径。`poly history [--target ID] [--limit N] [--json]` 提供按目标聚合的查询；GUI 矩阵与详情视图（T-M9-18）仍待 `app/` 落地。集成点：`crates/poly-core/src/events.rs`、`crates/poly-cli/src/build.rs`、`crates/poly-cli/src/history.rs`。备选：解析 CI 日志（不可靠）、SQLite（查询强但首版过重）。
-- 交付物：history 写入与轮转（已交付）；查询 / 聚合命令（已交付）；矩阵与详情视图（延后）；隐私说明（路径脱敏，已交付）。
+- 方案概览：已实现 `HistoryRecord`（schema_version、build_id、ts、target、event、status、duration、artifact 摘要、错误码）写入 `.polypack/history/events.jsonl`，按 5 MiB / 10000 条双上限轮转并保留最新记录；路径落盘前脱敏为项目相对路径。`poly history [--target ID] [--limit N] [--json]` 提供按目标聚合的查询；`app/` 的 Tauri command `history_records` 复用同一 schema 并在读取时二次脱敏，前端渲染目标矩阵、按目标详情与空状态引导。集成点：`crates/poly-core/src/events.rs`、`crates/poly-cli/src/build.rs`、`crates/poly-cli/src/history.rs`、`app/`。备选：解析 CI 日志（不可靠）、SQLite（查询强但首版过重）。
+- 交付物：history 写入与轮转（已交付）；查询 / 聚合命令（已交付）；矩阵与详情视图（已交付，`app/`）；隐私说明（路径脱敏，已交付）。
 - 风险与缓解：事件流含敏感路径 → 落盘前脱敏，只留相对路径；历史无限增长 → 条数与体积双上限；GUI 与 CLI 漂移 → 共用同一 schema 与金样。
 - 决策项：JSONL 还是 SQLite；历史默认保留期；是否记录本机绝对路径。
 - 首步动作：在 `crates/poly-core/src/events.rs` 定义可落盘的 `HistoryRecord` schema，并让 `poly build --json` 与文件写入共用。
@@ -136,20 +136,20 @@
 
 ### M9-E7 · 发布前设备预览矩阵
 
-- 状态：候选 · 未排期；决策已记录：先做 build-vs-buy 调研（T-M9-19），本阶段不写设备农场代码（[ADR 0007](../decisions/0007-external-and-ui-decisions.md)）。
+- 状态：候选 · 部分交付（T-M9-19 调研矩阵与 T-M9-20 `DevicePool` / `DeviceLease` + `poly preview --dry-run` 已于 2026-10-20 交付，见 [DEVICE-PREVIEW](DEVICE-PREVIEW.md)；T-M9-21 真机演练为外部环境门控，不标 ✅；[ADR 0007](../decisions/0007-external-and-ui-decisions.md) 的「本阶段不写设备农场代码」由干跑协议取代，真实执行仍未接线）。
 - 触发条件：M4 TV 或 M7 穿戴冒烟遇到设备瓶颈，或商店预览 / 真机回归成为发布阻塞。
 - 背景与问题：`poly smoke` 与各平台结构检查能在无设备时 SKIP，但没有设备池、租约、安装启动截图与日志归档；发布前真机矩阵完全靠人工。
 - 目标：定义设备池与预览任务模型，在真机 / 模拟器上执行安装、启动、截图、日志采集并归档证据。非目标：不做完整设备农场产品、不做无人值守审核、不承诺所有目标有设备。
-- 方案概览：扩展农场协议（`crates/poly-cli/src/farm.rs`、`docs/FARM.md`）增加 `DevicePool` / `DeviceLease` 与 job kind `preview`；provider 可为 Firebase Test Lab、BrowserStack、AWS Device Farm 或自建；产物落 `.polypack/preview/<target>/<device>/`。集成点：`crates/poly-cli/src/smoke.rs`、`.github/workflows/tv-smoke.yml`、`.github/workflows/wear-smoke.yml`。备选：纯人工 QA、只买云设备农场不接协议。
-- 交付物：设备池模型与协议扩展；预览任务 CLI；2 个目标的真实预览演练；成本与保留策略。
+- 方案概览：已实现 `DevicePool` / `DeviceLease` / `CleanupPolicy` 与 `poly preview --dry-run`（确定性计划、租约超时、清理语义、`preview/v1` + `farm/v1` 词汇），不触网、不接设备；vendor 矩阵与 build-vs-buy 见 [DEVICE-PREVIEW](DEVICE-PREVIEW.md)。provider 可为 Firebase Test Lab、BrowserStack、AWS Device Farm 或自建；产物落 `.polypack/preview/<target>/<device>/`。真实设备执行仍为 T-M9-21 外部项。
+- 交付物：设备池模型与协议扩展（已交付）；预览任务 CLI（已交付，dry-run）；2 个目标的真实预览演练（外部）；成本与保留策略（已交付矩阵 / 策略）。
 - 风险与缓解：设备租用成本 → 先按需单次租用，不做常驻池；平台工具链差异 → provider 适配层隔离；截图含用户数据 → 只跑夹具应用并自动清理。
 - 决策项：自建还是购买云设备农场；证据保留期与访问权限。
 - 首步动作：调研 3 家云设备农场的 API、价格与覆盖矩阵，给出 build vs buy 结论。
 
 | 任务 | 标题 | 角色 | 依赖 | 人日 | 验收 |
 | --- | --- | --- | --- | --- | --- |
-| T-M9-19 | 设备农场调研与成本模型 | researcher | — | 3 | 3 家供应商 API/价格/覆盖对比；含自建 TCO |
-| T-M9-20 | DevicePool / DeviceLease 协议扩展 | architect | T-M9-19 | 4 | 租约、超时、回收语义明确；与农场协议 v1 兼容 |
+| T-M9-19 ✅ | 设备农场调研与成本模型 | researcher | — | 3 | 3 家供应商 API/价格/覆盖对比；含自建 TCO |
+| T-M9-20 ✅ | DevicePool / DeviceLease 协议扩展 | architect | T-M9-19 | 4 | 租约、超时、回收语义明确；与农场协议 v1 兼容 |
 | T-M9-21 | 双目标预览演练 | coder | T-M9-20 | 6 | Android + TV 各 1 台设备安装启动截图；失败有日志与稳定错误码 |
 
 ## 3. 规划平台（8 个未声明 TargetSpec）
@@ -365,21 +365,21 @@
 
 ### M9-G1 · CLI 分发到 crates.io / GitHub Releases
 
-- 状态：候选 · 部分落地（GitHub Releases、install script、可选 secret-gated 签名与 install-smoke 已落地；crates.io 发布审计 T-M9-45 仍开放）。
+- 状态：候选 · 部分落地（GitHub Releases + install script + 签名 / install-smoke 已落地；T-M9-45 审计已落地：workspace 1.12.0、crate 元数据、`cargo package --list` 9/9；crates.io 实际发布因 `poly-cli` / `poly-core` 名称占用与 `publish = false` 关闭）。
 - 触发条件：GA 发布；外部用户要求不装 Rust 工具链即可使用 `poly`。
-- 背景与问题：根 `Cargo.toml` 版本为 `0.0.0`，`crates/poly-cli/Cargo.toml` 的 bin 名为 `poly`，仓库有 `repository` 元数据；此前没有发布工作流，用户只能源码构建。现已落 `.github/workflows/release.yml`（`v*` tag 三宿主构建 + `SHA256SUMS.txt`）、`scripts/install.sh`（强制 SHA-256 + 可选 minisign 严格验签）、双语 `docs/INSTALL`、secret-gated 签名与 install-smoke；crates.io 发布审计（T-M9-45）仍未做。
+- 背景与问题：根 `Cargo.toml` 版本为 `0.0.0`，`crates/poly-cli/Cargo.toml` 的 bin 名为 `poly`，仓库有 `repository` 元数据；此前没有发布工作流，用户只能源码构建。现已落 `.github/workflows/release.yml`（`v*` tag 三宿主构建 + `SHA256SUMS.txt`）、`scripts/install.sh`（强制 SHA-256 + 可选 minisign 严格验签）、双语 `docs/INSTALL`、secret-gated 签名与 install-smoke；`docs/CRATES-IO` 记录了发布顺序、元数据与阻塞：`poly-cli`（已被占用）与 `poly-core`（已被占用）需改名或取得所有权，且全部 crate 仍 `publish = false`。
 - 目标：提供可验证的 crates.io 安装与 GitHub Releases 二进制，带校验和与签名。非目标：首版不做 Homebrew / Scoop / apt 仓库。
-- 方案概览：先按依赖顺序 `cargo package` / `cargo publish --dry-run` 审计全部可发布 crate；GitHub Actions 构建 linux x86_64 / aarch64、macOS x86_64 / aarch64、Windows x86_64；发布 `SHA256SUMS` 与 GPG/minisign 签名；安装脚本验签后落盘。当前 GitHub Releases 腿已按最小形态落地（三宿主构建 + SHA256SUMS）；签名与安装脚本仍待补。集成点：根 `Cargo.toml`、`crates/poly-cli/Cargo.toml`、`.github/workflows/`。备选：只发 GitHub Releases（已部分落地）、只发 crates.io（需 Rust）。
-- 交付物：发布清单与 crate 顺序；跨平台构建工作流（已落地）；校验和（已落地）/ 签名（待补）；安装脚本与双语文档。
-- 风险与缓解：crate 名 / 二进制名 `poly` 冲突 → 先查占位并准备备用名；版本 0.0.0 不可发布 → 首次发布前升到 1.0.0 并打 tag；供应链 → 签名 + 可复现构建说明。
+- 方案概览：先按依赖顺序 `cargo package` / `cargo publish --dry-run` 审计全部可发布 crate；GitHub Actions 构建 linux x86_64 / aarch64、macOS x86_64 / aarch64、Windows x86_64；发布 `SHA256SUMS` 与 GPG/minisign 签名；安装脚本验签后落盘。审计已完成（`cargo package --list` 9/9，`cargo publish --dry-run` 被 `publish = false` 拒绝）；GitHub Releases 腿已落地（三宿主构建 + `SHA256SUMS` + secret-gated minisign 签名 + install-smoke），安装脚本与双语文档已落地。crates.io 上传保持关闭，等待名称与 token 的维护者决策。集成点：根 `Cargo.toml`、`crates/poly-cli/Cargo.toml`、`.github/workflows/`、`docs/CRATES-IO`。备选：只发 GitHub Releases（已落地）、只发 crates.io（需 Rust，阻塞）。
+- 交付物：发布清单与 crate 顺序（已交付，`docs/CRATES-IO`）；跨平台构建工作流（已交付）；校验和 / 签名（已交付，签名 secret-gated）；安装脚本与双语文档（已交付）；crates.io 实际发布（阻塞：名称占用、`publish = false`、无 token）。
+- 风险与缓解：crate 名 / 二进制名 `poly` 冲突 → 已查占位并准备备用名（`polypack-cli` / `polypack-engine`）；版本号曾为 0.0.0 → 已提升到 1.12.0 并与 tag 对齐；供应链 → 签名 + 可复现构建说明。
 - 决策项：crates.io 与 Releases 是否都做；二进制名冲突时是否改名。
 - 首步动作：跑 `cargo package --list` 与 `cargo publish --dry-run`，列出阻塞发布的 crate 元数据。
 
 | 任务 | 标题 | 角色 | 依赖 | 人日 | 验收 |
 | --- | --- | --- | --- | --- | --- |
-| T-M9-45 | crate 发布审计与版本策略 | release | — | 2 | 全部可发布 crate `--dry-run` 通过；版本与 tag 策略成文 |
-| T-M9-46 | 跨平台 Release 工作流与签名 | release + coder | T-M9-45 | 5 | 三宿主产物可下载；SHA256SUMS 与签名验证通过 |
-| T-M9-47 | 安装脚本与文档 | docs + tester | T-M9-45, T-M9-46 | 2 | 干净容器安装成功并跑 `poly --version`；双语文档可复现 |
+| T-M9-45 ✅ | crate 发布审计与版本策略 | release | — | 2 | 审计完成：元数据 9/9、`cargo package --list` 9/9、版本 1.12.0；实际发布因名称占用 / `publish = false` / 无 token 关闭 |
+| T-M9-46 ✅ | 跨平台 Release 工作流与签名 | release + coder | T-M9-45 | 5 | 三宿主产物可下载；SHA256SUMS 与 secret-gated 签名验证通过 |
+| T-M9-47 ✅ | 安装脚本与文档 | docs + tester | T-M9-45, T-M9-46 | 2 | install-smoke 跑通 `poly --version`；双语 INSTALL 可复现 |
 
 ### M9-G2 · 人类外部开发者试用协议
 
@@ -479,9 +479,8 @@
 
 ## 7. 暂缓清单（Not now）
 
-- **M9-E2 monorepo**：无多应用用户；过早引入 `[workspace]` 会扩大配置兼容面。
-- **M9-E4 OTA**：各端机制差异大、支持负担高；无用户诉求前只做调研。
-- **M9-E6 GUI / M9-E7 设备预览**：`app/` 尚未落地，CLI `--json` 已够自动化；设备与云农场成本高，先用结构检查与人工矩阵。
+> 以下曾暂缓项已推进：E2、E3、E5、E6 已交付；E7 协议 / 干跑已交付（T-M9-21 真机外部）；E4 清单 / 签名已交付，T-M9-12 演练装置与 CI 已交付并通过 windows-2022 首跑（run 39395255929）。
+
 - **M9-D1 官方注册表**：插件数量不足；去中心化索引也只在有需求时做。
 - **M9-D2 托管农场**：与「不托管用户代码与密钥」原则冲突，需单独商业与合规评审。
 - **M9-P1 Google Play Instant**：平台已停服，投入无回报。

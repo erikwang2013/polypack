@@ -44,6 +44,7 @@
 | ENV-17 | T-M8-09 | 真实 S3 / OSS 往返与农场二跑 | OPEN | CI | infra + release-sec | §3 ENV-17 | — |
 | ENV-18 | T-M2-12 | Branch protection admin bypass | CLOSED | HUMAN | maintainer | §3 ENV-18 | secret-scan |
 | ENV-19 | GA §7.2 | 人类外部开发者试用 | OPEN | HUMAN | docs | §3 ENV-19 | — |
+| ENV-20 | T-M9-21 | 真机设备预览（Android + Android TV） | OPEN | HOST | core + infra | §3 ENV-20 | — |
 
 负责人只使用五个角色：`release-sec` / `core` / `docs` / `infra` / `maintainer`；组合用 ` + `。证据列指向 §3 的执行卡；真实证据包仍按 §4.2 归档，本表不伪造证据。真实逐槽关闭仍是外部工作，未关闭槽位保持原状态。
 ## 3. 槽位执行卡
@@ -412,6 +413,21 @@ poly build --config <app>/polypack.toml --target pocket-notes
 - 下一步：GA 发布后招募 3–5 人，按模板收集报告，把卡点回写到 GA / README / 模板。
 - 阻塞：需要真实外部人员与时间，不能由 agent 代跑。 运行位置：HUMAN；不在 CI。
 
+### ENV-20 · 真机设备预览（Android + Android TV）
+
+- 关联任务：T-M9-21（设备预览矩阵）。 缺口：`poly preview --dry-run` 已交付（DevicePool / DeviceLease、确定性计划、超时 / 清理），但真实租约、安装、启动、截图、日志与清理未执行。
+- 环境 / 工具链 / 凭据：两台真实设备（Android 手机 + Android TV）或等价云设备；`adb`；夹具 APK；证据目录；云厂商账号（若走云）。
+- 开关：无（`poly preview --dry-run` 不需要凭据；真实执行由 provider 适配层接线）。
+- 命令：
+```sh
+poly preview --dry-run --target android --device android-phone --device android-tv
+# 真实执行命令与 provider 适配见 docs/DEVICE-PREVIEW.md §8.1
+```
+- 证据：plan JSON、APK blake3、`adb devices -l` / API level、安装 / 启动退出码、两张 PNG + SHA-256、logcat / crash、卸载后设备列表。
+- 现状：`OPEN`。dry-run 已交付；真实执行未接线。 负责人：core + infra。
+- 下一步：接 provider 适配层并在两台真实设备上执行；两台都通过才关闭。
+- 阻塞：需要真实设备 / 云账号与 adb 授权。 运行位置：HOST / 云设备农场。
+
 ## 4. 关闭协议
 
 ### 4.1 角色与职责
@@ -476,6 +492,7 @@ poly build --config <app>/polypack.toml --target pocket-notes
 | ENV-17 | — | — | 无 S3 作业 |
 | ENV-18 | `.github/workflows/secret-scan.yml` | `scan`（3 宿主） | 提供 required checks；admin bypass 已于 2026-10-20 关闭，设置不在工作流 |
 | ENV-19 | — | — | 人工试用，无工作流 |
+| ENV-20 | — | — | 无设备预览作业；`poly preview --dry-run` 已交付 |
 
 ## 6. 仓库内不可关闭清单
 
@@ -489,6 +506,7 @@ poly build --config <app>/polypack.toml --target pocket-notes
 | ENV-13（模拟器腿） | GUI 模拟器 | 安装 / 启动是桌面应用，verify 明确不自动化 |
 | ENV-18 | GitHub 管理员设置 | Branch protection 是仓库平台配置，不是代码 |
 | ENV-19 | 外部开发者 | 人类试用无法由 agent 或 CI 代替 |
+| ENV-20 | 真实 Android / Android TV 设备或云农场 | 真机安装 / 启动 / 截图需要设备、adb 授权或厂商账号 |
 
 ## 7. 开放决策与代码缺口
 

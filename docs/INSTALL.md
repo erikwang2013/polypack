@@ -81,11 +81,13 @@ bash install.sh
 | 检查项 | 现状 | 结论 |
 | --- | --- | --- |
 | workspace crate `publish` | 全部为 `false` | `cargo install poly-cli` 不可用 |
-| 根清单版本 | `0.0.0` | 不能直接发布 |
-| 发布审计 | 未执行 `cargo package` / `cargo publish --dry-run` | T-M9-45 未关闭 |
+| 根清单版本 | `1.12.0` | 已与最新 tag 对齐 |
+| 发布审计 | `cargo package --list` 9/9 通过；`cargo publish --dry-run` 被 `publish = false` 拒绝 | 审计已完成，实际发布关闭 |
+| 名称可用性 | `poly-cli`、`poly-core` 已被他人占用 | 发布前需改名或取得所有权 |
+| crates.io token | 仓库与 CI 均无 | 未配置发布 secret |
 | 安装入口 | 源码路径 / GitHub Release | 当前唯一受支持路径 |
 
-结论：本文发布时，所有 workspace crate 都是 `publish = false`；在维护者对 T-M9-45 的版本 / tag 策略与 crate 顺序做出决定前，不要改动该标志，也不要声称支持 crates.io 安装。需要 crates.io 安装时先完成 T-M9-45 审计，再单独提交发布变更。
+结论：审计（T-M9-45）已完成，版本与元数据已就绪，但全部 workspace crate 仍为 `publish = false`，且 `poly-cli` / `poly-core` 名称被占用、无发布 token；在这些维护者决策完成前，不要改动该标志，也不要声称支持 crates.io 安装。细节见 `docs/CRATES-IO.md`。
 
 ## 7. 验证与卸载
 

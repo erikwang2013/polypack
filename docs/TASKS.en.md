@@ -982,11 +982,11 @@
 |---|---|---|
 | M9-E1 | SBOM / build provenance | T-M9-01..03 |
 | M9-E2 | monorepo / multi-app workspace (delivered; ADR 0008 / WORKSPACE / demo script) | T-M9-04..06 |
-| M9-E3 | Incremental release `poly release --changed` | T-M9-07..09 |
-| M9-E4 | Production hot update / OTA channel (T-M9-10/11 delivered; T-M9-12 environment-gated) | T-M9-10..12 |
+| M9-E3 | Incremental release `poly release --changed` (delivered; 5-target savings 73–81%) | T-M9-07..09 |
+| M9-E4 | Production hot update / OTA channel (T-M9-10/11/12 delivered; run 39395255929's windows-updater-real real update / rollback passed) | T-M9-10..12 |
 | M9-E5 | Store metadata pipeline | T-M9-13..15 |
-| M9-E6 | GUI target-matrix view / build history | T-M9-16..18 |
-| M9-E7 | Pre-release device preview matrix | T-M9-19..21 |
+| M9-E6 | GUI target-matrix view / build history (delivered; `app/` Tauri v2; real window environment-gated) | T-M9-16..18 |
+| M9-E7 | Pre-release device preview matrix (T-M9-19/20 delivered; T-M9-21 external) | T-M9-19..21 |
 | M9-P1 | Google Play Instant (retired; row kept, ADR 0006) | T-M9-22..23 |
 | M9-P2 | Snapchat Mini (closed; quarterly review 2027-01-20, ADR 0006) | T-M9-24..25 |
 | M9-P3 | LINE Mini App (delivered: `poly deploy line-liff` deploy mode, ADR 0009) | T-M9-26..27 |
@@ -997,12 +997,14 @@
 | M9-P8 | Nintendo Switch (NDA-gated, ADR 0006) | T-M9-38..39 |
 | M9-D1 | Plugin marketplace distribution decision | T-M9-40..42 |
 | M9-D2 | Remote farm hosting decision | T-M9-43..44 |
-| M9-G1 | CLI distribution (crates.io / GitHub Releases) | T-M9-45..47 |
+| M9-G1 | CLI distribution (GitHub Releases delivered; T-M9-45 audit landed, crates.io publish closed by name conflicts / publish=false) | T-M9-45..47 |
 | M9-G2 | Human external developer trial protocol | T-M9-48..49 |
 | M9-G3 | Environment-slot close-out program | T-M9-50..52 |
 | M9-G4 | MSI real-sample launch test | T-M9-53..54 |
 | M9-G5 | Branch-protection admin bypass (delivered; ENV-18 CLOSED) | T-M9-55 |
 
-> **Wave 2 progress (2026-10-20)**: M9-E2 delivered (`[workspace]`, `--workspace` / `--app`, cache / output isolation, ADR 0008, bilingual WORKSPACE docs, and a demo script); M9-E4 delivered T-M9-10/11 (mechanism matrix + signed manifest + `poly update`), with T-M9-12 real binary update / rollback environment-gated. Platform decisions are settled: M9-P1 is retired, M9-P2 is closed with a quarterly review (2027-01-20), M9-P3 delivers the `poly deploy line-liff` deploy mode (ADR 0009), M9-P4/P5 are conditional, and M9-P6–P8 are NDA-gated; M9-G5 is delivered (ENV-18 `CLOSED`, `enforce_admins=true` + 9 required contexts, verified 2026-10-20).
+> **Wave 2 progress (2026-10-20)**: M9-E2 delivered (`[workspace]`, `--workspace` / `--app`, cache / output isolation, ADR 0008, bilingual WORKSPACE docs, and a demo script); M9-E4 delivered T-M9-10/11 (mechanism matrix + signed manifest + `poly update`), with the T-M9-12 drill harness (`examples/updater-app` + `scripts/drill.ps1`) and the rust-ci `windows-updater-real` job delivered; the first windows-2022 run (run 39395255929) passed. Platform decisions are settled: M9-P1 is retired, M9-P2 is closed with a quarterly review (2027-01-20), M9-P3 delivers the `poly deploy line-liff` deploy mode (ADR 0009), M9-P4/P5 are conditional, and M9-P6–P8 are NDA-gated; M9-G5 is delivered (ENV-18 `CLOSED`, `enforce_admins=true` + 9 required contexts, verified 2026-10-20).
 >
-> **Wave 1 progress (2026-10-20)**: M9-E1 (SBOM + `poly verify --sbom` + receipt `sbom_digest`), M9-E3 (`--changed`; T-M9-09 pending), M9-E5 (store metadata), M9-E6 history (T-M9-16/17; GUI T-M9-18 deferred), M9-G1 (install script / signing / install-smoke; crates.io T-M9-45 still open), M9-G2 (protocol; human T-M9-49 external), M9-G3 (owner / validator; T-M9-51 external), M9-G4 (sample / CI; Windows first run passed, ENV-01 CLOSED), and M9-D1/D2 decisions are recorded; platform decisions and G5 are in the Wave 2 progress note. External items are not marked ✅.
+> **M9 close-out progress (2026-10-20)**: E3 T-M9-09 (5-target backend calls 5→1, wall clock 73–81%), E4 T-M9-12 drill harness and CI (`examples/updater-app`; windows-2022 run 39395255929 passed), E6 GUI (`app/` Tauri v2 matrix/detail), E7 T-M9-19/20 (device-farm matrix + `poly preview --dry-run`; ENV-20 real devices external), G1 T-M9-45 (workspace 1.12.0, metadata, `cargo package --list` 9/9; `poly-cli` / `poly-core` name conflicts and `publish=false` keep publish closed), `poly retry|verify --workspace/--app`, `publish.rs` split into submodules, P3 LINE deploy mode, G5 closed, and P1/P2/P4–P8 decisions settled. T-M9-21 / T-M9-49 / T-M9-51 and the actual crates.io publish remain external.
+>
+> **Wave 1 progress (2026-10-20)**: M9-E1 (SBOM + `poly verify --sbom` + receipt `sbom_digest`), M9-E3 (`--changed` + 5-target measurement, see RELEASE-CHANGED), M9-E5 (store metadata), M9-E6 history and GUI (T-M9-16/17 + T-M9-18 `app/`; real window environment-gated), M9-G1 (install script / signing / install-smoke; T-M9-45 audit landed, crates.io publish closed), M9-G2 (protocol; human T-M9-49 external), M9-G3 (owner / validator; T-M9-51 external), M9-G4 (sample / CI; Windows first run passed, ENV-01 CLOSED), and M9-D1/D2 decisions are recorded; platform decisions and G5 are in the Wave 2 progress note. External items are not marked ✅.

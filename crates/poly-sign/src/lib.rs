@@ -17,6 +17,7 @@
 pub mod android;
 pub mod artifact;
 pub mod error;
+mod gpg;
 pub mod harmony;
 pub mod inject;
 pub mod ios;

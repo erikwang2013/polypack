@@ -64,12 +64,12 @@ This document covers 22 candidates: 7 incubation items, 8 planned platforms, 2 o
 
 ### M9-E3 · Incremental release `poly release --changed`
 
-- Status: candidate · partially delivered (T-M9-07/08 delivered 2026-10-20; the T-M9-09 CI example and measured savings are pending).
+- Status: candidate · delivered (T-M9-07/08/09 delivered 2026-10-20; the five-target measurement is in [RELEASE-CHANGED.en.md](RELEASE-CHANGED.en.md)).
 - Trigger: multi-target CI release time becomes a bottleneck, or a repository with ≥ 5 targets releases at least weekly.
 - Why: `poly release` only accepts target / repo / credential / dry-run (`Args` in `crates/poly-cli/src/release.rs`) with no change detection; the existing no-op only compares a receipt `manifest_digest` inside one target, so CI still builds every target.
 - Goals: skip unchanged targets based on cache keys or receipt digests and emit stable skipped events and exit codes, cutting multi-target CI time. Non-goals: incremental compilation, partial artifact upload inside one target, changing release receipt semantics.
 - Design sketch: `--changed` is implemented: after `prepare`, compare the receipt `cache_key` (currently equal to `manifest_digest`) with a `manifest_digest` fallback, plus repo root and repo kind; a hit emits a distinct `release-skipped` event, does not write the repo, does not rewrite the receipt, and does not increment `runs`; `key_source` names the fallback path. `--since <ref>` returns `E_PLAN_0002` because release has no per-target source/package mapping, with a hint to use `--changed` or pre-filter `--target`. Integration points: `crates/poly-cli/src/release.rs`, `release/report.rs`, `release/tests.rs`, `poly-cli/tests/release.rs`. Alternatives: `git diff` detection (fragile across repos/generated files), mtime (unreliable).
-- Deliverables: `--changed` and `--since`; receipt `cache_key` field; skipped JSON contract; CI example and measured savings.
+- Deliverables: `--changed` and `--since` (delivered); receipt `cache_key` field (delivered); skipped JSON contract (delivered); CI example and measured savings (delivered: backend calls 5→1, wall clock saved 73–81%).
 - Risks and mitigations: missing cache-key input causes a missed release → single-source key construction plus change-input table tests; old receipts lack `cache_key` → explicit warning and digest fallback; skipped mistaken for a successful release → strictly separate skipped and published events.
 - Decisions: use the cache key or the receipt digest as the primary key; whether `--changed` is on by default.
 - First step: write a read-only prototype in `crates/poly-cli/src/release.rs` that prints the current key and receipt key per target.
@@ -82,12 +82,12 @@ This document covers 22 candidates: 7 incubation items, 8 planned platforms, 2 o
 
 ### M9-E4 · Production hot update / OTA channel
 
-- Status: candidate · partially delivered (T-M9-10/11 delivered; the T-M9-12 real Tauri install / rollback drill is environment-gated).
+- Status: candidate · delivered (T-M9-10/11/12 delivered; the windows-2022 `windows-updater-real` real update / rollback passed in run 39395255929).
 - Trigger: the first users ask for online updates and the target platform allows a self-managed update channel.
 - Why: the pipeline ends at publish; there is no manifest, signature, staged rollout, or rollback semantics after release. Mechanisms differ per platform (Tauri updater, Play In-App Updates, App Store phased release, mini-program version management), so one package cannot cover all.
 - Goals: define a signed update manifest with channel / rollback semantics, first for self-hosted Tauri targets, plus a per-platform mechanism matrix. Non-goals: generic binary deltas, bypassing store review, promising self-update for every target.
 - Design sketch: `poly update manifest --channel <name>` is implemented: validate channel/version/platform/base URL/pub_date, select a unique artifact and embed its Tauri `.sig`, emit a deterministic Tauri v2 `latest.json` (sorted keys, two spaces, trailing newline), produce a GPG detached signature with `GpgSigner`, and retain `<version>.json` / `.sig` for rollback; `poly update check` validates the schema and optionally verifies with a trust root. The mechanism matrix and source dates are in [OTA.en.md](OTA.en.md). Integration points: `crates/poly-cli/src/update.rs`, `update/manifest.rs`, `crates/poly-sign`. Alternatives: documentation only, or leave everything to vendor toolchains.
-- Deliverables: mechanism matrix (delivered); update manifest schema and signature (delivered); real Tauri self-hosted install / rollback drill (environment-gated, not run); rollback runbook (delivered, see [OTA.en.md](OTA.en.md)).
+- Deliverables: mechanism matrix (delivered); update manifest schema and signature (delivered); the real Tauri self-hosted install / rollback drill harness and CI job (delivered and passing its first run: run 39395255929, see `examples/updater-app`); rollback runbook (delivered, see [OTA.en.md](OTA.en.md)).
 - Risks and mitigations: signing key leakage → reuse the reference model and one-shot signing environment; uncontrolled rollout → manifest supports percentage/allowlist but only one channel first; store policy changes → matrix records source dates and does not hard-code.
 - Decisions: which update channels GA supports; whether update signing reuses the release key; whether to offer a hosted manifest service.
 - First step: research each platform mechanism and write the matrix with three categories: self-updatable / store-only / not updatable.
@@ -96,7 +96,7 @@ This document covers 22 candidates: 7 incubation items, 8 planned platforms, 2 o
 | --- | --- | --- | --- | --- | --- |
 | T-M9-10 | Per-platform update mechanism matrix | researcher | — | 3 | Covers Tauri / Play / App Store / mini programs / self-hosted; each row has an official source and date |
 | T-M9-11 | Manifest schema, signing, and rollback design | architect | T-M9-10 | 4 | Versioned schema; signing and verification path explicit; rollback steps drillable |
-| T-M9-12 | Tauri self-hosted channel prototype | coder | T-M9-11 | 6 | One real drill each for update detection, signature verification, update, and rollback |
+| T-M9-12 ✅ | Tauri self-hosted channel prototype | coder | T-M9-11 | 6 | One real drill each for update detection, signature verification, update, and rollback (run 39395255929) |
 
 ### M9-E5 · Store metadata pipeline
 
@@ -118,12 +118,12 @@ This document covers 22 candidates: 7 incubation items, 8 planned platforms, 2 o
 
 ### M9-E6 · GUI target matrix view / build history
 
-- Status: candidate · partially delivered (T-M9-16/17 delivered 2026-10-20; the T-M9-18 GUI is deferred because `app/` is not tracked, [ADR 0007](../decisions/0007-external-and-ui-decisions.md)).
+- Status: candidate · delivered (T-M9-16/17 and T-M9-18 delivered 2026-10-20; the GUI now lives in `app/` (Tauri v2 + static frontend), satisfying ADR 0007's tracked-`app/` condition; real Tauri window launch is environment-gated).
 - Trigger: the M1 Tauri pipeline works and the `app/` console skeleton lands; or users explicitly ask for a visual build history.
-- Why: README describes `app/` as the target shape of the poly-gui console, but the directory is not tracked in the repository; `BuildEvent` (`crates/poly-core/src/events.rs`) only goes to stdout / JSON Lines with no persistent history, so "when did this target last build successfully" is unanswerable.
+- Why: README describes `app/` as the target shape of the poly-gui console, but the directory was previously untracked; `BuildEvent` (`crates/poly-core/src/events.rs`) only goes to stdout / JSON Lines with no persistent history, so "when did this target last build successfully" is unanswerable.
 - Goals: persist build events locally and show a target × recent-build matrix plus per-build details. Non-goals: multi-user server, cloud sync, remote farm scheduling UI.
-- Design sketch: `HistoryRecord` (schema_version, build_id, ts, target, event, status, duration, artifact digest, error code) is written to `.polypack/history/events.jsonl`, rotating at 5 MiB / 10,000 records while keeping the newest records; paths are redacted to project-relative form before writing. `poly history [--target ID] [--limit N] [--json]` provides per-target aggregation; the GUI matrix/detail view (T-M9-18) waits for `app/`. Integration points: `crates/poly-core/src/events.rs`, `crates/poly-cli/src/build.rs`, `crates/poly-cli/src/history.rs`. Alternatives: parse CI logs (unreliable), SQLite (strong queries but too heavy for v1).
-- Deliverables: history write and rotation (delivered); query / aggregation command (delivered); matrix and detail views (deferred); privacy note (path redaction, delivered).
+- Design sketch: `HistoryRecord` (schema_version, build_id, ts, target, event, status, duration, artifact digest, error code) is written to `.polypack/history/events.jsonl`, rotating at 5 MiB / 10,000 records while keeping the newest records; paths are redacted to project-relative form before writing. `poly history [--target ID] [--limit N] [--json]` provides per-target aggregation; the `app/` Tauri command `history_records` reuses the same schema and redacts again on read, and the frontend renders the target matrix, per-target details, and an empty-state guide. Integration points: `crates/poly-core/src/events.rs`, `crates/poly-cli/src/build.rs`, `crates/poly-cli/src/history.rs`, `app/`. Alternatives: parse CI logs (unreliable), SQLite (strong queries but too heavy for v1).
+- Deliverables: history write and rotation (delivered); query / aggregation command (delivered); matrix and detail views (delivered, `app/`); privacy note (path redaction, delivered).
 - Risks and mitigations: event stream contains sensitive paths → redact before writing and keep relative paths only; unbounded history → count and size caps; GUI and CLI drift → one schema and golden samples.
 - Decisions: JSONL or SQLite; default retention; whether absolute host paths are recorded.
 - First step: define a persistable `HistoryRecord` schema in `crates/poly-core/src/events.rs` and share it between `poly build --json` and file writes.
@@ -136,20 +136,20 @@ This document covers 22 candidates: 7 incubation items, 8 planned platforms, 2 o
 
 ### M9-E7 · Pre-release device preview matrix
 
-- Status: candidate · unscheduled; decision recorded: build-vs-buy research first (T-M9-19); no device-farm code at this stage ([ADR 0007](../decisions/0007-external-and-ui-decisions.md)).
+- Status: candidate · partially delivered (the T-M9-19 research matrix and T-M9-20 `DevicePool` / `DeviceLease` + `poly preview --dry-run` were delivered 2026-10-20, see [DEVICE-PREVIEW.en.md](DEVICE-PREVIEW.en.md); the T-M9-21 real-device drill is external environment-gated and is not marked ✅; ADR 0007's "no device-farm code at this stage" is superseded by the dry-run protocol, real execution is still not wired).
 - Trigger: M4 TV or M7 wearable smoke hits a device bottleneck, or store preview / real-device regression blocks releases.
 - Why: `poly smoke` and platform structure checks can SKIP without devices, but there is no device pool, lease, install/launch screenshot, or log archive; the pre-release device matrix is fully manual.
 - Goals: define a device pool and preview job model, then install, launch, screenshot, and collect logs on real devices / simulators with archived evidence. Non-goals: a full device-farm product, unattended review, promising devices for every target.
-- Design sketch: extend the farm protocol (`crates/poly-cli/src/farm.rs`, `docs/FARM.md`) with `DevicePool` / `DeviceLease` and job kind `preview`; providers may be Firebase Test Lab, BrowserStack, AWS Device Farm, or self-hosted; artifacts go to `.polypack/preview/<target>/<device>/`. Integration points: `crates/poly-cli/src/smoke.rs`, `.github/workflows/tv-smoke.yml`, `.github/workflows/wear-smoke.yml`. Alternatives: pure manual QA, or cloud device farms without protocol integration.
-- Deliverables: device pool model and protocol extension; preview CLI; real preview drill for 2 targets; cost and retention policy.
+- Design sketch: `DevicePool` / `DeviceLease` / `CleanupPolicy` and `poly preview --dry-run` are implemented (deterministic plan, lease timeout, cleanup semantics, `preview/v1` + `farm/v1` vocabulary) with no network or device access; the vendor matrix and build-vs-buy are in [DEVICE-PREVIEW.en.md](DEVICE-PREVIEW.en.md). Providers may be Firebase Test Lab, BrowserStack, AWS Device Farm, or self-hosted; artifacts go to `.polypack/preview/<target>/<device>/`. Real device execution remains the external T-M9-21 item.
+- Deliverables: device pool model and protocol extension (delivered); preview CLI (delivered, dry-run); real preview drill for 2 targets (external); cost and retention policy (matrix/policy delivered).
 - Risks and mitigations: rental cost → on-demand single leases first, no standing pool; toolchain differences → isolate behind a provider adapter; screenshots may contain user data → run fixture apps only and clean up automatically.
 - Decisions: self-host or buy a cloud device farm; evidence retention and access control.
 - First step: research 3 cloud device farms' APIs, prices, and coverage, and produce a build-vs-buy conclusion.
 
 | Task | Title | Role | Depends | Days | Acceptance |
 | --- | --- | --- | --- | --- | --- |
-| T-M9-19 | Device farm research and cost model | researcher | — | 3 | API/price/coverage comparison for 3 vendors; includes self-hosted TCO |
-| T-M9-20 | DevicePool / DeviceLease protocol extension | architect | T-M9-19 | 4 | Lease, timeout, and reclamation semantics explicit; compatible with farm protocol v1 |
+| T-M9-19 ✅ | Device farm research and cost model | researcher | — | 3 | API/price/coverage comparison for 3 vendors; includes self-hosted TCO |
+| T-M9-20 ✅ | DevicePool / DeviceLease protocol extension | architect | T-M9-19 | 4 | Lease, timeout, and reclamation semantics explicit; compatible with farm protocol v1 |
 | T-M9-21 | Two-target preview drill | coder | T-M9-20 | 6 | One Android and one TV device install/launch/screenshot; failures have logs and stable error codes |
 
 ## 3. Planned platforms (8 without a TargetSpec)
@@ -365,21 +365,21 @@ This document covers 22 candidates: 7 incubation items, 8 planned platforms, 2 o
 
 ### M9-G1 · CLI distribution to crates.io / GitHub Releases
 
-- Status: candidate · partially landed (GitHub Releases, the install script, optional secret-gated signing, and install-smoke have landed; the crates.io release audit, T-M9-45, is still open).
+- Status: candidate · partially landed (GitHub Releases + install script + signing / install-smoke landed; the T-M9-45 audit landed: workspace 1.12.0, crate metadata, `cargo package --list` 9/9; the actual crates.io publish is closed by `poly-cli` / `poly-core` name conflicts and `publish = false`).
 - Trigger: GA release; external users want `poly` without a Rust toolchain.
-- Why: the root `Cargo.toml` version is `0.0.0`, `crates/poly-cli/Cargo.toml` declares the bin name `poly`, and the repository has `repository` metadata; previously there was no release workflow, so users could only build from source. `.github/workflows/release.yml` now builds all three hosts on a `v*` tag and attaches `SHA256SUMS.txt`; `scripts/install.sh` (mandatory SHA-256 + optional strict minisign verification), bilingual `docs/INSTALL`, secret-gated signing, and an install-smoke job have landed. The crates.io release audit (T-M9-45) is still open.
+- Why: the root `Cargo.toml` version is `0.0.0`, `crates/poly-cli/Cargo.toml` declares the bin name `poly`, and the repository has `repository` metadata; previously there was no release workflow, so users could only build from source. `.github/workflows/release.yml` now builds all three hosts on a `v*` tag and attaches `SHA256SUMS.txt`; `scripts/install.sh` (mandatory SHA-256 + optional strict minisign verification), bilingual `docs/INSTALL`, secret-gated signing, and an install-smoke job have landed. `docs/CRATES-IO` records the publish order, metadata, and blockers: `poly-cli` and `poly-core` are already taken (rename or obtain ownership), and every crate is still `publish = false`.
 - Goals: provide verifiable crates.io installation and GitHub Releases binaries with checksums and signatures. Non-goals: Homebrew / Scoop / apt repositories in v1.
-- Design sketch: first audit all publishable crates in dependency order with `cargo package` / `cargo publish --dry-run`; GitHub Actions builds linux x86_64 / aarch64, macOS x86_64 / aarch64, and Windows x86_64; publish `SHA256SUMS` and a GPG/minisign signature; the installer verifies before writing. The GitHub Releases leg has landed in minimal form (three-host build + `SHA256SUMS`); signing and the installer are still pending. Integration points: root `Cargo.toml`, `crates/poly-cli/Cargo.toml`, `.github/workflows/`. Alternatives: GitHub Releases only (partially landed), crates.io only (requires Rust).
-- Deliverables: release inventory and crate order; cross-platform build workflow (landed); checksums (landed) / signatures (pending); installer and bilingual docs.
-- Risks and mitigations: crate name / binary name `poly` collision → check ownership first and prepare a fallback name; version 0.0.0 cannot publish → bump to 1.0.0 and tag before the first release; supply chain → signatures plus reproducible-build notes.
+- Design sketch: first audit all publishable crates in dependency order with `cargo package` / `cargo publish --dry-run`; GitHub Actions builds linux x86_64 / aarch64, macOS x86_64 / aarch64, and Windows x86_64; publish `SHA256SUMS` and a GPG/minisign signature; the installer verifies before writing. The audit is complete (`cargo package --list` 9/9; `cargo publish --dry-run` refused by `publish = false`); the GitHub Releases leg has landed (three-host build + `SHA256SUMS` + secret-gated minisign signing + install-smoke), and the installer and bilingual docs have landed. crates.io uploads stay closed pending maintainer decisions on names and a token. Integration points: root `Cargo.toml`, `crates/poly-cli/Cargo.toml`, `.github/workflows/`, `docs/CRATES-IO`. Alternatives: GitHub Releases only (landed), crates.io only (requires Rust; blocked).
+- Deliverables: release inventory and crate order (landed, `docs/CRATES-IO`); cross-platform build workflow (landed); checksums / signatures (landed, signing secret-gated); installer and bilingual docs (landed); actual crates.io publishing (blocked: name conflicts, `publish = false`, no token).
+- Risks and mitigations: crate name / binary name `poly` collision → ownership checked and fallback names prepared (`polypack-cli` / `polypack-engine`); the version was 0.0.0 → now 1.12.0 aligned with the latest tag; supply chain → signatures plus reproducible-build notes.
 - Decisions: publish to both crates.io and Releases; whether to rename on a binary collision.
 - First step: run `cargo package --list` and `cargo publish --dry-run` to list crate metadata that blocks release.
 
 | Task | Title | Role | Depends | Days | Acceptance |
 | --- | --- | --- | --- | --- | --- |
-| T-M9-45 | Crate release audit and version policy | release | — | 2 | All publishable crates pass `--dry-run`; version and tag policy documented |
-| T-M9-46 | Cross-platform Release workflow and signing | release + coder | T-M9-45 | 5 | Artifacts downloadable on all three hosts; SHA256SUMS and signature verify |
-| T-M9-47 | Installer and docs | docs + tester | T-M9-45, T-M9-46 | 2 | Clean container install succeeds and runs `poly --version`; bilingual docs reproduce |
+| T-M9-45 ✅ | Crate release audit and version policy | release | — | 2 | Audit complete: metadata 9/9, `cargo package --list` 9/9, version 1.12.0; actual publishing closed by name conflicts / `publish = false` / no token |
+| T-M9-46 ✅ | Cross-platform Release workflow and signing | release + coder | T-M9-45 | 5 | Artifacts downloadable on all three hosts; SHA256SUMS and secret-gated signature verify |
+| T-M9-47 ✅ | Installer and docs | docs + tester | T-M9-45, T-M9-46 | 2 | install-smoke runs `poly --version`; bilingual INSTALL reproduces |
 
 ### M9-G2 · Human external developer trial protocol
 
@@ -479,9 +479,8 @@ Ordered by "repair GA credibility first, then high-leverage engineering, then ex
 
 ## 7. Not now
 
-- **M9-E2 monorepo**: no multi-app user; introducing `[workspace]` early expands the config compatibility surface.
-- **M9-E4 OTA**: mechanisms differ widely and support burden is high; research only until user demand exists.
-- **M9-E6 GUI / M9-E7 device preview**: `app/` does not exist yet and CLI `--json` is enough for automation; devices and cloud farms are costly, so keep structure checks and a manual matrix for now.
+> These formerly deferred items have moved: E2, E3, E5, and E6 are delivered; E7's protocol / dry run is delivered (T-M9-21 real devices external); E4's manifest / signing and the T-M9-12 drill harness and CI job are delivered, with the first windows-2022 run passing (run 39395255929).
+
 - **M9-D1 official registry**: too few plugins; even a decentralized index waits for demand.
 - **M9-D2 hosted farm**: conflicts with "do not host user code and keys"; needs a separate business and compliance review.
 - **M9-P1 Google Play Instant**: the platform is discontinued; no return on investment.

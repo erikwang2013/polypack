@@ -271,3 +271,89 @@ jobs:
             ${{ runner.temp }}/poly-msi-real/
           if-no-files-found: warn
           retention-days: 30
+
+  # T-M9-12：真实 Tauri v2 自托管更新 / 回滚演练。
+  #
+  # 每次运行现场生成一对一次性 Tauri updater 密钥（私钥只在
+  # `%RUNNER_TEMP%\poly-updater-drill-secrets`，不可上传），构建 0.1.0 / 0.1.1
+  # 两个 NSIS 安装器与 updater 签名，用仓库自身的 `poly update manifest` 生成
+  # 并 GPG 签名的静态 `latest.json`，本地 HTTP 服务模拟自托管渠道：
+  # 安装 0.1.0 → 应用内检查 / 验签 / 安装 0.1.1 → 恢复 0.1.0 清单 → 应用内回滚。
+  # 脚本失败带稳定 `POLY_UPDATER_DRILL_0001..0009` 码；CI 不允许 SKIP。
+  windows-updater-real:
+    name: windows-updater-real / update-rollback
+    runs-on: windows-2022
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Rust toolchain（stable）
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: 构建缓存
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            . -> target
+            examples/updater-app/src-tauri -> examples/updater-app/src-tauri/target
+
+      # 演练用 `python -m http.server` 模拟自托管渠道；显式装 Python 3 避免
+      # windows-2022 的 Store 别名/路径差异。
+      - name: 安装 Python 3（本地更新渠道）
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # Tauri CLI 提供 `signer generate` 与 `build --bundles nsis`；npm 分发的是
+      # 预编译二进制，避免在 CI 里 cargo install 的长时间编译。
+      - name: 安装 Tauri CLI 2.x（npm 预编译）
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          npm install --global '@tauri-apps/cli@^2'
+          tauri --version
+
+      # 清单签名复用宿主现有的 gpg；Git for Windows 的 MSYS 版由 poly-sign 自动
+      # 转换路径参数，无需安装 Gpg4win（choco 安装器在 windows-2022 上会挂起）。
+      - name: 检查 GnuPG（清单签名）
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $gpg = Get-Command gpg -ErrorAction Stop
+          Write-Host "gpg: $($gpg.Source)"
+          gpg --version
+
+      - name: 构建 poly CLI（release）
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          cargo build -p poly-cli --release
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: 真实更新 / 回滚演练
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $log = Join-Path $env:RUNNER_TEMP 'updater-drill.log'
+          pwsh -NoProfile -ExecutionPolicy Bypass -File examples/updater-app/scripts/drill.ps1 2>&1 |
+            Tee-Object -FilePath $log
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          # 不得把跳过当通过：必须有完整的 PASS 证据行。
+          if (-not (Select-String -Path $log -Pattern 'POLY_UPDATER_DRILL_RESULT: PASS' -SimpleMatch)) {
+            throw 'windows-updater-real：未产出 PASS 证据'
+          }
+          if (Select-String -Path $log -Pattern 'POLY_UPDATER_DRILL_RESULT: FAIL' -SimpleMatch) {
+            throw 'windows-updater-real：演练失败'
+          }
+
+      - name: 归档清单 / 签名 / 摘要 / marker / 日志
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-updater-real-evidence
+          # `poly-updater-drill-secrets`（一次性私钥与 GPG home）刻意不在路径内。
+          path: |
+            ${{ runner.temp }}/updater-drill.log
+            ${{ runner.temp }}/poly-updater-drill/
+          if-no-files-found: warn
+          retention-days: 30

@@ -44,6 +44,7 @@ Environment slots are tracked separately from code gaps: a slot closes with envi
 | ENV-17 | T-M8-09 | Real S3 / OSS round-trip + farm second run | OPEN | CI | infra + release-sec | §3 ENV-17 | — |
 | ENV-18 | T-M2-12 | Branch protection admin bypass | CLOSED | HUMAN | maintainer | §3 ENV-18 | secret-scan |
 | ENV-19 | GA §7.2 | Human external developer trial | OPEN | HUMAN | docs | §3 ENV-19 | — |
+| ENV-20 | T-M9-21 | Real-device preview (Android + Android TV) | OPEN | HOST | core + infra | §3 ENV-20 | — |
 
 Owners use only five roles: `release-sec` / `core` / `docs` / `infra` / `maintainer`; combinations use ` + `. The evidence column points at the §3 run card; the real evidence bundle is still archived per §4.2 and this table never fabricates evidence. Real per-slot close-out remains external work; unclosed slots keep their current status.
 ## 3. Slot run cards
@@ -412,6 +413,21 @@ poly build --config <app>/polypack.toml --target pocket-notes
 - Next action: after GA release, recruit 3–5 people, collect reports with the template, and write blockers back into GA / README / templates.
 - Blocker: requires real external people and time; an agent cannot stand in. Execution mode: HUMAN; not in CI.
 
+### ENV-20 · Real-device preview (Android + Android TV)
+
+- Linked task: T-M9-21 (device preview matrix). Gap: `poly preview --dry-run` is delivered (DevicePool / DeviceLease, deterministic plan, timeout / cleanup), but a real lease, install, launch, screenshot, logs, and cleanup have not run.
+- Environment / toolchain / credentials: two real devices (Android phone + Android TV) or equivalent cloud devices; `adb`; fixture APK; evidence directory; cloud vendor account if using a farm.
+- Gates: none for `poly preview --dry-run`; real execution is wired by the provider adapter.
+- Commands:
+```sh
+poly preview --dry-run --target android --device android-phone --device android-tv
+# Real execution commands and provider adapter: docs/DEVICE-PREVIEW.en.md §8.1
+```
+- Evidence: plan JSON, APK blake3, `adb devices -l` / API level, install / launch exit codes, two PNGs + SHA-256, logcat / crash, post-uninstall device list.
+- Status: `OPEN`. The dry-run is delivered; real execution is not wired. Owner: core + infra.
+- Next action: wire the provider adapter and run on two real devices; close only when both pass.
+- Blocker: needs real devices / a cloud account and adb authorization. Execution mode: HOST / cloud device farm.
+
 ## 4. Close-out protocol
 
 ### 4.1 Roles and responsibilities
@@ -476,6 +492,7 @@ Suggested evidence path: `env-slots/<ENV-XX>/<UTC timestamp>/`. The repository d
 | ENV-17 | — | — | No S3 job |
 | ENV-18 | `.github/workflows/secret-scan.yml` | `scan` (3 hosts) | Supplies required checks; admin bypass was closed on 2026-10-20 and is not a workflow setting |
 | ENV-19 | — | — | Human trial, no workflow |
+| ENV-20 | — | — | No preview job; `poly preview --dry-run` is delivered |
 
 ## 6. Not closable in this repo
 
@@ -489,6 +506,7 @@ Suggested evidence path: `env-slots/<ENV-XX>/<UTC timestamp>/`. The repository d
 | ENV-13 (simulator leg) | GUI simulator | Install / launch is a desktop app; verify explicitly does not automate it |
 | ENV-18 | GitHub admin setting | Branch protection is repository-platform config, not code |
 | ENV-19 | External developers | A human trial cannot be replaced by an agent or CI |
+| ENV-20 | Real Android / Android TV devices or a cloud farm | Real install / launch / screenshots need devices, adb authorization, or a vendor account |
 
 ## 7. Open decisions and code gaps
 

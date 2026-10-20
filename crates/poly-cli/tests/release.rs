@@ -522,13 +522,25 @@ fn write_deb(root: &Path, target: &str, marker: &str) -> PathBuf {
     path
 }
 
-/// 一次性 GPG 私钥 → `env:` 凭据载荷（base64(JSON)）；缺 gpg 时跳过整条测试。
-fn gpg_env_payload(root: &Path) -> Option<String> {
+/// 一次性 GPG 私钥 → `env:` 凭据载荷（base64(JSON)）；缺 gpg 或路径不兼容时跳过整条测试。
+fn gpg_env_payload() -> Option<String> {
     if !poly_bundle::exec::tool_present("gpg") {
         eprintln!("SKIP：宿主没有 gpg，5 目标 --changed 真跑跳过");
         return None;
     }
-    let home = root.join("gnupg");
+    struct HomeGuard(PathBuf);
+    impl Drop for HomeGuard {
+        fn drop(&mut self) {
+            let _ = std::fs::remove_dir_all(&self.0);
+        }
+    }
+    // gpg-agent 的 unix socket 路径上限约 104 字节；临时工程路径可能过长（macOS）。
+    #[cfg(unix)]
+    let home = PathBuf::from("/tmp").join(format!("pp-release-bench-gpg-{}", std::process::id()));
+    #[cfg(not(unix))]
+    let home = std::env::temp_dir().join(format!("pp-release-bench-gpg-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&home);
+    let _home = HomeGuard(home.clone());
     std::fs::create_dir_all(&home).expect("GNUPGHOME 可建");
     #[cfg(unix)]
     {
@@ -544,6 +556,15 @@ fn gpg_env_payload(root: &Path) -> Option<String> {
             .output()
             .expect("gpg 可执行")
     };
+    // Windows 的 MSYS gpg 不认 Windows 路径：探测失败时明确 SKIP，不伪造 PASS。
+    let probe = gpg(&["--list-keys"]);
+    if !probe.status.success() {
+        eprintln!(
+            "SKIP：gpg 在此宿主不可用，5 目标 --changed 真跑跳过：{}",
+            String::from_utf8_lossy(&probe.stderr).trim()
+        );
+        return None;
+    }
     let generated = gpg(&[
         "--pinentry-mode",
         "loopback",
@@ -608,7 +629,7 @@ fn json_events(stdout: &[u8]) -> Vec<serde_json::Value> {
 #[test]
 fn five_target_changed_run_publishes_one_and_skips_four() {
     let root = fixture_five_deb("changed-five");
-    let Some(payload) = gpg_env_payload(&root) else {
+    let Some(payload) = gpg_env_payload() else {
         let _ = std::fs::remove_dir_all(&root);
         return;
     };

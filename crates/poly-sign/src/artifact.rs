@@ -71,29 +71,30 @@ impl ArtifactVerifier {
 ///
 /// `display` 是错误里展示的命令名（不含临时路径）；stderr 中的 home 绝对路径先脱敏。
 fn run(home: &Path, args: &[OsString], display: &str) -> Result<(), SignError> {
+    let (program, msys) = crate::gpg::program();
+    let home_arg = crate::gpg::path_arg(home.as_os_str(), msys);
     let mut full: Vec<OsString> = vec![
         "--batch".into(),
         "--no-options".into(),
         "--homedir".into(),
-        home.into(),
+        home_arg.clone(),
     ];
-    full.extend_from_slice(args);
-    let output =
-        Command::new("gpg")
-            .args(&full)
-            .output()
-            .map_err(|source| SignError::ToolMissing {
-                tool: "gpg".to_string(),
-                hint: format!(
-                    "安装 GnuPG（Debian/Ubuntu: apt install gnupg；Fedora: dnf install gnupg2）\
+    full.extend(args.iter().map(|arg| crate::gpg::path_arg(arg, msys)));
+    let output = Command::new(program)
+        .args(&full)
+        .output()
+        .map_err(|source| SignError::ToolMissing {
+            tool: "gpg".to_string(),
+            hint: format!(
+                "安装 GnuPG（Debian/Ubuntu: apt install gnupg；Fedora: dnf install gnupg2）\
                  （底层错误：{source}）"
-                ),
-            })?;
+            ),
+        })?;
     if output.status.success() {
         return Ok(());
     }
     let stderr = String::from_utf8_lossy(&output.stderr);
-    let stderr = stderr.replace(&home.to_string_lossy().into_owned(), "<临时目录>");
+    let stderr = stderr.replace(&home_arg.to_string_lossy().into_owned(), "<临时目录>");
     Err(SignError::ToolFailed {
         command: display.to_string(),
         status: output

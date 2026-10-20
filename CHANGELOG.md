@@ -10,6 +10,21 @@ Notable changes are recorded here; since v1.0.0, tags and releases follow `vX.Y.
 - **M9-P3 LINE LIFF 部署模式**：新增 `poly deploy line-liff --dir <dir> --config line-liff.toml`（部署模式，非 TargetSpec）：校验 `schema=1`、`liff_id` / `endpoint` / `channel_id` / `scopes`、Endpoint 必须 HTTPS 且不含 fragment，输出 5 条 Console 人工步骤；始终 dry-run，不触网、不上传、不生成平台包；错误码 `poly::E_DEPLOY_0001`；新增 ADR 0009 与双语 `docs/LINE-DEPLOY`，8 个集成测试通过。
 
 *M9-P3 LINE LIFF deploy mode: new `poly deploy line-liff --dir <dir> --config line-liff.toml` (a deploy mode, not a TargetSpec) validating `schema=1`, `liff_id` / `endpoint` / `channel_id` / `scopes`, and an HTTPS Endpoint without a fragment, then printing 5 manual Console steps; always a dry run with no network, upload, or platform package; error code `poly::E_DEPLOY_0001`; new ADR 0009 and bilingual `docs/LINE-DEPLOY`; 8 integration tests pass.*
+- **M9-E3 实测（T-M9-09）**：`scripts/bench-release-changed.sh` 用 5 目标夹具测量 `--changed`：首跑 5 次后端发布 / 8366 ms，二跑 1 次发布 + 4 次 `release-skipped` / 1549 ms（调用数 5→1，墙钟 −81%；集成测试另一次测量 11743→3163 ms，−73%）；CI 在 Linux 上运行同一夹具并断言调用数 5→1，双语 `docs/RELEASE-CHANGED` 记录口径与限制。
+
+*M9-E3 measurement (T-M9-09): `scripts/bench-release-changed.sh` measures `--changed` on a five-target fixture: the first run makes 5 backend publishes in 8366 ms, the second makes 1 publish + 4 `release-skipped` in 1549 ms (5→1 calls, −81% wall clock; a separate integration-test measurement was 11743→3163 ms, −73%); CI runs the same fixture on Linux and asserts 5→1 calls, with method and limits documented in both `docs/RELEASE-CHANGED` languages.*
+- **M9-E6 GUI（T-M9-18）**：新增 Tauri v2 桌面视图 `app/`，通过 `history_records` command 读取 `.polypack/history/events.jsonl`，提供目标矩阵、单目标最近构建详情与空状态，读取时再次脱敏路径；`bundle.active=false`，不生成安装包；6 项测试与 clippy 通过，真实窗口启动按环境门控披露；双语 `docs/GUI`。
+
+*M9-E6 GUI (T-M9-18): new Tauri v2 desktop view in `app/` that reads `.polypack/history/events.jsonl` via the `history_records` command, with a target matrix, per-target recent-build detail, and an empty state, re-redacting paths on read; `bundle.active=false` so no installer is produced; 6 tests and clippy pass, and real window launch is disclosed as environment-gated; bilingual `docs/GUI`.*
+- **M9-E7 设备预览（T-M9-19/20）**：`preview/v1` 的 `DevicePool` / `DeviceLease` / `CleanupPolicy` 协议与 `poly preview --dry-run`（确定性计划，不租设备、不读凭据、不触网）；四家供应商调研矩阵与 build-vs-buy 建议；T-M9-21 真机安装 / 启动 / 截图仍为外部环境项。
+
+*M9-E7 device preview (T-M9-19/20): the `preview/v1` `DevicePool` / `DeviceLease` / `CleanupPolicy` protocol and `poly preview --dry-run` (deterministic plan; no device lease, credentials, or network); a four-vendor research matrix and build-vs-buy guidance; T-M9-21 real-device install / launch / screenshot remains external.*
+- **M9-G1 crates.io 审计（T-M9-45）**：workspace 版本 `0.0.0` → `1.12.0`（`poly --version` 一致），9 个 crate 元数据齐备、内部 path 依赖补版本，`cargo package --list` 9/9 通过并接入 Linux CI；`poly-cli` / `poly-core` 名称已被占用、全部 crate 仍 `publish = false`、无 token，实际发布保持关闭；双语 `docs/CRATES-IO`。
+
+*M9-G1 crates.io audit (T-M9-45): workspace version `0.0.0` → `1.12.0` (`poly --version` agrees), metadata complete for all nine crates, versions added to internal path dependencies, and `cargo package --list` 9/9 wired into Linux CI; `poly-cli` / `poly-core` names are taken, every crate remains `publish = false`, and no token exists, so actual publishing stays closed; bilingual `docs/CRATES-IO`.*
+- **M9-E4 T-M9-12 更新 / 回滚演练**：新增 `examples/updater-app/`（真实 Tauri v2 样例，含 `--smoke-update` 模式）、`examples/updater-app/scripts/drill.ps1`（一次性 Tauri / GPG 密钥、0.1.0 / 0.1.1 NSIS 安装器与 updater 签名、`poly update manifest` / `check`、本地 HTTP 渠道、安装 → 更新 → 恢复旧清单 → 回滚、证据归档与 `POLY_UPDATER_DRILL_0001..0009`），以及 rust-ci `windows-updater-real` 作业（windows-2022，禁止把 SKIP / 失败当通过，归档证据）；windows-2022 run 39395255929 首跑通过，Linux 侧同时验证了编译、清单签名链路与 workflow 语法。
+
+*M9-E4 T-M9-12 update / rollback drill: adds `examples/updater-app/` (a real Tauri v2 sample with a `--smoke-update` mode), `examples/updater-app/scripts/drill.ps1` (throwaway Tauri / GPG keys, 0.1.0 and 0.1.1 NSIS installers and their updater signatures, `poly update manifest` / `check`, a local HTTP channel, install → update → restore the old manifest → roll back, evidence archiving, and `POLY_UPDATER_DRILL_0001..0009`), and the rust-ci `windows-updater-real` job (windows-2022, never treats SKIP / failure as success, uploads evidence); its first windows-2022 run, 39395255929, passed, while Linux also validated compilation, the manifest-signing path, and workflow syntax.*
 
 ### Changed
 - **M9 平台决策收口（2026-10-20）**：Google Play Instant 标记 retired（保留行，不声明 TargetSpec）；Snapchat Mini 标记 closed 并按季度复审（下次 2027-01-20）；P4 / P5 为条件支持、P6–P8 为 NDA 门控，均链接 ADR 0006；49 目标表行数与 L1–L7 计数不变。
@@ -18,6 +33,17 @@ Notable changes are recorded here; since v1.0.0, tags and releases follow `vX.Y.
 - **M9-G5 分支保护关闭**：GitHub API 核实 `enforce_admins.enabled = true` 与 9 个必需检查上下文（含 3 个 secret-scan 上下文，2026-10-20）；ENV-18 由 `OPEN` 改为 `CLOSED`，TASKS T-M2-12 / T-M9-55 同步。
 
 *M9-G5 branch protection closed: the GitHub API confirms `enforce_admins.enabled = true` and 9 required check contexts (including 3 secret-scan contexts, verified 2026-10-20); ENV-18 moved from `OPEN` to `CLOSED`, with TASKS T-M2-12 / T-M9-55 synced.*
+- **工作区选择器扩展到 `retry` / `verify`**：`poly retry` 与 `poly verify` 接受 `--workspace` / `--app <id>`，与 `poly build` 共用解析与 `E_WS_0001..0004`；单应用路径不变，`docs/WORKSPACE` 双语同步。
+
+*Workspace selectors extended to `retry` / `verify`: `poly retry` and `poly verify` accept `--workspace` / `--app <id>`, sharing resolution and `E_WS_0001..0004` with `poly build`; the single-app path is unchanged, and bilingual `docs/WORKSPACE` is synced.*
+- **内部重构（无行为变更）**：`crates/poly-cli/src/publish.rs`（约 1000 行）拆为 `publish/{args,prepare,metadata,tests}.rs`，`publish.rs` 降至约 260 行；命令、回执与错误码不变。
+
+*Internal refactor (no behavior change): `crates/poly-cli/src/publish.rs` (~1000 lines) is split into `publish/{args,prepare,metadata,tests}.rs`, leaving `publish.rs` at ~260 lines; commands, receipts, and error codes are unchanged.*
+
+### Fixed
+- **Windows MSYS gpg 路径兼容**：`poly-sign` 按 PATH 定位 gpg；命中 Git for Windows 的 MSYS gpg 时把 `--homedir` / `--import` / `--passphrase-file` / 签名载荷等路径参数转为 `/c/...`，并同步转换 `gpgconf --kill` 的 home。`poly update manifest` / `poly update check` / 插件验签在未安装 Gpg4win 的 Windows 上不再因路径解释失败；原生 Gpg4win 与 Linux/macOS 行为不变。
+
+*Windows MSYS gpg path compatibility: `poly-sign` resolves gpg via PATH; when it finds Git for Windows' MSYS gpg, it converts path arguments (`--homedir` / `--import` / `--passphrase-file` / the signing payload) to `/c/...` and does the same for `gpgconf --kill`. `poly update manifest` / `poly update check` / plugin verification no longer fail on path interpretation on Windows without Gpg4win; native Gpg4win and Linux/macOS behavior are unchanged.*
 
 ## [1.12.0] — 2026-10-20
 
