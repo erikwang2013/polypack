@@ -504,3 +504,84 @@ fn changed_skips_matching_receipt_and_publishes_missing_one() {
     assert_eq!(backend.seen.borrow().len(), 3, "skipped 不触仓库");
     let _ = std::fs::remove_dir_all(&root);
 }
+
+/// T-M9-09：5 目标二次 `--changed` 只触达后端 1 次（首跑 5 次），其余 4 个
+/// `release-skipped` 且回执字节零变化。
+#[test]
+fn five_target_changed_run_publishes_one_and_skips_four() {
+    let (root, project) = fixture("changed-five");
+    let targets = [
+        ("fedora", "rpm", "rpm"),
+        ("ubuntu", "deb", "deb"),
+        ("mint", "deb", "deb"),
+        ("freebsd", "pkg", "pkg"),
+        ("netbsd", "pkgsrc", "tgz"),
+    ];
+    let mut first_run = Vec::new();
+    for (target, format, extension) in targets {
+        seed(
+            &root,
+            target,
+            &format!("fixture-0.1.0.{extension}"),
+            target.as_bytes(),
+        );
+        first_run.push(prepared(&root, &project, target, format));
+    }
+    let backend = CountBackend::default();
+    for prepared in &first_run {
+        assert!(matches!(
+            release_changed_with(prepared, &backend),
+            ChangedOutcome::Published(_)
+        ));
+    }
+    assert_eq!(
+        backend.seen.borrow().len(),
+        5,
+        "首跑 5 个目标各 1 次后端调用"
+    );
+
+    // 只改 mint 的产物：第二轮恰 1 个 published + 4 个 skipped。
+    seed(&root, "mint", "fixture-0.1.0.deb", b"mint-v2");
+    let changed = prepared(&root, &project, "mint", "deb");
+    let untouched: Vec<(String, PathBuf, Vec<u8>)> = first_run
+        .iter()
+        .filter(|prepared| prepared.target != "mint")
+        .map(|prepared| {
+            (
+                prepared.target.clone(),
+                prepared.receipt.clone(),
+                std::fs::read(&prepared.receipt).expect("首跑回执存在"),
+            )
+        })
+        .collect();
+
+    let mut published = Vec::new();
+    let mut skipped = 0;
+    let second = first_run
+        .iter()
+        .filter(|prepared| prepared.target != "mint")
+        .chain([&changed]);
+    for prepared in second {
+        match release_changed_with(prepared, &backend) {
+            ChangedOutcome::Published(_) => published.push(prepared.target.clone()),
+            ChangedOutcome::Skipped { .. } => skipped += 1,
+        }
+    }
+    assert_eq!(published, ["mint"], "只有变更目标发布");
+    assert_eq!(skipped, 4, "其余四个目标 skipped");
+    assert_eq!(
+        backend.seen.borrow().len(),
+        6,
+        "第二轮只多 1 次后端调用（5 → 1）"
+    );
+    for (target, receipt, bytes) in &untouched {
+        assert_eq!(
+            &std::fs::read(receipt).expect("回执存在"),
+            bytes,
+            "{target} 的 skipped 回执不得重写"
+        );
+    }
+    assert!(first_run[2].receipt.exists(), "变更前的旧回执永久保留");
+    assert!(changed.receipt.exists(), "变更后的新回执已归档");
+    let _ = std::fs::remove_dir_all(&root);
+}

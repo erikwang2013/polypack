@@ -81,11 +81,13 @@ Signing is an optional release step: the Release workflow signs and uploads `SHA
 | Check | Current state | Consequence |
 | --- | --- | --- |
 | workspace crate `publish` | `false` for every crate | `cargo install poly-cli` does not work |
-| root manifest version | `0.0.0` | cannot be published as-is |
-| release audit | `cargo package` / `cargo publish --dry-run` not run | T-M9-45 remains open |
+| root manifest version | `1.12.0` | aligned with the latest tag |
+| release audit | `cargo package --list` 9/9 passed; `cargo publish --dry-run` refused by `publish = false` | audit complete, actual publishing closed |
+| name availability | `poly-cli` and `poly-core` are taken by others | rename or obtain ownership before publishing |
+| crates.io token | none in the repository or CI | no publishing secret configured |
 | install entry points | source path / GitHub Release | the only supported paths today |
 
-Conclusion: at the time of writing every workspace crate sets `publish = false`; do not change that flag or claim crates.io support until a maintainer decides the T-M9-45 version / tag policy and crate order. To enable crates.io installs, complete the T-M9-45 audit first and land publishing changes separately.
+Conclusion: the T-M9-45 audit is complete and version/metadata are ready, but every workspace crate still sets `publish = false`, the `poly-cli` / `poly-core` names are taken, and there is no publishing token. Until those maintainer decisions are made, do not change the flag or claim crates.io support. See `docs/CRATES-IO.md` for details.
 
 ## 7. Verify and uninstall
 

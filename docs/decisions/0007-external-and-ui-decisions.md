@@ -4,6 +4,10 @@
 - 日期（Date）：2026-10-20
 - 决策者（Deciders）：项目维护者
 
+> **后续更新（2026-10-20）**：本 ADR 记录的决策边界仍然有效，但当时的暂缓理由已被后续交付取代——G5 已核实 `enforce_admins=true`（ENV-18 CLOSED）；T-M9-18 GUI 已在 `app/` 交付（真实窗口环境门控）；T-M9-20 的 `DevicePool` / `DeviceLease` 与 `poly preview --dry-run` 已交付，仅 T-M9-21 真机演练仍为外部项。详见 `docs/GUI.md`、`docs/DEVICE-PREVIEW.md` 与 `docs/INITIATIVES.md`。
+>
+> **Follow-up (2026-10-20)**: the decision boundaries in this ADR still hold, but the deferral reasons have since been superseded — G5 verified `enforce_admins=true` (ENV-18 CLOSED); the T-M9-18 GUI landed in `app/` (real window environment-gated); T-M9-20's `DevicePool` / `DeviceLease` and `poly preview --dry-run` landed, leaving only the T-M9-21 real-device drill external. See `docs/GUI.md`, `docs/DEVICE-PREVIEW.md`, and `docs/INITIATIVES.md`.
+
 > **English abstract**: Three M9 items are decided without writing code. M9-G5 branch protection is an external repository-owner action: apply a ruleset with `enforce_admins=true` and archive evidence; the repository cannot fix it. M9-E6 splits build history into implementable event persistence (T-M9-16/17) and a deferred GUI (T-M9-18) because `app/` is not tracked. M9-E7 device preview starts with build-vs-buy research (T-M9-19); no device-farm or `DevicePool`/`DeviceLease` code is added here. Each item has concrete acceptance and exit criteria below.
 
 ## 背景（Context）

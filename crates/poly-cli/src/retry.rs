@@ -35,6 +35,12 @@ pub struct Args {
     /// 工程配置路径。
     #[arg(long, default_value = "polypack.toml")]
     pub config: PathBuf,
+    /// 重跑工作区根 `[workspace]` 声明的全部成员应用（按声明序）。
+    #[arg(long, conflicts_with = "app")]
+    pub workspace: bool,
+    /// 只重跑工作区中的指定成员应用（id = 成员目录名）。
+    #[arg(long, value_name = "ID", conflicts_with = "workspace")]
+    pub app: Option<String>,
     /// 目标 id（`--from sign` 缺省 android；`--from verify` 缺省全部本机可达目标）。
     #[arg(long = "target", value_name = "ID")]
     pub target: Option<String>,
@@ -82,19 +88,43 @@ pub enum FromStage {
 }
 
 /// 执行 `poly retry`；返回进程退出码。
+///
+/// 选择器：`--workspace` 按声明序重跑全部成员；`--app <id>` 只重跑一个成员；
+/// 两者都不给时走单应用路径，行为不变。
 pub fn run(args: &Args, json: bool) -> Result<i32, Diagnostic> {
-    match args.from {
-        FromStage::Sign => sign(args, json),
-        FromStage::Verify => verify(args, json),
-        FromStage::Publish => publish(args, json),
+    for project in selected_projects(args)? {
+        run_project(&project, args, json)?;
     }
+    Ok(0)
 }
 
-/// `poly retry --from publish`：复用 `poly publish` 的完整通路（同一回执 + 提审幂等状态）。
-///
-/// 中断后重跑同键命令：已受理（journal `Accepted`）→ 只续轮询，不产生第二次提交。
-fn publish(args: &Args, json: bool) -> Result<i32, Diagnostic> {
-    crate::publish::run(&publish_args(args), json)
+/// 选择重跑作用域：单应用 = 装载根配置；`--app` / `--workspace` = 工作区成员
+/// （保留成员的 root / 状态根上下文，绝不退化成成员根上的单应用）。
+fn selected_projects(args: &Args) -> Result<Vec<Project>, Diagnostic> {
+    if !args.workspace && args.app.is_none() {
+        return Ok(vec![project::load(&args.config)?]);
+    }
+    let workspace = poly_core::workspace::discover(&args.config)?;
+    // `select` 只给成员引用：按值复制四字段，保留 root / 工作区根 / app id 上下文。
+    Ok(workspace
+        .select(args.app.as_deref())?
+        .into_iter()
+        .map(|app| Project {
+            root: app.project.root.clone(),
+            config: app.project.config.clone(),
+            workspace_root: app.project.workspace_root.clone(),
+            app_id: app.project.app_id.clone(),
+        })
+        .collect())
+}
+
+/// 单个项目（单应用或工作区成员）的重跑；成员上下文（root / 状态根）原样下传。
+fn run_project(project: &Project, args: &Args, json: bool) -> Result<i32, Diagnostic> {
+    match args.from {
+        FromStage::Sign => sign(project, args, json),
+        FromStage::Verify => crate::verify::run_project(project, &verify_args(args), json),
+        FromStage::Publish => crate::publish::run_project(project, &publish_args(args), json),
+    }
 }
 
 /// `retry` 参数 → `poly publish` 参数（clap 已保证 `--from publish` 时必填项在场）。
@@ -133,23 +163,23 @@ fn publish_args(args: &Args) -> crate::publish::Args {
     }
 }
 
-/// `poly retry --from verify`：复用 `poly verify` 的声明校验器通路，独立重跑。
-fn verify(args: &Args, json: bool) -> Result<i32, Diagnostic> {
-    let verify = crate::verify::Args {
+/// `retry` 参数 → `poly verify` 参数（单应用选择器由外层 `run` 负责）。
+fn verify_args(args: &Args) -> crate::verify::Args {
+    crate::verify::Args {
         config: args.config.clone(),
         reproducible: false,
         targets: args.target.iter().cloned().collect(),
         allow_skipped: false,
         sbom: false,
-    };
-    crate::verify::run(&verify, json)
+        workspace: false,
+        app: None,
+    }
 }
 
 /// `poly retry --from sign`。
-fn sign(args: &Args, json: bool) -> Result<i32, Diagnostic> {
-    let project = project::load(&args.config)?;
+fn sign(project: &Project, args: &Args, json: bool) -> Result<i32, Diagnostic> {
     let target = args.target.as_deref().unwrap_or("android");
-    let (job, spec) = resolve(&project, target)?;
+    let (job, spec) = resolve(project, target)?;
     if spec.id != "android" {
         return Err(Diagnostic::error(
             codes::E_RETRY_0001,
@@ -163,8 +193,9 @@ fn sign(args: &Args, json: bool) -> Result<i32, Diagnostic> {
 
     let input = match &args.input {
         Some(path) => path.clone(),
-        None => crate::sign::unsigned_apk(&project, &spec)
-            .ok_or_else(|| missing_apk(&project, &spec))?,
+        None => {
+            crate::sign::unsigned_apk(project, &spec).ok_or_else(|| missing_apk(project, &spec))?
+        }
     };
     let credential = crate::sign::credential_ref(&job, &spec, args.credential.as_deref())?;
     let request = SignRequest {
@@ -283,25 +314,97 @@ pub(crate) fn parse_credential(
 
 #[cfg(test)]
 mod tests {
+    use std::sync::atomic::{AtomicU32, Ordering};
+
     use super::*;
+
+    /// 临时树：Drop 时整树删除。
+    struct TempTree(PathBuf);
+
+    impl TempTree {
+        fn new(tag: &str) -> Self {
+            static SEQ: AtomicU32 = AtomicU32::new(0);
+            let path = std::env::temp_dir().join(format!(
+                "polypack-retry-selector-{tag}-{}-{}",
+                std::process::id(),
+                SEQ.fetch_add(1, Ordering::Relaxed)
+            ));
+            let _ = std::fs::remove_dir_all(&path);
+            std::fs::create_dir_all(&path).expect("创建临时目录");
+            Self(path)
+        }
+
+        fn path(&self) -> &std::path::Path {
+            &self.0
+        }
+    }
+
+    impl Drop for TempTree {
+        fn drop(&mut self) {
+            let _ = std::fs::remove_dir_all(&self.0);
+        }
+    }
+
+    /// 两成员工作区（声明序 a、b）。
+    fn workspace_fixture(tag: &str) -> TempTree {
+        let tree = TempTree::new(tag);
+        let root = tree.path();
+        std::fs::write(
+            root.join("polypack.toml"),
+            "schema = 1\n\n[workspace]\nmembers = [\"apps/a\", \"apps/b\"]\n",
+        )
+        .expect("写工作区根配置");
+        for app in ["a", "b"] {
+            let dir = root.join("apps").join(app);
+            std::fs::create_dir_all(&dir).expect("建成员目录");
+            std::fs::write(
+                dir.join("polypack.toml"),
+                format!(
+                    "schema = 1\n\n[package]\nname = \"retry-{app}\"\nversion = \"0.1.0\"\n\n\
+                     [ui]\nframework = \"vanilla\"\nentry = \"index.html\"\n\n\
+                     [core]\ncrate = \"../../core\"\n"
+                ),
+            )
+            .expect("写成员配置");
+        }
+        tree
+    }
+
+    fn args(config: PathBuf) -> Args {
+        Args {
+            from: FromStage::Sign,
+            config,
+            workspace: false,
+            app: None,
+            target: None,
+            input: None,
+            credential: None,
+            out: None,
+            appid: None,
+            version: None,
+            channel: None,
+            description: String::new(),
+            package: None,
+            materials: None,
+            api_base: None,
+        }
+    }
 
     /// `--from publish` 的参数映射：缺省 target 与 `poly publish` 同口径，凭据 / 材料直通。
     #[test]
     fn publish_rerun_maps_retry_args_to_publish_command() {
         let args = Args {
             from: FromStage::Publish,
-            config: PathBuf::from("polypack.toml"),
-            target: None,
-            input: None,
+            ..args(PathBuf::from("polypack.toml"))
+        };
+        let args = Args {
             credential: Some("env:POLY_CRED".to_string()),
-            out: None,
             appid: Some("wx1".to_string()),
             version: Some("1.0.0".to_string()),
             channel: Some("wechat-open-platform".to_string()),
             description: "重跑".to_string(),
             package: Some(PathBuf::from("dist")),
-            materials: None,
-            api_base: None,
+            ..args
         };
         let mapped = publish_args(&args);
         assert_eq!(mapped.target, "quickapp", "缺省 target 同 poly publish");
@@ -310,5 +413,85 @@ mod tests {
         assert_eq!(mapped.channel.as_deref(), Some("wechat-open-platform"));
         assert_eq!(mapped.credential.as_deref(), Some("env:POLY_CRED"));
         assert!(!mapped.dry_run, "重跑走真腿");
+    }
+
+    /// `--app` 只选一个成员：root = 成员目录，状态根 = 工作区根 + app id。
+    #[test]
+    fn app_selector_resolves_member_root_and_state_scope() {
+        let tree = workspace_fixture("app");
+        let root = tree.path().canonicalize().expect("工作区根可规范化");
+        let mut args = args(root.join("polypack.toml"));
+        args.app = Some("b".to_string());
+        let projects = selected_projects(&args).expect("成员 b 应可选");
+        assert_eq!(projects.len(), 1, "--app 只选一个成员");
+        assert_eq!(projects[0].root, root.join("apps/b"), "root = 成员目录");
+        assert_eq!(projects[0].app_id.as_deref(), Some("b"));
+        assert_eq!(
+            projects[0].workspace_root.as_deref(),
+            Some(root.as_path()),
+            "保留工作区根（状态目录不落到成员根）"
+        );
+        assert_eq!(
+            project::app_packages_root(&projects[0]),
+            root.join(".polypack/packages/b"),
+            "产物暂存根按工作区根 + app id 隔离"
+        );
+    }
+
+    /// `--workspace` 按声明序作用于全部成员，各自保留成员根。
+    #[test]
+    fn workspace_selector_keeps_declaration_order_and_member_roots() {
+        let tree = workspace_fixture("all");
+        let root = tree.path().canonicalize().expect("工作区根可规范化");
+        let mut args = args(root.join("polypack.toml"));
+        args.workspace = true;
+        let projects = selected_projects(&args).expect("工作区应可发现");
+        let ids: Vec<_> = projects
+            .iter()
+            .map(|project| project.app_id.as_deref())
+            .collect();
+        assert_eq!(ids, vec![Some("a"), Some("b")], "声明顺序");
+        assert_eq!(projects[0].root, root.join("apps/a"));
+        assert_eq!(projects[1].root, root.join("apps/b"));
+        assert!(
+            projects
+                .iter()
+                .all(|project| project.workspace_root.as_deref() == Some(root.as_path()))
+        );
+    }
+
+    /// 未知成员是 `E_WS_0004`，绝不静默退化成工作区根上的单应用。
+    #[test]
+    fn unknown_app_is_a_stable_workspace_error_not_a_root_fallback() {
+        let tree = workspace_fixture("unknown");
+        let root = tree.path().canonicalize().expect("工作区根可规范化");
+        let mut args = args(root.join("polypack.toml"));
+        args.app = Some("missing".to_string());
+        let err = selected_projects(&args).err().expect("未知成员必须报错");
+        assert_eq!(err.code, codes::E_WS_0004);
+        assert!(err.message.contains("missing"), "{}", err.message);
+        assert!(
+            err.hint.unwrap_or_default().contains("a, b"),
+            "提示应列出可用成员"
+        );
+    }
+
+    /// 两个选择器都不给：仍是单应用通路（根配置所在目录，无 app id）。
+    #[test]
+    fn single_app_selection_is_unchanged() {
+        let tree = TempTree::new("single");
+        let root = tree.path();
+        std::fs::write(
+            root.join("polypack.toml"),
+            "[package]\nname = \"single\"\nversion = \"0.1.0\"\n\
+             [ui]\nframework = \"vanilla\"\nentry = \"index.html\"\n\
+             [core]\ncrate = \"core\"\n",
+        )
+        .expect("写配置");
+        let projects = selected_projects(&args(root.join("polypack.toml"))).expect("单应用可装载");
+        assert_eq!(projects.len(), 1);
+        assert_eq!(projects[0].root, root.canonicalize().expect("根可规范化"));
+        assert_eq!(projects[0].app_id, None);
+        assert_eq!(projects[0].workspace_root, None);
     }
 }

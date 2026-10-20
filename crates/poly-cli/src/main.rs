@@ -4,6 +4,7 @@ mod bridge;
 mod build;
 mod build_artifacts;
 mod clean;
+mod deploy;
 mod dev;
 mod doctor;
 mod farm;
@@ -12,6 +13,7 @@ mod init;
 mod mood;
 mod package;
 mod plugin_new;
+mod preview;
 mod project;
 mod providers;
 mod publish;
@@ -55,6 +57,8 @@ enum Command {
     Build(build::Args),
     /// 构建历史：按目标查看最近 N 次状态 / 耗时 / 产物（`.polypack/history/events.jsonl`）。
     History(history::Args),
+    /// 部署模式（非 TargetSpec）：line-liff 校验配置并输出 Console 人工步骤（dry-run，不触网）。
+    Deploy(deploy::Args),
     /// 启动 Web 宿主热预览（整页重载形态）。
     Dev(dev::Args),
     /// 清理构建缓存与产物快照（默认 dry-run）。
@@ -63,6 +67,8 @@ enum Command {
     Bridge(bridge::Args),
     /// 远程农场：worker 注册与拉取-执行-回传循环。
     Farm(farm::Args),
+    /// 设备预览：生成设备租约计划（`--dry-run` 不接触设备或网络）。
+    Preview(preview::Args),
     /// secret-scan：提交与构建双重密钥检查。
     Scan(scan::Args),
     /// 从签名阶段独立重跑（重新拉取凭据、重签未签名 APK）。
@@ -92,10 +98,12 @@ fn main() -> std::process::ExitCode {
         Command::Init(args) => init::run(&args, cli.json),
         Command::Build(args) => build::run(&args, cli.json),
         Command::History(args) => history::run(&args, cli.json),
+        Command::Deploy(args) => deploy::run(&args, cli.json),
         Command::Dev(args) => dev::run(&args, cli.json),
         Command::Clean(args) => clean::run(&args, cli.json),
         Command::Bridge(args) => bridge::run(&args, cli.json),
         Command::Farm(args) => farm::run(&args, cli.json),
+        Command::Preview(args) => preview::run(&args, cli.json),
         Command::Scan(args) => scan::run(&args, cli.json),
         Command::Retry(args) => retry::run(&args, cli.json),
         Command::Verify(args) => verify::run(&args, cli.json),

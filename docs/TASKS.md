@@ -352,13 +352,13 @@
 - 交付物: 凭据解析层：`CredentialRef` → 后端链（本地 keyring + Vault 后端 trait + CI 内存注入），签名阶段按需拉取、用后即弃；仓库内明文凭据即构建失败。
 - 验收: 同一 JobSpec 分别在 keyring 与 Vault 后端解析成功；事件流/日志中凭据值不可见（脱敏断言）；`poly retry --from sign` 独立重跑并重新拉取凭据。
 
-### T-M2-12 · ✅ secret-scan（提交与构建双重检查）（构造样本全命中 + 全历史 823 文件真扫零命中 + CI 三宿主工作流；「必过检查项」branch protection 已设置——3 宿主 secret-scan 为 required checks（2026-10-16 核实）；enforce_admins=false，admin 直推绕过 required checks，仍为流程缺口）
+### T-M2-12 · ✅ secret-scan（提交与构建双重检查）（构造样本全命中 + 全历史 823 文件真扫零命中 + CI 三宿主工作流；「必过检查项」branch protection 已设置——3 宿主 secret-scan 为 required checks（2026-10-16 核实）；enforce_admins=true（2026-10-20 核实），共 9 个 required contexts，admin 直推同样受约束）
 
 - 角色: release-sec
 - 依赖: T-M0-02
 - 估算: 2.5d
 - 交付物: 内置规则集（keystore/JKS、证书私钥、API key 模式）+ 提交钩子与 CI 作业双重检查，命中即失败并输出修复提示（错误码体系）。
-- 验收: 各类规则的构造样本全部命中；仓库全历史扫描绿灯；CI 中 secret-scan 为必过检查项（三宿主）。
+- 验收: 各类规则的构造样本全部命中；仓库全历史扫描绿灯；CI 中 secret-scan 为必过检查项（三宿主）；branch protection `enforce_admins=true`（2026-10-20 核实）。
 
 ### T-M2-13 · ✅ 远程农场协议 v0（JobSpec 序列化 + worker 拉取执行）（帧/双信箱/共享对象存储缓存复用真跑；R3 准入语义 ✓；macOS worker 真出 IPA 待 nightly；master 陈旧帧留 v1）
 
@@ -982,27 +982,29 @@
 |---|---|---|
 | M9-E1 | SBOM / 构建溯源 | T-M9-01..03 |
 | M9-E2 | monorepo / 多应用工作区（已交付；ADR 0008 / WORKSPACE / 示例脚本） | T-M9-04..06 |
-| M9-E3 | 增量发布 `poly release --changed` | T-M9-07..09 |
-| M9-E4 | 生产热更 / OTA 通道（T-M9-10/11 已交付；T-M9-12 环境门控） | T-M9-10..12 |
+| M9-E3 | 增量发布 `poly release --changed`（已交付；5 目标节时 73–81%） | T-M9-07..09 |
+| M9-E4 | 生产热更 / OTA 通道（T-M9-10/11/12 已交付；run 39395255929 windows-updater-real 真实更新 / 回滚通过） | T-M9-10..12 |
 | M9-E5 | 商店元数据管线 | T-M9-13..15 |
-| M9-E6 | GUI 目标矩阵视图 / 构建历史 | T-M9-16..18 |
-| M9-E7 | 发布前设备预览矩阵 | T-M9-19..21 |
-| M9-P1 | Google Play Instant（已停服，建议关闭） | T-M9-22..23 |
-| M9-P2 | Snapchat Mini（官方契约不可核验） | T-M9-24..25 |
-| M9-P3 | LINE Mini App（仅托管 URL） | T-M9-26..27 |
-| M9-P4 | Sailfish OS（条件立项） | T-M9-28..30 |
-| M9-P5 | Ubuntu Touch（条件立项） | T-M9-31..33 |
-| M9-P6 | PlayStation（NDA 门控） | T-M9-34..35 |
-| M9-P7 | Xbox（NDA 门控） | T-M9-36..37 |
-| M9-P8 | Nintendo Switch（NDA 门控） | T-M9-38..39 |
+| M9-E6 | GUI 目标矩阵视图 / 构建历史（已交付；`app/` Tauri v2；真实窗口环境门控） | T-M9-16..18 |
+| M9-E7 | 发布前设备预览矩阵（T-M9-19/20 已交付；T-M9-21 外部） | T-M9-19..21 |
+| M9-P1 | Google Play Instant（已停用 retired；保留行，ADR 0006） | T-M9-22..23 |
+| M9-P2 | Snapchat Mini（已关闭；季度复审 2027-01-20，ADR 0006） | T-M9-24..25 |
+| M9-P3 | LINE Mini App（已交付：部署模式 `poly deploy line-liff`，ADR 0009） | T-M9-26..27 |
+| M9-P4 | Sailfish OS（条件支持，需赞助 / 设备承诺，ADR 0006） | T-M9-28..30 |
+| M9-P5 | Ubuntu Touch（条件支持，需赞助 / 设备承诺，ADR 0006） | T-M9-31..33 |
+| M9-P6 | PlayStation（NDA 门控，ADR 0006） | T-M9-34..35 |
+| M9-P7 | Xbox（NDA 门控，ADR 0006） | T-M9-36..37 |
+| M9-P8 | Nintendo Switch（NDA 门控，ADR 0006） | T-M9-38..39 |
 | M9-D1 | 插件市场分发决策 | T-M9-40..42 |
 | M9-D2 | 远程农场托管决策 | T-M9-43..44 |
-| M9-G1 | CLI 分发（crates.io / GitHub Releases） | T-M9-45..47 |
+| M9-G1 | CLI 分发（GitHub Releases 已交付；T-M9-45 审计已落地，crates.io 发布因名称占用 / publish=false 关闭） | T-M9-45..47 |
 | M9-G2 | 人类外部开发者试用协议 | T-M9-48..49 |
 | M9-G3 | 环境槽收口计划 | T-M9-50..52 |
 | M9-G4 | MSI 真样本启动测试 | T-M9-53..54 |
-| M9-G5 | 分支保护管理员绕过（外部流程） | T-M9-55 |
+| M9-G5 | 分支保护管理员绕过（已交付；ENV-18 CLOSED） | T-M9-55 |
 
-> **Wave 2 进度（2026-10-20）**：M9-E2 已交付（`[workspace]`、`--workspace` / `--app`、缓存 / 产物隔离、ADR 0008、WORKSPACE 双语文档与示例脚本）；M9-E4 已交付 T-M9-10/11（机制矩阵 + 签名清单 + `poly update`），T-M9-12 真机更新 / 回滚为环境门控。
+> **Wave 2 进度（2026-10-20）**：M9-E2 已交付（`[workspace]`、`--workspace` / `--app`、缓存 / 产物隔离、ADR 0008、WORKSPACE 双语文档与示例脚本）；M9-E4 已交付 T-M9-10/11（机制矩阵 + 签名清单 + `poly update`），T-M9-12 已交付演练装置（`examples/updater-app` + `scripts/drill.ps1`）与 rust-ci `windows-updater-real` 作业，windows-2022 run 39395255929 首跑通过。平台决策已收敛：M9-P1 标 retired、M9-P2 关闭并季度复审（2027-01-20）、M9-P3 交付 `poly deploy line-liff` 部署模式（ADR 0009）、M9-P4/P5 条件支持、M9-P6–P8 NDA 门控；M9-G5 已交付（ENV-18 `CLOSED`，`enforce_admins=true` + 9 个 required contexts，2026-10-20 核实）。
 >
-> **Wave 1 进度（2026-10-20）**：M9-E1（SBOM + `poly verify --sbom` + 回执 `sbom_digest`）、M9-E3（`--changed`；T-M9-09 待补）、M9-E5（store metadata）、M9-E6 历史（T-M9-16/17；GUI T-M9-18 延后）、M9-G1（install script / 签名 / install-smoke；crates.io T-M9-45 仍开）、M9-G2（协议；真人 T-M9-49 外部）、M9-G3（owner / validator；T-M9-51 外部）、M9-G4（样例 / CI；Windows 首跑已通过，ENV-01 CLOSED）、M9-D1/D2 与 M9-P1..P8/G5（ADR 决策）已落地或部分落地。外部项不标 ✅。
+> **M9 收尾进度（2026-10-20）**：E3 T-M9-09（5 目标后端调用 5→1，墙钟 73–81%）、E4 T-M9-12 演练装置与 CI（`examples/updater-app`；windows-2022 run 39395255929 通过）、E6 GUI（`app/` Tauri v2 矩阵 / 详情）、E7 T-M9-19/20（设备农场矩阵 + `poly preview --dry-run`；ENV-20 真机外部）、G1 T-M9-45（workspace 1.12.0、元数据、`cargo package --list` 9/9；`poly-cli` / `poly-core` 名称占用与 `publish=false` 关闭发布）、`poly retry|verify --workspace/--app`、`publish.rs` 拆分为子模块、P3 LINE 部署模式、G5 已关闭、P1/P2/P4–P8 决策收敛。T-M9-21 / T-M9-49 / T-M9-51 与 crates.io 实际发布仍为外部项。
+>
+> **Wave 1 进度（2026-10-20）**：M9-E1（SBOM + `poly verify --sbom` + 回执 `sbom_digest`）、M9-E3（`--changed` + 5 目标实测，见 RELEASE-CHANGED）、M9-E5（store metadata）、M9-E6 历史与 GUI（T-M9-16/17 + T-M9-18 `app/`；真实窗口环境门控）、M9-G1（install script / 签名 / install-smoke；T-M9-45 审计已落地，crates.io 发布关闭）、M9-G2（协议；真人 T-M9-49 外部）、M9-G3（owner / validator；T-M9-51 外部）、M9-G4（样例 / CI；Windows 首跑已通过，ENV-01 CLOSED）、M9-D1/D2 决策已记录；平台决策与 G5 见 Wave 2 进度。外部项不标 ✅。

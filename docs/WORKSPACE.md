@@ -1,6 +1,6 @@
 # 多应用工作区（M9-E2）
 
-> 状态：代码与测试已交付（T-M9-04/05/06）；单应用行为与缓存键保持不变。`poly retry` / `poly verify` 暂不支持 `--workspace` / `--app`。
+> 状态：代码与测试已交付（T-M9-04/05/06）；单应用行为与缓存键保持不变。`poly build`、`poly verify`、`poly retry` 均支持 `--workspace` / `--app`。
 
 ## 1. 目录布局
 
@@ -64,6 +64,10 @@ poly build --app notes
 
 # 指定目标（与现有 --target 组合）
 poly build --workspace --target linux
+
+# 校验 / 重试同样接受工作区选择器
+poly verify --workspace
+poly retry --from verify --app notes
 ```
 
 `--workspace` 与 `--app` 互斥；都不给时行为与单应用版本一致。构建产物与快照按应用隔离：
@@ -89,7 +93,6 @@ poly build --workspace --target linux
 
 ## 6. 已知限制
 
-- `poly retry` / `poly verify` 不接受 `--workspace` / `--app`；指向成员配置时使用成员本地 `.polypack`。
 - 无跨应用任务图、无目标继承、无并发调度；工作区成员串行构建。
 - 成员 id 取目录名，重命名目录会改变 app id 与缓存键。
 - 构建历史目前写在成员根，不在工作区根聚合。

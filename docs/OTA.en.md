@@ -1,6 +1,6 @@
 # OTA / Production Update Channels (M9-E4)
 
-> Status: the T-M9-10 research matrix and the T-M9-11 signed manifest are implemented; the T-M9-12 Tauri on-device install / rollback drill is environment-gated and is not faked in this repository.
+> Status: the T-M9-10 research matrix, T-M9-11 signed manifest, and T-M9-12 real drill are complete; `examples/updater-app` + `scripts/drill.ps1` passed on windows-2022 in rust-ci `windows-updater-real`, run 39395255929 (install 0.1.0 → update to 0.1.1 → roll back to 0.1.0).
 > Retrieval date: 2026-10-20. Official pages that could not be reached are marked "not fetched"; their details are not treated as verified facts.
 
 ## 1. Update Mechanism Matrix
@@ -70,11 +70,11 @@ poly update check --manifest latest.json \
 2. To roll back, copy the target old `<version>.json` over `latest.json` and upload it with its `.sig`. The signature covers the same bytes, so no re-signing is needed.
 3. The client must allow downgrade: Tauri's static manifest applies its built-in version check, so an older version will not install automatically; switch to a dedicated rollback channel or use a dynamic update server that overrides version comparison.
 4. After a rollback, bump the patch version in the next release so that a version-number regression does not confuse later update decisions.
-5. This repository only exercises "restore manifest + signature verification"; real installation and downgrade are environment-gated under T-M9-12.
+5. The repository now carries a real drill harness: `examples/updater-app`'s `--smoke-update` mode and `scripts/drill.ps1` perform "install 0.1.0 → update to 0.1.1 → restore the 0.1.0 manifest → roll back" on windows-2022; the rollback leg uses a drill-only comparator that accepts any version change, while production still accepts only newer versions. Linux validates compilation and the manifest path only; the real path runs in rust-ci `windows-updater-real`, and run 39395255929 passed.
 
 ## 5. Environment Gates and Unverified Items
 
-- **Tauri binary update / rollback**: requires a real Tauri app, a Tauri key pair, and an installable artifact; this repository neither performs nor fakes it. `poly update check` verifies only manifest structure and the GPG signature.
+- **Tauri binary update / rollback**: covered by `examples/updater-app`, `examples/updater-app/scripts/drill.ps1`, and the rust-ci `windows-updater-real` job (throwaway Tauri keys, real NSIS install / update / rollback, archived evidence); windows-2022 run 39395255929 passed. `poly update check` itself still verifies only manifest structure and the GPG signature.
 - **Google Play staged rollout / Play App Signing**: the official pages were unreachable in this environment, so those details come from a search summary and are marked not fetched; only the In-App Updates flexible / immediate flows were fetched.
 - **Apple downgrade**: the official documentation offers no version downgrade; only pausing the phased release or recovering with a new version.
 - **WeChat percentage rollout**: the fetched version-management and update-mechanism pages did not list a percentage rollout entry, so the matrix does not promise one.

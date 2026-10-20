@@ -144,9 +144,11 @@ impl RepoSigner for GpgSigner {
 impl Drop for GpgSigner {
     fn drop(&mut self) {
         // agent 持有 home 内的 socket；先杀再让 TempDir 删目录（失败不掩盖签名结果）。
+        let (_, msys) = crate::gpg::program();
+        let home = crate::gpg::path_arg(self.home.path().as_os_str(), msys);
         let _ = Command::new("gpgconf")
             .arg("--homedir")
-            .arg(self.home.path())
+            .arg(home)
             .arg("--kill")
             .arg("gpg-agent")
             .stdout(Stdio::null())
@@ -175,17 +177,18 @@ fn import(home: &Path, key: &Path) -> Result<(), SignError> {
 
 /// 执行 gpg：缺席 → [`SignError::ToolMissing`]；非零 → [`SignError::ToolFailed`]。
 fn run(args: &[OsString]) -> Result<Output, SignError> {
-    let output =
-        Command::new("gpg")
-            .args(args)
-            .output()
-            .map_err(|source| SignError::ToolMissing {
-                tool: "gpg".to_string(),
-                hint: format!(
-                    "安装 GnuPG（Debian/Ubuntu: apt install gnupg；Fedora: dnf install gnupg2）\
+    let (program, msys) = crate::gpg::program();
+    let args = crate::gpg::args(args, msys);
+    let output = Command::new(program)
+        .args(&args)
+        .output()
+        .map_err(|source| SignError::ToolMissing {
+            tool: "gpg".to_string(),
+            hint: format!(
+                "安装 GnuPG（Debian/Ubuntu: apt install gnupg；Fedora: dnf install gnupg2）\
                  （底层错误：{source}）"
-                ),
-            })?;
+            ),
+        })?;
     if !output.status.success() {
         let shown = args
             .iter()

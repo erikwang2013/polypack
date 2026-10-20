@@ -6,6 +6,9 @@ edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
+readme.workspace = true
+keywords.workspace = true
+categories.workspace = true
 publish = false
 
 [[bin]]
@@ -27,6 +30,7 @@ base64.workspace = true
 clap.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+toml.workspace = true
 # T-M5-05 仓库元数据：Release/Packages/repomd 的 SHA256 与 repodata gzip（纯 Rust，无 C 依赖）。
 sha2 = "0.10"
 flate2 = "1"

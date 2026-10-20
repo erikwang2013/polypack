@@ -4,7 +4,7 @@
  *
  * Validates the slot summary table in docs/ENV-SLOTS.md and
  * docs/ENV-SLOTS.en.md:
- *   1) exactly 19 slots (ENV-01..ENV-19) with unique IDs
+ *   1) exactly 20 slots (ENV-01..ENV-20) with unique IDs
  *   2) every row has owner / evidence / status; status and mode are valid
  *   3) owner tokens use only the five assigned roles
  *   4) every linked T-Mx-yy task ID (where present) exists in docs/TASKS.md
@@ -19,7 +19,7 @@ import { fileURLToPath } from 'node:url';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const TASKS_FILE = 'docs/TASKS.md';
 const LEDGERS = ['docs/ENV-SLOTS.md', 'docs/ENV-SLOTS.en.md'];
-const EXPECTED_IDS = Array.from({ length: 19 }, (_, i) => `ENV-${String(i + 1).padStart(2, '0')}`);
+const EXPECTED_IDS = Array.from({ length: 20 }, (_, i) => `ENV-${String(i + 1).padStart(2, '0')}`);
 const VALID_STATUS = new Set(['OPEN', 'PARTIAL', 'CODE-GAP', 'HUMAN', 'CLOSED']);
 const VALID_MODE = new Set(['CI', 'HOST', 'HUMAN']);
 const VALID_ROLES = new Set(['release-sec', 'core', 'docs', 'infra', 'maintainer']);
@@ -158,4 +158,4 @@ if (failed > 0) {
   console.error(`\n${failed} ENV-SLOTS ledger error(s)`);
   process.exit(1);
 }
-console.log('\nENV-SLOTS ledger clean (19 slots; no ownerless or unlinked SKIP)');
+console.log(`\nENV-SLOTS ledger clean (${EXPECTED_IDS.length} slots; no ownerless or unlinked SKIP)`);
