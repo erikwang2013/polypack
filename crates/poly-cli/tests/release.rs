@@ -1,7 +1,11 @@
 //! T-M5-11 准备面：`poly release` 参数面与稳定错误码（deb/rpm 已接线 T-M5-05；pkg 待 T-M5-06）。
 
+use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
+use std::time::Instant;
+
+use base64::Engine as _;
 
 /// 最小工程骨架（只需配置可装载）。
 fn fixture(tag: &str) -> PathBuf {
@@ -455,6 +459,282 @@ fn since_reports_clear_diagnostic_instead_of_silent_ignore() {
     assert!(
         stderr.contains("--changed"),
         "修复提示指向 --changed：{stderr}"
+    );
+    let _ = std::fs::remove_dir_all(&root);
+}
+
+/// T-M9-09 基准目标：均以 `[targets.<id>].format = "deb"` 覆盖为仓库格式。
+const FIVE_TARGETS: [&str; 5] = ["linux", "web", "windows", "macos", "android"];
+
+const BENCH_PASS: &str = "release-bench-pass";
+
+/// 5 目标夹具：每个目标一份合法 deb（data 内嵌 marker，改 marker 即换清单摘要）。
+fn fixture_five_deb(tag: &str) -> PathBuf {
+    let root = fixture(tag);
+    let mut config = std::fs::read_to_string(root.join("polypack.toml")).expect("读配置");
+    for target in FIVE_TARGETS {
+        config.push_str(&format!("[targets.{target}]\nformat = \"deb\"\n"));
+    }
+    std::fs::write(root.join("polypack.toml"), config).expect("写配置");
+    for target in FIVE_TARGETS {
+        write_deb(&root, target, &format!("{target}-v1"));
+    }
+    root
+}
+
+/// 用 `poly_bundle::arwrite` 造合法 deb（不依赖 dpkg-deb；文件名与 control 同源）。
+fn write_deb(root: &Path, target: &str, marker: &str) -> PathBuf {
+    use poly_bundle::arwrite::{self, Member};
+    let dir = root.join(".polypack").join("packages").join(target);
+    std::fs::create_dir_all(&dir).expect("产物目录可建");
+    let control = "Package: fixture-app\nVersion: 0.1.0\nArchitecture: amd64\n\
+                   Maintainer: PolyPack <bench@polypack.invalid>\n\
+                   Description: release changed benchmark\n";
+    let control_tar = arwrite::tar_bytes(&[("./control".to_string(), control.as_bytes().to_vec())])
+        .expect("control tar");
+    let control_gz =
+        arwrite::gzip_bytes(&control_tar, &dir.join("control.tar.gz")).expect("control gzip");
+    let data_tar = arwrite::tar_bytes(&[(
+        "./usr/share/fixture.txt".to_string(),
+        marker.as_bytes().to_vec(),
+    )])
+    .expect("data tar");
+    let data_gz = arwrite::gzip_bytes(&data_tar, &dir.join("data.tar.gz")).expect("data gzip");
+    let path = dir.join("fixture-app_0.1.0_amd64.deb");
+    arwrite::write_ar(
+        &[
+            Member {
+                name: "debian-binary".to_string(),
+                bytes: b"2.0\n".to_vec(),
+            },
+            Member {
+                name: "control.tar.gz".to_string(),
+                bytes: control_gz,
+            },
+            Member {
+                name: "data.tar.gz".to_string(),
+                bytes: data_gz,
+            },
+        ],
+        &path,
+    )
+    .expect("写 deb");
+    path
+}
+
+/// 一次性 GPG 私钥 → `env:` 凭据载荷（base64(JSON)）；缺 gpg 时跳过整条测试。
+fn gpg_env_payload(root: &Path) -> Option<String> {
+    if !poly_bundle::exec::tool_present("gpg") {
+        eprintln!("SKIP：宿主没有 gpg，5 目标 --changed 真跑跳过");
+        return None;
+    }
+    let home = root.join("gnupg");
+    std::fs::create_dir_all(&home).expect("GNUPGHOME 可建");
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        std::fs::set_permissions(&home, std::fs::Permissions::from_mode(0o700))
+            .expect("GNUPGHOME 0700");
+    }
+    let gpg = |args: &[&str]| {
+        Command::new("gpg")
+            .args(["--batch", "--no-options", "--homedir"])
+            .arg(&home)
+            .args(args)
+            .output()
+            .expect("gpg 可执行")
+    };
+    let generated = gpg(&[
+        "--pinentry-mode",
+        "loopback",
+        "--passphrase",
+        BENCH_PASS,
+        "--quick-generate-key",
+        "PolyPack Release Bench <bench@polypack.invalid>",
+        "ed25519",
+        "sign",
+        "0",
+    ]);
+    assert!(
+        generated.status.success(),
+        "gpg 生成密钥失败：{}",
+        String::from_utf8_lossy(&generated.stderr)
+    );
+    let exported = gpg(&[
+        "--pinentry-mode",
+        "loopback",
+        "--passphrase",
+        BENCH_PASS,
+        "--export-secret-keys",
+    ]);
+    assert!(
+        exported.status.success(),
+        "gpg 导出私钥失败：{}",
+        String::from_utf8_lossy(&exported.stderr)
+    );
+    assert!(!exported.stdout.is_empty(), "私钥导出非空");
+    let _ = Command::new("gpgconf")
+        .arg("--homedir")
+        .arg(&home)
+        .args(["--kill", "gpg-agent"])
+        .output();
+    let key = base64::engine::general_purpose::STANDARD.encode(&exported.stdout);
+    let json = format!(r#"{{"keystore":"{key}","store_password":"{BENCH_PASS}"}}"#);
+    Some(base64::engine::general_purpose::STANDARD.encode(json))
+}
+
+fn poly_with_env(cwd: &Path, args: &[&str], key: &str) -> Output {
+    Command::new(env!("CARGO_BIN_EXE_poly"))
+        .current_dir(cwd)
+        .env("POLY_RELEASE_KEY", key)
+        .args(args)
+        .output()
+        .expect("poly 可执行")
+}
+
+fn json_events(stdout: &[u8]) -> Vec<serde_json::Value> {
+    String::from_utf8_lossy(stdout)
+        .lines()
+        .filter(|line| !line.trim().is_empty())
+        .map(|line| {
+            serde_json::from_str(line)
+                .unwrap_or_else(|err| panic!("行不是合法 JSON：{line}（{err}）"))
+        })
+        .collect()
+}
+
+/// T-M9-09：5 目标首跑 5 次后端调用；改 1 个产物后 `--changed` 只发 1 个、
+/// 跳过 4 个（回执零重写），后端调用 5 → 1（省 80%）。墙钟只打印不设阈值。
+#[test]
+fn five_target_changed_run_publishes_one_and_skips_four() {
+    let root = fixture_five_deb("changed-five");
+    let Some(payload) = gpg_env_payload(&root) else {
+        let _ = std::fs::remove_dir_all(&root);
+        return;
+    };
+    let target_list = FIVE_TARGETS.join(",");
+    let first_start = Instant::now();
+    let first = poly_with_env(
+        &root,
+        &[
+            "release",
+            "--target",
+            &target_list,
+            "--changed",
+            "--credential",
+            "env:POLY_RELEASE_KEY",
+            "--json",
+        ],
+        &payload,
+    );
+    let first_ms = first_start.elapsed().as_millis();
+    assert_eq!(
+        first.status.code(),
+        Some(0),
+        "首跑须成功：{}",
+        String::from_utf8_lossy(&first.stderr)
+    );
+    let first_events = json_events(&first.stdout);
+    assert_eq!(first_events.len(), 5, "每个目标一条 published 事件");
+    let mut receipts = BTreeMap::new();
+    for event in &first_events {
+        assert_eq!(event["event"], "published");
+        assert_eq!(event["cache_hit"].as_bool(), Some(false), "首跑须真发布");
+        let target = event["target"].as_str().expect("目标").to_string();
+        receipts.insert(
+            target,
+            PathBuf::from(event["receipt"].as_str().expect("回执路径")),
+        );
+    }
+    assert_eq!(receipts.len(), 5);
+
+    // 只改 android 的产物，其余 4 个目标的回执字节必须原样。
+    write_deb(&root, "android", "android-v2");
+    let untouched: Vec<(String, PathBuf, Vec<u8>)> = FIVE_TARGETS
+        .iter()
+        .filter(|target| **target != "android")
+        .map(|target| {
+            let path = receipts.get(*target).expect("首跑回执").clone();
+            let bytes = std::fs::read(&path).expect("回执存在");
+            ((*target).to_string(), path, bytes)
+        })
+        .collect();
+
+    let second_start = Instant::now();
+    let second = poly_with_env(
+        &root,
+        &[
+            "release",
+            "--target",
+            &target_list,
+            "--changed",
+            "--credential",
+            "env:POLY_RELEASE_KEY",
+            "--json",
+        ],
+        &payload,
+    );
+    let second_ms = second_start.elapsed().as_millis();
+    assert_eq!(
+        second.status.code(),
+        Some(0),
+        "1 published + 4 skipped 须退出 0：{}",
+        String::from_utf8_lossy(&second.stderr)
+    );
+    let events = json_events(&second.stdout);
+    assert_eq!(events.len(), 5);
+    let mut published = Vec::new();
+    let mut skipped = Vec::new();
+    for event in &events {
+        let target = event["target"].as_str().expect("目标").to_string();
+        match event["event"].as_str() {
+            Some("published") => published.push(target),
+            Some("release-skipped") => {
+                assert_eq!(event["reason"], "unchanged");
+                assert_eq!(event["key_source"], "cache_key", "新回执走 cache_key 判定");
+                skipped.push(target);
+            }
+            other => panic!("意外事件 {other:?}：{event}"),
+        }
+    }
+    assert_eq!(published, ["android"], "只发布变更目标");
+    assert_eq!(
+        skipped,
+        ["linux", "web", "windows", "macos"],
+        "其余四个目标 skipped"
+    );
+    for (target, path, bytes) in &untouched {
+        assert_eq!(
+            &std::fs::read(path).expect("回执存在"),
+            bytes,
+            "{target} 的 skipped 回执不得重写"
+        );
+    }
+    let published_event = events
+        .iter()
+        .find(|event| event["event"] == "published")
+        .expect("published 事件");
+    let new_receipt = PathBuf::from(published_event["receipt"].as_str().expect("回执路径"));
+    assert_ne!(new_receipt, receipts["android"], "产物变化 → 新回执键");
+    assert!(new_receipt.exists(), "新回执已归档");
+    assert!(receipts["android"].exists(), "旧回执永久保留");
+
+    // 后端调用 = published 事件数（--changed 命中 skipped 时不触后端）。
+    let first_calls = first_events.len();
+    let second_calls = published.len();
+    let call_saving = (first_calls - second_calls) * 100 / first_calls;
+    assert!(
+        call_saving >= 50,
+        "后端调用节省须 ≥ 50%（{first_calls} → {second_calls}）"
+    );
+    let wall_saving = (first_ms.saturating_sub(second_ms) * 100)
+        .checked_div(first_ms)
+        .unwrap_or(0);
+    eprintln!(
+        "T-M9-09 first_published={first_calls} second_published={second_calls} \
+         second_skipped={} call_saving={call_saving}% \
+         first_ms={first_ms} second_ms={second_ms} wall_saving={wall_saving}%",
+        skipped.len()
     );
     let _ = std::fs::remove_dir_all(&root);
 }

@@ -41,6 +41,7 @@ const PAIRS = [
   ['docs/CRATES-IO.md', 'docs/CRATES-IO.en.md'],
   ['docs/DEVICE-PREVIEW.md', 'docs/DEVICE-PREVIEW.en.md'],
   ['docs/GUI.md', 'docs/GUI.en.md'],
+  ['docs/RELEASE-CHANGED.md', 'docs/RELEASE-CHANGED.en.md'],
 ];
 
 const count = (text, re) => (text.match(re) || []).length;

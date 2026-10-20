@@ -93,6 +93,15 @@ jobs:
             cargo package --list -p "$p" --locked --offline
           done
 
+      # T-M9-09：5 目标 --changed 增量发布实测（复用上一步已编译的测试二进制）。
+      # 缺 gpg 时测试打印 SKIP；grep 保证 Linux 腿确实跑到测量而非静默跳过。
+      - name: release --changed 5 目标实测（Linux 聚焦）
+        if: runner.os == 'Linux'
+        run: |
+          cargo test -p poly-cli --test release five_target_changed -- --nocapture 2>&1 \
+            | tee /tmp/release-changed.log
+          grep -q "first_published=5 second_published=1" /tmp/release-changed.log
+
       # T-M1-07 聚焦真跑：工具只在通用 cargo test 之后安装。若提前安装，
       # `poly build` 的 verify 会对测试用 debug deb 触发 lintian 错误，污染通用测试面。
       # appimagetool 固定 1.9.1，按 GitHub release 发布的 sha256 校验后安装（不裸下载）；
