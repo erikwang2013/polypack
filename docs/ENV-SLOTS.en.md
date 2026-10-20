@@ -41,7 +41,7 @@ Environment slots are tracked separately from code gaps: a slot closes with envi
 | ENV-14 | T-M7-09 | Garmin Connect IQ SDK / devkey compile | PARTIAL | CI | core | §3 ENV-14 | — |
 | ENV-15 | T-M8-03 | keyring trust-root carrier | CLOSED | CI | release-sec | run 39409593528 · keyring-real | rust-ci · keyring-real |
 | ENV-16 | T-M8-03 | Vault trust-root carrier | CLOSED | CI | release-sec + core | run 39414212765 · vault-real | rust-ci · vault-real |
-| ENV-17 | T-M8-09 | Real S3 / OSS round-trip + farm second run | PARTIAL | CI | infra + release-sec | §3 ENV-17 + s3-real | rust-ci · s3-real |
+| ENV-17 | T-M8-09 | Real S3 / OSS round-trip + farm second run | CLOSED | CI | infra + release-sec | run 39425835979 · s3-real | rust-ci · s3-real |
 | ENV-18 | T-M2-12 | Branch protection admin bypass | CLOSED | HUMAN | maintainer | §3 ENV-18 | secret-scan |
 | ENV-19 | GA §7.2 | Human external developer trial | OPEN | HUMAN | docs | §3 ENV-19 | — |
 | ENV-20 | T-M9-21 | Real-device preview (Android + Android TV) | OPEN | HOST | core + infra | §3 ENV-20 | — |
@@ -358,7 +358,7 @@ POLY_VAULT_REAL=1 cargo test -p poly-cli --test plugin_trust_root_vault -- --noc
 
 ### ENV-17 · Real S3 / OSS round-trip + farm second run
 
-- Linked task: T-M8-09 (remote farm deployment guide). Gap: the S3-compatible backend and mock contract are verified; PUT / GET / LIST / DELETE on a real bucket and a two-worker second-run cache hit have not run. 2026-10-20: the rust-ci `s3-real` job is wired (MinIO, Linux leg); `s3_real` and the `farm_cache` S3 second-run test (reusing the repository's existing static-Web fixture) both run in the job. First-run evidence is pending, so the status stays `PARTIAL`.
+- Linked task: T-M8-09 (remote farm deployment guide). Gap: the S3-compatible backend and mock contract are verified; PUT / GET / LIST / DELETE on a real bucket and a two-worker second-run cache hit have not run. 2026-10-20: rust-ci `s3-real` (run 39425835979) passed (MinIO, Linux leg); `s3_real` and the `farm_cache` S3 second-run test (reusing the repository's existing static-Web fixture) both really run in the job.
 - Environment / toolchain / credentials: CI uses MinIO (server built from archived official source; mc from the official GitHub release with its published SHA-256 checked); it can also target AWS S3 / Alibaba Cloud OSS S3-compatible endpoints with endpoint / region / access key / secret / optional session token and bucket write permission.
 - Gates: `POLYPACK_S3_REAL=1`, `POLYPACK_S3_TEST_URI=s3://<bucket>[/<prefix>]`, `POLYPACK_S3_ENDPOINT`, `POLYPACK_S3_REGION`, `POLYPACK_S3_ACCESS_KEY_ID`, `POLYPACK_S3_SECRET_ACCESS_KEY`, `POLYPACK_S3_SESSION_TOKEN`, `POLYPACK_S3_PATH_STYLE`, `POLYPACK_S3_OSS_COMPAT=1` (OSS).
 - Commands:
@@ -375,9 +375,9 @@ POLYPACK_S3_ACCESS_KEY_ID=... POLYPACK_S3_SECRET_ACCESS_KEY=... \
 cargo test -p poly-cli --test farm_cache \
   shared_cache_hits_across_worker_processes_on_s3 -- --nocapture
 ```
-- Evidence: `s3_real` PUT / GET / LIST / DELETE all green; the `farm_cache` S3 leg reports `cache hits 0/1` on the first run and `1/1` on the second with identical cache keys on both sides; a SKIP fails the job, and both `... ok` lines are required; the object listing is captured with `mc ls`. The first-run id is pending.
-- Status: `PARTIAL` (2026-10-20). Both real legs are wired into rust-ci `s3-real`; no CI first-run evidence yet, so it must not be marked CLOSED. Owner: infra + release-sec.
-- Next action: after the first `s3-real` job passes, write the run id back into §2 and this card, then close; real cloud (AWS / Alibaba Cloud OSS) evidence is separate and MinIO results must not be presented as theirs.
+- Evidence: `s3_real` PUT / GET / LIST / DELETE all green; the `farm_cache` S3 leg reports `cache hits 0/1` on the first run and `1/1` on the second with identical cache keys on both sides; a SKIP fails the job, and both `... ok` lines are required; the object listing is captured with `mc ls`. The rust-ci `s3-real` first run, 39425835979, passed.
+- Status: `CLOSED` (2026-10-20). Both real legs passed on MinIO in rust-ci `s3-real`, and any SKIP fails the job. Owner: infra + release-sec.
+- Next action: real cloud (AWS / Alibaba Cloud OSS) evidence is separate and MinIO results must not be presented as theirs.
 - Blocker: dl.min.io no longer distributes community MinIO (all releases and hotfixes return 410 Gone), so the server is built from archived source; a real cloud account / bucket / credentials still has to be provided separately. Execution mode: CI (MinIO loopback) can close the S3-compatible leg.
 
 ### ENV-18 · Branch protection admin bypass
@@ -489,7 +489,7 @@ Suggested evidence path: `env-slots/<ENV-XX>/<UTC timestamp>/`. The repository d
 | ENV-14 | — | — | No Connect IQ job |
 | ENV-15 | `.github/workflows/rust-ci.yml` | `keyring-real` | Real Secret Service (run 39409593528): `keyring_real` write / read / delete + CLI keyring trust root `plugin_granted` / `packaged` / `E_PLUGIN_0010`; a SKIP fails the job |
 | ENV-16 | `.github/workflows/rust-ci.yml` | `vault-real` | Vault dev (KV v2, run 39414212765): `vault_real` real read/write / 404 / 403 redaction + CLI Vault trust root `plugin_granted` / `packaged` / `E_PLUGIN_0010`; a SKIP fails the job |
-| ENV-17 | `.github/workflows/rust-ci.yml` | `s3-real` | MinIO (127.0.0.1:9000): `s3_real` PUT / GET / LIST / DELETE + `farm_cache` two-worker shared-bucket second run at 1/1; a SKIP fails the job; first run pending |
+| ENV-17 | `.github/workflows/rust-ci.yml` | `s3-real` | MinIO (127.0.0.1:9000, run 39425835979): `s3_real` PUT / GET / LIST / DELETE + `farm_cache` two-worker shared-bucket second run at 1/1; a SKIP fails the job |
 | ENV-18 | `.github/workflows/secret-scan.yml` | `scan` (3 hosts) | Supplies required checks; admin bypass was closed on 2026-10-20 and is not a workflow setting |
 | ENV-19 | — | — | Human trial, no workflow |
 | ENV-20 | — | — | No preview job; `poly preview --dry-run` is delivered |

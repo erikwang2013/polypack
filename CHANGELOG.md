@@ -13,9 +13,9 @@ Notable changes are recorded here; since v1.0.0, tags and releases follow `vX.Y.
 - **ENV-16 Vault 信任根载体（已关闭）**：新增 Linux CLI E2E `plugin_trust_root_vault`（生产 `HttpVaultClient` 播种 KV v2 → `source = "vault"` → 正负路径）与 `HttpVaultClient::delete_payload`；rust-ci `vault-real` 用官方 HashiCorp 源启动 dev Vault，SKIP 即失败；run 39414212765 通过。
 
 *ENV-16 Vault trust-root carrier (closed): adds the Linux CLI E2E `plugin_trust_root_vault` (production `HttpVaultClient` seeds KV v2 → `source = "vault"` → positive/negative paths) and `HttpVaultClient::delete_payload`; rust-ci `vault-real` starts a dev Vault from the official HashiCorp repository and fails on SKIP; run 39414212765 passed.*
-- **ENV-17 S3 / 农场二跑（CI 已接线，PARTIAL）**：新增 rust-ci `s3-real`，本地 MinIO 上跑 `s3_real` 的 PUT / GET / LIST / DELETE 与 `farm_cache` 的两 worker 共享桶二跑（首跑 0/1、二跑 1/1），SKIP 即失败；MinIO server 因 `dl.min.io` 410 改由归档官方 tag 源码构建，`mc` 使用官方 release 并核对 SHA-256。首跑证据待 CI。
+- **ENV-17 S3 / 农场二跑（CI 已接线，PARTIAL）**：新增 rust-ci `s3-real`，本地 MinIO 上跑 `s3_real` 的 PUT / GET / LIST / DELETE 与 `farm_cache` 的两 worker 共享桶二跑（首跑 0/1、二跑 1/1），SKIP 即失败；MinIO server 因 `dl.min.io` 410 改由归档官方 tag 源码构建，`mc` 使用官方 release 并核对 SHA-256；run 39425835979 首跑通过。
 
-*ENV-17 S3 / farm second run (CI wired, PARTIAL): adds rust-ci `s3-real`, running `s3_real` PUT / GET / LIST / DELETE and the two-worker farm shared-bucket rerun (0/1 then 1/1) on local MinIO, failing on SKIP; the MinIO server is built from an archived official tag because `dl.min.io` returns 410, and `mc` comes from the official release with its SHA-256 verified. First-run evidence is pending CI.*
+*ENV-17 S3 / farm second run (CI wired, PARTIAL): adds rust-ci `s3-real`, running `s3_real` PUT / GET / LIST / DELETE and the two-worker farm shared-bucket rerun (0/1 then 1/1) on local MinIO, failing on SKIP; the MinIO server is built from an archived official tag because `dl.min.io` returns 410, and `mc` comes from the official release with its SHA-256 verified; the first run, 39425835979, passed.*
 
 ### Fixed
 - **wasmtime 49.0.4**：修复 RUSTSEC-2026-0378（组件模型流载荷类型 panic）与 RUSTSEC-2026-0379（aarch64 Cranelift `br_table` 跳转错误）；精确版本钉从 `=49.0.3` 提升到 `=49.0.4`，`Cargo.lock` 同步，`cargo deny check advisories` 通过。
