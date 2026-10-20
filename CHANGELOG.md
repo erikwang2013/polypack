@@ -10,6 +10,15 @@ Notable changes are recorded here; since v1.0.0, tags and releases follow `vX.Y.
 - **SBOM 使用文档与真实样例**：新增双语 `docs/SBOM` 与 `docs/samples/sbom/web/`（SPDX 2.3 / CycloneDX 1.5 / in-toto，二跑字节一致）；`tools/check-docs.mjs` 增至 19 对。
 
 *SBOM usage docs and a real sample: adds bilingual `docs/SBOM` and `docs/samples/sbom/web/` (SPDX 2.3 / CycloneDX 1.5 / in-toto, byte-identical across runs); `tools/check-docs.mjs` now covers 19 pairs.*
+- **T-M9-41 签名插件索引**：`poly plugin add/search` 离线验证 ADR 0004 索引（索引 / 吊销分离验签、指纹绑定、expiry / sequence / previous_digest / fork、吊销 / yanked、BLAKE3 SRI 与大小、发布者签名），安装不执行插件；新增 `E_PLUGIN_0011..0013`。生产信任根仪式仍为外部项。
+
+*T-M9-41 signed plugin index: `poly plugin add/search` verifies ADR 0004 indexes offline (separate index/revocation signatures, fingerprint binding, expiry / sequence / previous_digest / fork, revocation / yanked, BLAKE3 SRI and size, publisher signature) and installs without executing; adds `E_PLUGIN_0011..0013`. The production trust-root ceremony remains external.*
+- **T-M9-44 农场加固**：新增自托管硬化清单（10 项）、`tools/farm-preflight.sh` 与可重跑演练；Linux 双 worker / 共享缓存 / 哨兵 / 隔离腿通过，生产主机与 macOS/IPA 演练仍为外部项。
+
+*T-M9-44 farm hardening: adds a 10-item self-hosted hardening checklist, `tools/farm-preflight.sh`, and a rerun-safe drill; the Linux two-worker / shared-cache / sentinel / isolation legs pass, while production-host and macOS/IPA drills remain external.*
+- **ENV-11/12/13 CI legs**：watchOS 真 `xcodebuild` + 打包（run 39455179337）、Fitbit `fitbit-build` 自检 + `.fba`（run 39455185737）、Zepp `zeus` 自检 + `.zab`（同 run）通过；ENV-11/12 已关闭，ENV-13 模拟器安装仍为外部人工腿。ENV-07 NetBSD 作业已接线，首跑缺 `curl` 修复待复跑。
+
+*ENV-11/12/13 CI legs: real watchOS `xcodebuild` + packaging (run 39455179337), Fitbit `fitbit-build` self-check + `.fba` (run 39455185737), and Zepp `zeus` self-check + `.zab` (same run) passed; ENV-11/12 are closed, while ENV-13's simulator install remains an external manual leg. The ENV-07 NetBSD job is wired; its first run failed on missing `curl` and awaits a rerun.*
 
 ### Fixed
 - **发布工作流版本闸门**：构建前校验 tag 与 `poly-cli` Cargo 版本一致；install-smoke 断言安装后的 `poly --version` 等于 tag，避免再次发布版本号错误的二进制。

@@ -995,7 +995,7 @@
 | M9-P6 | PlayStation (NDA-gated, ADR 0006) | T-M9-34..35 |
 | M9-P7 | Xbox (NDA-gated, ADR 0006) | T-M9-36..37 |
 | M9-P8 | Nintendo Switch (NDA-gated, ADR 0006) | T-M9-38..39 |
-| M9-D1 | Plugin marketplace distribution decision (ADR 0004 accepted; signed-index implementation and production key ceremony external) | T-M9-40..42 |
+| M9-D1 | Plugin marketplace distribution decision (ADR 0004 + signed index / `poly plugin add/search` delivered; production key ceremony / official mirror external) | T-M9-40..42 |
 | M9-D2 | Remote farm hosting decision (ADR 0005 accepted; T-M9-44 self-host hardening checklist + Linux preflight / drill delivered, real production-host drill external) | T-M9-43..44 |
 | M9-G1 | CLI distribution (GitHub Releases delivered; T-M9-45 audit landed, crates.io publish closed by name conflicts / publish=false) | T-M9-45..47 |
 | M9-G2 | Human external developer trial protocol (protocol delivered; T-M9-49 human trials external) | T-M9-48..49 |

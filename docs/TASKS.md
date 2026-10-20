@@ -995,7 +995,7 @@
 | M9-P6 | PlayStation（NDA 门控，ADR 0006） | T-M9-34..35 |
 | M9-P7 | Xbox（NDA 门控，ADR 0006） | T-M9-36..37 |
 | M9-P8 | Nintendo Switch（NDA 门控，ADR 0006） | T-M9-38..39 |
-| M9-D1 | 插件市场分发决策（已决策 ADR 0004；签名索引实现与生产密钥仪式外部） | T-M9-40..42 |
+| M9-D1 | 插件市场分发决策（ADR 0004 + 签名索引 / `poly plugin add/search` 已交付；生产密钥仪式 / 官方镜像外部） | T-M9-40..42 |
 | M9-D2 | 远程农场托管决策（已决策 ADR 0005；T-M9-44 自托管加固清单 + Linux 预检 / 演练已交付，真实生产主机演练外部） | T-M9-43..44 |
 | M9-G1 | CLI 分发（GitHub Releases 已交付；T-M9-45 审计已落地，crates.io 发布因名称占用 / publish=false 关闭） | T-M9-45..47 |
 | M9-G2 | 人类外部开发者试用协议（协议已交付；T-M9-49 真人试用外部） | T-M9-48..49 |
