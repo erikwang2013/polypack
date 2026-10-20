@@ -1,6 +1,6 @@
 # 环境槽关闭台账（ENV-SLOTS）
 
-> 状态快照：2026-10-19 · 基线：`main`（与 `TASKS.md` / `GA.md` 当前版本同批）。
+> 状态快照：2026-10-20 · 基线：`main`（与 `TASKS.md` / `GA.md` 当前版本同批）。
 > 本台账只登记**环境槽**：仓内结构 / mock / 命令组装腿已真跑，但真实工具链、真机、真实云或人工签字尚未执行，因而只能 SKIP-with-print 的验收腿。
 > 纪律：`SKIP-with-print` 不是 PASS；没有原始证据（命令、退出码、工具版本、产物摘要）的槽位不得在 TASKS / GA 标 ✅ 关闭。English: [ENV-SLOTS.en.md](ENV-SLOTS.en.md)
 
@@ -42,7 +42,7 @@
 | ENV-15 | T-M8-03 | keyring 信任根载体 | OPEN | CI | release-sec | §3 ENV-15 | — |
 | ENV-16 | T-M8-03 | Vault 信任根载体 | OPEN | CI | release-sec + core | §3 ENV-16 | — |
 | ENV-17 | T-M8-09 | 真实 S3 / OSS 往返与农场二跑 | OPEN | CI | infra + release-sec | §3 ENV-17 | — |
-| ENV-18 | T-M2-12 | Branch protection admin bypass | OPEN | HUMAN | maintainer | §3 ENV-18 | secret-scan |
+| ENV-18 | T-M2-12 | Branch protection admin bypass | CLOSED | HUMAN | maintainer | §3 ENV-18 | secret-scan |
 | ENV-19 | GA §7.2 | 人类外部开发者试用 | OPEN | HUMAN | docs | §3 ENV-19 | — |
 
 负责人只使用五个角色：`release-sec` / `core` / `docs` / `infra` / `maintainer`；组合用 ` + `。证据列指向 §3 的执行卡；真实证据包仍按 §4.2 归档，本表不伪造证据。真实逐槽关闭仍是外部工作，未关闭槽位保持原状态。
@@ -381,7 +381,7 @@ for i in 1 2; do poly farm submit --dir /srv/farm --config /srv/proj/polypack.to
 
 ### ENV-18 · Branch protection admin bypass
 
-- 关联任务：T-M2-12（secret-scan 与必过检查）。 缺口：3 宿主 secret-scan 已是 required checks，但 `enforce_admins=false`，管理员可直推绕过 required checks。
+- 关联任务：T-M2-12（secret-scan 与必过检查）。 原缺口：3 宿主 secret-scan 已是 required checks，但 `enforce_admins=false`，管理员可直推绕过 required checks；2026-10-20 已启用管理员同等约束。
 - 环境 / 工具链 / 凭据：GitHub 仓库管理员权限、`gh` CLI 或网页设置。
 - 开关：无环境变量；GitHub 设置项。
 - 命令：
@@ -390,10 +390,10 @@ gh api repos/erikwang2013/polypack/branches/main/protection --jq '.enforce_admin
 gh api repos/erikwang2013/polypack/branches/main/protection/required_status_checks --jq '.contexts'
 # 目标：enforce_admins.enabled == true；或在 GA 记录有时限的例外与四眼复核
 ```
-- 证据：`gh api` 输出 `true`；GitHub Settings → Branches → main 截图；required checks 列表含 `secret-scan / ubuntu-latest`、`secret-scan / macos-14`、`secret-scan / windows-2022`。
-- 现状：`OPEN`。必过检查已设；admin 绕过仍开。 负责人：maintainer。
-- 下一步：管理员打开 “Do not allow bypassing the above settings”；如业务必须保留紧急通道，则在 GA §7 记录例外条件、审批人与复核记录。
-- 阻塞：需要仓库管理员权限；普通开发无法修改。 运行位置：HUMAN / GitHub 设置，不在代码仓内。
+- 证据：GitHub branch protection API 报告 `enforce_admins.enabled = true` 与 9 个 required contexts（含 `secret-scan / ubuntu-latest`、`secret-scan / macos-14`、`secret-scan / windows-2022`）；核实日期 2026-10-20，结果记录于 T-M2-12 标题与本节。
+- 现状：`CLOSED`（2026-10-20）。9 个 required contexts 生效，管理员直推同样受 required checks 约束。 负责人：maintainer。
+- 下一步：保持规则不变；如启用紧急 break-glass 通道，须按 GA §7 记录例外条件、审批人与四眼复核记录，并在事后恢复 `enforce_admins=true`。
+- 阻塞：无（已关闭）；后续修改仍需仓库管理员权限。 运行位置：HUMAN / GitHub 设置，不在代码仓内。
 
 ### ENV-19 · 人类外部开发者试用
 
@@ -474,7 +474,7 @@ poly build --config <app>/polypack.toml --target pocket-notes
 | ENV-15 | — | — | 无 keyring 作业 |
 | ENV-16 | — | — | 无 Vault 作业；默认后端链已按环境接线 |
 | ENV-17 | — | — | 无 S3 作业 |
-| ENV-18 | `.github/workflows/secret-scan.yml` | `scan`（3 宿主） | 提供 required checks；不负责 admin bypass 设置 |
+| ENV-18 | `.github/workflows/secret-scan.yml` | `scan`（3 宿主） | 提供 required checks；admin bypass 已于 2026-10-20 关闭，设置不在工作流 |
 | ENV-19 | — | — | 人工试用，无工作流 |
 
 ## 6. 仓库内不可关闭清单

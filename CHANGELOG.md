@@ -6,6 +6,19 @@ Notable changes are recorded here; since v1.0.0, tags and releases follow `vX.Y.
 
 ## [Unreleased]
 
+### Added
+- **M9-P3 LINE LIFF 部署模式**：新增 `poly deploy line-liff --dir <dir> --config line-liff.toml`（部署模式，非 TargetSpec）：校验 `schema=1`、`liff_id` / `endpoint` / `channel_id` / `scopes`、Endpoint 必须 HTTPS 且不含 fragment，输出 5 条 Console 人工步骤；始终 dry-run，不触网、不上传、不生成平台包；错误码 `poly::E_DEPLOY_0001`；新增 ADR 0009 与双语 `docs/LINE-DEPLOY`，8 个集成测试通过。
+
+*M9-P3 LINE LIFF deploy mode: new `poly deploy line-liff --dir <dir> --config line-liff.toml` (a deploy mode, not a TargetSpec) validating `schema=1`, `liff_id` / `endpoint` / `channel_id` / `scopes`, and an HTTPS Endpoint without a fragment, then printing 5 manual Console steps; always a dry run with no network, upload, or platform package; error code `poly::E_DEPLOY_0001`; new ADR 0009 and bilingual `docs/LINE-DEPLOY`; 8 integration tests pass.*
+
+### Changed
+- **M9 平台决策收口（2026-10-20）**：Google Play Instant 标记 retired（保留行，不声明 TargetSpec）；Snapchat Mini 标记 closed 并按季度复审（下次 2027-01-20）；P4 / P5 为条件支持、P6–P8 为 NDA 门控，均链接 ADR 0006；49 目标表行数与 L1–L7 计数不变。
+
+*M9 platform decisions closed out (2026-10-20): Google Play Instant marked retired (row kept, no TargetSpec claim); Snapchat Mini marked closed with quarterly review (next 2027-01-20); P4 / P5 are conditional and P6–P8 NDA-gated, all linking ADR 0006; the 49-target row count and L1–L7 counts are unchanged.*
+- **M9-G5 分支保护关闭**：GitHub API 核实 `enforce_admins.enabled = true` 与 9 个必需检查上下文（含 3 个 secret-scan 上下文，2026-10-20）；ENV-18 由 `OPEN` 改为 `CLOSED`，TASKS T-M2-12 / T-M9-55 同步。
+
+*M9-G5 branch protection closed: the GitHub API confirms `enforce_admins.enabled = true` and 9 required check contexts (including 3 secret-scan contexts, verified 2026-10-20); ENV-18 moved from `OPEN` to `CLOSED`, with TASKS T-M2-12 / T-M9-55 synced.*
+
 ## [1.12.0] — 2026-10-20
 
 ### Added

@@ -160,9 +160,9 @@ This document covers 22 candidates: 7 incubation items, 8 planned platforms, 2 o
 
 ### M9-P1 · Google Play Instant
 
-- Status: candidate · unscheduled; verdict: close (retired, keep a row); see [ADR 0006](../decisions/0006-platform-decisions.md).
+- Status: decision landed (2026-10-20): close (retired, keep a row); the generator and four documents are synced; see [ADR 0006](../decisions/0006-platform-decisions.md).
 - Trigger: Google officially restores Instant Apps intake and the Instant API (no sign of this today).
-- Current state: Google stopped accepting Instant Apps submissions in Dec 2025 and shut down Play services Instant APIs; README and `tools/gen-status-table.mjs` already say "discontinued", and there is no TargetSpec.
+- Current state: Google stopped accepting Instant Apps submissions in Dec 2025 and shut down Play services Instant APIs; README and `tools/gen-status-table.mjs` say "retired", and there is no TargetSpec.
 - Feasibility: not feasible; there is no submission channel.
 - Blockers and prerequisites: service shutdown; no developer console entry; no review path.
 - Recommendation: close. Keep historical links and invest no further packager work.
@@ -180,7 +180,7 @@ This document covers 22 candidates: 7 incubation items, 8 planned platforms, 2 o
 
 ### M9-P2 · Snapchat Mini
 
-- Status: candidate · unscheduled; verdict: close with quarterly review (next 2027-01-20); see [ADR 0006](../decisions/0006-platform-decisions.md).
+- Status: decision landed (2026-10-20): close with quarterly review (next 2027-01-20); the generator marks it closed; see [ADR 0006](../decisions/0006-platform-decisions.md).
 - Trigger: Snap officially republishes verifiable Minis docs, SDK, and upload contract.
 - Current state: the official docs entry returns 404, developers.snap.com has no Minis docs; npm `@snapchat/minis-sdk` 3.0.5 (2022) is marked deprecating minis; no zip / manifest / packaging contract can be verified.
 - Feasibility: not feasible today; without a contract any packager is guesswork.
@@ -200,14 +200,14 @@ This document covers 22 candidates: 7 incubation items, 8 planned platforms, 2 o
 
 ### M9-P3 · LINE Mini App
 
-- Status: candidate · unscheduled; verdict: conditional (deploy mode only, no TargetSpec); see [ADR 0006](../decisions/0006-platform-decisions.md).
+- Status: the in-repo part is delivered (T-M9-26/27, 2026-10-20): conditional support (deploy mode only, no TargetSpec); see [ADR 0009](../decisions/0009-line-deploy.md) and [LINE-DEPLOY](LINE-DEPLOY.md). Real Console registration and the hosting drill remain external steps.
 - Trigger: a user clearly needs the LINE channel and accepts "hosted URL only, no local upload package".
 - Current state: LIFF apps are registered by hosted URL in the LINE Developers Console (LINE Login channel → LIFF; the endpoint URL must be HTTPS without fragments); there is no official local upload format or LIFF config file.
 - Feasibility: feasible as "deploy + config validation"; not feasible as platform artifact packaging.
 - Blockers and prerequisites: LINE Login channel, LIFF app, HTTPS static hosting; no official CI upload API.
-- Recommendation: conditionally support `poly deploy --target line-liff`, validating config and guiding deployment, without generating a "platform package".
+- Recommendation: conditionally support `poly deploy line-liff --dir <dir> --config line-liff.toml`, validating config and guiding deployment, without generating a "platform package".
 - Goals: let LINE users reuse the Web build and config validation; non-goals: fabricate a LIFF config file or claim store acceptance.
-- Design sketch: add `line-liff.toml` (liffId, endpoint, channelId, scopes) and `poly deploy line-liff --dir dist`; validate HTTPS / no fragment / required fields and print the manual Console steps; do not call an upload API. Integration points: a new subcommand in `crates/poly-cli/src/main.rs`, the Web static packager `crates/poly-bundle/src/webapp.rs`. Alternatives: documentation only, or generic static hosting.
+- Design sketch: implemented `line-liff.toml` (`schema`, `liff_id`, `endpoint`, `channel_id`, `scopes`) and `poly deploy line-liff --dir <dir> --config line-liff.toml`; it validates HTTPS / no fragment / required fields and prints the manual Console steps; the command is always a dry run — no network and no upload API. Integration points: `crates/poly-cli/src/deploy.rs`, `crates/poly-cli/src/main.rs`; usage in [LINE-DEPLOY](LINE-DEPLOY.md). Alternatives: documentation only, or generic static hosting.
 - Deliverables: deploy mode design; config validator; end-to-end hosting drill (manual Console steps); docs.
 - Risks and mitigations: deploy mode mistaken for a TargetSpec → separate naming in docs and commands; endpoint rules change → version the validation rules; no upload API → explicitly SKIP the manual step.
 - Decisions: whether a non-TargetSpec deploy mode is accepted into the official support surface.
@@ -220,7 +220,7 @@ This document covers 22 candidates: 7 incubation items, 8 planned platforms, 2 o
 
 ### M9-P4 · Sailfish OS
 
-- Status: candidate · unscheduled; verdict: conditional (needs sponsorship / device commitment); see [ADR 0006](../decisions/0006-platform-decisions.md).
+- Status: candidate · conditional (needs sponsorship / device commitment); unscheduled, decision in [ADR 0006](../decisions/0006-platform-decisions.md).
 - Trigger: a Sailfish user or sponsor commits test devices and a Jolla account.
 - Current state: the existing `linux-rpm` chain only emits a desktop Tauri RPM (`crates/poly-bundle/src/packagers/linux.rs`); it lacks a Qt / Silica QML host, the Sailfish SDK cross toolchain (armv7hl / aarch64), and harbour packaging / signing.
 - Feasibility: medium-high technically (RPM and Linux cross-compilation experience is reusable); market is niche.
@@ -241,7 +241,7 @@ This document covers 22 candidates: 7 incubation items, 8 planned platforms, 2 o
 
 ### M9-P5 · Ubuntu Touch
 
-- Status: candidate · unscheduled; verdict: conditional (needs sponsorship / device commitment); see [ADR 0006](../decisions/0006-platform-decisions.md).
+- Status: candidate · conditional (needs sponsorship / device commitment); unscheduled, decision in [ADR 0006](../decisions/0006-platform-decisions.md).
 - Trigger: an Ubuntu Touch user or sponsor commits test devices and an OpenStore release.
 - Current state: the existing Linux deb chain cannot produce a `.click` (format, AppArmor, and click manifest all differ); it lacks Clickable / the Ubuntu Touch SDK and a WebView shell.
 - Feasibility: medium technically; ecosystem and device base are small.
@@ -262,7 +262,7 @@ This document covers 22 candidates: 7 incubation items, 8 planned platforms, 2 o
 
 ### M9-P6 · PlayStation
 
-- Status: candidate · unscheduled; verdict: NDA-gated (no code without authorization); see [ADR 0006](../decisions/0006-platform-decisions.md).
+- Status: candidate · NDA-gated (no code without authorization); unscheduled, decision in [ADR 0006](../decisions/0006-platform-decisions.md).
 - Trigger: Sony grants authorized developer status and an NDA is signed, with the official SDK installable locally.
 - Current state: L7 planned target; the official SDK requires authorization, is never committed, and is only probed at a local path; there is no TargetSpec.
 - Feasibility: not feasible publicly; only implementable as a plugin inside an authorized environment.
@@ -282,7 +282,7 @@ This document covers 22 candidates: 7 incubation items, 8 planned platforms, 2 o
 
 ### M9-P7 · Xbox
 
-- Status: candidate · unscheduled; verdict: NDA-gated (no code without authorization); see [ADR 0006](../decisions/0006-platform-decisions.md).
+- Status: candidate · NDA-gated (no code without authorization); unscheduled, decision in [ADR 0006](../decisions/0006-platform-decisions.md).
 - Trigger: Microsoft grants authorized developer status and an NDA is signed, with the GDK installable locally.
 - Current state: L7 planned target; the GDK requires authorization, is never committed, and is only probed at a local path; there is no TargetSpec.
 - Feasibility: not feasible publicly; only implementable as a plugin inside an authorized environment.
@@ -302,7 +302,7 @@ This document covers 22 candidates: 7 incubation items, 8 planned platforms, 2 o
 
 ### M9-P8 · Nintendo Switch
 
-- Status: candidate · unscheduled; verdict: NDA-gated (no code without authorization); see [ADR 0006](../decisions/0006-platform-decisions.md).
+- Status: candidate · NDA-gated (no code without authorization); unscheduled, decision in [ADR 0006](../decisions/0006-platform-decisions.md).
 - Trigger: Nintendo grants authorized developer status and an NDA is signed, with NintendoSDK installable locally.
 - Current state: L7 planned target; NintendoSDK requires authorization, is never committed, and is only probed at a local path; there is no TargetSpec.
 - Feasibility: not feasible publicly; only implementable as a plugin inside an authorized environment.
@@ -436,25 +436,25 @@ This document covers 22 candidates: 7 incubation items, 8 planned platforms, 2 o
 
 ### M9-G5 · Branch protection admin bypass (external process)
 
-- Status: candidate · unscheduled; external action: repository owner must execute ([ADR 0007](../decisions/0007-external-and-ui-decisions.md)).
-- Trigger: now; T-M2-12 already records `enforce_admins=false`.
-- Why: required checks are configured, but admins can push directly and bypass secret-scan and other required checks; this is a process gap, not a code gap, and cannot be fixed inside the repository.
+- Status: delivered (2026-10-20): the repository owner enabled `enforce_admins=true` with 9 required contexts, and ENV-18 is `CLOSED`; evidence is in T-M2-12 (background in [ADR 0007](../decisions/0007-external-and-ui-decisions.md)).
+- Trigger: triggered and completed (2026-10-20); the original record was T-M2-12's `enforce_admins=false`.
+- Why: required checks are configured; admins could previously push directly and bypass secret-scan and other required checks. This was a process gap, not a code gap, and could not be fixed inside the repository.
 - Goals: make admins subject to the same rules (or an org-level ruleset) and leave verifiable evidence. Non-goals: changing CI code or the required-check set.
-- Design sketch: enable a GitHub ruleset requiring PRs, required checks, no force push, and `enforce_admins=true`; the repository owner performs it; archive the screenshot / link in the T-M2-12 record. Alternatives: process convention only (status quo), org-level policy.
-- Deliverables: rule screenshot / link; T-M2-12 status update proposal; a verification record where an admin direct push is rejected.
+- Design sketch: enable a GitHub ruleset requiring PRs, required checks, no force push, and `enforce_admins=true`; the repository owner has done so and archived API evidence. Alternatives: process convention only, org-level policy.
+- Deliverables: GitHub branch protection API evidence (`enforce_admins.enabled=true` + 9 required contexts, 2026-10-20); T-M2-12 / ENV-18 status updates.
 - Risks and mitigations: blocking emergency fixes → keep an audited break-glass process; insufficient permission → owner performs it; misconfiguration → rehearse in a test repository first.
 - Decisions: whether to allow emergency break-glass; who holds the exemption.
-- First step: the repository owner checks the current ruleset and `enforce_admins` in settings and captures evidence.
+- First step: completed: the repository owner enabled the admin constraint and the API output is archived in T-M2-12 / ENV-18.
 
 | Task | Title | Role | Depends | Days | Acceptance |
 | --- | --- | --- | --- | --- | --- |
-| T-M9-55 | Enforce admin constraints and archive evidence | maintainer | — | 1 | Admin direct push rejected; required checks enforced; evidence linked into T-M2-12 |
+| T-M9-55 | Enforce admin constraints and archive evidence | maintainer | — | 1 | `enforce_admins=true` and 9 required contexts (API-verified 2026-10-20); admins are subject to required checks; evidence linked into T-M2-12 / ENV-18 |
 
 ## 6. Recommended order
 
 Ordered by "repair GA credibility first, then high-leverage engineering, then external dependencies"; everything remains candidate / unscheduled.
 
-1. M9-G5 branch protection: zero code, immediately closes the T-M2-12 process gap.
+1. M9-G5 branch protection: delivered (2026-10-20, ENV-18 `CLOSED`).
 2. M9-G1 CLI distribution: without an installable `poly`, external trials and GA lack an entry point.
 3. M9-G2 human trial: calibrate priorities with real users instead of assumptions.
 4. M9-G3 environment-slot closure: establish a trustworthy boundary for "what is verified".
@@ -496,5 +496,5 @@ Ordered by "repair GA credibility first, then high-leverage engineering, then ex
 - `docs/GA.md` / `GA.en.md` §7.1 / §7.2: reconcile "13 planned platforms" with the 8 in README / `tools/gen-status-table.mjs`, and link each platform row to M9-P1–M9-P8; link the human trial to M9-G2, keyring / Vault, S3 / OSS, macOS IPA, and Garmin iq to M9-G3, and MSI to M9-G4.
 - `README.md` / `README.en.md`: add this document's link to the notes of the 8 planned rows in `tools/gen-status-table.mjs`, then regenerate the 49-target status table; the platform matrix counts stay unchanged.
 - `docs/TASKS.md` / `TASKS.en.md`: after T-M8-13, add an M9 candidate section containing T-M9-01–T-M9-55; mark everything candidate / unscheduled, totaling 226 person-days.
-- `tools/check-docs.mjs` `PAIRS`: add `['docs/INITIATIVES.md', 'docs/INITIATIVES.en.md']`; if M9-P1 decides removal or retired, `tools/gen-status-table.mjs` must update `PLATFORMS`, `TOTAL`, `TIER_COUNTS`, and the README tier table (ROADMAP §11 item 4); this document does not change them.
+- `tools/check-docs.mjs` `PAIRS`: add `['docs/INITIATIVES.md', 'docs/INITIATIVES.en.md']`; M9-P1 has landed as retired (the `PLATFORMS` row stays; `TOTAL` / `TIER_COUNTS` are unchanged), and P2 is marked closed with a review date.
 - `docs/decisions/`: M9-D1 produces ADR 0004, M9-D2 produces ADR 0005, and M9-G1's release policy may add an ADR; `docs/ENV-SLOTS.md` does not exist when this document is written, and if another workstream lands it, M9-G3 uses it as the single source of truth and cross-links it; this document does not create that file.

@@ -1,6 +1,6 @@
 # Environment slot close-out tracker (ENV-SLOTS)
 
-> Status snapshot: 2026-10-19 · Baseline: `main` (same revision as the current `TASKS.md` / `GA.md`).
+> Status snapshot: 2026-10-20 · Baseline: `main` (same revision as the current `TASKS.md` / `GA.md`).
 > This tracker records **environment slots only**: acceptance legs whose in-repo structure / mock / command-assembly parts already run, but whose real toolchain, physical device, real cloud, or human sign-off has not executed and therefore still prints SKIP-with-print.
 > Rule: `SKIP-with-print` is not PASS. A slot may not be marked ✅ in TASKS / GA without raw evidence (command, exit code, tool versions, artifact digest). 中文版：[ENV-SLOTS.md](ENV-SLOTS.md)
 
@@ -42,7 +42,7 @@ Environment slots are tracked separately from code gaps: a slot closes with envi
 | ENV-15 | T-M8-03 | keyring trust-root carrier | OPEN | CI | release-sec | §3 ENV-15 | — |
 | ENV-16 | T-M8-03 | Vault trust-root carrier | OPEN | CI | release-sec + core | §3 ENV-16 | — |
 | ENV-17 | T-M8-09 | Real S3 / OSS round-trip + farm second run | OPEN | CI | infra + release-sec | §3 ENV-17 | — |
-| ENV-18 | T-M2-12 | Branch protection admin bypass | OPEN | HUMAN | maintainer | §3 ENV-18 | secret-scan |
+| ENV-18 | T-M2-12 | Branch protection admin bypass | CLOSED | HUMAN | maintainer | §3 ENV-18 | secret-scan |
 | ENV-19 | GA §7.2 | Human external developer trial | OPEN | HUMAN | docs | §3 ENV-19 | — |
 
 Owners use only five roles: `release-sec` / `core` / `docs` / `infra` / `maintainer`; combinations use ` + `. The evidence column points at the §3 run card; the real evidence bundle is still archived per §4.2 and this table never fabricates evidence. Real per-slot close-out remains external work; unclosed slots keep their current status.
@@ -381,7 +381,7 @@ for i in 1 2; do poly farm submit --dir /srv/farm --config /srv/proj/polypack.to
 
 ### ENV-18 · Branch protection admin bypass
 
-- Linked task: T-M2-12 (secret-scan and required checks). Gap: 3-host secret-scan is a required check, but `enforce_admins=false`, so admins can push directly and bypass required checks.
+- Linked task: T-M2-12 (secret-scan and required checks). Original gap: 3-host secret-scan is a required check, but `enforce_admins=false` let admins push directly and bypass required checks; the admin constraint was enabled on 2026-10-20.
 - Environment / toolchain / credentials: GitHub repository admin permission, `gh` CLI or the web settings.
 - Gates: no environment variable; a GitHub setting.
 - Commands:
@@ -390,10 +390,10 @@ gh api repos/erikwang2013/polypack/branches/main/protection --jq '.enforce_admin
 gh api repos/erikwang2013/polypack/branches/main/protection/required_status_checks --jq '.contexts'
 # Target: enforce_admins.enabled == true; or record a time-bounded exception and four-eyes review in GA
 ```
-- Evidence: `gh api` output `true`; screenshot of GitHub Settings → Branches → main; required-check list contains `secret-scan / ubuntu-latest`, `secret-scan / macos-14`, `secret-scan / windows-2022`.
-- Status: `OPEN`. Required checks are configured; the admin bypass remains open. Owner: maintainer.
-- Next action: an admin enables "Do not allow bypassing the above settings"; if business requires an emergency path, record the exception conditions, approver, and review log in GA §7.
-- Blocker: requires repository admin permission; ordinary developers cannot change it. Execution mode: HUMAN / GitHub settings, not inside the code repository.
+- Evidence: the GitHub branch protection API reports `enforce_admins.enabled = true` and 9 required contexts (including `secret-scan / ubuntu-latest`, `secret-scan / macos-14`, and `secret-scan / windows-2022`); verified 2026-10-20 and recorded in the T-M2-12 heading and this section.
+- Status: `CLOSED` (2026-10-20). The 9 required contexts are enforced, and admin direct pushes are subject to the same required checks. Owner: maintainer.
+- Next action: keep the rule in place; if an emergency break-glass path is enabled, record the exception conditions, approver, and four-eyes review in GA §7, and restore `enforce_admins=true` afterwards.
+- Blocker: none (closed); later changes still require repository admin permission. Execution mode: HUMAN / GitHub settings, not inside the code repository.
 
 ### ENV-19 · Human external developer trial
 
@@ -474,7 +474,7 @@ Suggested evidence path: `env-slots/<ENV-XX>/<UTC timestamp>/`. The repository d
 | ENV-15 | — | — | No keyring job |
 | ENV-16 | — | — | No Vault job; the default backend chain is wired from the environment |
 | ENV-17 | — | — | No S3 job |
-| ENV-18 | `.github/workflows/secret-scan.yml` | `scan` (3 hosts) | Supplies required checks; does not manage admin bypass |
+| ENV-18 | `.github/workflows/secret-scan.yml` | `scan` (3 hosts) | Supplies required checks; admin bypass was closed on 2026-10-20 and is not a workflow setting |
 | ENV-19 | — | — | Human trial, no workflow |
 
 ## 6. Not closable in this repo

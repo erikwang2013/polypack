@@ -160,9 +160,9 @@
 
 ### M9-P1 · Google Play Instant
 
-- 状态：候选 · 未排期；结论：关闭（retired，保留一行），见 [ADR 0006](../decisions/0006-platform-decisions.md)。
+- 状态：决策已落地（2026-10-20）：关闭（retired，保留一行），生成器与四份文档已同步；见 [ADR 0006](../decisions/0006-platform-decisions.md)。
 - 触发条件：Google 官方恢复 Instant Apps 受理与 Instant API（当前无迹象）。
-- 现状：Google 自 2025-12 起停止受理 Instant Apps 发布，Play services Instant API 停用；README 与 `tools/gen-status-table.mjs` 已标注「已停服」，无 TargetSpec。
+- 现状：Google 自 2025-12 起停止受理 Instant Apps 发布，Play services Instant API 停用；README 与 `tools/gen-status-table.mjs` 已标注「已停用（retired）」，无 TargetSpec。
 - 可行性：不可行；没有可提交的渠道。
 - 阻塞与前置：服务停服；无开发者后台入口；无审核路径。
 - 建议：关闭。保留历史链接，不再投入打包器。
@@ -180,7 +180,7 @@
 
 ### M9-P2 · Snapchat Mini
 
-- 状态：候选 · 未排期；结论：关闭 + 季度复审（下次 2027-01-20），见 [ADR 0006](../decisions/0006-platform-decisions.md)。
+- 状态：决策已落地（2026-10-20）：关闭 + 季度复审（下次 2027-01-20），生成器已标注关闭；见 [ADR 0006](../decisions/0006-platform-decisions.md)。
 - 触发条件：Snap 官方重新发布可核验的 Minis 文档、SDK 与上传契约。
 - 现状：官方文档入口 404，developers.snap.com 无 Minis 文档；npm `@snapchat/minis-sdk` 3.0.5（2022）标注 deprecating minis；无 zip / manifest / 打包契约可核验。
 - 可行性：当前不可行；契约缺失使任何打包器都是猜测。
@@ -200,14 +200,14 @@
 
 ### M9-P3 · LINE Mini App
 
-- 状态：候选 · 未排期；结论：条件支持（仅部署模式，不声明 TargetSpec），见 [ADR 0006](../decisions/0006-platform-decisions.md)。
+- 状态：仓库内部分已交付（T-M9-26/27，2026-10-20）：条件支持（仅部署模式，不声明 TargetSpec）；实现见 [ADR 0009](../decisions/0009-line-deploy.md) 与 [LINE-DEPLOY](LINE-DEPLOY.md)，真实 Console 注册与托管演练仍为外部步骤。
 - 触发条件：出现明确使用 LINE 渠道的用户，且接受「只托管 URL、无本地上传包」。
 - 现状：LIFF 应用由 LINE Developers Console 以托管 URL 注册（LINE Login 渠道 → LIFF；Endpoint URL 必须 HTTPS 且不得含 fragment）；官方无本地上传包格式或 LIFF 配置文件。
 - 可行性：作为「部署 + 配置校验」可行；作为平台产物打包不可行。
 - 阻塞与前置：LINE Login 渠道、LIFF 应用、HTTPS 静态托管；无官方 CI 上传 API。
-- 建议：条件支持 `poly deploy --target line-liff`，只做校验与部署指引，不生成「平台包」。
+- 建议：条件支持 `poly deploy line-liff --dir <dir> --config line-liff.toml`，只做校验与部署指引，不生成「平台包」。
 - 目标：让 LINE 用户复用 Web 构建与配置校验；非目标：不伪造 LIFF 配置文件、不声明商店受理。
-- 方案概览：新增 `line-liff.toml`（liffId、endpoint、channelId、scopes）与 `poly deploy line-liff --dir dist`；校验 HTTPS / 无 fragment / 必填字段，输出 Console 人工步骤；不接上传 API。集成点：`crates/poly-cli/src/main.rs` 新子命令、Web 静态打包器 `crates/poly-bundle/src/webapp.rs`。备选：纯文档指引、通用静态托管。
+- 方案概览：已实现 `line-liff.toml`（`schema`、`liff_id`、`endpoint`、`channel_id`、`scopes`）与 `poly deploy line-liff --dir <dir> --config line-liff.toml`；校验 HTTPS / 无 fragment / 必填字段，输出 Console 人工步骤；命令始终 dry-run，不触网、不接上传 API。集成点：`crates/poly-cli/src/deploy.rs`、`crates/poly-cli/src/main.rs`；使用说明见 [LINE-DEPLOY](LINE-DEPLOY.md)。备选：纯文档指引、通用静态托管。
 - 交付物：部署模式设计；配置校验器；端到端托管演练（人工 Console 步骤）；文档。
 - 风险与缓解：把部署模式误当 TargetSpec → 文档与命令命名明确区分；Endpoint 规则变化 → 校验规则版本化；无上传 API → 明确 SKIP 人工步骤。
 - 决策项：是否接受「非 TargetSpec 的部署模式」进入官方支持面。
@@ -220,7 +220,7 @@
 
 ### M9-P4 · Sailfish OS
 
-- 状态：候选 · 未排期；结论：条件支持（需赞助 / 设备承诺），见 [ADR 0006](../decisions/0006-platform-decisions.md)。
+- 状态：候选 · 条件支持（需赞助 / 设备承诺）；未排期，决策见 [ADR 0006](../decisions/0006-platform-decisions.md)。
 - 触发条件：有 Sailfish 用户或赞助方承诺测试设备与 Jolla 账号。
 - 现状：现有 `linux-rpm` 链只出桌面 Tauri RPM（`crates/poly-bundle/src/packagers/linux.rs`）；缺 Qt / Silica QML 宿主、Sailfish SDK 交叉工具链（armv7hl / aarch64）与 harbour 打包 / 签名。
 - 可行性：技术上中等偏高（可复用 RPM 与 Linux 交叉经验）；市场上小众。
@@ -241,7 +241,7 @@
 
 ### M9-P5 · Ubuntu Touch
 
-- 状态：候选 · 未排期；结论：条件支持（需赞助 / 设备承诺），见 [ADR 0006](../decisions/0006-platform-decisions.md)。
+- 状态：候选 · 条件支持（需赞助 / 设备承诺）；未排期，决策见 [ADR 0006](../decisions/0006-platform-decisions.md)。
 - 触发条件：有 Ubuntu Touch 用户或赞助方承诺测试设备与 OpenStore 发布。
 - 现状：现有 Linux deb 链不能产出 `.click`（格式、AppArmor、click 清单均不同）；缺 Clickable / Ubuntu Touch SDK 与 WebView 壳。
 - 可行性：技术上中等；生态与设备规模小。
@@ -262,7 +262,7 @@
 
 ### M9-P6 · PlayStation
 
-- 状态：候选 · 未排期；结论：NDA 门控（无授权不写代码），见 [ADR 0006](../decisions/0006-platform-decisions.md)。
+- 状态：候选 · NDA 门控（无授权不写代码）；未排期，决策见 [ADR 0006](../decisions/0006-platform-decisions.md)。
 - 触发条件：获得 Sony 授权开发者身份并签署 NDA，且能本地安装官方 SDK。
 - 现状：L7 规划目标；官方 SDK 需授权，SDK 不入库、只做本地路径探测；当前无 TargetSpec。
 - 可行性：公开不可行；只能在授权环境内以插件形态实现。
@@ -282,7 +282,7 @@
 
 ### M9-P7 · Xbox
 
-- 状态：候选 · 未排期；结论：NDA 门控（无授权不写代码），见 [ADR 0006](../decisions/0006-platform-decisions.md)。
+- 状态：候选 · NDA 门控（无授权不写代码）；未排期，决策见 [ADR 0006](../decisions/0006-platform-decisions.md)。
 - 触发条件：获得微软授权开发者身份并签署 NDA，且能本地安装 GDK。
 - 现状：L7 规划目标；GDK 需授权，SDK 不入库、只做本地路径探测；当前无 TargetSpec。
 - 可行性：公开不可行；只能在授权环境内以插件形态实现。
@@ -302,7 +302,7 @@
 
 ### M9-P8 · Nintendo Switch
 
-- 状态：候选 · 未排期；结论：NDA 门控（无授权不写代码），见 [ADR 0006](../decisions/0006-platform-decisions.md)。
+- 状态：候选 · NDA 门控（无授权不写代码）；未排期，决策见 [ADR 0006](../decisions/0006-platform-decisions.md)。
 - 触发条件：获得任天堂授权开发者身份并签署 NDA，且能本地安装 NintendoSDK。
 - 现状：L7 规划目标；NintendoSDK 需授权，SDK 不入库、只做本地路径探测；当前无 TargetSpec。
 - 可行性：公开不可行；只能在授权环境内以插件形态实现。
@@ -436,25 +436,25 @@
 
 ### M9-G5 · 分支保护管理员绕过（外部流程）
 
-- 状态：候选 · 未排期；外部动作：需仓库 owner 执行（[ADR 0007](../decisions/0007-external-and-ui-decisions.md)）。
-- 触发条件：现在；T-M2-12 已记录 `enforce_admins=false`。
-- 背景与问题：required checks 已设置，但管理员直推可绕过 secret-scan 等必过检查，属于流程缺口而非代码缺口；仓库内无法修复。
+- 状态：已交付（2026-10-20）：仓库 owner 已启用 `enforce_admins=true` 与 9 个 required contexts，ENV-18 已 `CLOSED`；证据见 T-M2-12（决策背景见 [ADR 0007](../decisions/0007-external-and-ui-decisions.md)）。
+- 触发条件：已触发并完成（2026-10-20）；原记录为 T-M2-12 的 `enforce_admins=false`。
+- 背景与问题：required checks 已设置，管理员直推曾可绕过 secret-scan 等必过检查，属于流程缺口而非代码缺口；仓库内无法修复。
 - 目标：启用管理员同样受规则约束（或 org-level ruleset），并留下可核验证据。非目标：不改 CI 代码、不改变检查项集合。
-- 方案概览：GitHub 仓库设置启用 ruleset：要求 PR、required checks、禁止 force push、`enforce_admins=true`；由仓库 owner 执行；截图 / 链接归档到 T-M2-12 记录。备选：仅靠流程约定（当前）、org-level policy。
-- 交付物：规则截图 / 链接；T-M2-12 状态更新建议；一次管理员直推被拒绝的验证记录。
+- 方案概览：GitHub 仓库设置启用 ruleset：要求 PR、required checks、禁止 force push、`enforce_admins=true`；已由仓库 owner 执行并归档 API 证据。备选：仅靠流程约定、org-level policy。
+- 交付物：GitHub branch protection API 证据（`enforce_admins.enabled=true` + 9 个 required contexts，2026-10-20）；T-M2-12 / ENV-18 状态更新。
 - 风险与缓解：锁死紧急修复 → 保留 break-glass 流程并审计；权限不足 → owner 执行；规则误配 → 先在测试仓库演练。
 - 决策项：是否允许紧急 break-glass；由谁持有豁免权。
-- 首步动作：仓库 owner 在设置中检查当前 ruleset 与 `enforce_admins`，截图为证。
+- 首步动作：已完成：仓库 owner 启用管理员同等约束，API 输出归档到 T-M2-12 / ENV-18。
 
 | 任务 | 标题 | 角色 | 依赖 | 人日 | 验收 |
 | --- | --- | --- | --- | --- | --- |
-| T-M9-55 | 启用管理员同等约束并归档证据 | maintainer | — | 1 | 管理员直推被拒；required checks 生效；证据链接入 T-M2-12 |
+| T-M9-55 | 启用管理员同等约束并归档证据 | maintainer | — | 1 | `enforce_admins=true` 与 9 个 required contexts（2026-10-20 API 核实）；管理员受 required checks 约束；证据链入 T-M2-12 / ENV-18 |
 
 ## 6. 推荐顺序
 
 按「先补 GA 可信度，再做高杠杆工程，最后做外部依赖项」排序；全部仍为候选 / 未排期。
 
-1. M9-G5 分支保护：零代码，立即关闭 T-M2-12 流程缺口。
+1. M9-G5 分支保护：已交付（2026-10-20，ENV-18 `CLOSED`）。
 2. M9-G1 CLI 分发：没有可安装的 `poly`，外部试用与 GA 都缺入口。
 3. M9-G2 人类试用：用真实用户校准后续优先级，避免凭假设开工。
 4. M9-G3 环境槽收口：先建立「哪些已验证」的可信边界。
@@ -496,5 +496,5 @@
 - `docs/GA.md` / `GA.en.md` §7.1 / §7.2：把「13 个规划平台」与 README / `tools/gen-status-table.mjs` 的 8 个对账，逐平台行链接 M9-P1–M9-P8；人类试用链接 M9-G2，keyring / Vault、S3 / OSS、macOS IPA、Garmin iq 链接 M9-G3，MSI 链接 M9-G4。
 - `README.md` / `README.en.md`：由 `tools/gen-status-table.mjs` 的 8 个 planned 行在 notes 增加本文链接后重新生成 49 目标现状表；平台矩阵计数不变。
 - `docs/TASKS.md` / `TASKS.en.md`：在 T-M8-13 之后新增 M9 候选章节，收录 T-M9-01–T-M9-55；全部标「候选 / 未排期」，合计 226 人日。
-- `tools/check-docs.mjs` 的 `PAIRS`：新增 `['docs/INITIATIVES.md', 'docs/INITIATIVES.en.md']`；若 M9-P1 决定移除或 retired，`tools/gen-status-table.mjs` 须同步 `PLATFORMS`、`TOTAL`、`TIER_COUNTS` 与 README 分级表（ROADMAP §11 第 4 条），本文不代改。
+- `tools/check-docs.mjs` 的 `PAIRS`：新增 `['docs/INITIATIVES.md', 'docs/INITIATIVES.en.md']`；M9-P1 已按 retired 落地（`PLATFORMS` 行保留、`TOTAL` / `TIER_COUNTS` 不变），P2 已标注关闭与复审日期。
 - `docs/decisions/`：M9-D1 产出 ADR 0004，M9-D2 产出 ADR 0005，M9-G1 的发布策略可追加 ADR；`docs/ENV-SLOTS.md` 本文写作时不存在，若另一工作流落地，M9-G3 以其为单一事实源并互链，本文不创建该文件。

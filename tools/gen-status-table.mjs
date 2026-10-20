@@ -4,9 +4,9 @@
  *
  * 单一事实源：已声明平台来自 builtin.rs 的 `TargetSpec`（复用 gen-target-table.mjs
  * 的解析器，不编译 Rust）；未声明平台来自本文件 PLATFORMS 声明清单并显式标注
- * 「规划中 / planned」。两者渲染成 49 行现状表写入 README / ROADMAP 双语标记块；
- * `--check` 同时校验标记块漂移、49 行完整性、L1–L7 分级计数与 README 平台矩阵
- * 一致性（增删时按 §11 第 4 条提示待更新项）。
+ * 「规划中 / 已停用 / 已关闭」等状态。两者渲染成 49 行现状表写入 README / ROADMAP
+ * 双语标记块；`--check` 同时校验标记块漂移、49 行完整性、L1–L7 分级计数与 README
+ * 平台矩阵一致性（增删时按 §11 第 4 条提示待更新项）。
  *
  * 零依赖。用法: node tools/gen-status-table.mjs [--check|--print]
  */
@@ -30,12 +30,20 @@ const SECTION_HINT =
 
 const bi = (zh, en) => ({ zh, en });
 const declaredRow = (tier, zh, en, ...targets) => ({ tier, zh, en, targets });
-const plannedRow = (tier, zh, en, fields) => ({ tier, zh, en, planned: fields });
+const plannedRow = (tier, zh, en, fields, status = 'planned') => ({ tier, zh, en, planned: fields, status });
+
+/** 未声明 TargetSpec 行的状态标签（保持 49 行与分级计数不变，仅改语义标注）。 */
+const PLANNED_LABELS = {
+  planned: bi('规划中', 'planned'),
+  retired: bi('已停用 / retired', 'retired'),
+  closed: bi('已关闭 · 下次复审 2027-01-20', 'closed · next review 2027-01-20'),
+  conditional: bi('条件支持 · 部署模式', 'conditional · deploy mode'),
+};
 
 /**
  * 49 个平台，顺序与 README 平台矩阵一致。
- * `targets` 行由 TargetSpec 派生；`planned` 行是尚未声明 TargetSpec 的规划平台，
- * 字段由本清单提供并在表中显式标注「规划中 / planned」。
+ * `targets` 行由 TargetSpec 派生；`planned` 行是尚未声明 TargetSpec 的平台，
+ * 字段由本清单提供，`status` 标注规划 / 停用 / 关闭 / 条件支持。
  */
 const PLATFORMS = [
   // ── L1 一等公民（7）──
@@ -61,10 +69,10 @@ const PLATFORMS = [
     verify: bi('bundletool-validate', 'bundletool-validate'),
     publish: bi('google-play', 'google-play'),
     notes: bi(
-      '规划中 · 已停服：Google 自 2025-12 起停止受理 Instant Apps 发布、Play services Instant API 停用；保留规划，不声明 TargetSpec。',
-      'Planned · discontinued: Google stopped accepting Instant Apps submissions and shut down Play services Instant APIs in Dec 2025; kept planned, no TargetSpec.',
+      '已停用（retired）：Google 自 2025-12 起停止受理 Instant Apps 发布、Play services Instant API 停用；保留行以说明历史，不声明 TargetSpec。',
+      'Retired: Google stopped accepting Instant Apps submissions and shut down Play services Instant APIs in Dec 2025; the row is kept for history, with no TargetSpec.',
     ),
-  }),
+  }, 'retired'),
   declaredRow(2, 'Facebook Instant Games', 'Facebook Instant Games', 'facebook-instant-games'),
   plannedRow(2, 'Snapchat Mini', 'Snapchat Mini', {
     runtime: bi('HTML5', 'HTML5'),
@@ -74,10 +82,10 @@ const PLATFORMS = [
     verify: bi('Snap 沙箱自检', 'Snap sandbox self-check'),
     publish: bi('Snap 平台', 'Snap platform'),
     notes: bi(
-      '规划中：Snap Minis 官方文档入口（docs.snap.com/minis/getting-started/home/）已 404，developers.snap.com 站点地图无 Minis 文档；npm @snapchat/minis-sdk（3.0.5，2022）已标注「deprecating minis」——官方 zip / manifest / 打包契约不可核验，不声明 TargetSpec。',
-      'Planned: the official Snap Minis docs entry (docs.snap.com/minis/getting-started/home/) returns 404 and the developers.snap.com sitemap has no Minis docs; npm @snapchat/minis-sdk (3.0.5, 2022) is marked "deprecating minis" — no verifiable official zip / manifest / packaging contract, so no TargetSpec.',
+      '已关闭 · 季度复审（下次 2027-01-20）：Snap Minis 官方文档入口（docs.snap.com/minis/getting-started/home/）已 404，developers.snap.com 站点地图无 Minis 文档；npm @snapchat/minis-sdk（3.0.5，2022）已标注「deprecating minis」——官方 zip / manifest / 打包契约不可核验，不声明 TargetSpec。',
+      'Closed · quarterly review (next 2027-01-20): the official Snap Minis docs entry (docs.snap.com/minis/getting-started/home/) returns 404 and the developers.snap.com sitemap has no Minis docs; npm @snapchat/minis-sdk (3.0.5, 2022) is marked "deprecating minis" — no verifiable official zip / manifest / packaging contract, so no TargetSpec.',
     ),
-  }),
+  }, 'closed'),
   plannedRow(2, 'LINE Mini App', 'LINE Mini App', {
     runtime: bi('LIFF（web）', 'LIFF (web)'),
     bridge: bi('HTTPS', 'HTTPS'),
@@ -86,10 +94,10 @@ const PLATFORMS = [
     verify: bi('LIFF 配置检查', 'LIFF config check'),
     publish: bi('LINE 平台', 'LINE platform'),
     notes: bi(
-      '规划中：LIFF 应用由 LINE Developers Console 托管 URL 注册（LINE Login 渠道 → LIFF；Endpoint URL 须 HTTPS 且不得含 fragment），官方无本地上传包格式或 LIFF 配置文件——「静态包 + LIFF 配置」无法作为平台产物诚实生成，不声明 TargetSpec。',
-      'Planned: LIFF apps are registered as hosted URLs in the LINE Developers Console (LINE Login channel → LIFF; the endpoint URL must be HTTPS without fragments); there is no official uploaded package format or LIFF config file — "static bundle + LIFF config" cannot be honestly generated as a platform artifact, so no TargetSpec.',
+      '条件支持（部署模式，不声明 TargetSpec）：LIFF 应用由 LINE Developers Console 托管 URL 注册（LINE Login 渠道 → LIFF；Endpoint URL 须 HTTPS 且不得含 fragment）；`poly deploy line-liff` 只校验配置并输出 Console 人工步骤，不生成平台包、不触网，官方无本地上传包格式或 CI 上传 API。',
+      'Conditional (deploy mode, no TargetSpec): LIFF apps are registered as hosted URLs in the LINE Developers Console (LINE Login channel → LIFF; the endpoint URL must be HTTPS without fragments); `poly deploy line-liff` only validates config and prints manual Console steps — no platform package, no network, and no official upload format or CI upload API.',
     ),
-  }),
+  }, 'conditional'),
 
   // ── L3 电视与大屏（9）──
   declaredRow(3, 'Android TV', 'Android TV', 'android-tv'),
@@ -262,9 +270,11 @@ function renderRow(row, specsById, lang) {
   const paren = (text) => (lang === 'zh' ? `（${text}）` : ` (${text})`);
   if (row.planned) {
     const fields = row.planned;
+    const label = PLANNED_LABELS[row.status];
+    if (!label) throw new Error(`${row.zh}: 未知状态 ${row.status}`);
     return [
       `L${row.tier}`,
-      `${cell(row[lang])}${paren(lang === 'zh' ? '规划中' : 'planned')}`,
+      `${cell(row[lang])}${paren(label[lang])}`,
       cell(fields.runtime[lang]),
       cell(fields.bridge[lang]),
       cell(fields.artifact[lang]),
@@ -432,7 +442,7 @@ function main() {
     const changed = writeStatusDocs();
     console.log(
       changed.length
-        ? `已更新: ${changed.join(', ')}（${TOTAL} 行，${PLATFORMS.filter((row) => row.targets).length} 行已声明 / ${PLATFORMS.filter((row) => row.planned).length} 行规划）`
+        ? `已更新: ${changed.join(', ')}（${TOTAL} 行，${PLATFORMS.filter((row) => row.targets).length} 行已声明 / ${PLATFORMS.filter((row) => row.planned).length} 行未声明 TargetSpec）`
         : `无变化（${TOTAL} 行）`,
     );
   } catch (err) {
