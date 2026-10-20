@@ -4,6 +4,11 @@
 #   `poly build --target freebsd` 产出 .pkg → `poly release --target freebsd`（一次性
 #   RSA 密钥，CI 专用）刷新并签名 pkg 仓库 → `pkg update/install/check -s` 消费签名仓库；
 #   第二跑断言 cache_hit=true / runs=2 / 仓库字节不变。日志与仓库/回执/包全部归档。
+# - netbsd 腿（真跑）：netbsd TargetSpec.hosts 只含 Linux，`poly build --target netbsd`
+#   在 NetBSD 内会被判不可达；故 Ubuntu 宿主先生成 pkgsrc 骨架（结构自检真跑），
+#   vmactions/netbsd-vm@v1（11.0 x86_64）内原生 `cargo build` poly + 应用核心，
+#   再 `bmake package` → `pkg_add` → `pkg_info` → 运行安装后的二进制。任一工具缺席、
+#   bmake/pkg_add 失败即作业失败，绝不 SKIP 即绿。
 # - openbsd 腿（尽力真跑）：vmactions/openbsd-vm@v1（7.9 x86_64）内构建 poly 与 ports
 #   骨架；ports 树就绪后 `make package` → `pkg_add` → `pkg_check`。make 腿失败按
 #   SKIP-with-print 注记（T-M5-09 评估：镜像带宽不足，本地未真跑；以 CI 结果为准）。
@@ -134,6 +139,166 @@ jobs:
             .polypack/ci-artifacts/freebsd/**
           include-hidden-files: true
           if-no-files-found: error
+          retention-days: 14
+
+  netbsd:
+    name: netbsd / 11.0 / qemu
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    env:
+      # TCG 下 4 vCPU 编译 wasmtime 是长尾：去掉 debuginfo、关增量，缩短 VM 内构建。
+      CARGO_PROFILE_DEV_DEBUG: "0"
+      CARGO_INCREMENTAL: "0"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: 宿主工具（rsvg-convert：netbsd 是 TauriIpc 桌面目标，图标派生必需）
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq librsvg2-bin
+
+      - name: Linux 宿主生成 pkgsrc 骨架（netbsd 目标只声明 Linux 宿主）
+        run: |
+          set -euo pipefail
+          # target/debug 留在 RUNNER_TEMP：vmactions 默认同步整个 workspace，避免把
+          # 数 GB 构建目录 rsync 进 VM / copyback。
+          export CARGO_TARGET_DIR="$RUNNER_TEMP/poly-netbsd-cargo"
+          POLY="$CARGO_TARGET_DIR/debug/poly"
+          APP="$RUNNER_TEMP/poly-netbsd-app"
+          OUT="$GITHUB_WORKSPACE/.ci/netbsd"
+          mkdir -p "$OUT"
+          cargo build -p poly-cli
+          "$POLY" init "$APP"
+          (
+            cd "$APP"
+            "$POLY" build --target netbsd --json
+          ) | tee "$OUT/build.jsonl"
+          grep -q '"event":"packaged"' "$OUT/build.jsonl"
+          grep -q '"format":"pkgsrc"' "$OUT/build.jsonl"
+          grep -q '"checker":"pkgsrc-check"' "$OUT/build.jsonl"
+          if grep -q '目标 netbsd 未打包' "$OUT/build.jsonl"; then
+            echo "::error::netbsd 骨架生成被跳过（见 build.jsonl）"
+            exit 1
+          fi
+          PORT=$(find "$APP/.polypack/packages/netbsd/pkgsrc" -mindepth 1 -maxdepth 1 -type d -print -quit)
+          test -n "$PORT"
+          rm -rf "$OUT/port" "$OUT/app"
+          cp -R "$PORT" "$OUT/port"
+          basename "$PORT" > "$OUT/distname"
+          # 最小应用工程随 workspace 进 VM：VM 内原生编译核心，替换骨架里的 Linux 载荷，
+          # 使 pkg_add 安装的是 NetBSD 可执行文件（安装后真跑，而非只验证目录结构）。
+          mkdir -p "$OUT/app"
+          cp -R "$APP/core" "$APP/polypack.toml" "$OUT/app/"
+
+      - name: NetBSD VM（原生 cargo build + bmake package + pkg_add 冒烟）
+        uses: vmactions/netbsd-vm@v1
+        with:
+          release: "11.0"
+          arch: x86_64
+          mem: 6144
+          cpu: 4
+          copyback: true
+          cache-after-prepare: true
+          prepare: |
+            set -eu
+            # NetBSD base 不带根证书，镜像烘焙的 PKG_PATH 也是 http。先用 http 引导
+            # mozilla-rootcerts-openssl（生成 /etc/openssl/certs/ca-certificates.crt），
+            # 再让 pkgin / fetch 一律走 https。packages 里没有 ca_root_nss（已从 pkgsrc 移除）。
+            PKG_HTTP="http://cdn.netbsd.org/pub/pkgsrc/packages/NetBSD/$(uname -p)/$(uname -r)/All"
+            PKG_HTTPS="https://cdn.netbsd.org/pub/pkgsrc/packages/NetBSD/$(uname -p)/$(uname -r)/All"
+            export PKG_PATH="$PKG_HTTP"
+            if ! pkg_info -e mozilla-rootcerts-openssl >/dev/null 2>&1; then
+              pkg_add mozilla-rootcerts-openssl
+            fi
+            if ! command -v pkgin >/dev/null 2>&1; then
+              pkg_add pkgin
+            fi
+            mkdir -p /usr/pkg/etc/pkgin
+            if [ ! -s /usr/pkg/etc/pkgin/repositories.conf ]; then
+              echo "$PKG_HTTPS" > /usr/pkg/etc/pkgin/repositories.conf
+            fi
+            pkgin -y update
+            pkgin -y install rust bmake
+            rustc --version
+            cargo --version
+          run: |
+            set -eu
+            WORKSPACE=$(pwd)
+            export CARGO_TARGET_DIR=/tmp/polypack-cargo
+            LOGS="$WORKSPACE/.polypack/ci-logs/netbsd"
+            ART="$WORKSPACE/.polypack/ci-artifacts/netbsd"
+            mkdir -p "$LOGS" "$ART"
+            run_stage() {
+              name=$1; shift
+              "$@" >"$LOGS/$name.log" 2>&1
+              rc=$?
+              cat "$LOGS/$name.log"
+              return $rc
+            }
+
+            # 工具在场门：缺任一工具立即失败（不落 SKIP 注记）。
+            for tool in rustc cargo bmake pkg_add pkg_info fetch; do
+              command -v "$tool" >/dev/null || { echo "缺少工具：$tool"; exit 1; }
+            done
+            run_stage rustc rustc --version
+            run_stage cargo-version cargo --version
+            run_stage build cargo build -p poly-cli --ignore-rust-version
+
+            # 原生构建应用核心：骨架载荷里的可执行文件是 Linux ELF，安装后跑不起来。
+            ( cd "$WORKSPACE/.ci/netbsd/app/core" \
+                && CARGO_TARGET_DIR=/tmp/app-core-target cargo build --release --ignore-rust-version ) \
+              >"$LOGS/app-core.log" 2>&1
+            cat "$LOGS/app-core.log"
+            APP_CORE=/tmp/app-core-target/release/polypack-app-core
+            test -x "$APP_CORE"
+
+            # pkgsrc mk 基础设施（bmake 需要 ${PKGSRCDIR}/mk；骨架无 distfile，无需 distfiles）。
+            fetch -o /tmp/pkgsrc.tar.gz https://cdn.netbsd.org/pub/pkgsrc/current/pkgsrc.tar.gz \
+              >"$LOGS/pkgsrc-fetch.log" 2>&1
+            cat "$LOGS/pkgsrc-fetch.log"
+            tar xzf /tmp/pkgsrc.tar.gz -C /usr
+            test -f /usr/pkgsrc/mk/bsd.pkg.mk
+
+            DIST=$(cat "$WORKSPACE/.ci/netbsd/distname")
+            PORT_DST=/usr/pkgsrc/misc/$DIST
+            rm -rf "$PORT_DST"
+            cp -R "$WORKSPACE/.ci/netbsd/port" "$PORT_DST"
+            ( cd "$PORT_DST" && bmake -V MAKE_VERSION ) >"$LOGS/bmake-version.log" 2>&1
+            cat "$LOGS/bmake-version.log"
+            PAYLOAD_BIN=$(find "$PORT_DST/files/payload" -type f -path '*/bin/*' -print -quit)
+            test -n "$PAYLOAD_BIN"
+            cp "$APP_CORE" "$PAYLOAD_BIN"
+            chmod 755 "$PAYLOAD_BIN"
+
+            mkdir -p /tmp/pkgsrc-packages
+            run_stage bmake-package sh -c \
+              "cd '$PORT_DST' && exec bmake package PACKAGES=/tmp/pkgsrc-packages"
+            PKG_TGZ=$(find /tmp/pkgsrc-packages -maxdepth 2 -name "$DIST.tgz" -print -quit)
+            test -n "$PKG_TGZ"
+
+            run_stage pkg-add pkg_add -v "$PKG_TGZ"
+            run_stage pkg-info pkg_info "$DIST"
+            run_stage pkg-info-files pkg_info -L "$DIST"
+            # 安装后的二进制必须真跑：证明载荷是 NetBSD 可执行文件而非 Linux 交叉产物。
+            run_stage installed-binary /usr/pkg/bin/polypack-app
+            grep -q 'polypack-app-core' "$LOGS/installed-binary.log"
+
+            run_stage netbsd-version uname -a
+            sha256 "$PKG_TGZ" | tee "$LOGS/sha256.txt"
+            cp "$PKG_TGZ" "$ART/"
+            cp "$LOGS"/*.log "$ART/"
+
+      - name: 留证据（NetBSD 日志 + .tgz；失败也留）
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bsd-netbsd-evidence
+          path: |
+            .ci/netbsd/build.jsonl
+            .polypack/ci-logs/netbsd/**
+            .polypack/ci-artifacts/netbsd/**
+          include-hidden-files: true
+          if-no-files-found: warn
           retention-days: 14
 
   openbsd:
