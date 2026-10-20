@@ -12,6 +12,7 @@ mod init;
 mod mood;
 mod package;
 mod plugin_new;
+mod preview;
 mod project;
 mod providers;
 mod publish;
@@ -63,6 +64,8 @@ enum Command {
     Bridge(bridge::Args),
     /// 远程农场：worker 注册与拉取-执行-回传循环。
     Farm(farm::Args),
+    /// 设备预览：生成设备租约计划（`--dry-run` 不接触设备或网络）。
+    Preview(preview::Args),
     /// secret-scan：提交与构建双重密钥检查。
     Scan(scan::Args),
     /// 从签名阶段独立重跑（重新拉取凭据、重签未签名 APK）。
@@ -96,6 +99,7 @@ fn main() -> std::process::ExitCode {
         Command::Clean(args) => clean::run(&args, cli.json),
         Command::Bridge(args) => bridge::run(&args, cli.json),
         Command::Farm(args) => farm::run(&args, cli.json),
+        Command::Preview(args) => preview::run(&args, cli.json),
         Command::Scan(args) => scan::run(&args, cli.json),
         Command::Retry(args) => retry::run(&args, cli.json),
         Command::Verify(args) => verify::run(&args, cli.json),
