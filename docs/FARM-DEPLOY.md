@@ -287,11 +287,14 @@ POLY=target/debug/poly DRILL_OUT=target/farm-drill tools/farm-drill.sh
 
 脚本自建静态 UI 夹具（三个独立工程副本，无 node / 网络依赖），输出归档在 `$DRILL_OUT`（`transcript.log` + `logs/`）。逐条命令都带实际路径打印在日志里，可直接复制复跑。
 
+脚本在 `$DRILL_OUT` 下自建 `farm/`、`cache/`、`work/`、`logs/` 与三份工程夹具；重跑同一 `DRILL_OUT` 时会清空这些自建路径并重写 `transcript.log`，目录非空且没有本脚本的归档标记时拒绝运行。归档保留到操作者删除。成功路径由 worker 删除工作根；演练中途被信号打断时可能留下 `polypack-farm-work-*`，按 §10 人工清理。进入各轮前先跑 §11.1 的预检。
+
 ### 8.2 通过判据
 
 演练日志应以以下行结尾（全部为真实执行）：
 
 ```text
+PASS preflight: dir permissions, path isolation and poly scan
 PASS round 1: two targets completed on two workers
 PASS round 2: shared-cache hit 1/1 on a fresh project copy
 PASS cache format: POLYPACK-FARM-OBJECT v0
@@ -301,6 +304,7 @@ PASS isolation: no task work directories left behind
 PASS SKIP printed (environment slot); no macOS claims made
 ```
 
+- Preflight：进入各轮前，`tools/farm-preflight.sh` 对临时农场 / 缓存 / 工作目录与 `site-a` 运行静态检查（权限、路径互异、`poly scan`），任一 FAIL 即中止演练。
 - Round 1：`web` 与 `vidaa-tv` 两个任务落在两个不同 worker 上，产物 `dist/index.html` 合并回执。
 - Round 2：**全新**工程副本（本地缓存为空）在另一个 worker 上 `缓存命中 1/1`，命中只能来自共享 CAS。
 - Round 3：哨兵值只经 `env:` 变量下发，扫描农场目录 / 工作目录 / 工程目录 / 两侧日志零命中。
@@ -346,7 +350,42 @@ poly farm submit --dir /srv/polypack-farm --config /srv/proj/polypack.toml \
 
 农场目录 IO 失败报 `poly::E_IO_0001`（检查目录存在性与两端权限）。共享缓存 / S3 告警（§6.3）不是构建失败；若持续出现，先修好挂载 / 权限 / 端点与凭据再看命中率。
 
-## 11. 参考
+## 11. 生产加固清单（自托管）
+
+ADR 0005 决定 GA 只支持自托管农场：项目只交付软件与部署指南，机器、网络、凭据与数据由部署者负责。下表把部署者必须承担的控制项集中到一处；「落地 / 验证」列给出可直接运行的命令或现有章节，标 **手工** 的项没有内建控制，必须写进部署流程。§11.1 的预检覆盖权限、路径与凭据变量；真实构建、网络与生产主机仍需部署者自己验证（本仓库的演练只到 Linux 双 worker，见 §8–§9）。
+
+| # | 加固项 | 要求 | 落地 / 验证 | 自动化 |
+|---|---|---|---|---|
+| 1 | TLS / 反向代理认证 | `poly farm` 没有网络监听：传输是同目录双信箱（§1），协议本身不带 TLS 或认证。跨不可信网络时只经 VPN / SSH 隧道或受认证的 NFSv4 / SMB 挂载共享目录；不要把农场目录交给无认证的 Web 服务器或公网 SMB / NFS。HTTP / SSH 传输与 mTLS 属 M3+，当前不存在。 | §1、§2；确认没有 `poly` 监听端口 | 手工；预检对网络文件系统告警（§11.1） |
+| 2 | 目录权限 | 农场 / 缓存目录按 §3.1 设 `2770` 且同组；两者分开；`--work-dir` 是本机私有目录，worker 每任务建 0700 子目录并在结束时删除。 | §3.1、§5.1；`stat -c '%a %U:%G'`；`tools/farm-preflight.sh` 检查可写、非 world-writable、路径互异 | 预检 |
+| 3 | 缓存命名空间隔离 | 缓存键是内容寻址，不含租户 / 发起地身份：不同信任边界的工程必须用不同缓存根或 S3 `<prefix>`；绝不把互不信任的团队指向同一缓存。农场、缓存、工作目录不得互相重叠。 | §6.1、§6.2；每团队独立 `--cache` 路径 / 前缀；S3 IAM 只授该前缀（§6.2 最小权限） | 预检检查路径互异；S3 前缀与多租户隔离**手工** |
+| 4 | 凭据后端（磁盘无明文） | 只用 macOS 钥匙串（`apple-codesign`，§7.2）或 `--credential NAME=env:VAR` 内存注入（§7.3）；明文不得进入仓库、argv、`polypack.toml`、计划、日志或备份。Vault 来源需要调用方接线，farm CLI 当前未接线。 | §7.2、§7.3；预检只验证变量存在且非空，不打印值 | 预检 + `poly scan` |
+| 5 | `poly scan` 哨兵 | 提交前与 CI 中扫描明文凭据：`poly scan --dir <project>`（可选 `--history`）；`poly scan --install-hook` 安装 pre-commit 钩子；CI 侧另有 `secret-scan.yml`。`poly farm worker` **不会**自动运行扫描。 | §7.1；`poly scan --dir /srv/proj --history`；预检 `--project` 会跑一次 `poly scan` | 命令 + 预检 |
+| 6 | worker 隔离 / 一次性工作目录 | 每任务一个 0700 私有目录，目录名不含任务标识，任务结束删除；worker 退出删除工作根；容器边界可选且由部署者负责验证。 | §5.1、§5.2；`--work-dir`；`tools/farm-drill.sh` 的 isolation 检查 | 演练 |
+| 7 | 升级 / 回滚 | 两端从同一提交构建，`poly --version` 必须一致。先升级发起地（v1 主端接受 `farm/v0` worker），再逐台替换 worker；替换用 `install` 到临时名后 `mv`，保留上一版二进制。回滚按相反顺序：先回滚 worker，再回滚发起地。 | §2；`poly --version`；`poly farm worker --help` / `poly farm submit --help` 核对参数 | 手工 |
+| 8 | 备份 | 备份工程源码、`polypack.toml` 与签名材料的权威副本（钥匙串按 Apple 方式备份或可重建）；农场信箱与 CAS 是可丢弃的中间态，不必备份。绝不把明文密钥写进备份。 | §6.1（缓存可重建）、§7.2（钥匙串）；`rsync` / 快照由部署者选择 | 手工 |
+| 9 | 日志 / 监控 | 采集 worker 与 submit 的 stdout（`--json` 为 JSON Lines）；监控注册失败、任务失败码（§10）、缓存降级告警（§6.3）、农场 / 缓存 / 工作目录磁盘占用与残留 `polypack-farm-work-*`。没有内建 metrics / 告警端点。 | §8.1 演练归档；§10 错误码；`--json` | 手工 |
+| 10 | 速率 / 并发限制 | 并发 = 每个目标上同时在跑的 worker 进程数；每个进程一次只跑一个任务。`--jobs N` 限制单会话任务数（N=1 适合一次性 / 不可信批次），`--jobs 0` 不限制；`--idle` 限制等待，`--wait` / `--retries` 限制主端等待与重试。没有内建队列配额或令牌桶；用 systemd / cgroup / `ulimit` 限制资源。 | §4.1、§4.2、§5.1 | 手工；演练验证多 worker 并发 |
+
+### 11.1 预检（preflight）
+
+`tools/farm-preflight.sh` 是上表的可执行静态预检：只读检查目录存在 / 可写 / 非 world-writable、农场 / 缓存 / 工作目录互异、工作目录在本机磁盘、`--credential` 引用的环境变量存在、S3 缓存所需环境变量存在，以及对 `--project` 运行一次 `poly scan`。它不访问网络、不打印凭据值、不创建长期文件。
+
+```bash
+# 在发起地与构建地分别执行；--project 指向该机器上的工程副本
+POLY=/usr/local/bin/poly tools/farm-preflight.sh \
+  --project /srv/proj \
+  --credential android-keystore=env:POLYPACK_ANDROID_KEYSTORE_B64 \
+  /srv/polypack-farm /srv/polypack-cache /var/tmp/polypack-work
+```
+
+- 位置参数：农场目录、缓存（共享目录 / `local` / `s3://<bucket>[/<prefix>]`）、worker 的 `--work-dir`；目录须先按 §3.1 / §3.2 创建。
+- `--credential` 可重复，只检查对应环境变量是否已设置且非空；未使用该后端的部署可省略。
+- 退出码 0 = 无 FAIL；1 = 有 FAIL；2 = 用法错误。WARN 不改变退出码，但应逐条处理。
+- 通过预检只代表静态配置合格，不代表构建已验证：真实构建、缓存命中、凭据注入与降级由 §8 演练覆盖，macOS / IPA 与生产主机演练仍是 §9 的外部项。
+- `tools/farm-drill.sh` 在进入各轮前对临时目录运行同一预检，结果写入 `transcript.log`（§8.2）。
+
+## 12. 参考
 
 - [FARM.md](FARM.md)：协议帧、发起地 / 构建地模型、签名验证指引。
 - `crates/poly-cli/src/farm.rs`：`worker` / `submit` 参数与调度入口。
@@ -356,3 +395,4 @@ poly farm submit --dir /srv/polypack-farm --config /srv/proj/polypack.toml \
 - `crates/poly-cache/tests/s3_contract.rs`：mock S3 网络契约（独立重算 SigV4）；`tests/s3_real.rs` 为真实云环境槽（`POLYPACK_S3_REAL=1`）。
 - `crates/poly-sign/src/secret.rs`、`crates/poly-sign/src/inject.rs`：凭据后端契约与内存注入。
 - `tools/farm-drill.sh`：§8 的可执行演练。
+- `tools/farm-preflight.sh`：§11.1 的生产预检。

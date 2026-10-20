@@ -32,10 +32,21 @@ OUT=$(cd "$OUT" && pwd) # worker 在各自 cwd 下执行，OUT/POLY 必须是绝
 SHARED="$OUT/cache"
 FARM="$OUT/farm"
 WORK="$OUT/work"
-mkdir -p "$OUT/logs" "$FARM" "$SHARED" "$WORK"
 LOG="$OUT/transcript.log"
+# 重跑同一 DRILL_OUT：只清理本脚本自建的固定路径，并重写 transcript，避免旧日志让本轮
+# “假通过”。非空且没有归档标记的目录可能是操作者数据，拒绝清理。
+if [ -e "$OUT" ] && [ ! -e "$OUT/.farm-drill" ] && [ -n "$(ls -A "$OUT" 2>/dev/null)" ]; then
+  echo "DRILL_OUT 非空且不是 farm-drill 归档，拒绝清理：$OUT" >&2
+  exit 1
+fi
+rm -rf "$OUT/logs" "$FARM" "$SHARED" "$WORK" "$OUT/site-a" "$OUT/site-b" "$OUT/site-c" \
+  "$OUT/blocked-cache" "$LOG"
+: >"$OUT/.farm-drill"
+mkdir -p "$OUT/logs" "$FARM" "$SHARED" "$WORK"
+chmod 2770 "$FARM" "$SHARED" # 与 FARM-DEPLOY §3.1 同口径
+chmod 700 "$WORK"            # worker 私有父目录（§5.1）
 # 整份输出同时落到 transcript（tee 在 EXIT 时自然收尾）。
-exec > >(tee -a "$LOG") 2>&1
+exec > >(tee "$LOG") 2>&1
 
 PIDS=()
 LAST_PID=
@@ -144,6 +155,12 @@ say "fixture: three independent project copies (absolute paths differ)"
 write_site "$OUT/site-a"
 write_site "$OUT/site-b"
 write_site "$OUT/site-c" # round 2 专用：本地缓存为空，命中只能来自共享 CAS
+
+# ---------------------------------------------------------------- 预检
+say "preflight: directory permissions, path isolation, poly scan"
+POLY="$POLY" "$ROOT/tools/farm-preflight.sh" --project "$OUT/site-a" "$FARM" "$SHARED" "$WORK" ||
+  fail "preflight 未通过"
+pass "preflight: dir permissions, path isolation and poly scan"
 
 # ---------------------------------------------------------------- Round 1
 say "ROUND 1: two workers, two targets, one submit"
