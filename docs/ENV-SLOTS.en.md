@@ -35,9 +35,9 @@ Environment slots are tracked separately from code gaps: a slot closes with envi
 | ENV-08 | T-M6-03 / T-M6-09 | QNX SDP + QEMU smoke | PARTIAL | CI | infra | §3 ENV-08 | embedded-ci |
 | ENV-09 | T-M6-05 | VxWorks `wr-cc` link leg | PARTIAL | CI | infra | §3 ENV-09 | embedded-ci |
 | ENV-10 | T-M7-04 | Wear OS device / emulator smoke | PARTIAL | CI | infra | §3 ENV-10 | wear-release-smoke |
-| ENV-11 | T-M7-05 / T-M7-06 | watchOS real `xcodebuild` | PARTIAL | CI | core + release-sec | §3 ENV-11 | mobile-contract · watchos |
-| ENV-12 | T-M7-07 | Fitbit `fitbit-build` self-check | PARTIAL | CI | infra | §3 ENV-12 | wear-js-contract · fitbit |
-| ENV-13 | T-M7-08 | Zepp `zeus` + simulator install | PARTIAL | HOST | core | §3 ENV-13 | wear-js-contract · zepp |
+| ENV-11 | T-M7-05 / T-M7-06 | watchOS real `xcodebuild` | CLOSED | CI | core + release-sec | run 39455179337 · watchos | mobile-contract · watchos |
+| ENV-12 | T-M7-07 | Fitbit `fitbit-build` self-check | CLOSED | CI | infra | run 39455185737 · fitbit | wear-js-contract · fitbit |
+| ENV-13 | T-M7-08 | Zepp `zeus` + simulator install | PARTIAL | HOST | core | run 39455185737 · zepp | wear-js-contract · zepp |
 | ENV-14 | T-M7-09 | Garmin Connect IQ SDK / devkey compile | PARTIAL | CI | core | §3 ENV-14 | — |
 | ENV-15 | T-M8-03 | keyring trust-root carrier | CLOSED | CI | release-sec | run 39409593528 · keyring-real | rust-ci · keyring-real |
 | ENV-16 | T-M8-03 | Vault trust-root carrier | CLOSED | CI | release-sec + core | run 39414212765 · vault-real | rust-ci · vault-real |
@@ -495,9 +495,9 @@ Suggested evidence path: `env-slots/<ENV-XX>/<UTC timestamp>/`. The repository d
 | ENV-08 | `.github/workflows/embedded-ci.yml` | `embedded` (matrix `qnx`) | Build / doctor / QEMU wired; SKIP when SDP absent |
 | ENV-09 | `.github/workflows/embedded-ci.yml` | `embedded` (matrix `vxworks`) | Build wired; SKIP when `wr-cc` absent |
 | ENV-10 | `.github/workflows/wear-release-smoke.yml` | `wear-device-smoke` | Hard release gate; blocks when KVM / APK absent |
-| ENV-11 | `.github/workflows/mobile-contract.yml` | `watchos / macos-14` | Real `xcodebuild` (watchsimulator) + `poly build --target watchos`; signing / notarization has no Apple credentials (external leg); first-run evidence pending |
-| ENV-12 | `.github/workflows/wear-js-contract.yml` | `fitbit` | Installs `@fitbit/sdk-cli` + `@fitbit/sdk`; real `fitbit-build` self-check + `.fba` build/verify; SKIP / failed self-check turns the job red; first-run evidence pending |
-| ENV-13 | `.github/workflows/wear-js-contract.yml` | `zepp` | `zeus --version` + `.zab` build/verify; the GUI simulator install leg stays external/manual; first-run evidence pending |
+| ENV-11 | `.github/workflows/mobile-contract.yml` | `watchos / macos-14` | Real `xcodebuild` (watchsimulator) + `poly build --target watchos`, run 39455179337 passed; signing / notarization has no Apple credentials (external leg) |
+| ENV-12 | `.github/workflows/wear-js-contract.yml` | `fitbit` | Installs `@fitbit/sdk-cli` + `@fitbit/sdk`; `fitbit-build` self-check + `.fba` build/verify, run 39455185737 passed; SKIP / failed self-check turns the job red |
+| ENV-13 | `.github/workflows/wear-js-contract.yml` | `zepp` | `zeus --version` + `.zab` build/verify, run 39455185737 passed; the GUI simulator install leg stays external/manual |
 | ENV-14 | — | — | No Connect IQ job |
 | ENV-15 | `.github/workflows/rust-ci.yml` | `keyring-real` | Real Secret Service (run 39409593528): `keyring_real` write / read / delete + CLI keyring trust root `plugin_granted` / `packaged` / `E_PLUGIN_0010`; a SKIP fails the job |
 | ENV-16 | `.github/workflows/rust-ci.yml` | `vault-real` | Vault dev (KV v2, run 39414212765): `vault_real` real read/write / 404 / 403 redaction + CLI Vault trust root `plugin_granted` / `packaged` / `E_PLUGIN_0010`; a SKIP fails the job |
@@ -526,7 +526,7 @@ Suggested evidence path: `env-slots/<ENV-XX>/<UTC timestamp>/`. The repository d
 | --- | --- | --- |
 | Vault default backend chain | Closed (code) | `default_backends()` assembles Vault from the environment; ENV-16 is down to the real-service E2E |
 | Garmin built-in iq packager | Delivered | `poly build --target garmin` now has a built-in packager; ENV-14 closes only the compiler / device leg |
-| Missing CI jobs | Infrastructure | NetBSD / watchOS / Fitbit / Zepp jobs are wired (first-run evidence pending); Garmin / Roku still have run cards only, no workflow |
+| Missing CI jobs | Infrastructure | NetBSD first run failed on missing curl and now uses curl pending a rerun; Garmin / Roku still have run cards only, no workflow |
 
 ## 8. References
 
