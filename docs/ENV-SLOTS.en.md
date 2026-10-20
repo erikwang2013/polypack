@@ -491,7 +491,7 @@ Suggested evidence path: `env-slots/<ENV-XX>/<UTC timestamp>/`. The repository d
 | ENV-04 | `.github/workflows/miniprogram-contract.yml` | `real / macos-14` | CLI preview test wired; NOTE when vars / secrets absent |
 | ENV-05 | — | — | No Roku job |
 | ENV-06 | `.github/workflows/bsd-ci.yml` | `openbsd` | VM job exists, `continue-on-error`, TCG boot fails |
-| ENV-07 | `.github/workflows/bsd-ci.yml` | `netbsd` | Linux generates the pkgsrc skeleton → NetBSD 11.0 VM native cargo build + `bmake package` → `pkg_add` / `pkg_info` / run the installed binary; first-run evidence pending |
+| ENV-07 | `.github/workflows/bsd-ci.yml` | `netbsd` | Linux generates the pkgsrc skeleton → NetBSD 11.0 VM native app-core build + `bmake package` → `pkg_add` / `pkg_info` / run the installed binary (no poly CLI build: pkgsrc rust 1.96 is below the repo MSRV 1.98, and this slot validates pkgsrc packaging); first-run evidence pending |
 | ENV-08 | `.github/workflows/embedded-ci.yml` | `embedded` (matrix `qnx`) | Build / doctor / QEMU wired; SKIP when SDP absent |
 | ENV-09 | `.github/workflows/embedded-ci.yml` | `embedded` (matrix `vxworks`) | Build wired; SKIP when `wr-cc` absent |
 | ENV-10 | `.github/workflows/wear-release-smoke.yml` | `wear-device-smoke` | Hard release gate; blocks when KVM / APK absent |
