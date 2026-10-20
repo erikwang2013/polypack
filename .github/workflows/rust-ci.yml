@@ -348,13 +348,29 @@ jobs:
           set -euo pipefail
           version=RELEASE.2025-10-15T17-29-55Z
           commit=9e49d5e7a648f00e26f2246f4dc28e6b07f8c84a
-          git clone --quiet --depth 1 --branch "$version" \
-            https://github.com/minio/minio /tmp/minio-src
+          for attempt in 1 2 3; do
+            rm -rf /tmp/minio-src
+            if git clone --quiet --depth 1 --branch "$version" \
+                https://github.com/minio/minio /tmp/minio-src; then
+              break
+            fi
+            echo "minio clone attempt $attempt failed" >&2
+            test "$attempt" -lt 3 || exit 1
+            sleep 15
+          done
           test "$(git -C /tmp/minio-src rev-parse HEAD)" = "$commit"
           cd /tmp/minio-src
-          CGO_ENABLED=0 go build -tags kqueue -trimpath \
-            -ldflags "-X github.com/minio/minio/cmd.Version=$version -X github.com/minio/minio/cmd.ReleaseTag=$version" \
-            -o /tmp/minio .
+          # proxy.golang.org 偶发 stream INTERNAL_ERROR；按模块缓存重试构建。
+          for attempt in 1 2 3; do
+            if CGO_ENABLED=0 go build -tags kqueue -trimpath \
+                -ldflags "-X github.com/minio/minio/cmd.Version=$version -X github.com/minio/minio/cmd.ReleaseTag=$version" \
+                -o /tmp/minio .; then
+              break
+            fi
+            echo "minio build attempt $attempt failed" >&2
+            test "$attempt" -lt 3 || exit 1
+            sleep 15
+          done
           sudo install -m 0755 /tmp/minio /usr/local/bin/minio
           minio --version
 
