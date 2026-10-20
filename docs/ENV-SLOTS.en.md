@@ -39,7 +39,7 @@ Environment slots are tracked separately from code gaps: a slot closes with envi
 | ENV-12 | T-M7-07 | Fitbit `fitbit-build` self-check | PARTIAL | CI | infra | §3 ENV-12 | — |
 | ENV-13 | T-M7-08 | Zepp `zeus` + simulator install | PARTIAL | HOST | core | §3 ENV-13 | — |
 | ENV-14 | T-M7-09 | Garmin Connect IQ SDK / devkey compile | PARTIAL | CI | core | §3 ENV-14 | — |
-| ENV-15 | T-M8-03 | keyring trust-root carrier | OPEN | CI | release-sec | §3 ENV-15 | — |
+| ENV-15 | T-M8-03 | keyring trust-root carrier | CLOSED | CI | release-sec | run 39409593528 · keyring-real | rust-ci · keyring-real |
 | ENV-16 | T-M8-03 | Vault trust-root carrier | OPEN | CI | release-sec + core | §3 ENV-16 | — |
 | ENV-17 | T-M8-09 | Real S3 / OSS round-trip + farm second run | OPEN | CI | infra + release-sec | §3 ENV-17 | — |
 | ENV-18 | T-M2-12 | Branch protection admin bypass | CLOSED | HUMAN | maintainer | §3 ENV-18 | secret-scan |
@@ -319,7 +319,7 @@ cd <generated dir>/square && monkeyc -e -w -r -o ../garmin-square.iq -y "$CIQ_DE
 
 ### ENV-15 · keyring trust-root carrier
 
-- Linked task: T-M8-03 (plugin trust root). Gap: the env carrier is automated by `plugin_trust_root_env`; the keyring backend test (`keyring_real`) has an isolated recipe but is not in CI; a CLI E2E that resolves a trust root via `source = "keyring"` and loads a real plugin has not run.
+- Linked task: T-M8-03 (plugin trust root). Gap: the env carrier is automated by `plugin_trust_root_env`; the keyring backend test (`keyring_real`) and the CLI E2E (`plugin_trust_root_keyring`, changing only to `source = "keyring"`) are wired into the rust-ci `keyring-real` job, and the first real Secret Service run still needs archived evidence.
 - Environment / toolchain / credentials: Linux Secret Service (dbus + gnome-keyring), macOS Keychain, or Windows Credential Manager; `secret-tool` or an equivalent writer; a GPG keypair (trust-root payload).
 - Gates: `POLY_KEYRING_REAL=1`, `DBUS_SESSION_BUS_ADDRESS`; CLI config `trust_root = { name = "plugin-trust-root", source = "keyring" }`.
 - Commands:
@@ -331,14 +331,12 @@ dbus-run-session -- bash -c '
          GNOME_KEYRING_CUSTOM_LOCAL_PATH=/tmp/poly-keyring-home/keyrings
   printf "poly-it-pass\n" | gnome-keyring-daemon --unlock --components=secrets --foreground &
   sleep 3
-  POLY_KEYRING_REAL=1 cargo test -p poly-sign --test keyring_real -- --nocapture'
-printf "%s" "$TRUST_ROOT_B64" | secret-tool store --label=plugin-trust-root \
-  service polypack username plugin-trust-root
-poly build --target linux-reference --json
+  POLY_KEYRING_REAL=1 cargo test -p poly-sign --test keyring_real -- --nocapture
+  POLY_KEYRING_REAL=1 cargo test -p poly-cli --test plugin_trust_root_keyring -- --nocapture'
 ```
-- Evidence: `keyring_real` real write / read / delete output; `gdbus` cross-check that the entry exists; `poly build` emits `plugin_granted` / `packaged`, with the error path returning `E_PLUGIN_0010`; no plaintext payload in logs.
-- Status: `OPEN`. Backend and isolation recipe are verified; the CLI keyring carrier and CI job are not wired. Owner: release-sec.
-- Next action: add a `plugin_trust_root_keyring` CLI test (reuse the env-test project fixture, change only to `source = "keyring"`), and run it on rust-ci ubuntu under dbus-run-session + gnome-keyring.
+- Evidence: `keyring_real` real write / read / delete output; `gdbus` cross-check that the entry exists; `plugin_trust_root_keyring` runs `poly build --target linux-reference --json` and emits `plugin_granted` / `packaged`, with `E_PLUGIN_0010` after the entry is deleted; no plaintext payload in logs.
+- Status: `CLOSED` (2026-10-20). rust-ci `keyring-real` (run 39409593528) really ran `keyring_real` and `plugin_trust_root_keyring` on an isolated Secret Service and passed; any SKIP fails the job. Owner: release-sec.
+- Next action: macOS / Windows real keychain hosts are separate slots; the Linux evidence must not be presented as theirs.
 - Blocker: headless Secret Service needs the isolation recipe in the file header; macOS / Windows need their own real keychain hosts, and Linux results must not be presented as theirs. Execution mode: CI (ubuntu + dbus / gnome-keyring) can close the Linux leg; macOS / Windows are separate.
 
 ### ENV-16 · Vault trust-root carrier
@@ -487,7 +485,7 @@ Suggested evidence path: `env-slots/<ENV-XX>/<UTC timestamp>/`. The repository d
 | ENV-12 | — | — | No `fitbit-build` job |
 | ENV-13 | — | — | No `zeus` job |
 | ENV-14 | — | — | No Connect IQ job |
-| ENV-15 | — | — | No keyring job |
+| ENV-15 | `.github/workflows/rust-ci.yml` | `keyring-real` | Real Secret Service (run 39409593528): `keyring_real` write / read / delete + CLI keyring trust root `plugin_granted` / `packaged` / `E_PLUGIN_0010`; a SKIP fails the job |
 | ENV-16 | — | — | No Vault job; the default backend chain is wired from the environment |
 | ENV-17 | — | — | No S3 job |
 | ENV-18 | `.github/workflows/secret-scan.yml` | `scan` (3 hosts) | Supplies required checks; admin bypass was closed on 2026-10-20 and is not a workflow setting |
@@ -514,7 +512,7 @@ Suggested evidence path: `env-slots/<ENV-XX>/<UTC timestamp>/`. The repository d
 | --- | --- | --- |
 | Vault default backend chain | Closed (code) | `default_backends()` assembles Vault from the environment; ENV-16 is down to the real-service E2E |
 | Garmin built-in iq packager | Delivered | `poly build --target garmin` now has a built-in packager; ENV-14 closes only the compiler / device leg |
-| Missing CI jobs | Infrastructure | NetBSD / S3 / keyring / Vault / watchOS / Fitbit / Zepp / Garmin / Roku have run cards only, no workflow |
+| Missing CI jobs | Infrastructure | NetBSD / S3 / Vault / watchOS / Fitbit / Zepp / Garmin / Roku have run cards only, no workflow |
 
 ## 8. References
 

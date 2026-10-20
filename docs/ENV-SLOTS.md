@@ -39,7 +39,7 @@
 | ENV-12 | T-M7-07 | Fitbit `fitbit-build` 自检 | PARTIAL | CI | infra | §3 ENV-12 | — |
 | ENV-13 | T-M7-08 | Zepp `zeus` + 模拟器安装 | PARTIAL | HOST | core | §3 ENV-13 | — |
 | ENV-14 | T-M7-09 | Garmin Connect IQ SDK / devkey 编译 | PARTIAL | CI | core | §3 ENV-14 | — |
-| ENV-15 | T-M8-03 | keyring 信任根载体 | OPEN | CI | release-sec | §3 ENV-15 | — |
+| ENV-15 | T-M8-03 | keyring 信任根载体 | CLOSED | CI | release-sec | run 39409593528 · keyring-real | rust-ci · keyring-real |
 | ENV-16 | T-M8-03 | Vault 信任根载体 | OPEN | CI | release-sec + core | §3 ENV-16 | — |
 | ENV-17 | T-M8-09 | 真实 S3 / OSS 往返与农场二跑 | OPEN | CI | infra + release-sec | §3 ENV-17 | — |
 | ENV-18 | T-M2-12 | Branch protection admin bypass | CLOSED | HUMAN | maintainer | §3 ENV-18 | secret-scan |
@@ -319,7 +319,7 @@ cd <生成目录>/square && monkeyc -e -w -r -o ../garmin-square.iq -y "$CIQ_DEV
 
 ### ENV-15 · keyring 信任根载体
 
-- 关联任务：T-M8-03（插件信任根）。 缺口：env 载体已由 `plugin_trust_root_env` 自动化；keyring 后端单测（`keyring_real`）有隔离配方但未进 CI；CLI 以 `source = "keyring"` 解析信任根并加载真实插件的 E2E 未跑。
+- 关联任务：T-M8-03（插件信任根）。 缺口：env 载体已由 `plugin_trust_root_env` 自动化；keyring 后端单测（`keyring_real`）与 CLI E2E（`plugin_trust_root_keyring`，只换 `source = "keyring"`）已接 rust-ci `keyring-real` 作业，真实 Secret Service 首跑证据待归档。
 - 环境 / 工具链 / 凭据：Linux Secret Service（dbus + gnome-keyring）、macOS Keychain 或 Windows Credential Manager；`secret-tool` 或等价写入工具；GPG 密钥对（信任根载荷）。
 - 开关：`POLY_KEYRING_REAL=1`、`DBUS_SESSION_BUS_ADDRESS`；CLI 配置 `trust_root = { name = "plugin-trust-root", source = "keyring" }`。
 - 命令：
@@ -331,14 +331,12 @@ dbus-run-session -- bash -c '
          GNOME_KEYRING_CUSTOM_LOCAL_PATH=/tmp/poly-keyring-home/keyrings
   printf "poly-it-pass\n" | gnome-keyring-daemon --unlock --components=secrets --foreground &
   sleep 3
-  POLY_KEYRING_REAL=1 cargo test -p poly-sign --test keyring_real -- --nocapture'
-printf "%s" "$TRUST_ROOT_B64" | secret-tool store --label=plugin-trust-root \
-  service polypack username plugin-trust-root
-poly build --target linux-reference --json
+  POLY_KEYRING_REAL=1 cargo test -p poly-sign --test keyring_real -- --nocapture
+  POLY_KEYRING_REAL=1 cargo test -p poly-cli --test plugin_trust_root_keyring -- --nocapture'
 ```
-- 证据：`keyring_real` 的真写 / 真读 / 真删输出；`gdbus` 交叉查询条目存在；`poly build` 出现 `plugin_granted` / `packaged`，错误路径为 `E_PLUGIN_0010`；日志无载荷明文。
-- 现状：`OPEN`。后端与隔离配方已验证；CLI keyring 载体和 CI 作业未接。 负责人：release-sec。
-- 下一步：新增 `plugin_trust_root_keyring` CLI 测试（复用 env 测试的工程夹具，只换 `source = "keyring"`），在 rust-ci ubuntu 起 dbus-run-session + gnome-keyring 跑。
+- 证据：`keyring_real` 的真写 / 真读 / 真删输出；`gdbus` 交叉查询条目存在；`plugin_trust_root_keyring` 的 `poly build --target linux-reference --json` 出现 `plugin_granted` / `packaged`，删除条目后为 `E_PLUGIN_0010`；日志无载荷明文。
+- 现状：`CLOSED`（2026-10-20）。rust-ci `keyring-real`（run 39409593528）在隔离 Secret Service 上真跑 `keyring_real` 与 `plugin_trust_root_keyring` 通过，作业内 SKIP 即失败。 负责人：release-sec。
+- 下一步：macOS / Windows 真钥匙串宿主另行立槽；Linux 腿已关，不能用本证据冒充其他平台。
 - 阻塞：headless Secret Service 需按文件头配方隔离；macOS / Windows 需各自真钥匙串宿主，不能拿 Linux 结果冒充。 运行位置：CI（ubuntu + dbus / gnome-keyring）可关闭 Linux 腿；macOS / Windows 另行。
 
 ### ENV-16 · Vault 信任根载体
@@ -487,7 +485,7 @@ poly preview --dry-run --target android --device android-phone --device android-
 | ENV-12 | — | — | 无 `fitbit-build` 作业 |
 | ENV-13 | — | — | 无 `zeus` 作业 |
 | ENV-14 | — | — | 无 Connect IQ 作业 |
-| ENV-15 | — | — | 无 keyring 作业 |
+| ENV-15 | `.github/workflows/rust-ci.yml` | `keyring-real` | Secret Service 真跑（run 39409593528）：`keyring_real` 真写 / 真读 / 真删 + CLI keyring 信任根 `plugin_granted` / `packaged` / `E_PLUGIN_0010`；作业内 SKIP 即失败 |
 | ENV-16 | — | — | 无 Vault 作业；默认后端链已按环境接线 |
 | ENV-17 | — | — | 无 S3 作业 |
 | ENV-18 | `.github/workflows/secret-scan.yml` | `scan`（3 宿主） | 提供 required checks；admin bypass 已于 2026-10-20 关闭，设置不在工作流 |
@@ -514,7 +512,7 @@ poly preview --dry-run --target android --device android-phone --device android-
 | --- | --- | --- |
 | Vault 默认后端链 | 已关闭（代码） | `default_backends()` 已按环境装配 Vault；ENV-16 只剩真实服务 E2E |
 | Garmin 内建 iq 打包器 | 已交付 | `poly build --target garmin` 已有内建打包器；ENV-14 只关编译器 / 真机腿 |
-| 缺失的 CI 作业 | 基建 | NetBSD / S3 / keyring / Vault / watchOS / Fitbit / Zepp / Garmin / Roku 目前只有执行卡，没有工作流 |
+| 缺失的 CI 作业 | 基建 | NetBSD / S3 / Vault / watchOS / Fitbit / Zepp / Garmin / Roku 目前只有执行卡，没有工作流 |
 
 ## 8. 参考
 
