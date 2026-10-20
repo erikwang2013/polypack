@@ -140,6 +140,15 @@ struct Prepared {
 /// 执行 `poly publish`；返回进程退出码。
 pub fn run(args: &Args, json: bool) -> Result<i32, Diagnostic> {
     let project = project::load(&args.config)?;
+    run_project(&project, args, json)
+}
+
+/// 已装载项目上的提审通路（`poly retry --from publish` 的工作区成员复用此入口）。
+pub(crate) fn run_project(
+    project: &poly_core::Project,
+    args: &Args,
+    json: bool,
+) -> Result<i32, Diagnostic> {
     let registry = Registry::builtin();
     let spec = registry.get(&args.target).cloned().ok_or_else(|| {
         Diagnostic::error(
@@ -154,7 +163,7 @@ pub fn run(args: &Args, json: bool) -> Result<i32, Diagnostic> {
     }
 
     let providers: Vec<Box<dyn CredentialProvider>> = vec![Box::new(EnvProvider)];
-    let prepared = prepare(args, &project, &spec, &providers)?;
+    let prepared = prepare(args, project, &spec, &providers)?;
     for warning in &prepared.metadata_warnings {
         eprintln!("publish 告警：{warning}");
     }
