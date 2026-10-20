@@ -40,7 +40,7 @@
 | ENV-13 | T-M7-08 | Zepp `zeus` + 模拟器安装 | PARTIAL | HOST | core | §3 ENV-13 | — |
 | ENV-14 | T-M7-09 | Garmin Connect IQ SDK / devkey 编译 | PARTIAL | CI | core | §3 ENV-14 | — |
 | ENV-15 | T-M8-03 | keyring 信任根载体 | CLOSED | CI | release-sec | run 39409593528 · keyring-real | rust-ci · keyring-real |
-| ENV-16 | T-M8-03 | Vault 信任根载体 | OPEN | CI | release-sec + core | §3 ENV-16 | — |
+| ENV-16 | T-M8-03 | Vault 信任根载体 | CLOSED | CI | release-sec + core | run 39414212765 · vault-real | rust-ci · vault-real |
 | ENV-17 | T-M8-09 | 真实 S3 / OSS 往返与农场二跑 | OPEN | CI | infra + release-sec | §3 ENV-17 | — |
 | ENV-18 | T-M2-12 | Branch protection admin bypass | CLOSED | HUMAN | maintainer | §3 ENV-18 | secret-scan |
 | ENV-19 | GA §7.2 | 人类外部开发者试用 | OPEN | HUMAN | docs | §3 ENV-19 | — |
@@ -341,21 +341,20 @@ dbus-run-session -- bash -c '
 
 ### ENV-16 · Vault 信任根载体
 
-- 关联任务：T-M8-03（插件信任根）。 缺口：`vault_real` 验证 `VaultBackend` 自身的 KV v2 读写；`default_backends()` 现按 `VAULT_ADDR` / `VAULT_TOKEN` 自动加入 `VaultBackend<HttpVaultClient>`（插件信任根、发布、签名共用同一条后端链），代码缺口已关闭。剩余是真实 Vault 服务 + 真实组件的 CLI E2E。
+- 关联任务：T-M8-03（插件信任根）。 缺口：`vault_real` 验证 `VaultBackend` 自身的 KV v2 读写；`default_backends()` 现按 `VAULT_ADDR` / `VAULT_TOKEN` 自动加入 `VaultBackend<HttpVaultClient>`（插件信任根、发布、签名共用同一条后端链），代码缺口已关闭。CLI E2E `plugin_trust_root_vault`（只换 `source = "vault"`）已接 rust-ci `vault-real` 作业，首个真实 Vault 服务运行（run 39414212765）已通过。
 - 环境 / 工具链 / 凭据：Vault 服务（dev 或真实集群）、`VAULT_ADDR`、`VAULT_TOKEN`、KV v2 路径；插件公钥载荷 `base64(JSON)`。
-- 开关：`POLY_VAULT_REAL=1`、`VAULT_ADDR`、`VAULT_TOKEN`；CLI 配置 `source = "vault"`。
+- 开关：`POLY_VAULT_REAL=1`、`VAULT_ADDR`、`VAULT_TOKEN`；CLI 配置 `trust_root = { name = "plugin-trust-root", source = "vault" }`。
 - 命令：
 ```sh
-vault server -dev -dev-root-token-id=root &
+vault server -dev -dev-root-token-id=root -dev-listen-address=127.0.0.1:8200 &
 export VAULT_ADDR=http://127.0.0.1:8200 VAULT_TOKEN=root
 POLY_VAULT_REAL=1 cargo test -p poly-sign --test vault_real -- --nocapture
-# 设置 VAULT_* 后，默认后端链含 VaultBackend；下面这条走真实插件信任根 E2E
-poly build --target linux-reference --json
+POLY_VAULT_REAL=1 cargo test -p poly-cli --test plugin_trust_root_vault -- --nocapture
 ```
-- 证据（关闭前必须）：`vault_real` 往返输出不足以关闭载体；需要 CLI 侧 `plugin_granted` / `packaged` 与错误路径 `E_PLUGIN_0010` 的真实输出，且日志不含 token。
-- 现状：`OPEN`（环境槽：需真实 Vault 服务与凭据）；代码侧已接线，`vault_real` 门控仍为 `POLY_VAULT_REAL=1`。 负责人：release-sec + core。
-- 下一步：在有 Vault 服务的环境按本卡跑真实 E2E（`vault_real` + CLI 信任根 / 发布），日志不得含 token。
-- 阻塞：需 Vault 服务与凭据；代码缺口已关闭。 运行位置：CI（Vault dev server）可关闭；当前无服务。
+- 证据：`vault_real` 的真 KV v2 往返 / 404 / 403 脱敏输出；`plugin_trust_root_vault` 的 `poly build --target linux-reference --json` 出现 `plugin_granted` / `packaged`，删除 KV 条目后为 `E_PLUGIN_0010`；日志无 token。rust-ci `vault-real` run 39414212765 首跑通过。
+- 现状：`CLOSED`（2026-10-20）。CI 作业与门控 E2E 在真实 Vault dev 服务上通过，作业内 SKIP 即失败。 负责人：release-sec + core。
+- 下一步：真实集群 / 私有 CA 场景另行立槽；dev 服务证据不得冒充生产 Vault。
+- 阻塞：无（CI dev server 已提供）；代码缺口已关闭。
 
 ### ENV-17 · 真实 S3 / OSS 往返与农场二跑
 
@@ -486,7 +485,7 @@ poly preview --dry-run --target android --device android-phone --device android-
 | ENV-13 | — | — | 无 `zeus` 作业 |
 | ENV-14 | — | — | 无 Connect IQ 作业 |
 | ENV-15 | `.github/workflows/rust-ci.yml` | `keyring-real` | Secret Service 真跑（run 39409593528）：`keyring_real` 真写 / 真读 / 真删 + CLI keyring 信任根 `plugin_granted` / `packaged` / `E_PLUGIN_0010`；作业内 SKIP 即失败 |
-| ENV-16 | — | — | 无 Vault 作业；默认后端链已按环境接线 |
+| ENV-16 | `.github/workflows/rust-ci.yml` | `vault-real` | Vault dev（KV v2，run 39414212765）：`vault_real` 真读写 / 404 / 403 脱敏 + CLI Vault 信任根 `plugin_granted` / `packaged` / `E_PLUGIN_0010`；作业内 SKIP 即失败 |
 | ENV-17 | — | — | 无 S3 作业 |
 | ENV-18 | `.github/workflows/secret-scan.yml` | `scan`（3 宿主） | 提供 required checks；admin bypass 已于 2026-10-20 关闭，设置不在工作流 |
 | ENV-19 | — | — | 人工试用，无工作流 |
@@ -512,7 +511,7 @@ poly preview --dry-run --target android --device android-phone --device android-
 | --- | --- | --- |
 | Vault 默认后端链 | 已关闭（代码） | `default_backends()` 已按环境装配 Vault；ENV-16 只剩真实服务 E2E |
 | Garmin 内建 iq 打包器 | 已交付 | `poly build --target garmin` 已有内建打包器；ENV-14 只关编译器 / 真机腿 |
-| 缺失的 CI 作业 | 基建 | NetBSD / S3 / Vault / watchOS / Fitbit / Zepp / Garmin / Roku 目前只有执行卡，没有工作流 |
+| 缺失的 CI 作业 | 基建 | NetBSD / S3 / watchOS / Fitbit / Zepp / Garmin / Roku 目前只有执行卡，没有工作流 |
 
 ## 8. 参考
 

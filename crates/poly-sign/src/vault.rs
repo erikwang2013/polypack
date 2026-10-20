@@ -121,7 +121,14 @@ impl HttpVaultClient {
             .map(|_| ())
     }
 
-    /// KV v2 数据面 URL（读 / 写同路径）。
+    /// KV v2 删除（软删最新版本）：真环境负向路径用——删后读 404 → 后端不可用。
+    pub fn delete_payload(&self, name: &str) -> Result<(), SignError> {
+        check_name(name)?;
+        self.call(name, Method::Delete, &self.data_url(name), None)
+            .map(|_| ())
+    }
+
+    /// KV v2 数据面 URL（读 / 写 / 删同路径）。
     fn data_url(&self, name: &str) -> String {
         format!("{}/v1/{KV_MOUNT}/data/{}", self.addr, name)
     }
@@ -144,6 +151,11 @@ impl HttpVaultClient {
                 .header("X-Vault-Token", &self.token)
                 .header("Content-Type", "application/json")
                 .send(text),
+            (Method::Delete, _) => self
+                .agent
+                .delete(url)
+                .header("X-Vault-Token", &self.token)
+                .call(),
             _ => self
                 .agent
                 .get(url)
@@ -249,12 +261,14 @@ impl std::fmt::Debug for HttpVaultClient {
     }
 }
 
-/// 请求方法（本模块只用到两种）。
+/// 请求方法（本模块只用到三种）。
 enum Method {
     /// KV 读。
     Get,
     /// KV 写。
     Post,
+    /// KV 软删最新版本。
+    Delete,
 }
 
 /// 凭据档案名进 URL 路径前的校验（系统边界）：非空、段不得为空 / `.` / `..`。
