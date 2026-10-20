@@ -3,7 +3,7 @@ resolver = "3"
 members = ["crates/*"]
 
 [workspace.package]
-version = "1.13.0"
+version = "1.13.1"
 edition = "2024"
 rust-version = "1.98"
 license = "Apache-2.0"
@@ -15,14 +15,14 @@ categories = ["development-tools::build-utils", "command-line-utilities"]
 
 [workspace.dependencies]
 # version 是 crates.io 发布所需（path 依赖在打包时被替换为 registry 版本）。
-poly-bundle = { version = "1.13.0", path = "crates/poly-bundle" }
-poly-cache = { version = "1.13.0", path = "crates/poly-cache" }
-poly-core = { version = "1.13.0", path = "crates/poly-core" }
-poly-plugin = { version = "1.13.0", path = "crates/poly-plugin" }
-poly-publish = { version = "1.13.0", path = "crates/poly-publish" }
-poly-sign = { version = "1.13.0", path = "crates/poly-sign" }
-poly-targets = { version = "1.13.0", path = "crates/poly-targets" }
-poly-toolchain = { version = "1.13.0", path = "crates/poly-toolchain" }
+poly-bundle = { version = "1.13.1", path = "crates/poly-bundle" }
+poly-cache = { version = "1.13.1", path = "crates/poly-cache" }
+poly-core = { version = "1.13.1", path = "crates/poly-core" }
+poly-plugin = { version = "1.13.1", path = "crates/poly-plugin" }
+poly-publish = { version = "1.13.1", path = "crates/poly-publish" }
+poly-sign = { version = "1.13.1", path = "crates/poly-sign" }
+poly-targets = { version = "1.13.1", path = "crates/poly-targets" }
+poly-toolchain = { version = "1.13.1", path = "crates/poly-toolchain" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 toml = "0.8"

@@ -81,7 +81,7 @@ Signing is an optional release step: the Release workflow signs and uploads `SHA
 | Check | Current state | Consequence |
 | --- | --- | --- |
 | workspace crate `publish` | `false` for every crate | `cargo install poly-cli` does not work |
-| root manifest version | `1.13.0` | aligned with the latest tag |
+| root manifest version | `1.13.1` | aligned with the latest tag |
 | release audit | `cargo package --list` 9/9 passed; `cargo publish --dry-run` refused by `publish = false` | audit complete, actual publishing closed |
 | name availability | `poly-cli` and `poly-core` are taken by others | rename or obtain ownership before publishing |
 | crates.io token | none in the repository or CI | no publishing secret configured |
