@@ -9,9 +9,30 @@ use std::process::{Child, Command, Output, Stdio};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::{Duration, Instant};
 
+use poly_cache::{ObjectStore, S3Config, S3Env, S3Store};
 use serde_json::Value;
 
 static COUNTER: AtomicUsize = AtomicUsize::new(0);
+
+/// S3 前缀兜底清理：断言 panic 时也删除本测试写入的对象（唯一前缀，不碰他测对象）。
+struct S3PrefixCleanup(String);
+
+impl Drop for S3PrefixCleanup {
+    fn drop(&mut self) {
+        let Ok(config) = S3Config::from_uri(&self.0, S3Env::from_env()) else {
+            return;
+        };
+        let Ok(store) = S3Store::new(&config) else {
+            return;
+        };
+        let Ok(entries) = store.entries() else {
+            return;
+        };
+        for entry in entries {
+            let _ = store.remove(&entry.key);
+        }
+    }
+}
 
 /// 临时目录；drop 即递归删除。
 struct TempDir {
@@ -229,6 +250,61 @@ fn shared_cache_hits_across_worker_processes_with_same_key() {
     );
 
     // 同输入 → 同一缓存键（两个独立进程、两份工程副本）
+    let keys_a = cached_keys(&events_a);
+    let keys_b = cached_keys(&events_b);
+    assert!(!keys_a.is_empty() && !keys_b.is_empty(), "应有 cached 事件");
+    assert_eq!(keys_a, keys_b, "不同 worker 上同一输入必须产生同一缓存键");
+}
+
+/// ENV-17 真实 S3 腿：MinIO / 真实桶作为两 worker 的共享缓存，二跑必须 1/1 命中。
+///
+/// 未设置 `POLYPACK_S3_REAL=1` 时打印 SKIP 并返回（本地默认）；开启后缺 URI / 端点 /
+/// 凭据直接失败，不静默跳过。每次运行使用独立前缀并在 Drop 中清理。
+#[test]
+fn shared_cache_hits_across_worker_processes_on_s3() {
+    if std::env::var("POLYPACK_S3_REAL").as_deref() != Ok("1") {
+        println!(
+            "SKIP: 真实 S3 环境槽未启用（设置 POLYPACK_S3_REAL=1 与 \
+             POLYPACK_S3_TEST_URI=s3://<bucket>[/<prefix>]）"
+        );
+        return;
+    }
+    let base = std::env::var("POLYPACK_S3_TEST_URI")
+        .expect("POLYPACK_S3_REAL=1 时必须设置 POLYPACK_S3_TEST_URI");
+    let temp = TempDir::new("s3");
+    let (site_a, site_b) = (temp.path().join("site-a"), temp.path().join("site-b"));
+    write_project(&site_a);
+    write_project(&site_b);
+    // 独立前缀：首跑 0/1、二跑 1/1 只可能来自本次运行写入桶的对象。
+    let cache = format!(
+        "{}/{}-{}",
+        base.trim_end_matches('/'),
+        std::process::id(),
+        COUNTER.fetch_add(1, Ordering::Relaxed)
+    );
+    let _cleanup = S3PrefixCleanup(cache.clone());
+    let farm = temp.path().join("farm");
+
+    let (code_a, events_a) = run_round(&farm, "worker-a", &site_a, &cache);
+    assert_eq!(code_a, 0, "worker-a 正常退出");
+    assert!(
+        hit_reports(&events_a)
+            .iter()
+            .any(|message| message.contains("0/1")),
+        "首跑应为未命中并写入桶: {:?}",
+        hit_reports(&events_a)
+    );
+
+    let (code_b, events_b) = run_round(&farm, "worker-b", &site_b, &cache);
+    assert_eq!(code_b, 0, "worker-b 正常退出");
+    assert!(
+        hit_reports(&events_b)
+            .iter()
+            .any(|message| message.contains("1/1")),
+        "二跑应从 S3 共享桶全命中: {:?}",
+        hit_reports(&events_b)
+    );
+
     let keys_a = cached_keys(&events_a);
     let keys_b = cached_keys(&events_b);
     assert!(!keys_a.is_empty() && !keys_b.is_empty(), "应有 cached 事件");

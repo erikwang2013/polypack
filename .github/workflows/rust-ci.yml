@@ -292,6 +292,128 @@ jobs:
             fi
           done
 
+  # ENV-17：真实 S3 兼容往返（s3_real）+ 两 worker 农场二跑共享桶命中（Linux 腿）。
+  #
+  # dl.min.io 已在 2026 年停止分发社区版 MinIO server / mc（所有 release 与 hotfix 均
+  # 410 Gone），无法按原计划从 dl.min.io 下载并核对已发布 SHA-256，因此：
+  # - server：从归档的官方 GitHub tag 源码构建，校验 tag 指向的 commit（无发布校验和）；
+  # - mc：用官方 GitHub release 二进制，核对 release 随附的 .sha256sum。
+  # 两个测试都有「缺环境即 SKIP 并绿」的本地守卫；CI 里 SKIP 等同缺证据：日志 grep 兜底，
+  # 必须看到测试名真跑通过，不能 0 个测试也算绿。
+  s3-real:
+    name: s3-real / minio-roundtrip-farm
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      MINIO_ROOT_USER: polypack-ci
+      # 一次性本地凭据：服务只监听 127.0.0.1，不是 secrets，也不得写进日志。
+      MINIO_ROOT_PASSWORD: polypack-ci-secret
+      POLYPACK_S3_REAL: "1"
+      POLYPACK_S3_TEST_URI: s3://polypack-ci/ci-prefix
+      POLYPACK_S3_ENDPOINT: http://127.0.0.1:9000
+      POLYPACK_S3_REGION: us-east-1
+      POLYPACK_S3_ACCESS_KEY_ID: polypack-ci
+      POLYPACK_S3_SECRET_ACCESS_KEY: polypack-ci-secret
+      POLYPACK_S3_PATH_STYLE: "1"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Rust toolchain（stable）
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: 构建缓存
+        uses: Swatinem/rust-cache@v2
+
+      # MinIO go.mod 固定 go 1.24.x；显式 setup-go 避免 runner 预装版本漂移。
+      - name: Go（构建归档的 MinIO server）
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.24.8"
+
+      - name: 下载并校验 mc（官方 GitHub release + 已发布 SHA-256）
+        run: |
+          set -euo pipefail
+          version=RELEASE.2025-08-13T08-35-41Z
+          sha=01f866e9c5f9b87c2b09116fa5d7c06695b106242d829a8bb32990c00312e891
+          curl -fsSL --retry 5 --retry-all-errors -o /tmp/mc \
+            "https://github.com/minio/mc/releases/download/$version/mc.linux-amd64.$version"
+          echo "$sha  /tmp/mc" | sha256sum -c -
+          sudo install -m 0755 /tmp/mc /usr/local/bin/mc
+          mc --version
+
+      - name: 构建 MinIO server（归档官方源码，tag commit 固定）
+        env:
+          GOTOOLCHAIN: local
+        run: |
+          set -euo pipefail
+          version=RELEASE.2025-10-15T17-29-55Z
+          commit=9e49d5e7a648f00e26f2246f4dc28e6b07f8c84a
+          git clone --quiet --depth 1 --branch "$version" \
+            https://github.com/minio/minio /tmp/minio-src
+          test "$(git -C /tmp/minio-src rev-parse HEAD)" = "$commit"
+          cd /tmp/minio-src
+          CGO_ENABLED=0 go build -tags kqueue -trimpath \
+            -ldflags "-X github.com/minio/minio/cmd.Version=$version -X github.com/minio/minio/cmd.ReleaseTag=$version" \
+            -o /tmp/minio .
+          sudo install -m 0755 /tmp/minio /usr/local/bin/minio
+          minio --version
+
+      - name: 启动 MinIO 并创建桶
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/minio-data
+          minio server /tmp/minio-data --address 127.0.0.1:9000 \
+            --console-address 127.0.0.1:19001 > /tmp/minio.log 2>&1 &
+          for _ in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:9000/minio/health/live > /dev/null 2>&1; then
+              break
+            fi
+            sleep 1
+          done
+          if ! curl -fsS http://127.0.0.1:9000/minio/health/live > /dev/null; then
+            echo "s3-real：MinIO 未就绪" >&2
+            tail -n 50 /tmp/minio.log >&2 || true
+            exit 1
+          fi
+          mc alias set ci http://127.0.0.1:9000 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD"
+          mc mb --ignore-existing ci/polypack-ci
+          mc ls ci
+
+      - name: 真实 S3 往返（s3_real）
+        run: |
+          set -euo pipefail
+          cargo test -p poly-cache --test s3_real -- --nocapture 2>&1 \
+            | tee /tmp/s3-real.log
+          if grep -q "SKIP" /tmp/s3-real.log; then
+            echo "s3-real：s3_real 打印了 SKIP（MinIO / 凭据缺失），不能当真实证据" >&2
+            exit 1
+          fi
+          grep -qF "test real_s3_roundtrip ... ok" /tmp/s3-real.log || {
+            echo "s3-real：s3_real 未真跑通过" >&2
+            exit 1
+          }
+
+      - name: 两 worker 农场二跑（MinIO 共享桶必须 1/1 命中）
+        run: |
+          set -euo pipefail
+          cargo test -p poly-cli --test farm_cache \
+            shared_cache_hits_across_worker_processes_on_s3 -- --nocapture 2>&1 \
+            | tee -a /tmp/s3-real.log
+          if grep -q "SKIP" /tmp/s3-real.log; then
+            echo "s3-real：farm_cache S3 腿打印了 SKIP，不能当真实证据" >&2
+            exit 1
+          fi
+          grep -qF "test shared_cache_hits_across_worker_processes_on_s3 ... ok" \
+            /tmp/s3-real.log || {
+            echo "s3-real：farm_cache S3 腿未真跑通过" >&2
+            exit 1
+          }
+
+      - name: 桶对象清单（测试后；两条腿都自行清理，应为空）
+        if: always()
+        run: |
+          mc ls --recursive ci/polypack-ci || true
+
   # T-M9-53/54：真实 Tauri v2 样例 → WiX MSI → 安装 / 启动 / 卸载 / 残留。
   #
   # 前置：windows-2022 预装 WebView2 Runtime 与 WiX Toolset v3.14（candle / light）。
