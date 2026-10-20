@@ -100,6 +100,8 @@ pub mod codes {
     pub const E_FARM_0005: Code = Code::new("poly::E_FARM_0005");
     /// 农场任务隔离失败（一次性工作目录无法创建 / 删除）。
     pub const E_FARM_0006: Code = Code::new("poly::E_FARM_0006");
+    /// 部署模式输入非法（配置缺字段 / 非 HTTPS / 含 fragment / 目录不存在）。
+    pub const E_DEPLOY_0001: Code = Code::new("poly::E_DEPLOY_0001");
     /// 产物二跑不一致（`poly verify --reproducible`）。
     pub const E_VERIFY_0001: Code = Code::new("poly::E_VERIFY_0001");
     /// 没有可比对的产物 / 未接入该目标的校验器。
