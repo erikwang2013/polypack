@@ -153,6 +153,65 @@ jobs:
         if: runner.os == 'Linux'
         run: cargo audit
 
+  # ENV-15：真实 Secret Service 上的 keyring 信任根载体（Linux 腿）。
+  #
+  # 隔离配方与 `crates/poly-sign/tests/keyring_real.rs` 文件头一致：dbus-run-session 起
+  # 私有会话总线，非空密码解锁，`GNOME_KEYRING_CUSTOM_LOCAL_PATH` 指向临时空目录
+  # （Deepin 补丁版会无视 HOME / XDG_DATA_HOME）。工具链装在 runner 的真实 HOME，
+  # 故显式保留 CARGO_HOME / RUSTUP_HOME，只隔离钥匙串路径。
+  #
+  # 两个测试都有「缺环境即 SKIP 并绿」的本地守卫；CI 里 SKIP 等同缺证据：日志 grep
+  # 兜底，必须看到两条测试名真跑通过，不能 0 个测试也算绿。
+  keyring-real:
+    name: keyring-real / trust-root-carrier
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Rust toolchain（stable）
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: 构建缓存
+        uses: Swatinem/rust-cache@v2
+
+      # gdbus（libglib2.0-bin）供 keyring_real 的总线层交叉确认；缺失会打印 SKIP。
+      - name: 安装 gnome-keyring / dbus
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq gnome-keyring dbus dbus-daemon libglib2.0-bin
+
+      - name: 真实 keyring 闭环 + CLI 信任根 E2E（隔离会话总线）
+        run: |
+          set -euo pipefail
+          mkdir -p -m 700 /tmp/poly-keyring-rt /tmp/poly-keyring-home/keyrings
+          dbus-run-session -- bash -c '
+            set -euo pipefail
+            REAL_HOME="$HOME"
+            export CARGO_HOME="${CARGO_HOME:-$REAL_HOME/.cargo}" \
+                   RUSTUP_HOME="${RUSTUP_HOME:-$REAL_HOME/.rustup}"
+            export HOME=/tmp/poly-keyring-home XDG_RUNTIME_DIR=/tmp/poly-keyring-rt \
+                   XDG_DATA_HOME=/tmp/poly-keyring-home/.local/share \
+                   GNOME_KEYRING_CUSTOM_LOCAL_PATH=/tmp/poly-keyring-home/keyrings
+            printf "poly-it-pass\n" | gnome-keyring-daemon --unlock --components=secrets --foreground &
+            sleep 3
+            export POLY_KEYRING_REAL=1
+            cargo test -p poly-sign --test keyring_real -- --nocapture
+            cargo test -p poly-cli --test plugin_trust_root_keyring -- --nocapture
+          ' 2>&1 | tee /tmp/poly-keyring-real.log
+          if grep -q "SKIP" /tmp/poly-keyring-real.log; then
+            echo "keyring-real：测试打印了 SKIP（缺 Secret Service / gdbus / gpg），不能当真实证据" >&2
+            exit 1
+          fi
+          for expected in \
+            "test real_keyring_write_read_delete_round_trip ... ok" \
+            "test cli_resolves_trust_root_from_keyring_and_loads_signed_plugin ... ok"; do
+            if ! grep -qF "$expected" /tmp/poly-keyring-real.log; then
+              echo "keyring-real：测试未真跑通过：$expected" >&2
+              exit 1
+            fi
+          done
+
   # T-M9-53/54：真实 Tauri v2 样例 → WiX MSI → 安装 / 启动 / 卸载 / 残留。
   #
   # 前置：windows-2022 预装 WebView2 Runtime 与 WiX Toolset v3.14（candle / light）。

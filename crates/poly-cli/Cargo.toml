@@ -40,5 +40,10 @@ serde_json.workspace = true
 # T-M8-04：digest 口径用宿主同一 blake3 实现独立复算。
 blake3.workspace = true
 
+# ENV-15：CLI keyring 信任根 E2E 的写 / 删侧。读写后端本体只读，条目得直接用 keyring
+# crate 种；同版本同特性 = 与 poly-sign 依赖侧共用编译实例，测试文件本身 `cfg(linux)`。
+[target.'cfg(target_os = "linux")'.dev-dependencies]
+keyring = { version = "4.2.0", default-features = false, features = ["v1"] }
+
 [lints]
 workspace = true

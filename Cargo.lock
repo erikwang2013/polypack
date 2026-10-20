@@ -1554,6 +1554,7 @@ dependencies = [
  "blake3",
  "clap",
  "flate2",
+ "keyring",
  "poly-bundle",
  "poly-cache",
  "poly-core",
