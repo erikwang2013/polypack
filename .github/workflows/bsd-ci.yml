@@ -265,7 +265,7 @@ jobs:
             cp -R "$WORKSPACE/.ci/netbsd/port" "$PORT_DST"
             ( cd "$PORT_DST" && bmake -V MAKE_VERSION ) >"$LOGS/bmake-version.log" 2>&1
             cat "$LOGS/bmake-version.log"
-            PAYLOAD_BIN=$(find "$PORT_DST/files/payload" -type f -path '*/bin/*' -print -quit)
+            PAYLOAD_BIN=$(find "$PORT_DST/files/payload" -type f -path '*/bin/*' -print | head -n 1)
             test -n "$PAYLOAD_BIN"
             cp "$APP_CORE" "$PAYLOAD_BIN"
             chmod 755 "$PAYLOAD_BIN"
@@ -273,7 +273,7 @@ jobs:
             mkdir -p /tmp/pkgsrc-packages
             run_stage bmake-package sh -c \
               "cd '$PORT_DST' && exec bmake package PACKAGES=/tmp/pkgsrc-packages"
-            PKG_TGZ=$(find /tmp/pkgsrc-packages -maxdepth 2 -name "$DIST.tgz" -print -quit)
+            PKG_TGZ=$(find /tmp/pkgsrc-packages -maxdepth 2 -name "$DIST.tgz" -print | head -n 1)
             test -n "$PKG_TGZ"
 
             run_stage pkg-add pkg_add -v "$PKG_TGZ"
