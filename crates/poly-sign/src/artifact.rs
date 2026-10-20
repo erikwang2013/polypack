@@ -50,27 +50,70 @@ impl ArtifactVerifier {
     /// `Err` 覆盖签名不符、公钥不符、签名格式非法与 gpg 执行失败；调用方按策略映射
     /// 到自己的稳定错误码。
     pub fn verify_detached(&self, data: &[u8], signature: &[u8]) -> Result<(), SignError> {
+        self.verify(data, signature, false).map(|_| ())
+    }
+
+    /// 验证分离签名并返回签名密钥指纹（大写 hex）。
+    ///
+    /// 指纹取自 gpg 的 `VALIDSIG` 状态行；若签名由子钥完成，优先返回该行末尾的
+    /// 主钥指纹，便于调用方绑定声明的发布者指纹（ADR 0004）。临时 GNUPGHOME 只含
+    /// 信任根公钥，因此签名有效即表示签名者就是该信任根。
+    pub fn verify_detached_signer(
+        &self,
+        data: &[u8],
+        signature: &[u8],
+    ) -> Result<String, SignError> {
+        self.verify(data, signature, true)
+            .map(|signer| signer.expect("need_signer 为 true 时必然返回指纹"))
+    }
+
+    fn verify(
+        &self,
+        data: &[u8],
+        signature: &[u8],
+        need_signer: bool,
+    ) -> Result<Option<String>, SignError> {
         let data_file = self.home.path().join("artifact");
         let signature_file = self.home.path().join("artifact.sig");
         std::fs::write(&data_file, data).map_err(crate::error::io_err(&data_file))?;
         std::fs::write(&signature_file, signature)
             .map_err(crate::error::io_err(&signature_file))?;
-        run(
-            self.home.path(),
-            &[
-                "--verify".into(),
-                signature_file.into_os_string(),
-                data_file.into_os_string(),
-            ],
-            "gpg --verify",
-        )
+        let mut args: Vec<OsString> = Vec::new();
+        if need_signer {
+            args.push("--status-fd".into());
+            args.push("1".into());
+        }
+        args.push("--verify".into());
+        args.push(signature_file.into_os_string());
+        args.push(data_file.into_os_string());
+        let stdout = run(self.home.path(), &args, "gpg --verify")?;
+        if !need_signer {
+            return Ok(None);
+        }
+        let fingerprint = String::from_utf8_lossy(&stdout).lines().find_map(|line| {
+            let rest = line.strip_prefix("[GNUPG:] VALIDSIG ")?;
+            // 子钥签名时 VALIDSIG 末尾附主钥指纹；取最后一个匹配项以绑定主钥。
+            rest.split_whitespace()
+                .rfind(|value| is_fingerprint(value))
+                .map(str::to_ascii_uppercase)
+        });
+        fingerprint.map(Some).ok_or_else(|| SignError::ToolFailed {
+            command: "gpg --verify（VALIDSIG 指纹）".to_string(),
+            status: "0".to_string(),
+            stderr: "签名有效但 gpg 未输出 VALIDSIG 指纹状态行".to_string(),
+        })
     }
+}
+
+/// GPG 指纹：v4 为 40 hex，v5 为 64 hex。
+fn is_fingerprint(value: &str) -> bool {
+    matches!(value.len(), 40 | 64) && value.bytes().all(|byte| byte.is_ascii_hexdigit())
 }
 
 /// 在一次性 home 内执行 gpg（`--batch --no-options`）。
 ///
 /// `display` 是错误里展示的命令名（不含临时路径）；stderr 中的 home 绝对路径先脱敏。
-fn run(home: &Path, args: &[OsString], display: &str) -> Result<(), SignError> {
+fn run(home: &Path, args: &[OsString], display: &str) -> Result<Vec<u8>, SignError> {
     let (program, msys) = crate::gpg::program();
     let home_arg = crate::gpg::path_arg(home.as_os_str(), msys);
     let mut full: Vec<OsString> = vec![
@@ -91,7 +134,7 @@ fn run(home: &Path, args: &[OsString], display: &str) -> Result<(), SignError> {
             ),
         })?;
     if output.status.success() {
-        return Ok(());
+        return Ok(output.stdout);
     }
     let stderr = String::from_utf8_lossy(&output.stderr);
     let stderr = stderr.replace(&home_arg.to_string_lossy().into_owned(), "<临时目录>");

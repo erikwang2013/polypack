@@ -1563,6 +1563,7 @@ dependencies = [
  "poly-sign",
  "poly-targets",
  "poly-toolchain",
+ "semver",
  "serde",
  "serde_json",
  "sha2 0.10.9",
