@@ -365,19 +365,19 @@ This document covers 22 candidates: 7 incubation items, 8 planned platforms, 2 o
 
 ### M9-G1 · CLI distribution to crates.io / GitHub Releases
 
-- Status: candidate · partially landed (GitHub Releases + install script + signing / install-smoke landed; the T-M9-45 audit landed: workspace 1.12.0, crate metadata, `cargo package --list` 9/9; the actual crates.io publish is closed by `poly-cli` / `poly-core` name conflicts and `publish = false`).
+- Status: candidate · partially landed (GitHub Releases + install script + signing / install-smoke landed; the T-M9-45 audit landed: workspace 1.13.0, crate metadata, `cargo package --list` 9/9; the actual crates.io publish is closed by `poly-cli` / `poly-core` name conflicts and `publish = false`).
 - Trigger: GA release; external users want `poly` without a Rust toolchain.
 - Why: the root `Cargo.toml` version is `0.0.0`, `crates/poly-cli/Cargo.toml` declares the bin name `poly`, and the repository has `repository` metadata; previously there was no release workflow, so users could only build from source. `.github/workflows/release.yml` now builds all three hosts on a `v*` tag and attaches `SHA256SUMS.txt`; `scripts/install.sh` (mandatory SHA-256 + optional strict minisign verification), bilingual `docs/INSTALL`, secret-gated signing, and an install-smoke job have landed. `docs/CRATES-IO` records the publish order, metadata, and blockers: `poly-cli` and `poly-core` are already taken (rename or obtain ownership), and every crate is still `publish = false`.
 - Goals: provide verifiable crates.io installation and GitHub Releases binaries with checksums and signatures. Non-goals: Homebrew / Scoop / apt repositories in v1.
 - Design sketch: first audit all publishable crates in dependency order with `cargo package` / `cargo publish --dry-run`; GitHub Actions builds linux x86_64 / aarch64, macOS x86_64 / aarch64, and Windows x86_64; publish `SHA256SUMS` and a GPG/minisign signature; the installer verifies before writing. The audit is complete (`cargo package --list` 9/9; `cargo publish --dry-run` refused by `publish = false`); the GitHub Releases leg has landed (three-host build + `SHA256SUMS` + secret-gated minisign signing + install-smoke), and the installer and bilingual docs have landed. crates.io uploads stay closed pending maintainer decisions on names and a token. Integration points: root `Cargo.toml`, `crates/poly-cli/Cargo.toml`, `.github/workflows/`, `docs/CRATES-IO`. Alternatives: GitHub Releases only (landed), crates.io only (requires Rust; blocked).
 - Deliverables: release inventory and crate order (landed, `docs/CRATES-IO`); cross-platform build workflow (landed); checksums / signatures (landed, signing secret-gated); installer and bilingual docs (landed); actual crates.io publishing (blocked: name conflicts, `publish = false`, no token).
-- Risks and mitigations: crate name / binary name `poly` collision → ownership checked and fallback names prepared (`polypack-cli` / `polypack-engine`); the version was 0.0.0 → now 1.12.0 aligned with the latest tag; supply chain → signatures plus reproducible-build notes.
+- Risks and mitigations: crate name / binary name `poly` collision → ownership checked and fallback names prepared (`polypack-cli` / `polypack-engine`); the version was 0.0.0 → now 1.13.0 aligned with the latest tag; supply chain → signatures plus reproducible-build notes.
 - Decisions: publish to both crates.io and Releases; whether to rename on a binary collision.
 - First step: run `cargo package --list` and `cargo publish --dry-run` to list crate metadata that blocks release.
 
 | Task | Title | Role | Depends | Days | Acceptance |
 | --- | --- | --- | --- | --- | --- |
-| T-M9-45 ✅ | Crate release audit and version policy | release | — | 2 | Audit complete: metadata 9/9, `cargo package --list` 9/9, version 1.12.0; actual publishing closed by name conflicts / `publish = false` / no token |
+| T-M9-45 ✅ | Crate release audit and version policy | release | — | 2 | Audit complete: metadata 9/9, `cargo package --list` 9/9, version 1.13.0; actual publishing closed by name conflicts / `publish = false` / no token |
 | T-M9-46 ✅ | Cross-platform Release workflow and signing | release + coder | T-M9-45 | 5 | Artifacts downloadable on all three hosts; SHA256SUMS and secret-gated signature verify |
 | T-M9-47 ✅ | Installer and docs | docs + tester | T-M9-45, T-M9-46 | 2 | install-smoke runs `poly --version`; bilingual INSTALL reproduces |
 

@@ -4,7 +4,7 @@
 版本号自 v1.0.0 起按语义化版本递增（tag 与 GitHub Release 名称一致，见 [README](README.md#路线图)）。
 Notable changes are recorded here; since v1.0.0, tags and releases follow `vX.Y.Z` semantic increments.
 
-## [Unreleased]
+## [1.13.0] — 2026-10-20
 
 ### Added
 - **M9-P3 LINE LIFF 部署模式**：新增 `poly deploy line-liff --dir <dir> --config line-liff.toml`（部署模式，非 TargetSpec）：校验 `schema=1`、`liff_id` / `endpoint` / `channel_id` / `scopes`、Endpoint 必须 HTTPS 且不含 fragment，输出 5 条 Console 人工步骤；始终 dry-run，不触网、不上传、不生成平台包；错误码 `poly::E_DEPLOY_0001`；新增 ADR 0009 与双语 `docs/LINE-DEPLOY`，8 个集成测试通过。
