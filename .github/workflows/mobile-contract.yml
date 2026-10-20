@@ -8,6 +8,11 @@
 #
 # iOS 腿固定在 macos-14：Apple 工具链（xcodebuild / lipo / codesign）不随 ubuntu 提供，
 # `hosts = [Macos]` 的目标在 Linux 上无从真跑（Linux 发起走远程农场，T-M2-13）。
+#
+# watchOS 腿（ENV-11 / T-M7-05、T-M7-06）同在 macos-14，仅每夜 / 手动：先用 simulator SDK
+# 真编译 watchOS 模板，再 `poly build --target watchos` 走 archive → `export/Payload`。
+# 无 Apple 签名凭据时 sign / `codesign-verify` 如实告警未签名；打包产物与结构是硬门，
+# 绝不把 package / xcodebuild 的 SKIP 当绿。
 
 name: mobile-contract
 
@@ -148,5 +153,95 @@ jobs:
             ${{ runner.temp }}/poly-contract-m2-ios-*/.polypack/packages/ios/**
           # error 只在「所有 glob 皆空」时触发：首路（打包器真跑的 IPA）已实证必然命中
           # （dispatch 38690074497：4804 字节 3 条目），故此处空上传=真异常。CLI 侧那路仍是如实 NOTE。
+          if-no-files-found: error
+          retention-days: 14
+
+  watchos:
+    name: watchos / macos-14
+    # 仅 schedule / 手动触发：Xcode archive 与真构建成本不进 push / PR。
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: macos-14
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Rust toolchain（stable）
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: 构建缓存
+        uses: Swatinem/rust-cache@v2
+
+      - name: watchOS SDK 门（xcodebuild + watchOS / watchOS Simulator SDK）
+        run: |
+          set -euo pipefail
+          xcodebuild -version | tee "$RUNNER_TEMP/xcode-version.txt"
+          xcodebuild -showsdks | tee "$RUNNER_TEMP/xcode-sdks.txt"
+          grep -Eq 'watchOS [0-9]' "$RUNNER_TEMP/xcode-sdks.txt"
+          grep -Eq 'watchOS Simulator' "$RUNNER_TEMP/xcode-sdks.txt"
+
+      - name: 真编译 watchOS 模板（simulator SDK，禁签名）
+        run: |
+          set -euo pipefail
+          LOGS="$RUNNER_TEMP/poly-watchos-logs"
+          APP="$RUNNER_TEMP/polypack-watch"
+          mkdir -p "$LOGS"
+          POLY="$GITHUB_WORKSPACE/target/debug/poly"
+          cargo build -p poly-cli
+          "$POLY" init --target watchos "$APP"
+          cd "$APP"
+          xcodebuild -project PolyPackWatch.xcodeproj -scheme PolyPackWatch \
+            -sdk watchsimulator \
+            -destination 'generic/platform=watchOS Simulator' \
+            -derivedDataPath "$RUNNER_TEMP/poly-watch-derived-data" \
+            build CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY= \
+            | tee "$LOGS/xcodebuild-simulator.log"
+          grep -q 'BUILD SUCCEEDED' "$LOGS/xcodebuild-simulator.log"
+
+      - name: poly build --target watchos（archive → export/Payload；结构硬门）
+        env:
+          # macOS 的 std::env::temp_dir() 取 $TMPDIR；与 xcodebuild 临时目录对齐。
+          TMPDIR: ${{ runner.temp }}
+        run: |
+          set -euo pipefail
+          LOGS="$RUNNER_TEMP/poly-watchos-logs"
+          APP="$RUNNER_TEMP/polypack-watch"
+          POLY="$GITHUB_WORKSPACE/target/debug/poly"
+          mkdir -p "$LOGS"
+          cd "$APP"
+          "$POLY" build --target watchos --json | tee "$LOGS/build.jsonl"
+
+          grep -q '"event":"packaged"' "$LOGS/build.jsonl"
+          grep -q '"format":"watch"' "$LOGS/build.jsonl"
+          if grep -q '目标 watchos 未打包' "$LOGS/build.jsonl"; then
+            echo "::error::watchos 打包腿被跳过（见 build.jsonl）"
+            exit 1
+          fi
+          # 无 Apple 凭据时 sign / codesign-verify 如实告警未签名；但 verify 阶段必须真到达
+          # watchos（未签名告警或已签名 verified 二者其一）。
+          if grep -q '目标 watchos 未校验：产物未签名' "$LOGS/build.jsonl"; then
+            echo "::notice::watchos 产物未签名（无 Apple 凭据）：sign / codesign-verify 为外部腿"
+          else
+            grep -q '"checker":"codesign-verify","ok":true' "$LOGS/build.jsonl"
+          fi
+
+          APP_DIR=".polypack/packages/watchos/export/Payload/polypack-watch.app"
+          test -d "$APP_DIR"
+          test -f "$APP_DIR/Info.plist"
+          test -f "$APP_DIR/PkgInfo"
+          test -f "$APP_DIR/PolyPackWatch"
+          plutil -lint "$APP_DIR/Info.plist"
+          test "$(plutil -extract WKApplication raw -o - "$APP_DIR/Info.plist")" = "true"
+          shasum -a 256 "$APP_DIR/PolyPackWatch" | tee "$LOGS/sha256.txt"
+          ditto -c -k --sequesterRsrc --keepParent "$APP_DIR" "$LOGS/polypack-watch.app.zip"
+          shasum -a 256 "$LOGS/polypack-watch.app.zip" >> "$LOGS/sha256.txt"
+          cp "$RUNNER_TEMP/xcode-version.txt" "$RUNNER_TEMP/xcode-sdks.txt" "$LOGS/"
+
+      - name: 留证据（xcodebuild 日志 + .app / 压缩包；失败也留）
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mobile-watchos-evidence
+          path: ${{ runner.temp }}/poly-watchos-logs/**
+          include-hidden-files: true
           if-no-files-found: error
           retention-days: 14

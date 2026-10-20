@@ -31,13 +31,13 @@ Environment slots are tracked separately from code gaps: a slot closes with envi
 | ENV-04 | T-M3-05 / T-M3-06 | WeChat / Alipay / Douyin devtools preview | PARTIAL | HOST | core + release-sec | §3 ENV-04 | miniprogram-contract |
 | ENV-05 | T-M4-15 | Roku real-device sideload | PARTIAL | HOST | core | §3 ENV-05 | — |
 | ENV-06 | T-M5-07 | OpenBSD VM install smoke | PARTIAL | CI | infra | §3 ENV-06 | bsd-ci |
-| ENV-07 | T-M5-08 | NetBSD `bmake` / pkgsrc | OPEN | CI | infra | §3 ENV-07 | — |
+| ENV-07 | T-M5-08 | NetBSD `bmake` / pkgsrc | PARTIAL | CI | infra | §3 ENV-07 | bsd-ci · netbsd |
 | ENV-08 | T-M6-03 / T-M6-09 | QNX SDP + QEMU smoke | PARTIAL | CI | infra | §3 ENV-08 | embedded-ci |
 | ENV-09 | T-M6-05 | VxWorks `wr-cc` link leg | PARTIAL | CI | infra | §3 ENV-09 | embedded-ci |
 | ENV-10 | T-M7-04 | Wear OS device / emulator smoke | PARTIAL | CI | infra | §3 ENV-10 | wear-release-smoke |
-| ENV-11 | T-M7-05 / T-M7-06 | watchOS real `xcodebuild` | PARTIAL | CI | core + release-sec | §3 ENV-11 | — |
-| ENV-12 | T-M7-07 | Fitbit `fitbit-build` self-check | PARTIAL | CI | infra | §3 ENV-12 | — |
-| ENV-13 | T-M7-08 | Zepp `zeus` + simulator install | PARTIAL | HOST | core | §3 ENV-13 | — |
+| ENV-11 | T-M7-05 / T-M7-06 | watchOS real `xcodebuild` | PARTIAL | CI | core + release-sec | §3 ENV-11 | mobile-contract · watchos |
+| ENV-12 | T-M7-07 | Fitbit `fitbit-build` self-check | PARTIAL | CI | infra | §3 ENV-12 | wear-js-contract · fitbit |
+| ENV-13 | T-M7-08 | Zepp `zeus` + simulator install | PARTIAL | HOST | core | §3 ENV-13 | wear-js-contract · zepp |
 | ENV-14 | T-M7-09 | Garmin Connect IQ SDK / devkey compile | PARTIAL | CI | core | §3 ENV-14 | — |
 | ENV-15 | T-M8-03 | keyring trust-root carrier | CLOSED | CI | release-sec | run 39409593528 · keyring-real | rust-ci · keyring-real |
 | ENV-16 | T-M8-03 | Vault trust-root carrier | CLOSED | CI | release-sec + core | run 39414212765 · vault-real | rust-ci · vault-real |
@@ -173,22 +173,31 @@ pkg_add /tmp/openbsd-packages/<pkg>.tgz && pkg_info && pkg_check
 
 ### ENV-07 · NetBSD `bmake` / pkgsrc
 
-- Linked task: T-M5-08 (BSD-family pkgsrc target). Gap: `bmake package` and the NetBSD VM run are absent; the repo only asserts pkgsrc file structure / quoting. bsd-ci has no NetBSD job.
-- Environment / toolchain / credentials: NetBSD 10 VM / host, `pkgin install rust bmake`, pkgsrc tree, `pkg_add`; no signing credentials (a self-built repo needs separate config).
-- Gates: no dedicated gate; `poly build --target netbsd` emits a pkgsrc project.
-- Commands:
+- Linked task: T-M5-08 (BSD-family pkgsrc target). Gap: `bmake package` and the NetBSD VM run have no first-run evidence; the `netbsd` TargetSpec declares `hosts = [Linux]` only, so `poly build --target netbsd` is unreachable inside NetBSD.
+- Environment / toolchain / credentials: NetBSD 11.0 VM (vmactions/netbsd-vm@v1), `pkgin install rust bmake`, pkgsrc-current tree, `pkg_add`; no signing credentials (a self-built repo needs separate config).
+- Gates: no dedicated gate; `poly build --target netbsd` is reachable only on a Linux host (emits the pkgsrc skeleton and runs the structure self-check).
+- Commands (CI shape: generate on Linux → run for real in the VM; a NetBSD host can replay the same steps):
 ```sh
-pkgin install rust bmake
-cargo build -p poly-cli --ignore-rust-version
+# Linux host (the target's host gate is Linux-only)
+cargo build -p poly-cli
 ./target/debug/poly init /tmp/poly-netbsd && cd /tmp/poly-netbsd
-./target/debug/poly build --target netbsd
-cd <generated pkgsrc dir> && bmake package
-pkg_add <artifact>.tgz && pkg_info && pkg_info -L <pkg>
+./target/debug/poly build --target netbsd          # emits .polypack/packages/netbsd/pkgsrc/<DISTNAME>/
+# NetBSD VM (11.0); base ships no root CAs, bootstrap mozilla-rootcerts-openssl over http
+export PKG_PATH="http://cdn.netbsd.org/pub/pkgsrc/packages/NetBSD/$(uname -p)/$(uname -r)/All"
+pkg_add mozilla-rootcerts-openssl pkgin   # writes /etc/openssl/certs/ca-certificates.crt
+pkgin -y install rust bmake
+cargo build -p poly-cli --ignore-rust-version
+cd core && cargo build --release --ignore-rust-version   # native core replaces the Linux payload in the skeleton
+fetch -o /tmp/pkgsrc.tar.gz https://cdn.netbsd.org/pub/pkgsrc/current/pkgsrc.tar.gz && tar xzf /tmp/pkgsrc.tar.gz -C /usr
+cp -R <skeleton> /usr/pkgsrc/misc/<DISTNAME> && cd /usr/pkgsrc/misc/<DISTNAME>
+bmake package PACKAGES=/tmp/pkgsrc-packages
+pkg_add -v /tmp/pkgsrc-packages/<DISTNAME>.tgz
+pkg_info <DISTNAME> && pkg_info -L <DISTNAME> && /usr/pkg/bin/polypack-app
 ```
-- Evidence: `bmake package` exit 0; `pkg_add` / `pkg_info` output; `.tgz` SHA-256; NetBSD version and `bmake -V MAKE_VERSION`.
-- Status: `OPEN`. pkgsrc generation and structure assertions run; the `bmake` leg is SKIP-with-print and has no CI job. Owner: infra.
-- Next action: add a `netbsd` job to bsd-ci (vmactions/netbsd-vm or self-hosted), run structure first, then `bmake package`.
-- Blocker: no NetBSD host; the first pkgsrc bootstrap and image bandwidth are large. Execution mode: CI (NetBSD VM / self-hosted) can close it.
+- Evidence: `bmake package` exit 0; `pkg_add` / `pkg_info` output; the installed binary's output; `.tgz` SHA-256; NetBSD version and `bmake -V MAKE_VERSION`; CI first-run run ID + artifact.
+- Status: `PARTIAL` (workflow wired, first-run evidence pending). The bsd-ci `netbsd` job generates the skeleton on a Linux host, then builds poly / the app core natively in the VM, runs `bmake package` → `pkg_add`, and executes the installed binary; a missing tool or any failing step turns the job red. Owner: infra.
+- Next action: dispatch the `netbsd` job of `bsd-ci`, archive the run ID / logs / `.tgz` digest, then write the evidence back to this card and TASKS.
+- Blocker: first-run risks — the NetBSD 11.0 binary repo ships rust 1.96.1nb2 (below `rust-version = 1.98`; `--ignore-rust-version` is used, and newer language features would hard-fail); pkgsrc tree / image bandwidth and TCG speed are external variables. Execution mode: CI (NetBSD VM) can close it.
 
 ### ENV-08 · QNX SDP + QEMU smoke
 
@@ -248,57 +257,60 @@ node ui/smoke/wear/run.mjs --leg android --serial emulator-5554 \
 
 ### ENV-11 · watchOS real `xcodebuild`
 
-- Linked task: T-M7-05 (watchOS template), T-M7-06 (watchOS packaging and signing chain). Gap: on Linux `xcodebuild` returns `ToolMissing`; template build and `.xcarchive` → `Payload/*.app` are asserted only at the mock layer; a real macOS build has not run.
-- Environment / toolchain / credentials: macOS 14 + Xcode (watchOS SDK / simulator), `xcodebuild`, `ditto`, `plutil`; signing additionally needs Apple credentials.
-- Gates: `POLY_CONTRACT_REAL=1` (shared Apple chain); the watchOS packager gates on host automatically, with no dedicated gate.
+- Linked task: T-M7-05 (watchOS template), T-M7-06 (watchOS packaging and signing chain). Gap: on Linux `xcodebuild` returns `ToolMissing`; the macOS real build / packaging has no first-run evidence — the template and `.xcarchive` → `Payload/*.app` were asserted only at the mock layer.
+- Environment / toolchain / credentials: macOS 14 + Xcode (watchOS and watchOS Simulator SDK), `xcodebuild`, `ditto`, `plutil`; signing additionally needs Apple credentials (not configured in this job — signing / `codesign-verify` remain external legs).
+- Gates: no dedicated gate; the `watchos` job of `mobile-contract` runs nightly / manually only (Xcode build cost stays out of push / PR); the packager gates on host automatically.
 - Commands:
 ```sh
 poly init --target watchos /tmp/pax-watch && cd /tmp/pax-watch
 xcodebuild -project PolyPackWatch.xcodeproj -scheme PolyPackWatch \
-  -destination 'generic/platform=watchOS' build CODE_SIGNING_ALLOWED=NO
-poly build --target watchos
-xcodebuild archive -project PolyPackWatch.xcodeproj -scheme PolyPackWatch \
-  -configuration Release -destination 'generic/platform=watchOS' \
-  -archivePath /tmp/PolyPackWatch.xcarchive \
-  CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY=
+  -sdk watchsimulator -destination 'generic/platform=watchOS Simulator' \
+  build CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY=
+poly build --target watchos --json   # the package stage runs xcodebuild archive + ditto internally
 ```
-- Evidence: `xcodebuild` `BUILD SUCCEEDED`; `.polypack/packages/watchos/export/Payload/<product>.app` exists; `Info.plist` / `PkgInfo` structure assertions; `.app` SHA-256; Xcode version.
-- Status: `PARTIAL`. The 10-file template and packager mock assertions run; the macOS real build is missing and has no CI job. Owner: core.
-- Next action: add a watchOS job on macos-14 (install Xcode, run both `xcodebuild` commands), or execute manually and archive.
-- Blocker: requires macOS + Xcode; a Linux host can only return `poly::E_BND_0001` with the R3 farm hint. Execution mode: CI (macos-14) can close it.
+- Evidence: `xcodebuild` `BUILD SUCCEEDED`; build JSONL `packaged` (format=watch) and no `目标 watchos 未打包`; `Info.plist` / `PkgInfo` / executable inside `.polypack/packages/watchos/export/Payload/polypack-watch.app` with SHA-256; Xcode version and SDK list; CI first-run run ID + artifact.
+- Status: `PARTIAL` (workflow wired, first-run evidence pending). The macos-14 `watchos` job runs a real simulator-SDK build and `poly build --target watchos`; without Apple credentials sign / `codesign-verify` honestly warn that the artifact is unsigned and are not counted as packaging evidence. Owner: core.
+- Next action: dispatch the `watchos` job of `mobile-contract`, archive the run ID / xcodebuild log / `.app` digest, then write the evidence back to this card.
+- Blocker: first-run risks — the runner image's Xcode must provide both watchOS and watchOS Simulator SDKs; signing / notarization needs Apple credentials (kept external). Execution mode: CI (macos-14) can close the packaging leg; the signing leg needs credentials.
 
 ### ENV-12 · Fitbit `fitbit-build` self-check
 
-- Linked task: T-M7-07 (Fitbit OS packager). Gap: `.fba` three-layer structure checks and goldens run; `fitbit-build` is not on PATH, so the CLI self-check is SKIP-with-print.
-- Environment / toolchain / credentials: Node 18+, `@fitbit/sdk-cli` (provides `fitbit-build`), npm network; no hardware.
-- Gates: no dedicated gate; the tool on PATH makes it real.
+- Linked task: T-M7-07 (Fitbit OS packager). Gap: `.fba` three-layer structure checks and goldens run; `fitbit-build` is not on PATH, so the CLI self-check is SKIP-with-print and there was no CI self-check job.
+- Environment / toolchain / credentials: Node 22, `@fitbit/sdk-cli` (provides the `fitbit` command) plus `@fitbit/sdk` (the actual source of the `fitbit-build` bin), `libsecret-1-dev` (keytar native dependency), npm network; no hardware.
+- Gates: no dedicated gate; `fitbit-build` on PATH makes it real.
 - Commands:
 ```sh
-npm install -g @fitbit/sdk-cli
+npm install -g @fitbit/sdk-cli@1.7.3 @fitbit/sdk@6.1.0
 fitbit-build --help
-cargo test -p poly-cli --test contract_m7_wear_js -- --nocapture
+poly init /tmp/poly-fitbit && cd /tmp/poly-fitbit
+# add fitbit/package.json (config.fitbit.appUUID), fitbit/app/index.js, fitbit/resources/icon.png
+poly build --target fitbit --json
+poly verify --target fitbit --json
 ```
-- Evidence: `fitbit-build --help` exit 0; `poly verify --target fitbit --json` notes no longer contain the `fitbit-build` SKIP-with-print; `.fba` SHA-256 and structure assertion output.
-- Status: `PARTIAL`. Packager and structure checks run; the official CLI self-check is absent. Owner: infra.
-- Next action: install `@fitbit/sdk-cli` in CI and turn the Fitbit leg of `contract_m7_wear_js` from SKIP to REAL; the official CLI only checks presence, it does not rebuild this project (which does no TS / rollup).
-- Blocker: npm package and account availability; no hardware requirement. Execution mode: CI (ubuntu / macOS) can close it.
+- Evidence: `fitbit-build --help` exit 0; verify JSONL contains `fitbit-build 自检真跑通过` and no `自检 SKIP-with-print` / `自检未通过`; a `verified` / `fitbit-structure-check` event; `.fba` SHA-256; CI first-run run ID + artifact.
+- Status: `PARTIAL` (workflow wired, first-run evidence pending). The `fitbit` job of `wear-js-contract` installs the official CLI and runs a real build / verify; a missing tool or failed self-check turns the job red. Owner: infra.
+- Next action: dispatch the `fitbit` job of `wear-js-contract`, archive the run ID / verify JSONL / `.fba` digest, then write the evidence back to this card.
+- Blocker: first-run risks — keytar on Node 22 needs system `libsecret-1-dev` (npm install fails without it); the old assertion in `contract_m7_wear_js` expects the CLI-absent SKIP text, so that test is not applicable once the CLI is installed (this job uses direct `poly build/verify` instead and does not edit the test); the `@fitbit/sdk-cli` `fitbit` entry point crashes on Node 22 with `MODULE_NOT_FOUND` because of the `@openid/appauth` 1.4 module layout (this chain uses only `fitbit-build`; the job asserts `fitbit` is installed but does not execute it); a cold first run also compiles wasmtime on the runner (60-minute job cap, debuginfo off / incremental off). Execution mode: CI (ubuntu) can close it.
 
 ### ENV-13 · Zepp `zeus` + simulator install
 
 - Linked task: T-M7-08 (Zepp OS packager). Gap: `.zab` structure and md5 naming run; `zeus --version` SKIPs because the tool is absent; the simulator install leg always SKIP-with-print in verify (the code explicitly does not automate it).
-- Environment / toolchain / credentials: Node + Zepp OS `zeus` CLI (`@zeppos/zeus-cli`, per official docs), Zepp OS simulator (GUI), developer account (install / preview as officially required).
+- Environment / toolchain / credentials: Node 22 + Zepp OS `zeus` CLI (`@zeppos/zeus-cli@1.9.3`), Zepp OS simulator (GUI, external), developer account (install / preview as officially required).
 - Gates: no dedicated gate; `zeus` on PATH makes the self-check real. The simulator requires manual operation.
 - Commands:
 ```sh
-npm install -g @zeppos/zeus-cli
+npm install -g @zeppos/zeus-cli@1.9.3
 zeus --version
-cargo test -p poly-cli --test contract_m7_wear_js -- --nocapture
-# Simulator: manually install .polypack/packages/zepp/*.zab into the Zepp OS simulator and screenshot
+poly init /tmp/poly-zepp && cd /tmp/poly-zepp
+# add zepp/app.json (app.appName / appId / version) and zepp/app.js
+poly build --target zepp --json
+poly verify --target zepp --json
+# Simulator (external manual leg): install .polypack/packages/zepp/*.zab into the Zepp OS simulator and screenshot
 ```
-- Evidence: `zeus --version` output; verify notes no longer contain the `zeus` SKIP; simulator install / launch screenshot and `.zab` SHA-256; simulator version.
-- Status: `PARTIAL`. Packager and structure assertions run; both the `zeus` and simulator legs are absent. Owner: core.
-- Next action: install zeus in CI to close the self-check leg; run the simulator leg manually and attach screenshots to the ENV-13 issue.
-- Blocker: the simulator is a GUI app and cannot be installed automatically on a headless runner; the `zeus` package name and licensing follow official docs. Execution mode: the `zeus` self-check can run in CI; simulator install needs a physical GUI host.
+- Evidence: `zeus --version` output; verify JSONL contains `zeus 自检真跑通过` and no `zeus 自检 SKIP-with-print` / `自检未通过`; the `模拟器安装腿 SKIP-with-print` note is retained; a `verified` / `zepp-structure-check` event; `.zab` SHA-256; CI first-run run ID + artifact.
+- Status: `PARTIAL` (workflow wired, first-run evidence pending). The `zepp` job of `wear-js-contract` runs the non-GUI self-check / packaging; the simulator install leg remains an external manual leg. Owner: core.
+- Next action: dispatch the `zepp` job of `wear-js-contract` and archive the run ID / verify JSONL / `.zab` digest; run the simulator leg manually and attach screenshots to the ENV-13 issue.
+- Blocker: first-run risks — the behaviour of `zeus --version` from `@zeppos/zeus-cli@1.9.3` on Node 22 needs first-run confirmation; the simulator is a GUI app and cannot be installed / launched automatically on a headless runner; a cold first run also compiles wasmtime on the runner (60-minute job cap, debuginfo off / incremental off). Execution mode: the `zeus` self-check runs in CI; simulator install needs a physical GUI host.
 
 ### ENV-14 · Garmin Connect IQ SDK / devkey compile
 
@@ -479,13 +491,13 @@ Suggested evidence path: `env-slots/<ENV-XX>/<UTC timestamp>/`. The repository d
 | ENV-04 | `.github/workflows/miniprogram-contract.yml` | `real / macos-14` | CLI preview test wired; NOTE when vars / secrets absent |
 | ENV-05 | — | — | No Roku job |
 | ENV-06 | `.github/workflows/bsd-ci.yml` | `openbsd` | VM job exists, `continue-on-error`, TCG boot fails |
-| ENV-07 | — | — | No NetBSD job |
+| ENV-07 | `.github/workflows/bsd-ci.yml` | `netbsd` | Linux generates the pkgsrc skeleton → NetBSD 11.0 VM native cargo build + `bmake package` → `pkg_add` / `pkg_info` / run the installed binary; first-run evidence pending |
 | ENV-08 | `.github/workflows/embedded-ci.yml` | `embedded` (matrix `qnx`) | Build / doctor / QEMU wired; SKIP when SDP absent |
 | ENV-09 | `.github/workflows/embedded-ci.yml` | `embedded` (matrix `vxworks`) | Build wired; SKIP when `wr-cc` absent |
 | ENV-10 | `.github/workflows/wear-release-smoke.yml` | `wear-device-smoke` | Hard release gate; blocks when KVM / APK absent |
-| ENV-11 | — | — | No watchOS job; mobile-contract ios does not run watchOS xcodebuild |
-| ENV-12 | — | — | No `fitbit-build` job |
-| ENV-13 | — | — | No `zeus` job |
+| ENV-11 | `.github/workflows/mobile-contract.yml` | `watchos / macos-14` | Real `xcodebuild` (watchsimulator) + `poly build --target watchos`; signing / notarization has no Apple credentials (external leg); first-run evidence pending |
+| ENV-12 | `.github/workflows/wear-js-contract.yml` | `fitbit` | Installs `@fitbit/sdk-cli` + `@fitbit/sdk`; real `fitbit-build` self-check + `.fba` build/verify; SKIP / failed self-check turns the job red; first-run evidence pending |
+| ENV-13 | `.github/workflows/wear-js-contract.yml` | `zepp` | `zeus --version` + `.zab` build/verify; the GUI simulator install leg stays external/manual; first-run evidence pending |
 | ENV-14 | — | — | No Connect IQ job |
 | ENV-15 | `.github/workflows/rust-ci.yml` | `keyring-real` | Real Secret Service (run 39409593528): `keyring_real` write / read / delete + CLI keyring trust root `plugin_granted` / `packaged` / `E_PLUGIN_0010`; a SKIP fails the job |
 | ENV-16 | `.github/workflows/rust-ci.yml` | `vault-real` | Vault dev (KV v2, run 39414212765): `vault_real` real read/write / 404 / 403 redaction + CLI Vault trust root `plugin_granted` / `packaged` / `E_PLUGIN_0010`; a SKIP fails the job |
@@ -514,7 +526,7 @@ Suggested evidence path: `env-slots/<ENV-XX>/<UTC timestamp>/`. The repository d
 | --- | --- | --- |
 | Vault default backend chain | Closed (code) | `default_backends()` assembles Vault from the environment; ENV-16 is down to the real-service E2E |
 | Garmin built-in iq packager | Delivered | `poly build --target garmin` now has a built-in packager; ENV-14 closes only the compiler / device leg |
-| Missing CI jobs | Infrastructure | NetBSD / watchOS / Fitbit / Zepp / Garmin / Roku have run cards only, no workflow |
+| Missing CI jobs | Infrastructure | NetBSD / watchOS / Fitbit / Zepp jobs are wired (first-run evidence pending); Garmin / Roku still have run cards only, no workflow |
 
 ## 8. References
 

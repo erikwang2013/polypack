@@ -31,13 +31,13 @@
 | ENV-04 | T-M3-05 / T-M3-06 | 微信 / 支付宝 / 抖音开发者工具预览 | PARTIAL | HOST | core + release-sec | §3 ENV-04 | miniprogram-contract |
 | ENV-05 | T-M4-15 | Roku 真机侧载 | PARTIAL | HOST | core | §3 ENV-05 | — |
 | ENV-06 | T-M5-07 | OpenBSD VM 安装冒烟 | PARTIAL | CI | infra | §3 ENV-06 | bsd-ci |
-| ENV-07 | T-M5-08 | NetBSD `bmake` / pkgsrc | OPEN | CI | infra | §3 ENV-07 | — |
+| ENV-07 | T-M5-08 | NetBSD `bmake` / pkgsrc | PARTIAL | CI | infra | §3 ENV-07 | bsd-ci · netbsd |
 | ENV-08 | T-M6-03 / T-M6-09 | QNX SDP + QEMU 冒烟 | PARTIAL | CI | infra | §3 ENV-08 | embedded-ci |
 | ENV-09 | T-M6-05 | VxWorks `wr-cc` 链接腿 | PARTIAL | CI | infra | §3 ENV-09 | embedded-ci |
 | ENV-10 | T-M7-04 | Wear OS 设备 / 模拟器冒烟 | PARTIAL | CI | infra | §3 ENV-10 | wear-release-smoke |
-| ENV-11 | T-M7-05 / T-M7-06 | watchOS `xcodebuild` 真构建 | PARTIAL | CI | core + release-sec | §3 ENV-11 | — |
-| ENV-12 | T-M7-07 | Fitbit `fitbit-build` 自检 | PARTIAL | CI | infra | §3 ENV-12 | — |
-| ENV-13 | T-M7-08 | Zepp `zeus` + 模拟器安装 | PARTIAL | HOST | core | §3 ENV-13 | — |
+| ENV-11 | T-M7-05 / T-M7-06 | watchOS `xcodebuild` 真构建 | PARTIAL | CI | core + release-sec | §3 ENV-11 | mobile-contract · watchos |
+| ENV-12 | T-M7-07 | Fitbit `fitbit-build` 自检 | PARTIAL | CI | infra | §3 ENV-12 | wear-js-contract · fitbit |
+| ENV-13 | T-M7-08 | Zepp `zeus` + 模拟器安装 | PARTIAL | HOST | core | §3 ENV-13 | wear-js-contract · zepp |
 | ENV-14 | T-M7-09 | Garmin Connect IQ SDK / devkey 编译 | PARTIAL | CI | core | §3 ENV-14 | — |
 | ENV-15 | T-M8-03 | keyring 信任根载体 | CLOSED | CI | release-sec | run 39409593528 · keyring-real | rust-ci · keyring-real |
 | ENV-16 | T-M8-03 | Vault 信任根载体 | CLOSED | CI | release-sec + core | run 39414212765 · vault-real | rust-ci · vault-real |
@@ -173,22 +173,31 @@ pkg_add /tmp/openbsd-packages/<pkg>.tgz && pkg_info && pkg_check
 
 ### ENV-07 · NetBSD `bmake` / pkgsrc
 
-- 关联任务：T-M5-08（BSD 家族 pkgsrc 目标）。 缺口：`bmake package` 与 NetBSD VM 真跑缺席；仓内只有 pkgsrc 文件结构 / 引号化断言。bsd-ci 无 NetBSD 作业。
-- 环境 / 工具链 / 凭据：NetBSD 10 VM / 主机、`pkgin install rust bmake`、pkgsrc 树、`pkg_add`；无需签名凭据（自建仓库另配）。
-- 开关：无专用开关；`poly build --target netbsd` 产出 pkgsrc 工程。
-- 命令：
+- 关联任务：T-M5-08（BSD 家族 pkgsrc 目标）。 缺口：`bmake package` 与 NetBSD VM 真跑尚无首跑证据；`netbsd` TargetSpec 的 `hosts` 只含 Linux，`poly build --target netbsd` 在 NetBSD 内会被判不可达。
+- 环境 / 工具链 / 凭据：NetBSD 11.0 VM（vmactions/netbsd-vm@v1）、`pkgin install rust bmake`、pkgsrc current 树、`pkg_add`；无需签名凭据（自建仓库另配）。
+- 开关：无专用开关；`poly build --target netbsd` 只在 Linux 宿主可达（生成 pkgsrc 骨架并做结构自检）。
+- 命令（CI 形状：Linux 生成骨架 → VM 内真跑；也可在 NetBSD 主机按此复跑）：
 ```sh
-pkgin install rust bmake
-cargo build -p poly-cli --ignore-rust-version
+# Linux 宿主（目标 host 门控只认 Linux）
+cargo build -p poly-cli
 ./target/debug/poly init /tmp/poly-netbsd && cd /tmp/poly-netbsd
-./target/debug/poly build --target netbsd
-cd <生成的 pkgsrc 目录> && bmake package
-pkg_add <产物>.tgz && pkg_info && pkg_info -L <pkg>
+./target/debug/poly build --target netbsd          # 生成 .polypack/packages/netbsd/pkgsrc/<DISTNAME>/
+# NetBSD VM（11.0）；base 无根证书，先用 http 引导 mozilla-rootcerts-openssl
+export PKG_PATH="http://cdn.netbsd.org/pub/pkgsrc/packages/NetBSD/$(uname -p)/$(uname -r)/All"
+pkg_add mozilla-rootcerts-openssl pkgin   # 生成 /etc/openssl/certs/ca-certificates.crt
+pkgin -y install rust bmake
+cargo build -p poly-cli --ignore-rust-version
+cd core && cargo build --release --ignore-rust-version   # 原生核心，替换骨架里的 Linux 载荷
+fetch -o /tmp/pkgsrc.tar.gz https://cdn.netbsd.org/pub/pkgsrc/current/pkgsrc.tar.gz && tar xzf /tmp/pkgsrc.tar.gz -C /usr
+cp -R <骨架> /usr/pkgsrc/misc/<DISTNAME> && cd /usr/pkgsrc/misc/<DISTNAME>
+bmake package PACKAGES=/tmp/pkgsrc-packages
+pkg_add -v /tmp/pkgsrc-packages/<DISTNAME>.tgz
+pkg_info <DISTNAME> && pkg_info -L <DISTNAME> && /usr/pkg/bin/polypack-app
 ```
-- 证据：`bmake package` 退出码 0；`pkg_add` / `pkg_info` 输出；`.tgz` SHA-256；NetBSD 版本与 `bmake -V MAKE_VERSION`。
-- 现状：`OPEN`。pkgsrc 生成与结构断言真跑；`bmake` 腿 SKIP-with-print，且无 CI 作业。 负责人：infra。
-- 下一步：在 bsd-ci 新增 `netbsd` 作业（vmactions/netbsd-vm 或 self-hosted），先跑结构再跑 `bmake package`。
-- 阻塞：无 NetBSD 宿主；pkgsrc 首次 bootstrap 与镜像带宽大。 运行位置：CI（NetBSD VM / self-hosted）可关闭。
+- 证据：`bmake package` 退出码 0；`pkg_add` / `pkg_info` 输出；安装后的二进制输出；`.tgz` SHA-256；NetBSD 版本与 `bmake -V MAKE_VERSION`；CI 首跑 run ID + artifact。
+- 现状：`PARTIAL`（工作流已接线，首跑证据待补）。bsd-ci `netbsd` 作业在 Linux 宿主生成骨架，VM 内原生构建 poly / 应用核心后跑 `bmake package` → `pkg_add` → 运行安装二进制；缺工具或任一步失败即作业红。 负责人：infra。
+- 下一步：dispatch `bsd-ci` 的 `netbsd` 作业，归档 run ID / 日志 / `.tgz` 摘要；绿后回写本卡与 TASKS。
+- 阻塞：首跑风险——NetBSD 11.0 二进制仓库的 rust 为 1.96.1nb2（低于 `rust-version = 1.98`，靠 `--ignore-rust-version`；若源码用到更新语言特性会硬失败）；pkgsrc 树 / 镜像带宽与 TCG 速度为外部变量。 运行位置：CI（NetBSD VM）可关闭。
 
 ### ENV-08 · QNX SDP + QEMU 冒烟
 
@@ -248,57 +257,60 @@ node ui/smoke/wear/run.mjs --leg android --serial emulator-5554 \
 
 ### ENV-11 · watchOS `xcodebuild` 真构建
 
-- 关联任务：T-M7-05（watchOS 模板）、T-M7-06（watchOS 打包与签名链）。 缺口：Linux 上 `xcodebuild` 返回 `ToolMissing`，模板构建与 `.xcarchive` → `Payload/*.app` 只在 mock 层断言；macOS 真构建未跑。
-- 环境 / 工具链 / 凭据：macOS 14 + Xcode（含 watchOS SDK / 模拟器）、`xcodebuild`、`ditto`、`plutil`；签名另需 Apple 凭据。
-- 开关：`POLY_CONTRACT_REAL=1`（Apple 链通用）；watchOS 打包器按宿主自动门控，无专用开关。
+- 关联任务：T-M7-05（watchOS 模板）、T-M7-06（watchOS 打包与签名链）。 缺口：Linux 上 `xcodebuild` 返回 `ToolMissing`；macOS 真构建 / 打包尚无首跑证据，模板与 `.xcarchive` → `Payload/*.app` 此前只在 mock 层断言。
+- 环境 / 工具链 / 凭据：macOS 14 + Xcode（含 watchOS 与 watchOS Simulator SDK）、`xcodebuild`、`ditto`、`plutil`；签名另需 Apple 凭据（本作业未配，签名 / `codesign-verify` 为外部腿）。
+- 开关：无专用开关；`mobile-contract` 的 `watchos` 作业仅每夜 / 手动触发（Xcode 构建成本不进 push / PR），打包器按宿主自动门控。
 - 命令：
 ```sh
 poly init --target watchos /tmp/pax-watch && cd /tmp/pax-watch
 xcodebuild -project PolyPackWatch.xcodeproj -scheme PolyPackWatch \
-  -destination 'generic/platform=watchOS' build CODE_SIGNING_ALLOWED=NO
-poly build --target watchos
-xcodebuild archive -project PolyPackWatch.xcodeproj -scheme PolyPackWatch \
-  -configuration Release -destination 'generic/platform=watchOS' \
-  -archivePath /tmp/PolyPackWatch.xcarchive \
-  CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY=
+  -sdk watchsimulator -destination 'generic/platform=watchOS Simulator' \
+  build CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY=
+poly build --target watchos --json   # package 阶段内部跑 xcodebuild archive + ditto
 ```
-- 证据：`xcodebuild` 的 `BUILD SUCCEEDED`；`.polypack/packages/watchos/export/Payload/<产品>.app` 存在；`Info.plist` / `PkgInfo` 结构断言；`.app` SHA-256；Xcode 版本。
-- 现状：`PARTIAL`。模板 10 文件与打包器 mock 断言真跑；macOS 真构建缺失，无 CI 作业。 负责人：core。
-- 下一步：在 macos-14 增加 watchOS 作业（安装 Xcode 后跑上面两条 `xcodebuild`），或手动执行并归档。
-- 阻塞：需 macOS + Xcode；Linux 宿主只能返回 `poly::E_BND_0001` 与 R3 农场提示。 运行位置：CI（macos-14）可关闭。
+- 证据：`xcodebuild` 的 `BUILD SUCCEEDED`；build JSONL 的 `packaged`（format=watch）、无 `目标 watchos 未打包`；`.polypack/packages/watchos/export/Payload/polypack-watch.app` 的 `Info.plist` / `PkgInfo` / 可执行文件与 SHA-256；Xcode 版本与 SDK 列表；CI 首跑 run ID + artifact。
+- 现状：`PARTIAL`（工作流已接线，首跑证据待补）。macos-14 `watchos` 作业真跑 simulator SDK 编译与 `poly build --target watchos`；无 Apple 凭据时 sign / `codesign-verify` 如实告警未签名，不作为打包成功证据。 负责人：core。
+- 下一步：dispatch `mobile-contract` 的 `watchos` 作业，归档 run ID / xcodebuild 日志 / `.app` 摘要；绿后回写本卡。
+- 阻塞：首跑风险——runner 镜像的 Xcode 需同时提供 watchOS 与 watchOS Simulator SDK；签名 / 公证需 Apple 凭据（保持外部）。 运行位置：CI（macos-14）可关闭打包腿；签名腿需凭据。
 
 ### ENV-12 · Fitbit `fitbit-build` 自检
 
-- 关联任务：T-M7-07（Fitbit OS 打包器）。 缺口：`.fba` 结构三层自检与金样真跑；`fitbit-build` 不在 PATH，CLI 自检 SKIP-with-print。
-- 环境 / 工具链 / 凭据：Node 18+、`@fitbit/sdk-cli`（提供 `fitbit-build`）、npm 网络；无需硬件。
-- 开关：无专用开关；工具在 PATH 即真跑。
+- 关联任务：T-M7-07（Fitbit OS 打包器）。 缺口：`.fba` 结构三层自检与金样真跑；`fitbit-build` 不在 PATH，CLI 自检 SKIP-with-print，CI 自检腿此前无作业。
+- 环境 / 工具链 / 凭据：Node 22、`@fitbit/sdk-cli`（提供 `fitbit` 命令）与 `@fitbit/sdk`（`fitbit-build` 的实际 bin 来源）、`libsecret-1-dev`（keytar 原生依赖）、npm 网络；无需硬件。
+- 开关：无专用开关；`fitbit-build` 在 PATH 即真跑。
 - 命令：
 ```sh
-npm install -g @fitbit/sdk-cli
+npm install -g @fitbit/sdk-cli@1.7.3 @fitbit/sdk@6.1.0
 fitbit-build --help
-cargo test -p poly-cli --test contract_m7_wear_js -- --nocapture
+poly init /tmp/poly-fitbit && cd /tmp/poly-fitbit
+# 放 fitbit/package.json（config.fitbit.appUUID）、fitbit/app/index.js、fitbit/resources/icon.png
+poly build --target fitbit --json
+poly verify --target fitbit --json
 ```
-- 证据：`fitbit-build --help` 退出码 0；`poly verify --target fitbit --json` 的 notes 不再含 `fitbit-build` 的 SKIP-with-print；`.fba` SHA-256 与结构断言输出。
-- 现状：`PARTIAL`。打包器与结构检查真跑；官方 CLI 自检缺席。 负责人：infra。
-- 下一步：在 CI 安装 `@fitbit/sdk-cli`，把 `contract_m7_wear_js` 的 Fitbit 腿从 SKIP 变 REAL；注意官方 CLI 只做在场自检，不重编译本项目（本项目不做 TS / rollup）。
-- 阻塞：npm 包与账号可用性；无硬件要求。 运行位置：CI（ubuntu / macOS）可关闭。
+- 证据：`fitbit-build --help` 退出码 0；verify JSONL 出现 `fitbit-build 自检真跑通过`，且不含 `自检 SKIP-with-print` / `自检未通过`；`verified` / `fitbit-structure-check` 事件；`.fba` SHA-256；CI 首跑 run ID + artifact。
+- 现状：`PARTIAL`（工作流已接线，首跑证据待补）。`wear-js-contract` 的 `fitbit` 作业安装官方 CLI 后真跑 build / verify；工具缺席或自检失败即作业红。 负责人：infra。
+- 下一步：dispatch `wear-js-contract` 的 `fitbit` 作业，归档 run ID / verify JSONL / `.fba` 摘要；绿后回写本卡。
+- 阻塞：首跑风险——keytar 在 Node 22 需系统 `libsecret-1-dev`（缺则 npm 安装直接失败）；`contract_m7_wear_js` 的旧断言要求 CLI 缺席时打印 SKIP，装 CLI 后该测试不适用（本作业改用直接 `poly build/verify`，不改测试）；`@fitbit/sdk-cli` 的 `fitbit` 入口在 Node 22 上因 `@openid/appauth` 1.4 模块布局变化报 `MODULE_NOT_FOUND`（本链路只用 `fitbit-build`，作业仅断言 `fitbit` 已安装、不执行它）；冷缓存首跑还要在 runner 上编 wasmtime（作业上限 60 min，已去 debuginfo / 关增量）。 运行位置：CI（ubuntu）可关闭。
 
 ### ENV-13 · Zepp `zeus` + 模拟器安装
 
 - 关联任务：T-M7-08（Zepp OS 打包器）。 缺口：`.zab` 结构与 md5 命名真跑；`zeus --version` 因工具缺席 SKIP；模拟器安装腿在 verify 中恒 SKIP-with-print（代码明确不自动化）。
-- 环境 / 工具链 / 凭据：Node + Zepp OS `zeus` CLI（`@zeppos/zeus-cli`，以官方文档为准）、Zepp OS 模拟器（GUI）、开发者账号（安装 / 预览按官方要求）。
+- 环境 / 工具链 / 凭据：Node 22 + Zepp OS `zeus` CLI（`@zeppos/zeus-cli@1.9.3`）、Zepp OS 模拟器（GUI，外部）、开发者账号（安装 / 预览按官方要求）。
 - 开关：无专用开关；`zeus` 在 PATH 即自检。模拟器需人工操作。
 - 命令：
 ```sh
-npm install -g @zeppos/zeus-cli
+npm install -g @zeppos/zeus-cli@1.9.3
 zeus --version
-cargo test -p poly-cli --test contract_m7_wear_js -- --nocapture
-# 模拟器：手动把 .polypack/packages/zepp/*.zab 装入 Zepp OS 模拟器并截图
+poly init /tmp/poly-zepp && cd /tmp/poly-zepp
+# 放 zepp/app.json（app.appName / appId / version）与 zepp/app.js
+poly build --target zepp --json
+poly verify --target zepp --json
+# 模拟器（外部人工腿）：手动把 .polypack/packages/zepp/*.zab 装入 Zepp OS 模拟器并截图
 ```
-- 证据：`zeus --version` 输出；verify notes 不再含 `zeus` SKIP；模拟器安装 / 启动截图与 `.zab` SHA-256；模拟器版本。
-- 现状：`PARTIAL`。打包器与结构断言真跑；`zeus` 与模拟器腿均缺席。 负责人：core。
-- 下一步：CI 安装 zeus 关闭自检腿；模拟器腿由人工执行并把截图附到 ENV-13 issue。
-- 阻塞：模拟器是 GUI 应用，无法在 headless runner 自动安装；`zeus` 安装包名与授权以官方为准。 运行位置：`zeus` 自检可在 CI；模拟器安装需物理 GUI 宿主。
+- 证据：`zeus --version` 输出；verify JSONL 出现 `zeus 自检真跑通过`，且不含 `zeus 自检 SKIP-with-print` / `自检未通过`；`模拟器安装腿 SKIP-with-print` 注记保留；`verified` / `zepp-structure-check` 事件；`.zab` SHA-256；CI 首跑 run ID + artifact。
+- 现状：`PARTIAL`（工作流已接线，首跑证据待补）。`wear-js-contract` 的 `zepp` 作业真跑非 GUI 自检 / 打包；模拟器安装腿仍为外部人工腿。 负责人：core。
+- 下一步：dispatch `wear-js-contract` 的 `zepp` 作业并归档 run ID / verify JSONL / `.zab` 摘要；模拟器腿由人工执行并把截图附到 ENV-13 issue。
+- 阻塞：首跑风险——`@zeppos/zeus-cli@1.9.3` 的 `zeus --version` 在 Node 22 的行为需首跑确认；模拟器是 GUI 应用，无法在 headless runner 自动安装 / 启动；冷缓存首跑需在 runner 上编 wasmtime（作业上限 60 min，已去 debuginfo / 关增量）。 运行位置：`zeus` 自检在 CI；模拟器安装需物理 GUI 宿主。
 
 ### ENV-14 · Garmin Connect IQ SDK / devkey 编译
 
@@ -479,13 +491,13 @@ poly preview --dry-run --target android --device android-phone --device android-
 | ENV-04 | `.github/workflows/miniprogram-contract.yml` | `real / macos-14` | CLI 预览测试接线；vars / secrets 未设时 NOTE |
 | ENV-05 | — | — | 无 Roku 作业 |
 | ENV-06 | `.github/workflows/bsd-ci.yml` | `openbsd` | VM 作业存在，`continue-on-error` 且 TCG 启动失败 |
-| ENV-07 | — | — | 无 NetBSD 作业 |
+| ENV-07 | `.github/workflows/bsd-ci.yml` | `netbsd` | Linux 生成 pkgsrc 骨架 → NetBSD 11.0 VM 原生 cargo build + `bmake package` → `pkg_add` / `pkg_info` / 运行安装二进制；首跑证据待补 |
 | ENV-08 | `.github/workflows/embedded-ci.yml` | `embedded`（matrix `qnx`） | 构建 / doctor / QEMU 接线；SDP 缺失即 SKIP |
 | ENV-09 | `.github/workflows/embedded-ci.yml` | `embedded`（matrix `vxworks`） | 构建接线；`wr-cc` 缺失即 SKIP |
 | ENV-10 | `.github/workflows/wear-release-smoke.yml` | `wear-device-smoke` | 发版硬门；缺 KVM / APK 阻断 |
-| ENV-11 | — | — | 无 watchOS 作业；mobile-contract ios 不跑 xcodebuild watchOS |
-| ENV-12 | — | — | 无 `fitbit-build` 作业 |
-| ENV-13 | — | — | 无 `zeus` 作业 |
+| ENV-11 | `.github/workflows/mobile-contract.yml` | `watchos / macos-14` | 真 `xcodebuild`（watchsimulator）+ `poly build --target watchos`；签名 / 公证无 Apple 凭据（外部腿）；首跑证据待补 |
+| ENV-12 | `.github/workflows/wear-js-contract.yml` | `fitbit` | 安装 `@fitbit/sdk-cli` + `@fitbit/sdk`；`fitbit-build` 自检真跑 + `.fba` build/verify；SKIP / 自检未通过即红；首跑证据待补 |
+| ENV-13 | `.github/workflows/wear-js-contract.yml` | `zepp` | `zeus --version` + `.zab` build/verify；GUI 模拟器安装腿保持外部人工；首跑证据待补 |
 | ENV-14 | — | — | 无 Connect IQ 作业 |
 | ENV-15 | `.github/workflows/rust-ci.yml` | `keyring-real` | Secret Service 真跑（run 39409593528）：`keyring_real` 真写 / 真读 / 真删 + CLI keyring 信任根 `plugin_granted` / `packaged` / `E_PLUGIN_0010`；作业内 SKIP 即失败 |
 | ENV-16 | `.github/workflows/rust-ci.yml` | `vault-real` | Vault dev（KV v2，run 39414212765）：`vault_real` 真读写 / 404 / 403 脱敏 + CLI Vault 信任根 `plugin_granted` / `packaged` / `E_PLUGIN_0010`；作业内 SKIP 即失败 |
@@ -514,7 +526,7 @@ poly preview --dry-run --target android --device android-phone --device android-
 | --- | --- | --- |
 | Vault 默认后端链 | 已关闭（代码） | `default_backends()` 已按环境装配 Vault；ENV-16 只剩真实服务 E2E |
 | Garmin 内建 iq 打包器 | 已交付 | `poly build --target garmin` 已有内建打包器；ENV-14 只关编译器 / 真机腿 |
-| 缺失的 CI 作业 | 基建 | NetBSD / watchOS / Fitbit / Zepp / Garmin / Roku 目前只有执行卡，没有工作流 |
+| 缺失的 CI 作业 | 基建 | NetBSD / watchOS / Fitbit / Zepp 作业已接线（首跑证据待补）；Garmin / Roku 仍只有执行卡，没有工作流 |
 
 ## 8. 参考
 

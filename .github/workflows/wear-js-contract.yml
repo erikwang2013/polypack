@@ -1,0 +1,219 @@
+# Wear JS 目标真实工具链契约（ENV-12 / ENV-13，T-M7-07 / T-M7-08）。
+#
+# - fitbit 腿：安装官方 `@fitbit/sdk-cli`（`fitbit` 命令）与 `@fitbit/sdk`
+#   （`fitbit-build` 由 sdk 包提供，sdk-cli 本身不带该 bin），再跑 `poly build/verify
+#   --target fitbit`。`fitbit-build` 缺席、自检未通过或出现 SKIP-with-print = 本作业失败，
+#   绝不把 SKIP 当绿。keytar 原生依赖需要 libsecret-1-dev。
+# - zepp 腿：安装 `@zeppos/zeus-cli`，跑 `zeus --version` 与 `poly build/verify
+#   --target zepp`。zeus 自检必须真跑；GUI 模拟器安装腿不在本作业（GL runner 无 GUI），
+#   verify 的 `模拟器安装腿 SKIP-with-print` 注记必须保留，属 ENV-13 外部人工腿。
+#
+# 仅每夜 / 手动：npm 全局安装与真实工具链成本不进每提交 / PR。
+
+name: wear-js-contract
+
+on:
+  schedule:
+    # 与 wear-smoke（19:07）/ tv-smoke（18:57）/ bsd-ci（20:07）错峰
+    - cron: "17 19 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  fitbit:
+    name: fitbit / ubuntu-latest
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      # 冷缓存也要在宿主 runner 编 wasmtime：去 debuginfo、关增量，控制首跑时长。
+      CARGO_PROFILE_DEV_DEBUG: "0"
+      CARGO_INCREMENTAL: "0"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Fitbit CLI（sdk-cli 的 fitbit + sdk 的 fitbit-build）
+        run: |
+          set -euo pipefail
+          # keytar（sdk-cli 依赖）在 Node 22 上需 libsecret 头文件；缺它 npm install 直接失败。
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq libsecret-1-dev pkg-config
+          npm install -g --no-audit --no-fund --loglevel=error \
+            @fitbit/sdk-cli@1.7.3 @fitbit/sdk@6.1.0
+          # 工具在场门：任一缺席即失败（这是真实腿，不是 SKIP 注记）。
+          command -v fitbit
+          command -v fitbit-build
+          # 只自检真实使用的 fitbit-build。sdk-cli 的 `fitbit` 入口在 Node 22 上会因
+          # @openid/appauth 1.4 的模块布局变化崩溃（MODULE_NOT_FOUND），而本项目链路
+          # 不调用它；这里只断言安装落盘，不把该上游缺陷带进作业。
+          fitbit-build --help >/dev/null
+          fitbit-build --help | head -3
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: wear-js-fitbit
+
+      - name: Fitbit 真跑（官方 CLI 自检 + .fba 打包 / 结构校验）
+        run: |
+          set -euo pipefail
+          LOGS="$RUNNER_TEMP/poly-wear-js-logs/fitbit"
+          APP="$RUNNER_TEMP/poly-fitbit"
+          mkdir -p "$LOGS"
+          POLY="$GITHUB_WORKSPACE/target/debug/poly"
+          cargo build -p poly-cli
+
+          "$POLY" init "$APP" >/dev/null
+          # 最小 Fitbit SDK 工程（官方 config.fitbit 面；app/index.js 原样入包）。
+          mkdir -p "$APP/fitbit/app" "$APP/fitbit/resources"
+          cat > "$APP/fitbit/package.json" <<'EOF'
+          {
+            "name": "pax-notes-fitbit",
+            "version": "1.2.3",
+            "config": {
+              "fitbit": {
+                "appUUID": "12345678-9abc-def0-1234-56789abcdef0",
+                "appDisplayName": "Pax Notes",
+                "appType": "app",
+                "requestedPermissions": ["access_activity"],
+                "buildTargets": ["atlas", "vulcan"]
+              }
+            }
+          }
+          EOF
+          printf "console.log('pax');\n" > "$APP/fitbit/app/index.js"
+          printf 'fake-png' > "$APP/fitbit/resources/icon.png"
+          printf '\n[targets.fitbit]\nformat = "fba"\n' >> "$APP/polypack.toml"
+
+          cd "$APP"
+          "$POLY" build --target fitbit --json | tee "$LOGS/build.jsonl"
+          "$POLY" verify --target fitbit --json | tee "$LOGS/verify.jsonl"
+
+          # 真实门：产物 + 结构校验器必须真发事件；官方 CLI 自检必须真跑。
+          grep -q '"event":"packaged"' "$LOGS/build.jsonl"
+          grep -q '"format":"fba"' "$LOGS/build.jsonl"
+          grep -q '"checker":"fitbit-structure-check"' "$LOGS/verify.jsonl"
+          if grep -q '目标 fitbit 未打包' "$LOGS/build.jsonl"; then
+            echo "::error::fitbit 目标被跳过（见 build.jsonl）"
+            exit 1
+          fi
+          grep -q 'fitbit-build 自检真跑通过' "$LOGS/verify.jsonl"
+          if grep -q 'fitbit-build 自检 SKIP-with-print' "$LOGS/verify.jsonl" \
+            || grep -q 'fitbit-build 自检未通过' "$LOGS/verify.jsonl"; then
+            echo "::error::fitbit-build 未真跑或自检失败（见 verify.jsonl）"
+            exit 1
+          fi
+          test -n "$(find .polypack/packages/fitbit -maxdepth 1 -name '*.fba' -print -quit)"
+          sha256sum .polypack/packages/fitbit/*.fba | tee "$LOGS/sha256.txt"
+          unzip -l .polypack/packages/fitbit/*.fba | tee "$LOGS/unzip.txt"
+          grep -q 'manifest.json' "$LOGS/unzip.txt"
+          grep -q 'device-atlas.zip' "$LOGS/unzip.txt"
+          cp .polypack/packages/fitbit/*.fba "$LOGS/"
+
+      - name: 留证据（日志 + .fba；失败也留）
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: wear-js-fitbit-evidence
+          path: ${{ runner.temp }}/poly-wear-js-logs/fitbit/**
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 14
+
+  zepp:
+    name: zepp / ubuntu-latest
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      # 冷缓存也要在宿主 runner 编 wasmtime：去 debuginfo、关增量，控制首跑时长。
+      CARGO_PROFILE_DEV_DEBUG: "0"
+      CARGO_INCREMENTAL: "0"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Zepp zeus CLI
+        run: |
+          set -euo pipefail
+          npm install -g --no-audit --no-fund --loglevel=error @zeppos/zeus-cli@1.9.3
+          command -v zeus
+          zeus --version
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: wear-js-zepp
+
+      - name: Zepp 真跑（zeus 自检 + .zab 打包 / 结构校验；模拟器腿保持外部）
+        run: |
+          set -euo pipefail
+          LOGS="$RUNNER_TEMP/poly-wear-js-logs/zepp"
+          APP="$RUNNER_TEMP/poly-zepp"
+          mkdir -p "$LOGS"
+          POLY="$GITHUB_WORKSPACE/target/debug/poly"
+          cargo build -p poly-cli
+
+          "$POLY" init "$APP" >/dev/null
+          # 最小 Zepp OS 工程（官方 app.json + app.js；打包器按原样入包）。
+          mkdir -p "$APP/zepp"
+          cat > "$APP/zepp/app.json" <<'EOF'
+          {
+            "app": {
+              "appName": "pax-notes",
+              "appId": 1001,
+              "version": { "code": 12, "name": "1.2.3" },
+              "appType": "app"
+            },
+            "targets": { "default": { "platforms": [{ "deviceSource": "default" }] } },
+            "configVersion": "v2"
+          }
+          EOF
+          printf 'App({});\n' > "$APP/zepp/app.js"
+          printf '\n[targets.zepp]\nformat = "zab"\n' >> "$APP/polypack.toml"
+
+          cd "$APP"
+          "$POLY" build --target zepp --json | tee "$LOGS/build.jsonl"
+          "$POLY" verify --target zepp --json | tee "$LOGS/verify.jsonl"
+
+          grep -q '"event":"packaged"' "$LOGS/build.jsonl"
+          grep -q '"format":"zab"' "$LOGS/build.jsonl"
+          grep -q '"checker":"zepp-structure-check"' "$LOGS/verify.jsonl"
+          if grep -q '目标 zepp 未打包' "$LOGS/build.jsonl"; then
+            echo "::error::zepp 目标被跳过（见 build.jsonl）"
+            exit 1
+          fi
+          grep -q 'zeus 自检真跑通过' "$LOGS/verify.jsonl"
+          if grep -q 'zeus 自检 SKIP-with-print' "$LOGS/verify.jsonl" \
+            || grep -q 'zeus 自检未通过' "$LOGS/verify.jsonl"; then
+            echo "::error::zeus 未真跑或自检失败（见 verify.jsonl）"
+            exit 1
+          fi
+          # 模拟器是 GUI 应用：非 GUI 自检腿必须保留这条外部腿注记，不得被吞掉。
+          grep -q '模拟器安装腿 SKIP-with-print' "$LOGS/verify.jsonl"
+          test -n "$(find .polypack/packages/zepp -maxdepth 1 -name '*.zab' -print -quit)"
+          sha256sum .polypack/packages/zepp/*.zab | tee "$LOGS/sha256.txt"
+          unzip -l .polypack/packages/zepp/*.zab | tee "$LOGS/unzip.txt"
+          grep -q 'manifest.json' "$LOGS/unzip.txt"
+          cp .polypack/packages/zepp/*.zab "$LOGS/"
+
+      - name: 留证据（日志 + .zab；失败也留）
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: wear-js-zepp-evidence
+          path: ${{ runner.temp }}/poly-wear-js-logs/zepp/**
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 14
