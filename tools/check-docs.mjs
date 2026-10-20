@@ -40,6 +40,7 @@ const PAIRS = [
   ['docs/WORKSPACE.md', 'docs/WORKSPACE.en.md'],
   ['docs/CRATES-IO.md', 'docs/CRATES-IO.en.md'],
   ['docs/DEVICE-PREVIEW.md', 'docs/DEVICE-PREVIEW.en.md'],
+  ['docs/GUI.md', 'docs/GUI.en.md'],
 ];
 
 const count = (text, re) => (text.match(re) || []).length;

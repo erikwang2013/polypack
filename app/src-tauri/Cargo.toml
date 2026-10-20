@@ -1,0 +1,20 @@
+[package]
+name = "poly-gui"
+version = "0.1.0"
+description = "PolyPack build-history matrix and detail view (T-M9-18)"
+edition = "2021"
+publish = false
+
+# Standalone workspace: app/ is intentionally not a member of the PolyPack
+# workspace (`members = ["crates/*"]`), so this app resolves its own Tauri
+# dependency tree without touching the main lockfile.
+[workspace]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+poly-core = { path = "../../crates/poly-core" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tauri = { version = "2", features = [] }

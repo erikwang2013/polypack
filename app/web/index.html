@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>PolyPack Build History</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">
+        <span class="mark" aria-hidden="true"></span>
+        <div>
+          <h1>Build history</h1>
+          <p class="subtitle">Target matrix and per-target details</p>
+        </div>
+      </div>
+      <form id="load-form" class="controls">
+        <label>
+          <span>Project root</span>
+          <input id="root" name="root" placeholder="empty = current directory" spellcheck="false" />
+        </label>
+        <label>
+          <span>Target</span>
+          <input id="target" name="target" placeholder="all targets" spellcheck="false" />
+        </label>
+        <label class="limit">
+          <span>Per target</span>
+          <input id="limit" name="limit" type="number" min="1" max="200" value="20" />
+        </label>
+        <button id="refresh" type="submit">Refresh</button>
+      </form>
+    </header>
+
+    <main>
+      <p id="error" class="error" role="alert" hidden></p>
+      <p class="source">
+        Source: <code id="source-path">.polypack/history/events.jsonl</code>
+        <span id="skipped" class="meta" hidden></span>
+      </p>
+
+      <section id="matrix-view" data-testid="matrix" aria-labelledby="matrix-title">
+        <div class="section-head">
+          <h2 id="matrix-title">Target matrix</h2>
+          <p id="matrix-meta" class="meta"></p>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">Target</th>
+                <th scope="col">Latest status</th>
+                <th scope="col">Time (UTC)</th>
+                <th scope="col">Duration</th>
+                <th scope="col">Artifact</th>
+                <th scope="col">Error code</th>
+              </tr>
+            </thead>
+            <tbody id="matrix-body"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="detail-view" data-testid="detail" aria-labelledby="detail-title" hidden>
+        <div class="section-head">
+          <button id="back" class="back" type="button">&larr; Back to matrix</button>
+          <div>
+            <h2 id="detail-title">Target</h2>
+            <p id="detail-meta" class="meta"></p>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">Build</th>
+                <th scope="col">Status</th>
+                <th scope="col">Time (UTC)</th>
+                <th scope="col">Duration</th>
+                <th scope="col">Artifact</th>
+                <th scope="col">Digest</th>
+                <th scope="col">Error code</th>
+              </tr>
+            </thead>
+            <tbody id="detail-body"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="empty-state" data-testid="empty-state" aria-labelledby="empty-title" hidden>
+        <h2 id="empty-title">No build history yet</h2>
+        <p id="empty-copy">Run a build in the project root, then refresh this view.</p>
+        <ol>
+          <li>Run <code>poly build</code> in the project root.</li>
+          <li>History is appended to <code>.polypack/history/events.jsonl</code>.</li>
+          <li>Click <strong>Refresh</strong>; clear the target filter if one is set.</li>
+        </ol>
+        <p class="meta">CLI equivalent: <code>poly history --json</code></p>
+      </section>
+    </main>
+
+    <script src="app.js"></script>
+  </body>
+</html>
