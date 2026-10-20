@@ -154,6 +154,12 @@ pub mod codes {
     pub const E_PLUGIN_0009: Code = Code::new("poly::E_PLUGIN_0009");
     /// 插件签名信任根不可用（CredentialRef 解析失败 / 公钥导入失败 / 缺验签工具）。
     pub const E_PLUGIN_0010: Code = Code::new("poly::E_PLUGIN_0010");
+    /// 插件索引格式 / 签名 / 序列回滚非法（ADR 0004；fail closed）。
+    pub const E_PLUGIN_0011: Code = Code::new("poly::E_PLUGIN_0011");
+    /// 插件索引过期或镜像分叉（同 sequence 内容不一致）。
+    pub const E_PLUGIN_0012: Code = Code::new("poly::E_PLUGIN_0012");
+    /// 插件版本 / 插件 / 发布者密钥已吊销（含 yanked 版本）。
+    pub const E_PLUGIN_0013: Code = Code::new("poly::E_PLUGIN_0013");
     /// 更新清单输入非法（渠道 / 版本 / 平台 / 发布时间 / 基址）。
     pub const E_UPDATE_0001: Code = Code::new("poly::E_UPDATE_0001");
     /// 更新清单签名凭据缺失 / 不可用 / 引用非法。

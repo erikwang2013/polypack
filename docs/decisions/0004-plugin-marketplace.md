@@ -177,3 +177,18 @@ ROADMAP §14 把分发形态列为开放问题；INITIATIVES M9-D1 的触发条�
 - [`crates/poly-sign/src/artifact.rs`](../../crates/poly-sign/src/artifact.rs)（`ArtifactVerifier` 与 `CredentialRef` 信任根）
 - [`crates/poly-plugin`](../../crates/poly-plugin/)（沙箱与 WIT 契约）
 - RFC 8785（JSON Canonicalization Scheme）
+
+## 实现后记（T-M9-41，2026-10）
+
+本节只记录落地差异与限制，不改变上文决策。
+
+- **代码位置**：`crates/poly-cli/src/plugin/index/{schema,rules,verify,select,mod}.rs`；`poly plugin add` / `poly plugin search` 复用 `poly-sign` 的 `ArtifactVerifier` / `CredentialRef`，不新增密码学实现。
+- **命令行**：`--index`（文件或目录，目录读 `index.json`）、`--index-signature`、`--revocations`、`--revocations-signature`、`--trust-root`、`--revocations-trust-root`、`--state`（默认 `.polypack/plugin-index`）；`add` 另需 `--publisher-key`。省略签名/吊销路径时按同目录 `.asc` / `revocations.json` 推导。
+- **默认离线**：`add` 只解析 `file:` 制品与签名 URL，`https://` 条目会以 `E_PLUGIN_0011` 拒绝并提示先手动下载；未实现镜像下载、多索引回退或网络探测。`search` 完全不触网。
+- **规范化**：签名对象是 `poly-publish` 既有 `metadata::canonical_json` 的紧凑 UTF-8 字节；该 schema 只有整数与字符串，输出与 RFC 8785 JCS 一致。索引/吊销文件无需按规范化排版落盘；客户端解析后重新规范化再验签，不依赖磁盘排版。
+- **验证顺序**：索引分离签名与 `signing_key_id` 指纹绑定 → schema / sequence / `previous_digest` / `expires_at` → 吊销快照分离签名 → 吊销密钥必须与索引密钥不同 → 吊销 schema / `revocations_digest` 绑定 / sequence → 新鲜度 → 条目选择 → 制品大小与 `blake3` SRI → 发布者分离签名与指纹。任一步失败即拒绝，`add` 不执行插件。
+- **吊销快照为必需输入（fail closed）**；超过 30 天未刷新拒绝新安装，与 §7 一致。尚未实现 §7 的 7 天本地缓存 TTL 与 `--allow-stale`，当前过期索引在 `search` 阶段同样拒绝（比「允许查询已安装元数据」更保守）。
+- **回滚基线**：`<state>/state.json` 记录索引与吊销的 `sequence` + 规范化摘要；同 sequence 不同摘要 → `E_PLUGIN_0012`，低 sequence → `E_PLUGIN_0011`，紧邻上一版还会校验 `previous_digest`。基线在 `add` 安装成功后或 `search` 验证通过后推进（已见即记录，搜索本身也会失败关闭）。跨版本跳号依赖单调 sequence，不做逐版链验证。
+- **错误码**：`E_PLUGIN_0011` 索引/吊销格式、签名、回滚；`E_PLUGIN_0012` 过期、镜像分叉；`E_PLUGIN_0013` 版本/插件/发布者密钥吊销与 yanked；制品 SRI/大小沿用 `E_PLUGIN_0006`，发布者签名沿用 `E_PLUGIN_0009`，信任根/工具沿用 `E_PLUGIN_0010`。
+- **生产信任根仍为外部事项**：仓库未生成、未内置任何生产索引/吊销公钥，也未执行密钥仪式；测试使用一次性 GPG 密钥。首次登记指纹前，索引功能不默认启用。
+- **发现语义**：`search` 只返回 `active`、未被吊销、`wit_version` 受支持且满足 `min_host_version` 的条目，按 id 保留最新 SemVer；查询为 id / name / summary / keywords 的本地子串匹配。

@@ -31,6 +31,7 @@ clap = { version = "4", features = ["derive"] }
 schemars = "0.8"
 base64 = "0.22"
 blake3 = "1"
+semver = "1"
 zip = { version = "9.0.3", default-features = false, features = ["deflate"] }
 # T-M8-01 插件沙箱：仅组件模型 + Cranelift + 运行时/标准库；关掉默认的
 # async / GC / pooling / cache / profiling / WAT 等特性（体积与编译重）。

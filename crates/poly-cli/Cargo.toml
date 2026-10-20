@@ -28,6 +28,8 @@ poly-targets.workspace = true
 poly-toolchain.workspace = true
 base64.workspace = true
 clap.workspace = true
+# T-M9-41：插件索引版本解析 / 排序（SemVer 2.0.0）。
+semver.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 toml.workspace = true

@@ -104,6 +104,10 @@ pub enum Command {
     Check(CheckArgs),
     /// 输出插件 wasm 制品摘要（blake3-<hex>，与宿主同口径）。
     Digest(DigestArgs),
+    /// 验证签名索引并离线安装插件（不执行；ADR 0004）。
+    Add(crate::plugin::index::AddArgs),
+    /// 在已验证的签名索引上离线搜索插件。
+    Search(crate::plugin::index::SearchArgs),
 }
 
 /// `poly plugin new` 参数。
@@ -139,6 +143,8 @@ pub fn run(args: &Args, json: bool) -> Result<i32, Diagnostic> {
         Command::New(args) => new(args, json),
         Command::Check(args) => check(args, json),
         Command::Digest(args) => digest(args, json),
+        Command::Add(args) => crate::plugin::index::add(args, json),
+        Command::Search(args) => crate::plugin::index::search(args, json),
     }
 }
 
