@@ -32,7 +32,7 @@ poly --version
 从 GitHub Release 手动下载对应资产并解压：
 
 ```bash
-TAG=v1.11.0
+TAG=v1.13.1
 TARGET=x86_64-unknown-linux-gnu
 curl -fsSLO "https://github.com/erikwang2013/polypack/releases/download/$TAG/poly-$TARGET.tar.gz"
 tar -xzf "poly-$TARGET.tar.gz"
@@ -65,7 +65,7 @@ bash install.sh
 
 | 变量 | 默认值 | 作用 |
 | --- | --- | --- |
-| `POLY_VERSION` | 最新 Release | 指定 tag（`v1.11.0` 或 `1.11.0`） |
+| `POLY_VERSION` | 最新 Release | 指定 tag（`v1.13.1` 或 `1.11.0`） |
 | `POLY_INSTALL_DIR` | `~/.local/bin` | 安装目录 |
 | `POLY_REPO` | `erikwang2013/polypack` | GitHub 仓库 |
 | `POLY_RELEASE_BASE_URL` | GitHub Release URL | 镜像 / 离线测试基础 URL |

@@ -66,7 +66,7 @@ poly build --target windows
 msiexec /i ".polypack\packages\windows\Pax Notes_1.2.3_x64_en-US.msi" /qn
 & "$env:ProgramFiles\Pax Notes\pax-notes.exe" --version
 ```
-- Progress (2026-10-20): the real Tauri v2 sample `examples/windows-msi-app/`, `crates/poly-bundle/tests/windows_msi_real.rs`, and the rust-ci `windows-msi-real` job have landed; real MSI / install / launch / uninstall / residue evidence awaits the first `windows-2022` run, so the status stays `PARTIAL`.
+- Progress (2026-10-20): the real Tauri v2 sample `examples/windows-msi-app/`, `crates/poly-bundle/tests/windows_msi_real.rs`, and the rust-ci `windows-msi-real` job have landed; real MSI / install / launch / uninstall / residue passed on windows-2022 run 39308849058 (and on main rerun 39399687968), closing the slot.
 - Evidence: output of both NSIS tests; `--version` output and a window screenshot after installing the real sample into the default path; SHA-256 of `Pax Notes_1.2.3_x64-setup.exe`; the install directory is gone after uninstall. The current `tauri_layout` assertion is Linux-only; the Windows real-sample leg needs a new test or external script, and Linux output must not be presented as Windows evidence.
 - Status: `CLOSED` (2026-10-20). Run 39308849058's `windows-msi-real` job passed on windows-2022: build MSI → `msiexec /i /qn` → launch the installed copy with `--smoke` → `msiexec /x /qn` → check install-directory / Start-menu / HKCU / ARP residue; logs, MSI, `.wxs`, `smoke-marker.txt`, and digests are archived as CI artifacts. Owner: release-sec.
 - Next action: none (the slot is closed); re-run only when Windows / WebView2 / WiX versions change.
@@ -313,8 +313,8 @@ cd <generated dir>/round && monkeyc -e -w -r -o ../garmin-round.iq -y "$CIQ_DEVK
 cd <generated dir>/square && monkeyc -e -w -r -o ../garmin-square.iq -y "$CIQ_DEVKEY" -f monkey.jungle
 ```
 - Evidence: `npm run build` prints PASS 7 / FAIL 0 / SKIP 0; round / square `.iq` files and entry assertions; `monkeyc --version`; devkey fingerprint (no private key); compile log.
-- Status: `PARTIAL`. Transpile and structure checks run; the compiler leg SKIPs; `poly build --target garmin` still has no built-in iq packager (G10 conditional task). Owner: core.
-- Next action: install the Connect IQ SDK in CI and put the devkey in a secret; close the compiler leg. The iq packager is a separate conditional task and is not faked inside this slot.
+- Status: `PARTIAL`. Transpile and structure checks run; `poly build --target garmin` now has a built-in iq packager (`crates/poly-bundle/src/packagers/garmin.rs`); the remaining monkeyc compile / devkey leg SKIPs. Owner: core.
+- Next action: install the Connect IQ SDK in CI and put the devkey in a secret; close the compiler leg.
 - Blocker: SDK access may require a Garmin account; the devkey is developer-generated and must not enter the repo. Execution mode: CI (ubuntu / macOS + SDK) can close the compiler leg.
 
 ### ENV-15 · keyring trust-root carrier
@@ -473,7 +473,7 @@ Suggested evidence path: `env-slots/<ENV-XX>/<UTC timestamp>/`. The repository d
 
 | Slot | Workflow | Job | Coverage and gap |
 | --- | --- | --- | --- |
-| ENV-01 | `.github/workflows/rust-ci.yml` | `rust / windows-2022` | NSIS real compile / install / launch; no real Tauri sample, no default Program Files |
+| ENV-01 | `.github/workflows/rust-ci.yml` | `windows-msi-real` | Real Tauri sample MSI installed under default Program Files, `--smoke` launch, uninstall, residue checks (run 39308849058; main rerun passed); GUI visual rendering is outside CI |
 | ENV-02 | `.github/workflows/mobile-contract.yml` | `ios / macos-14` | Apple chain runs; no Apple signing / notary secrets |
 | ENV-03 | — | — | No farm job; FARM-DEPLOY §9 is manual |
 | ENV-04 | `.github/workflows/miniprogram-contract.yml` | `real / macos-14` | CLI preview test wired; NOTE when vars / secrets absent |
@@ -498,7 +498,7 @@ Suggested evidence path: `env-slots/<ENV-XX>/<UTC timestamp>/`. The repository d
 
 | Slot | External resource | Why the repo cannot close it |
 | --- | --- | --- |
-| ENV-01 (GUI leg) | Physical Windows desktop | Start-menu / default-install-dir interactive launch cannot be observed in a service session |
+| ENV-01 (GUI visual leg) | Physical Windows desktop | CI covers default-directory install / `--smoke` launch / uninstall / residue; interactive window rendering after Start-menu creation still needs a desktop session |
 | ENV-03 | macOS host + shared farm directory | Needs Xcode / codesign and a cross-host mount; a Linux runner cannot stand in |
 | ENV-04 | Three developer accounts and GUI login | QR / 2FA / account qualification are outside repository control |
 | ENV-05 | Roku device on the LAN | ECP sideload needs a real device IP and developer password |

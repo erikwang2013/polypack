@@ -35,6 +35,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: 校验 tag 与 Cargo 版本一致
+        shell: bash
+        run: |
+          set -euo pipefail
+          version=$(cargo metadata --no-deps --format-version 1 \
+            | jq -r '.packages[] | select(.name == "poly-cli") | .version')
+          if [ "v$version" != "${GITHUB_REF_NAME}" ]; then
+            echo "tag ${GITHUB_REF_NAME} 与 poly-cli 版本 v$version 不一致" >&2
+            exit 1
+          fi
+          echo "版本一致：v$version"
+
       - name: Rust toolchain
         uses: dtolnay/rust-toolchain@stable
 
@@ -143,4 +155,10 @@ jobs:
         run: |
           set -euo pipefail
           bash scripts/install.sh
-          "$POLY_INSTALL_DIR/poly" --version
+          installed=$("$POLY_INSTALL_DIR/poly" --version)
+          echo "$installed"
+          expected="poly ${POLY_VERSION#v}"
+          if [ "$installed" != "$expected" ]; then
+            echo "安装版本不符：期望 $expected，实际 $installed" >&2
+            exit 1
+          fi

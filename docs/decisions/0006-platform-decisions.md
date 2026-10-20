@@ -4,6 +4,10 @@
 - 日期（Date）：2026-10-20
 - 决策者（Deciders）：项目维护者
 
+> **后续更新（2026-10-20）**：P3 已按本决策落地为部署模式，实际命令是 `poly deploy line-liff`（不是 `poly deploy --target line-liff`）；P1 retired 与 P2 季度复审（2027-01-20）已写入 README / TASKS。正文保留决策时的表述。
+>
+> **Follow-up (2026-10-20)**: P3 landed as a deploy mode per this decision; the actual command is `poly deploy line-liff` (not `poly deploy --target line-liff`). P1's retired status and P2's quarterly review (2027-01-20) are recorded in README / TASKS. The body preserves the wording from decision time.
+
 > **English abstract**: This record closes the decision phase for the eight planned platforms (M9-P1–M9-P8). Google Play Instant is closed and kept as a retired row; Snapchat Mini is closed with a quarterly review; LINE Mini App is a conditional deploy mode without a TargetSpec; Sailfish OS and Ubuntu Touch are conditional on a sponsor or committed user providing devices and accounts; PlayStation, Xbox, and Nintendo Switch stay NDA-gated with no SDK or platform code in the public repository. Evidence was reviewed on 2026-10-20. No TargetSpec, packager, SDK, generator, or README count change is made here.
 
 ## 背景（Context）

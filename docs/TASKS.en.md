@@ -974,17 +974,17 @@
 
 <!-- 统计: M6=13任务/36d, M7=11任务/29d, M8=13任务/38d -->
 
-## M9 candidate initiatives (unscheduled)
+## M9 initiatives and delivery status
 
 > Detailed initiation, design, risks, and per-task acceptance criteria live in [INITIATIVES.en.md](INITIATIVES.en.md). The 55 candidate tasks below (T-M9-01..T-M9-55, roughly 226 person-days) are outside the current schedule and are not counted among the 116 delivered M0–M8 tasks; they enter a milestone only after the trigger fires and the maintainers review the proposal.
 
 | Project | Scope | Candidate tasks |
 |---|---|---|
-| M9-E1 | SBOM / build provenance | T-M9-01..03 |
+| M9-E1 | SBOM / build provenance (delivered; SPDX / CycloneDX / in-toto + bilingual SBOM docs / sample) | T-M9-01..03 |
 | M9-E2 | monorepo / multi-app workspace (delivered; ADR 0008 / WORKSPACE / demo script) | T-M9-04..06 |
 | M9-E3 | Incremental release `poly release --changed` (delivered; 5-target savings 73–81%) | T-M9-07..09 |
 | M9-E4 | Production hot update / OTA channel (T-M9-10/11/12 delivered; run 39395255929's windows-updater-real real update / rollback passed) | T-M9-10..12 |
-| M9-E5 | Store metadata pipeline | T-M9-13..15 |
+| M9-E5 | Store metadata pipeline (delivered; schema / validation / deterministic digest / author guide) | T-M9-13..15 |
 | M9-E6 | GUI target-matrix view / build history (delivered; `app/` Tauri v2; real window environment-gated) | T-M9-16..18 |
 | M9-E7 | Pre-release device preview matrix (T-M9-19/20 delivered; T-M9-21 external) | T-M9-19..21 |
 | M9-P1 | Google Play Instant (retired; row kept, ADR 0006) | T-M9-22..23 |
@@ -995,12 +995,12 @@
 | M9-P6 | PlayStation (NDA-gated, ADR 0006) | T-M9-34..35 |
 | M9-P7 | Xbox (NDA-gated, ADR 0006) | T-M9-36..37 |
 | M9-P8 | Nintendo Switch (NDA-gated, ADR 0006) | T-M9-38..39 |
-| M9-D1 | Plugin marketplace distribution decision | T-M9-40..42 |
-| M9-D2 | Remote farm hosting decision | T-M9-43..44 |
+| M9-D1 | Plugin marketplace distribution decision (ADR 0004 accepted; signed-index implementation and production key ceremony external) | T-M9-40..42 |
+| M9-D2 | Remote farm hosting decision (ADR 0005 accepted; self-host hardening checklist pending) | T-M9-43..44 |
 | M9-G1 | CLI distribution (GitHub Releases delivered; T-M9-45 audit landed, crates.io publish closed by name conflicts / publish=false) | T-M9-45..47 |
-| M9-G2 | Human external developer trial protocol | T-M9-48..49 |
+| M9-G2 | Human external developer trial protocol (protocol delivered; T-M9-49 human trials external) | T-M9-48..49 |
 | M9-G3 | Environment-slot close-out program | T-M9-50..52 |
-| M9-G4 | MSI real-sample launch test | T-M9-53..54 |
+| M9-G4 | MSI real-sample launch test (delivered; run 39308849058 windows-msi-real passed) | T-M9-53..54 |
 | M9-G5 | Branch-protection admin bypass (delivered; ENV-18 CLOSED) | T-M9-55 |
 
 > **Wave 2 progress (2026-10-20)**: M9-E2 delivered (`[workspace]`, `--workspace` / `--app`, cache / output isolation, ADR 0008, bilingual WORKSPACE docs, and a demo script); M9-E4 delivered T-M9-10/11 (mechanism matrix + signed manifest + `poly update`), with the T-M9-12 drill harness (`examples/updater-app` + `scripts/drill.ps1`) and the rust-ci `windows-updater-real` job delivered; the first windows-2022 run (run 39395255929) passed. Platform decisions are settled: M9-P1 is retired, M9-P2 is closed with a quarterly review (2027-01-20), M9-P3 delivers the `poly deploy line-liff` deploy mode (ADR 0009), M9-P4/P5 are conditional, and M9-P6–P8 are NDA-gated; M9-G5 is delivered (ENV-18 `CLOSED`, `enforce_admins=true` + 9 required contexts, verified 2026-10-20).
