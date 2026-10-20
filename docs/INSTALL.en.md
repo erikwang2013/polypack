@@ -32,7 +32,7 @@ poly --version
 Download the matching asset from the GitHub Release and extract it:
 
 ```bash
-TAG=v1.11.0
+TAG=v1.13.1
 TARGET=x86_64-unknown-linux-gnu
 curl -fsSLO "https://github.com/erikwang2013/polypack/releases/download/$TAG/poly-$TARGET.tar.gz"
 tar -xzf "poly-$TARGET.tar.gz"
@@ -65,7 +65,7 @@ Environment variables:
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
-| `POLY_VERSION` | latest Release | Pin a tag (`v1.11.0` or `1.11.0`) |
+| `POLY_VERSION` | latest Release | Pin a tag (`v1.13.1` or `1.11.0`) |
 | `POLY_INSTALL_DIR` | `~/.local/bin` | Install directory |
 | `POLY_REPO` | `erikwang2013/polypack` | GitHub repository |
 | `POLY_RELEASE_BASE_URL` | GitHub Release URL | Mirror / offline-test base URL |

@@ -66,7 +66,7 @@ poly build --target windows
 msiexec /i ".polypack\packages\windows\Pax Notes_1.2.3_x64_en-US.msi" /qn
 & "$env:ProgramFiles\Pax Notes\pax-notes.exe" --version
 ```
-- 进度（2026-10-20）：`examples/windows-msi-app/` 真实 Tauri v2 样例、`crates/poly-bundle/tests/windows_msi_real.rs` 与 rust-ci `windows-msi-real` 作业已落地；真实 MSI / 安装 / 启动 / 卸载 / 残留证据待 `windows-2022` 首跑，状态保持 `PARTIAL`。
+- 进度（2026-10-20）：`examples/windows-msi-app/` 真实 Tauri v2 样例、`crates/poly-bundle/tests/windows_msi_real.rs` 与 rust-ci `windows-msi-real` 作业已落地；真实 MSI / 安装 / 启动 / 卸载 / 残留已由 windows-2022 run 39308849058 真跑通过（main run 39399687968 复跑通过），槽位已关闭。
 - 证据：两条 NSIS 测试输出；真实样例安装到默认路径后的 `--version` 输出与窗口截图；`Pax Notes_1.2.3_x64-setup.exe` 的 SHA-256；卸载后目录消失。当前 `tauri_layout` 仅 Linux 断言，Windows 真实样例腿需新增测试或外部脚本，不得用 Linux 输出冒充。
 - 现状：`CLOSED`（2026-10-20）。run 39308849058 的 `windows-msi-real` 作业在 windows-2022 真跑通过：构建 MSI → `msiexec /i /qn` → 启动安装副本 `--smoke` → `msiexec /x /qn` → 检查安装目录 / 开始菜单 / HKCU / ARP 残留；日志、MSI、`.wxs`、`smoke-marker.txt`、摘要作为 CI 工件归档。 负责人：release-sec。
 - 下一步：无（该槽已关闭）；仅在新 Windows / WebView2 / WiX 版本变化时复跑。
@@ -313,8 +313,8 @@ cd <生成目录>/round && monkeyc -e -w -r -o ../garmin-round.iq -y "$CIQ_DEVKE
 cd <生成目录>/square && monkeyc -e -w -r -o ../garmin-square.iq -y "$CIQ_DEVKEY" -f monkey.jungle
 ```
 - 证据：`npm run build` 输出 PASS 7 / FAIL 0 / SKIP 0；圆 / 方 `.iq` 文件与条目断言；`monkeyc --version`；devkey 指纹（不含私钥）；编译日志。
-- 现状：`PARTIAL`。转译与结构自检真跑；编译器腿 SKIP；`poly build --target garmin` 仍无内建 iq 打包器（G10 条件任务）。 负责人：core。
-- 下一步：在 CI 安装 Connect IQ SDK 并把 devkey 放 secret；关闭编译器腿。iq 打包器另立条件任务，不在本槽内伪装。
+- 现状：`PARTIAL`。转译与结构自检真跑；`poly build --target garmin` 的内建 iq 打包器已交付（`crates/poly-bundle/src/packagers/garmin.rs`）；剩余为 monkeyc 编译 / devkey 腿 SKIP。 负责人：core。
+- 下一步：在 CI 安装 Connect IQ SDK 并把 devkey 放 secret；关闭编译器腿。
 - 阻塞：SDK 获取可能需 Garmin 账号；devkey 由开发者生成，不能入库。 运行位置：CI（ubuntu / macOS + SDK）可关闭编译器腿。
 
 ### ENV-15 · keyring 信任根载体
@@ -473,7 +473,7 @@ poly preview --dry-run --target android --device android-phone --device android-
 
 | 槽位 | 工作流 | 作业 | 覆盖与缺口 |
 | --- | --- | --- | --- |
-| ENV-01 | `.github/workflows/rust-ci.yml` | `rust / windows-2022` | NSIS 真编译 / 安装 / 启动；无真实 Tauri 样例、无默认 Program Files |
+| ENV-01 | `.github/workflows/rust-ci.yml` | `windows-msi-real` | 真实 Tauri 样例 MSI 安装到默认 Program Files、`--smoke` 启动、卸载、残留检查（run 39308849058；main 复跑通过）；GUI 目视渲染不在 CI |
 | ENV-02 | `.github/workflows/mobile-contract.yml` | `ios / macos-14` | Apple 链真跑；无 Apple 签名 / 公证 secrets |
 | ENV-03 | — | — | 无农场作业；FARM-DEPLOY §9 人工 |
 | ENV-04 | `.github/workflows/miniprogram-contract.yml` | `real / macos-14` | CLI 预览测试接线；vars / secrets 未设时 NOTE |
@@ -498,7 +498,7 @@ poly preview --dry-run --target android --device android-phone --device android-
 
 | 槽位 | 仓库外资源 | 为什么仓内不能关闭 |
 | --- | --- | --- |
-| ENV-01（GUI 腿） | 物理 Windows 桌面 | 开始菜单 / 默认安装目录的交互启动无法在服务会话观察 |
+| ENV-01（GUI 目视腿） | 物理 Windows 桌面 | CI 已覆盖默认目录安装 / `--smoke` 启动 / 卸载 / 残留；开始菜单创建后的交互式窗口目视渲染仍需桌面会话 |
 | ENV-03 | macOS 主机 + 共享农场目录 | 需 Xcode / codesign 与跨宿主挂载，Linux runner 不能代跑 |
 | ENV-04 | 三端开发者账号与 GUI 登录 | 扫码 / 2FA / 账号资质不在仓库控制内 |
 | ENV-05 | 局域网 Roku 设备 | ECP 侧载需要真实设备 IP 与开发者密码 |

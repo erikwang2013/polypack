@@ -4,6 +4,10 @@
 - 日期（Date）：2026-10-20
 - 决策者（Deciders）：项目维护者
 
+> **后续更新（2026-10-20）**：`poly retry` / `poly verify` 随后已接受 `--workspace` / `--app`（与 `poly build` 共用解析与 `E_WS_0001..0004`）；正文第 6 条与英文摘要保留决策时的限制。
+>
+> **Follow-up (2026-10-20)**: `poly retry` / `poly verify` later gained `--workspace` / `--app` (sharing resolution and `E_WS_0001..0004` with `poly build`); item 6 and the English abstract preserve the limitation at decision time.
+
 > **English abstract**: A root `polypack.toml` may declare an optional `[workspace] members = [...]` list; each member directory owns its own `polypack.toml`. Member ids are directory basenames (unique, relative, canonicalized under the workspace root). `poly build --workspace` builds all members in declaration order, `--app <id>` builds one, and the absence of both flags preserves the single-app path byte for byte. `JobSpec.app_id` is optional and omitted for single-app jobs. The shared core compile cache key excludes the app id, while the UI bundle key includes it; multi-app outputs land under `.polypack/packages/<app>/<target>/` and `.polypack/artifacts/<app>/<target>/`. `poly retry` / `poly verify` do not yet accept workspace selectors.
 
 ## 背景（Context）

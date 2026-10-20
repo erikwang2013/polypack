@@ -1,0 +1,47 @@
+{
+  "bomFormat": "CycloneDX",
+  "components": [
+    {
+      "bom-ref": "pkg:cargo/fixture-core@0.1.2#0",
+      "name": "fixture-core",
+      "purl": "pkg:cargo/fixture-core@0.1.2",
+      "type": "library",
+      "version": "0.1.2"
+    },
+    {
+      "bom-ref": "pkg:cargo/fixture-dep@0.0.2#1",
+      "name": "fixture-dep",
+      "purl": "pkg:cargo/fixture-dep@0.0.2",
+      "type": "library",
+      "version": "0.0.2"
+    }
+  ],
+  "metadata": {
+    "component": {
+      "bom-ref": "pkg:generic/polypack@0.1.2",
+      "hashes": [
+        {
+          "alg": "BLAKE3",
+          "content": "406a59b4f04f7933b5b4053fe59bb7f1208a7886d0dd3c53a1cb9a48dbae9580"
+        }
+      ],
+      "name": "SBOM Fixture",
+      "purl": "pkg:generic/polypack@0.1.2",
+      "type": "application",
+      "version": "0.1.2"
+    },
+    "timestamp": "1970-01-01T00:00:00Z",
+    "tools": {
+      "components": [
+        {
+          "name": "poly",
+          "type": "application",
+          "version": "1.13.0"
+        }
+      ]
+    }
+  },
+  "serialNumber": "urn:uuid:f059c64c-cc67-419e-a019-9aa719fdb8e9",
+  "specVersion": "1.5",
+  "version": 1
+}

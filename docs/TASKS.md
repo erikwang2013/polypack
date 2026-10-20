@@ -974,17 +974,17 @@
 
 <!-- 统计: M6=13任务/36d, M7=11任务/29d, M8=13任务/38d -->
 
-## M9 候选立项（未排期）
+## M9 立项与交付状态
 
-> 详细立项、方案、风险与逐任务验收见 [INITIATIVES.md](INITIATIVES.md)。以下 55 个候选任务（T-M9-01..T-M9-55，粗估 226 人日）不进入当前排期，也不计入 M0–M8 的 116 个已交付任务；只有触发条件满足并经维护者评审后才立项。
+> 详细立项、方案、风险与逐任务验收见 [INITIATIVES.md](INITIATIVES.md)。55 个候选任务（T-M9-01..T-M9-55，粗估 226 人日）中，E1–E7、P1/P2/P3、G1/G5 等已交付或收口；T-M9-21 / T-M9-49 / T-M9-51 与 crates.io 发布等仍为外部项。
 
 | 项目 | 内容 | 候选任务 |
 |---|---|---|
-| M9-E1 | SBOM / 构建溯源 | T-M9-01..03 |
+| M9-E1 | SBOM / 构建溯源（已交付；SPDX / CycloneDX / in-toto + 双语 SBOM 文档 / 样例） | T-M9-01..03 |
 | M9-E2 | monorepo / 多应用工作区（已交付；ADR 0008 / WORKSPACE / 示例脚本） | T-M9-04..06 |
 | M9-E3 | 增量发布 `poly release --changed`（已交付；5 目标节时 73–81%） | T-M9-07..09 |
 | M9-E4 | 生产热更 / OTA 通道（T-M9-10/11/12 已交付；run 39395255929 windows-updater-real 真实更新 / 回滚通过） | T-M9-10..12 |
-| M9-E5 | 商店元数据管线 | T-M9-13..15 |
+| M9-E5 | 商店元数据管线（已交付；schema / 校验 / 确定性摘要 / 作者指南） | T-M9-13..15 |
 | M9-E6 | GUI 目标矩阵视图 / 构建历史（已交付；`app/` Tauri v2；真实窗口环境门控） | T-M9-16..18 |
 | M9-E7 | 发布前设备预览矩阵（T-M9-19/20 已交付；T-M9-21 外部） | T-M9-19..21 |
 | M9-P1 | Google Play Instant（已停用 retired；保留行，ADR 0006） | T-M9-22..23 |
@@ -995,12 +995,12 @@
 | M9-P6 | PlayStation（NDA 门控，ADR 0006） | T-M9-34..35 |
 | M9-P7 | Xbox（NDA 门控，ADR 0006） | T-M9-36..37 |
 | M9-P8 | Nintendo Switch（NDA 门控，ADR 0006） | T-M9-38..39 |
-| M9-D1 | 插件市场分发决策 | T-M9-40..42 |
-| M9-D2 | 远程农场托管决策 | T-M9-43..44 |
+| M9-D1 | 插件市场分发决策（已决策 ADR 0004；签名索引实现与生产密钥仪式外部） | T-M9-40..42 |
+| M9-D2 | 远程农场托管决策（已决策 ADR 0005；自托管硬化清单待补） | T-M9-43..44 |
 | M9-G1 | CLI 分发（GitHub Releases 已交付；T-M9-45 审计已落地，crates.io 发布因名称占用 / publish=false 关闭） | T-M9-45..47 |
-| M9-G2 | 人类外部开发者试用协议 | T-M9-48..49 |
-| M9-G3 | 环境槽收口计划 | T-M9-50..52 |
-| M9-G4 | MSI 真样本启动测试 | T-M9-53..54 |
+| M9-G2 | 人类外部开发者试用协议（协议已交付；T-M9-49 真人试用外部） | T-M9-48..49 |
+| M9-G3 | 环境槽收口计划（owner / validator 已交付；T-M9-51 其余真实槽外部） | T-M9-50..52 |
+| M9-G4 | MSI 真样本启动测试（已交付；run 39308849058 windows-msi-real 通过） | T-M9-53..54 |
 | M9-G5 | 分支保护管理员绕过（已交付；ENV-18 CLOSED） | T-M9-55 |
 
 > **Wave 2 进度（2026-10-20）**：M9-E2 已交付（`[workspace]`、`--workspace` / `--app`、缓存 / 产物隔离、ADR 0008、WORKSPACE 双语文档与示例脚本）；M9-E4 已交付 T-M9-10/11（机制矩阵 + 签名清单 + `poly update`），T-M9-12 已交付演练装置（`examples/updater-app` + `scripts/drill.ps1`）与 rust-ci `windows-updater-real` 作业，windows-2022 run 39395255929 首跑通过。平台决策已收敛：M9-P1 标 retired、M9-P2 关闭并季度复审（2027-01-20）、M9-P3 交付 `poly deploy line-liff` 部署模式（ADR 0009）、M9-P4/P5 条件支持、M9-P6–P8 NDA 门控；M9-G5 已交付（ENV-18 `CLOSED`，`enforce_admins=true` + 9 个 required contexts，2026-10-20 核实）。

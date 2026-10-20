@@ -130,7 +130,7 @@ poly release --target android,ios,wechat,tizen --publish
 | `zepp` | `none` | `none` | `zab` · `zeus` | — | `zepp-structure-check` | `zepp-store` | `false` | 核心不直接运行、能力由 Zepp JS API 侧实现（runtime = none）；Zepp 小程序 `.zab`（外层 manifest.json + <md5>.zpk，zpk 内含 device.zip / app-side.zip，结构同 zpm）；zeus / 模拟器缺席时安装与工具链校验 SKIP-with-print，结构断言真跑；签名 / 提审归 Zepp 商店平台侧 |
 <!-- END GENERATED: l6-embedded-status -->
 
-**`garmin` 打包器缺口**：T-M7-09 为 Monkey C 转译 spike（`ui/adapters/garmin` 独立 Node 模块，同 M4 Roku 形态），`poly-bundle` 尚无内建 `iq` 打包器——`poly build --target garmin` 的 package 阶段会以「无内建打包器（format = iq）」SKIP-with-print，不伪造 `.iq`；Rust 打包器列为条件任务。`watchos` / `garmin` 的能力 / 缺口 / 替代方案见 [docs/EXPERIMENTAL-TARGETS.md](docs/EXPERIMENTAL-TARGETS.md)；`wearos` 为平台级目标（beta 边界同章记录，不标 ※实验）。
+**`garmin` 打包状态**：T-M7-09 的 Monkey C 转译为 `ui/adapters/garmin` 独立 Node 模块；`poly-bundle` 的内建 `iq` 打包器已交付（`crates/poly-bundle/src/packagers/garmin.rs`），`poly build --target garmin` 会生成 `.iq` 并做结构自检；剩余缺口是 `monkeyc` / devkey 编译腿（环境槽 SKIP-with-print，不伪造编译产物）。`watchos` / `garmin` 的能力 / 缺口 / 替代方案见 [docs/EXPERIMENTAL-TARGETS.md](docs/EXPERIMENTAL-TARGETS.md)；`wearos` 为平台级目标（beta 边界同章记录，不标 ※实验）。
 
 ### 49 目标现状表（由 TargetSpec 与规划清单生成）
 

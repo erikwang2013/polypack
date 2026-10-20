@@ -11,7 +11,7 @@
 # installed. There is no unverified or unsigned fallback.
 #
 # Environment:
-#   POLY_VERSION             release tag (v1.11.0 or 1.11.0); default: latest
+#   POLY_VERSION             release tag (v1.13.1 or 1.13.1); default: latest
 #   POLY_INSTALL_DIR         install directory; default: ~/.local/bin
 #   POLY_REPO                GitHub repo; default: erikwang2013/polypack
 #   POLY_RELEASE_BASE_URL    override release download base (mirrors / tests)

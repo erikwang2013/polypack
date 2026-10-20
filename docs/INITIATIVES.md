@@ -1,12 +1,12 @@
 # PolyPack 立项与规划：孵化项、规划平台与缺口项目
 
-> 状态：全部为**候选 / 未排期**（candidate / unscheduled），不构成排期承诺。本文只做立项与规划提案，不修改 `ROADMAP` / `TASKS`；后续集成点见 §8。
+> 状态：孵化项大多已交付或收口，剩余为外部依赖与维护者决策；不构成排期承诺。本文只做立项与规划提案，不修改 `ROADMAP` / `TASKS`；后续集成点见 §8。
 >
 > 依据：`docs/ROADMAP.md` §13（孵化池 E1–E8）、§14（开放问题）；`docs/GA.md` §6（演练记录）、§7（已知缺口）；`README.md` 平台矩阵与 49 目标现状表。
 
 ## 0. 文档约定
 
-- 任务 ID 与状态：`T-M9-xx` 与既有 `T-M0`–`T-M8` 不冲突，每个 ID 只出现一次；一律标候选 / 未排期，只有触发条件满足并经维护者评审后才进入正式里程碑。
+- 任务 ID 与状态：`T-M9-xx` 与既有 `T-M0`–`T-M8` 不冲突，每个 ID 只出现一次；交付状态按项目记录，剩余项只有触发条件满足并经维护者评审后才进入正式里程碑。
 - 人日为粗估（含实现、测试、文档），不含 NDA、审核、设备采购等外部等待。
 - 证据边界：未验证的能力如实写「未验证 / 环境槽」，不把 SKIP 写成 PASS。
 - 双语镜像：`docs/INITIATIVES.md` 与 `docs/INITIATIVES.en.md` 的 H2 / H3 / 表格行数逐项一致。
@@ -28,7 +28,7 @@
 
 ### M9-E1 · SBOM / 构建溯源
 
-- 状态：候选 · 未排期。
+- 状态：候选 · 已交付（T-M9-01/02/03；SPDX / CycloneDX / in-toto、`poly verify --sbom`、回执 `sbom_digest`、双语 [SBOM](SBOM.md) 与真实样例）。
 - 触发条件：首个合规或供应链审计需求出现；或目标渠道要求 SBOM / provenance。
 - 背景与问题：`poly verify` 只校验产物结构与签名；`poly release` 回执只有 `manifest_digest`（`crates/poly-cli/src/release.rs`），没有依赖清单与构建来源；T-M0-11 只覆盖基础扫描，审计无法回答「这个产物由哪些输入、在什么工具链上产生」。
 - 目标：每个产物旁生成 SPDX 2.3 JSON、CycloneDX 1.5 JSON 与 in-toto / SLSA 风格 provenance，绑定缓存键五输入（`CacheInputs`，`crates/poly-cache/src/digest.rs`）与 builder 身份；可离线校验。非目标：不追求 SLSA L3 认证、不接 Sigstore / Rekor、不生成 VEX。
@@ -40,9 +40,9 @@
 
 | 任务 | 标题 | 角色 | 依赖 | 人日 | 验收 |
 | --- | --- | --- | --- | --- | --- |
-| T-M9-01 | SBOM 生成器（SPDX + CycloneDX） | coder | — | 4 | 同一输入二跑字节一致；真实产物的依赖集合与锁文件一致 |
-| T-M9-02 | SLSA 风格 provenance | coder | T-M9-01 | 4 | subject 摘要等于产物摘要；materials 覆盖 CacheInputs 五输入；离线校验器通过 |
-| T-M9-03 | verify / release / publish 接线 | coder + tester | T-M9-01, T-M9-02 | 3 | `poly verify --sbom` 产出三件套；回执含 `sbom_digest`；缺产物时明确报错 |
+| T-M9-01 ✅ | SBOM 生成器（SPDX + CycloneDX） | coder | — | 4 | 同一输入二跑字节一致；真实产物的依赖集合与锁文件一致 |
+| T-M9-02 ✅ | SLSA 风格 provenance | coder | T-M9-01 | 4 | subject 摘要等于产物摘要；materials 覆盖 CacheInputs 五输入；离线校验器通过 |
+| T-M9-03 ✅ | verify / release / publish 接线 | coder + tester | T-M9-01, T-M9-02 | 3 | `poly verify --sbom` 产出三件套；回执含 `sbom_digest`；缺产物时明确报错 |
 
 ### M9-E2 · monorepo / 多应用工作区
 
@@ -452,7 +452,7 @@
 
 ## 6. 推荐顺序
 
-按「先补 GA 可信度，再做高杠杆工程，最后做外部依赖项」排序；全部仍为候选 / 未排期。
+按「先补 GA 可信度，再做高杠杆工程，最后做外部依赖项」排序；E1–E7 / G5 已交付或收口，剩余为外部依赖项与维护者决策。
 
 1. M9-G5 分支保护：已交付（2026-10-20，ENV-18 `CLOSED`）。
 2. M9-G1 CLI 分发：没有可安装的 `poly`，外部试用与 GA 都缺入口。
@@ -490,7 +490,7 @@
 
 ## 8. 后续集成点（不修改本仓现有文件）
 
-- `docs/ROADMAP.md` / `ROADMAP.en.md` §13：E1–E7 行增加「候选 / 未排期，详见 INITIATIVES §2」链接；保留原提升条件。
+- `docs/ROADMAP.md` / `ROADMAP.en.md` §13：E1–E7 行增加「交付 / 外部项状态见 INITIATIVES §2」链接；保留原提升条件。
 - `docs/ROADMAP.md` / `ROADMAP.en.md` §14：开放问题增加 M9-D1 / M9-D2 的 ADR 链接与推荐结论（不代替决策）。
 - `docs/GA.md` / `GA.en.md` §7.1 / §7.2：把「13 个规划平台」与 README / `tools/gen-status-table.mjs` 的 8 个对账，逐平台行链接 M9-P1–M9-P8；人类试用链接 M9-G2，keyring / Vault、S3 / OSS、macOS IPA、Garmin iq 链接 M9-G3，MSI 链接 M9-G4。
 - `README.md` / `README.en.md`：由 `tools/gen-status-table.mjs` 的 8 个 planned 行在 notes 增加本文链接后重新生成 49 目标现状表；平台矩阵计数不变。

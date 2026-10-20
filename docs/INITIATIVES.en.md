@@ -1,12 +1,12 @@
 # PolyPack Initiation and Planning: Incubation Items, Planned Platforms, and Gap Projects
 
-> Status: everything below is **candidate / unscheduled** and is not a scheduling commitment. This document only proposes and plans; it does not modify `ROADMAP` / `TASKS`. Integration points are listed in §8.
+> Status: most incubation items are delivered or closed out; the remainder is external dependencies and maintainer decisions. This document only proposes and plans; it does not modify `ROADMAP` / `TASKS`. Integration points are listed in §8.
 >
 > Sources: `docs/ROADMAP.md` §13 (incubation pool E1–E8), §14 (open questions); `docs/GA.md` §6 (drill record), §7 (known gaps); `README.md` platform matrix and the 49-target status table.
 
 ## 0. Conventions
 
-- Task IDs and status: `T-M9-xx` does not collide with existing `T-M0`–`T-M8`, and each ID appears once; every item is candidate / unscheduled and enters a formal milestone only after its trigger is met and maintainers review it.
+- Task IDs and status: `T-M9-xx` does not collide with existing `T-M0`–`T-M8`, and each ID appears once; delivery status is recorded per item, and remaining items enter a formal milestone only after their trigger is met and maintainers review them.
 - Person-days are rough estimates (implementation, tests, docs) and exclude external waits such as NDAs, review, and device procurement.
 - Evidence boundary: unverified capabilities are written as "unverified / environment slot"; SKIP is never written as PASS.
 - Bilingual mirror: `docs/INITIATIVES.md` and `docs/INITIATIVES.en.md` keep identical H2 / H3 / table row counts.
@@ -28,7 +28,7 @@ This document covers 22 candidates: 7 incubation items, 8 planned platforms, 2 o
 
 ### M9-E1 · SBOM / build provenance
 
-- Status: candidate · unscheduled.
+- Status: candidate · delivered (T-M9-01/02/03; SPDX / CycloneDX / in-toto, `poly verify --sbom`, receipt `sbom_digest`, bilingual [SBOM](SBOM.en.md), and a real sample).
 - Trigger: the first compliance or supply-chain audit request; or a target channel requires SBOM / provenance.
 - Why: `poly verify` only checks artifact structure and signatures; the `poly release` receipt only carries `manifest_digest` (`crates/poly-cli/src/release.rs`), with no dependency list or build origin; T-M0-11 only covers baseline scanning, so an audit cannot answer "which inputs and toolchain produced this artifact".
 - Goals: generate SPDX 2.3 JSON, CycloneDX 1.5 JSON, and in-toto / SLSA-style provenance next to every artifact, bound to the five cache-key inputs (`CacheInputs`, `crates/poly-cache/src/digest.rs`) and builder identity; verifiable offline. Non-goals: SLSA L3 certification, Sigstore / Rekor integration, VEX generation.
@@ -40,9 +40,9 @@ This document covers 22 candidates: 7 incubation items, 8 planned platforms, 2 o
 
 | Task | Title | Role | Depends | Days | Acceptance |
 | --- | --- | --- | --- | --- | --- |
-| T-M9-01 | SBOM generator (SPDX + CycloneDX) | coder | — | 4 | Byte-identical across two runs; dependency set matches the lockfile for a real artifact |
-| T-M9-02 | SLSA-style provenance | coder | T-M9-01 | 4 | Subject digest equals artifact digest; materials cover all five CacheInputs; offline verifier passes |
-| T-M9-03 | verify / release / publish wiring | coder + tester | T-M9-01, T-M9-02 | 3 | `poly verify --sbom` emits all three files; receipt contains `sbom_digest`; missing artifact fails clearly |
+| T-M9-01 ✅ | SBOM generator (SPDX + CycloneDX) | coder | — | 4 | Byte-identical across two runs; dependency set matches the lockfile for a real artifact |
+| T-M9-02 ✅ | SLSA-style provenance | coder | T-M9-01 | 4 | Subject digest equals artifact digest; materials cover all five CacheInputs; offline verifier passes |
+| T-M9-03 ✅ | verify / release / publish wiring | coder + tester | T-M9-01, T-M9-02 | 3 | `poly verify --sbom` emits all three files; receipt contains `sbom_digest`; missing artifact fails clearly |
 
 ### M9-E2 · monorepo / multi-app workspace
 
@@ -490,7 +490,7 @@ Ordered by "repair GA credibility first, then high-leverage engineering, then ex
 
 ## 8. Later integration points (no existing repository files modified)
 
-- `docs/ROADMAP.md` / `ROADMAP.en.md` §13: add a "candidate / unscheduled, see INITIATIVES §2" link to the E1–E7 rows; keep the original promotion triggers.
+- `docs/ROADMAP.md` / `ROADMAP.en.md` §13: add a "delivery / external status, see INITIATIVES §2" link to the E1–E7 rows; keep the original promotion triggers.
 - `docs/ROADMAP.md` / `ROADMAP.en.md` §14: add ADR links and recommended conclusions for M9-D1 / M9-D2 (without replacing the decision).
 - `docs/GA.md` / `GA.en.md` §7.1 / §7.2: reconcile "13 planned platforms" with the 8 in README / `tools/gen-status-table.mjs`, and link each platform row to M9-P1–M9-P8; link the human trial to M9-G2, keyring / Vault, S3 / OSS, macOS IPA, and Garmin iq to M9-G3, and MSI to M9-G4.
 - `README.md` / `README.en.md`: add this document's link to the notes of the 8 planned rows in `tools/gen-status-table.mjs`, then regenerate the 49-target status table; the platform matrix counts stay unchanged.

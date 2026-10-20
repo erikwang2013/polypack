@@ -186,7 +186,7 @@ struct Receipt {
     /// 变更判定键（可选：旧回执缺省，读侧降级到 `manifest_digest`；本期值与清单摘要同源）。
     #[serde(default, skip_serializing_if = "Option::is_none")]
     cache_key: Option<String>,
-    /// 产物集合的 SBOM 摘要（可选：旧回执缺省；发布时由 `poly sbom` 同一实现计算）。
+    /// 产物集合的 SBOM 摘要（可选：旧回执缺省；发布时由 `poly verify --sbom` 同一实现计算）。
     #[serde(default, skip_serializing_if = "Option::is_none")]
     sbom_digest: Option<String>,
     artifacts: Vec<Artifact>,
