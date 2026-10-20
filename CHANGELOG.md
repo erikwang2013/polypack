@@ -6,6 +6,8 @@ Notable changes are recorded here; since v1.0.0, tags and releases follow `vX.Y.
 
 ## [Unreleased]
 
+## [1.12.0] — 2026-10-20
+
 ### Added
 - **M9 决策记录（2026-10-20）**：新增 ADR 0004（去中心化签名插件索引）、ADR 0005（GA 仅自托管农场）、ADR 0006（8 个规划平台结论：关闭 / 条件 / NDA 门控）、ADR 0007（G5 外部动作 / E6 历史持久化优先 / E7 设备预览调研）；`docs/INITIATIVES` 双语状态同步。
 
@@ -13,9 +15,9 @@ Notable changes are recorded here; since v1.0.0, tags and releases follow `vX.Y.
 - **M9 分发与流程**：`scripts/install.sh`（三宿主 Release 资产 + 强制 SHA256 + 可选 minisign 严格验签）、双语 `docs/INSTALL`、release 工作流的 secret-gated 签名与 install-smoke、双语 `docs/HUMAN-TRIAL` 试用协议、ENV-SLOTS 的 Owner/Evidence 列与 `tools/check-env-slots.mjs` 门禁（接入 docs-check）。T-M9-45（crates.io）、T-M9-49（真人试用）、T-M9-51（逐槽真实关闭）仍为外部项。
 
 *M9 distribution and process: `scripts/install.sh` (three-host release assets + mandatory SHA-256 + optional strict minisign verification), bilingual `docs/INSTALL`, secret-gated release signing plus an install-smoke job, the bilingual `docs/HUMAN-TRIAL` protocol, and the ENV-SLOTS Owner/Evidence columns with the `tools/check-env-slots.mjs` gate wired into docs-check. T-M9-45 (crates.io), T-M9-49 (human trials), and T-M9-51 (per-slot real closure) remain external.*
-- **M9-G4 MSI 真样本**：`examples/windows-msi-app/`（真实 Tauri v2 样例）、`crates/poly-bundle/tests/windows_msi_real.rs`（门控 `POLY_MSI_REAL=1`，安装 / 启动 / 卸载 / 残留检查，错误码 `POLY_MSI_REAL_0001..0006`）与 rust-ci `windows-msi-real` 作业；真实证据待 `windows-2022` 首跑。
+- **M9-G4 MSI 真样本**：`examples/windows-msi-app/`（真实 Tauri v2 样例）、`crates/poly-bundle/tests/windows_msi_real.rs`（门控 `POLY_MSI_REAL=1`，安装 / 启动 / 卸载 / 残留检查，错误码 `POLY_MSI_REAL_0001..0006`）与 rust-ci `windows-msi-real` 作业；run 39308849058 在 windows-2022 真跑通过，ENV-01 已 `CLOSED`。
 
-*M9-G4 MSI real sample: `examples/windows-msi-app/` (a real Tauri v2 sample), `crates/poly-bundle/tests/windows_msi_real.rs` (gated by `POLY_MSI_REAL=1`; install / launch / uninstall / residue checks; codes `POLY_MSI_REAL_0001..0006`), and the rust-ci `windows-msi-real` job; real evidence awaits the first `windows-2022` run.*
+*M9-G4 MSI real sample: `examples/windows-msi-app/` (a real Tauri v2 sample), `crates/poly-bundle/tests/windows_msi_real.rs` (gated by `POLY_MSI_REAL=1`; install / launch / uninstall / residue checks; codes `POLY_MSI_REAL_0001..0006`), and the rust-ci `windows-msi-real` job; run 39308849058 passed on windows-2022, closing ENV-01.*
 - **M9-E3 增量发布**：`poly release --changed` 比较回执 `cache_key`（当前等于 `manifest_digest`）并回退 `manifest_digest`，命中时发独立 `release-skipped` 事件、不写仓库 / 不重写回执 / 不递增 `runs`；`--since` 返回 `E_PLAN_0002`。T-M9-09 的 CI 示例与节时实测待补。
 
 *M9-E3 incremental release: `poly release --changed` compares the receipt `cache_key` (currently equal to `manifest_digest`) with a `manifest_digest` fallback; a hit emits a distinct `release-skipped` event without writing the repo, rewriting the receipt, or incrementing `runs`; `--since` returns `E_PLAN_0002`. The T-M9-09 CI example and measured savings are pending.*
