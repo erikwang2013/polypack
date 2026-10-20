@@ -195,7 +195,7 @@ pkg_add -v /tmp/pkgsrc-packages/<DISTNAME>.tgz
 pkg_info <DISTNAME> && pkg_info -L <DISTNAME> && /usr/pkg/bin/polypack-app
 ```
 - 证据：`bmake package` 退出码 0；`pkg_add` / `pkg_info` 输出；安装后的二进制输出；`.tgz` SHA-256；NetBSD 版本与 `bmake -V MAKE_VERSION`；CI 首跑 run ID + artifact。
-- 现状：`PARTIAL`（工作流已接线，首跑证据待补）。bsd-ci `netbsd` 作业在 Linux 宿主生成骨架，VM 内原生构建 poly / 应用核心后跑 `bmake package` → `pkg_add` → 运行安装二进制；缺工具或任一步失败即作业红。 负责人：infra。
+- 现状：`PARTIAL`（工作流已接线，首跑证据待补）。bsd-ci `netbsd` 作业在 Linux 宿主生成骨架，VM 内原生构建应用核心后跑 `bmake package` → `pkg_add` → 运行安装二进制（不构建 poly CLI：pkgsrc rust 1.96 低于仓库 MSRV 1.98，且该槽只验证 pkgsrc 打包）；缺工具或任一步失败即作业红。 负责人：infra。
 - 下一步：dispatch `bsd-ci` 的 `netbsd` 作业，归档 run ID / 日志 / `.tgz` 摘要；绿后回写本卡与 TASKS。
 - 阻塞：首跑风险——NetBSD 11.0 二进制仓库的 rust 为 1.96.1nb2（低于 `rust-version = 1.98`，靠 `--ignore-rust-version`；若源码用到更新语言特性会硬失败）；pkgsrc 树 / 镜像带宽与 TCG 速度为外部变量。 运行位置：CI（NetBSD VM）可关闭。
 

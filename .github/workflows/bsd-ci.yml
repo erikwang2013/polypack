@@ -63,8 +63,8 @@ jobs:
             mkdir -p "$LOGS" "$ART"
             run_stage() {
               name=$1; shift
-              "$@" >"$LOGS/$name.log" 2>&1
-              rc=$?
+              # set -e 下必须在 if 里取返回码，否则失败时命令未 cat 就退出，日志只剩空文件。
+              if "$@" >"$LOGS/$name.log" 2>&1; then rc=0; else rc=$?; fi
               cat "$LOGS/$name.log"
               return $rc
             }
@@ -230,8 +230,8 @@ jobs:
             mkdir -p "$LOGS" "$ART"
             run_stage() {
               name=$1; shift
-              "$@" >"$LOGS/$name.log" 2>&1
-              rc=$?
+              # set -e 下必须在 if 里取返回码，否则失败时命令未 cat 就退出，日志只剩空文件。
+              if "$@" >"$LOGS/$name.log" 2>&1; then rc=0; else rc=$?; fi
               cat "$LOGS/$name.log"
               return $rc
             }
@@ -242,9 +242,10 @@ jobs:
             done
             run_stage rustc rustc --version
             run_stage cargo-version cargo --version
-            run_stage build cargo build -p poly-cli --ignore-rust-version
 
             # 原生构建应用核心：骨架载荷里的可执行文件是 Linux ELF，安装后跑不起来。
+            # 不在 VM 内构建 poly CLI：pkgsrc 的 rust 1.96 低于仓库 rust-version 1.98，
+            # 且会拖入 wasmtime；本槽验证的是 pkgsrc 打包 / pkg_add，不是 CLI 自身。
             ( cd "$WORKSPACE/.ci/netbsd/app/core" \
                 && CARGO_TARGET_DIR=/tmp/app-core-target cargo build --release --ignore-rust-version ) \
               >"$LOGS/app-core.log" 2>&1
@@ -338,8 +339,8 @@ jobs:
             mkdir -p "$LOGS" "$ART"
             run_stage() {
               name=$1; shift
-              "$@" >"$LOGS/$name.log" 2>&1
-              rc=$?
+              # set -e 下必须在 if 里取返回码，否则失败时命令未 cat 就退出，日志只剩空文件。
+              if "$@" >"$LOGS/$name.log" 2>&1; then rc=0; else rc=$?; fi
               cat "$LOGS/$name.log"
               return $rc
             }
