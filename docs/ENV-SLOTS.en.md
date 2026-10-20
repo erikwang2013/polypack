@@ -31,7 +31,7 @@ Environment slots are tracked separately from code gaps: a slot closes with envi
 | ENV-04 | T-M3-05 / T-M3-06 | WeChat / Alipay / Douyin devtools preview | PARTIAL | HOST | core + release-sec | §3 ENV-04 | miniprogram-contract |
 | ENV-05 | T-M4-15 | Roku real-device sideload | PARTIAL | HOST | core | §3 ENV-05 | — |
 | ENV-06 | T-M5-07 | OpenBSD VM install smoke | PARTIAL | CI | infra | §3 ENV-06 | bsd-ci |
-| ENV-07 | T-M5-08 | NetBSD `bmake` / pkgsrc | PARTIAL | CI | infra | §3 ENV-07 | bsd-ci · netbsd |
+| ENV-07 | T-M5-08 | NetBSD `bmake` / pkgsrc | CLOSED | CI | infra | run 39489096346 · netbsd | bsd-ci · netbsd |
 | ENV-08 | T-M6-03 / T-M6-09 | QNX SDP + QEMU smoke | PARTIAL | CI | infra | §3 ENV-08 | embedded-ci |
 | ENV-09 | T-M6-05 | VxWorks `wr-cc` link leg | PARTIAL | CI | infra | §3 ENV-09 | embedded-ci |
 | ENV-10 | T-M7-04 | Wear OS device / emulator smoke | PARTIAL | CI | infra | §3 ENV-10 | wear-release-smoke |
@@ -188,16 +188,16 @@ pkg_add mozilla-rootcerts-openssl pkgin   # writes /etc/openssl/certs/ca-certifi
 pkgin -y install rust bmake
 cargo build -p poly-cli --ignore-rust-version
 cd core && cargo build --release --ignore-rust-version   # native core replaces the Linux payload in the skeleton
-fetch -o /tmp/pkgsrc.tar.gz https://cdn.netbsd.org/pub/pkgsrc/current/pkgsrc.tar.gz && tar xzf /tmp/pkgsrc.tar.gz -C /usr
+curl -fsSL -o /tmp/pkgsrc.tar.gz https://cdn.netbsd.org/pub/pkgsrc/current/pkgsrc.tar.gz && tar xzf /tmp/pkgsrc.tar.gz -C /usr
 cp -R <skeleton> /usr/pkgsrc/misc/<DISTNAME> && cd /usr/pkgsrc/misc/<DISTNAME>
 bmake package PACKAGES=/tmp/pkgsrc-packages
 pkg_add -v /tmp/pkgsrc-packages/<DISTNAME>.tgz
 pkg_info <DISTNAME> && pkg_info -L <DISTNAME> && /usr/pkg/bin/polypack-app
 ```
 - Evidence: `bmake package` exit 0; `pkg_add` / `pkg_info` output; the installed binary's output; `.tgz` SHA-256; NetBSD version and `bmake -V MAKE_VERSION`; CI first-run run ID + artifact.
-- Status: `PARTIAL` (workflow wired, first-run evidence pending). The bsd-ci `netbsd` job generates the skeleton on a Linux host, then builds poly / the app core natively in the VM, runs `bmake package` → `pkg_add`, and executes the installed binary; a missing tool or any failing step turns the job red. Owner: infra.
-- Next action: dispatch the `netbsd` job of `bsd-ci`, archive the run ID / logs / `.tgz` digest, then write the evidence back to this card and TASKS.
-- Blocker: first-run risks — the NetBSD 11.0 binary repo ships rust 1.96.1nb2 (below `rust-version = 1.98`; `--ignore-rust-version` is used, and newer language features would hard-fail); pkgsrc tree / image bandwidth and TCG speed are external variables. Execution mode: CI (NetBSD VM) can close it.
+- Status: `CLOSED` (2026-10-21). Run 39489096346's `netbsd / 11.0 / qemu` generated the skeleton on Linux, built the app core natively in the NetBSD 11.0 VM, and passed `bmake package` → `pkg_add` / `pkg_info` → running the installed binary; the `.tgz` digest and logs are archived. The poly CLI is not built: pkgsrc rust 1.96 is below the repo MSRV 1.98, and this slot validates pkgsrc packaging. Owner: infra.
+- Next action: none (slot closed); rerun on major pkgsrc / NetBSD upgrades.
+- Blocker: none; production pkgsrc repository signing and publishing remain the deployer's responsibility.
 
 ### ENV-08 · QNX SDP + QEMU smoke
 
@@ -491,7 +491,7 @@ Suggested evidence path: `env-slots/<ENV-XX>/<UTC timestamp>/`. The repository d
 | ENV-04 | `.github/workflows/miniprogram-contract.yml` | `real / macos-14` | CLI preview test wired; NOTE when vars / secrets absent |
 | ENV-05 | — | — | No Roku job |
 | ENV-06 | `.github/workflows/bsd-ci.yml` | `openbsd` | VM job exists, `continue-on-error`, TCG boot fails |
-| ENV-07 | `.github/workflows/bsd-ci.yml` | `netbsd` | Linux generates the pkgsrc skeleton → NetBSD 11.0 VM native app-core build + `bmake package` → `pkg_add` / `pkg_info` / run the installed binary (no poly CLI build: pkgsrc rust 1.96 is below the repo MSRV 1.98, and this slot validates pkgsrc packaging); first-run evidence pending |
+| ENV-07 | `.github/workflows/bsd-ci.yml` | `netbsd` | Linux generates the pkgsrc skeleton → NetBSD 11.0 VM native app-core build + `bmake package` → `pkg_add` / `pkg_info` / run the installed binary (run 39489096346 passed; no poly CLI build) |
 | ENV-08 | `.github/workflows/embedded-ci.yml` | `embedded` (matrix `qnx`) | Build / doctor / QEMU wired; SKIP when SDP absent |
 | ENV-09 | `.github/workflows/embedded-ci.yml` | `embedded` (matrix `vxworks`) | Build wired; SKIP when `wr-cc` absent |
 | ENV-10 | `.github/workflows/wear-release-smoke.yml` | `wear-device-smoke` | Hard release gate; blocks when KVM / APK absent |
@@ -526,7 +526,7 @@ Suggested evidence path: `env-slots/<ENV-XX>/<UTC timestamp>/`. The repository d
 | --- | --- | --- |
 | Vault default backend chain | Closed (code) | `default_backends()` assembles Vault from the environment; ENV-16 is down to the real-service E2E |
 | Garmin built-in iq packager | Delivered | `poly build --target garmin` now has a built-in packager; ENV-14 closes only the compiler / device leg |
-| Missing CI jobs | Infrastructure | NetBSD first run failed on missing curl and now uses curl pending a rerun; Garmin / Roku still have run cards only, no workflow |
+| Missing CI jobs | Infrastructure | Garmin / Roku still have run cards only, no workflow |
 
 ## 8. References
 

@@ -16,9 +16,9 @@ Notable changes are recorded here; since v1.0.0, tags and releases follow `vX.Y.
 - **T-M9-44 农场加固**：新增自托管硬化清单（10 项）、`tools/farm-preflight.sh` 与可重跑演练；Linux 双 worker / 共享缓存 / 哨兵 / 隔离腿通过，生产主机与 macOS/IPA 演练仍为外部项。
 
 *T-M9-44 farm hardening: adds a 10-item self-hosted hardening checklist, `tools/farm-preflight.sh`, and a rerun-safe drill; the Linux two-worker / shared-cache / sentinel / isolation legs pass, while production-host and macOS/IPA drills remain external.*
-- **ENV-11/12/13 CI legs**：watchOS 真 `xcodebuild` + 打包（run 39455179337）、Fitbit `fitbit-build` 自检 + `.fba`（run 39455185737）、Zepp `zeus` 自检 + `.zab`（同 run）通过；ENV-11/12 已关闭，ENV-13 模拟器安装仍为外部人工腿。ENV-07 NetBSD 作业已接线，首跑缺 `curl` 修复待复跑。
+- **ENV-11/12/13 CI legs**：watchOS 真 `xcodebuild` + 打包（run 39455179337）、Fitbit `fitbit-build` 自检 + `.fba`（run 39455185737）、Zepp `zeus` 自检 + `.zab`（同 run）通过；ENV-11/12 已关闭，ENV-13 模拟器安装仍为外部人工腿。ENV-07 NetBSD 在 run 39489096346 通过（`bmake package` → `pkg_add` → 运行安装二进制），已关闭；NetBSD `find` / `curl` 与 MSRV 适配见提交记录。
 
-*ENV-11/12/13 CI legs: real watchOS `xcodebuild` + packaging (run 39455179337), Fitbit `fitbit-build` self-check + `.fba` (run 39455185737), and Zepp `zeus` self-check + `.zab` (same run) passed; ENV-11/12 are closed, while ENV-13's simulator install remains an external manual leg. The ENV-07 NetBSD job is wired; its first run failed on missing `curl` and awaits a rerun.*
+*ENV-11/12/13 CI legs: real watchOS `xcodebuild` + packaging (run 39455179337), Fitbit `fitbit-build` self-check + `.fba` (run 39455185737), and Zepp `zeus` self-check + `.zab` (same run) passed; ENV-11/12 are closed, while ENV-13's simulator install remains an external manual leg. ENV-07 NetBSD passed in run 39489096346 (`bmake package` → `pkg_add` → run the installed binary) and is closed; the NetBSD `find` / `curl` and MSRV adjustments are in the commit history.*
 
 ### Fixed
 - **rustls-webpki 0.103.16**：修复 RUSTSEC-2026-0382（证书路径可能接受已泄漏私钥的 distrusted emSign 中间证书）；`cargo update -p rustls-webpki` 升级，`cargo deny check advisories` 通过。
