@@ -3,21 +3,26 @@ resolver = "3"
 members = ["crates/*"]
 
 [workspace.package]
-version = "0.0.0"
+version = "1.12.0"
 edition = "2024"
 rust-version = "1.98"
 license = "Apache-2.0"
 repository = "https://github.com/erikwang2013/polypack"
+# 根 README 随包发布（cargo 以 workspace 根为基准解析该路径）。
+readme = "README.md"
+keywords = ["polypack", "packaging", "build-tool", "cross-platform", "mobile"]
+categories = ["development-tools::build-utils", "command-line-utilities"]
 
 [workspace.dependencies]
-poly-bundle = { path = "crates/poly-bundle" }
-poly-cache = { path = "crates/poly-cache" }
-poly-core = { path = "crates/poly-core" }
-poly-plugin = { path = "crates/poly-plugin" }
-poly-publish = { path = "crates/poly-publish" }
-poly-sign = { path = "crates/poly-sign" }
-poly-targets = { path = "crates/poly-targets" }
-poly-toolchain = { path = "crates/poly-toolchain" }
+# version 是 crates.io 发布所需（path 依赖在打包时被替换为 registry 版本）。
+poly-bundle = { version = "1.12.0", path = "crates/poly-bundle" }
+poly-cache = { version = "1.12.0", path = "crates/poly-cache" }
+poly-core = { version = "1.12.0", path = "crates/poly-core" }
+poly-plugin = { version = "1.12.0", path = "crates/poly-plugin" }
+poly-publish = { version = "1.12.0", path = "crates/poly-publish" }
+poly-sign = { version = "1.12.0", path = "crates/poly-sign" }
+poly-targets = { version = "1.12.0", path = "crates/poly-targets" }
+poly-toolchain = { version = "1.12.0", path = "crates/poly-toolchain" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 toml = "0.8"

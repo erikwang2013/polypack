@@ -82,6 +82,17 @@ jobs:
         # 会掩盖后续 crate 的问题；三宿主加固期需要全景）
         run: cargo test --workspace --no-fail-fast
 
+      # T-M9-45：只读打包审计（--list 不构建、不上传、不需要 token）。放在 cargo test
+      # 之后，registry 缓存已预热，--offline 也不会缺元数据。
+      - name: cargo package audit（非发布）
+        if: runner.os == 'Linux'
+        run: |
+          for p in poly-targets poly-cache poly-toolchain poly-core poly-bundle \
+                   poly-sign poly-publish poly-plugin poly-cli; do
+            echo "== cargo package --list -p $p =="
+            cargo package --list -p "$p" --locked --offline
+          done
+
       # T-M1-07 聚焦真跑：工具只在通用 cargo test 之后安装。若提前安装，
       # `poly build` 的 verify 会对测试用 debug deb 触发 lintian 错误，污染通用测试面。
       # appimagetool 固定 1.9.1，按 GitHub release 发布的 sha256 校验后安装（不裸下载）；

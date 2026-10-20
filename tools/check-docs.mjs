@@ -38,6 +38,7 @@ const PAIRS = [
   ['docs/STORE-METADATA.md', 'docs/STORE-METADATA.en.md'],
   ['docs/OTA.md', 'docs/OTA.en.md'],
   ['docs/WORKSPACE.md', 'docs/WORKSPACE.en.md'],
+  ['docs/CRATES-IO.md', 'docs/CRATES-IO.en.md'],
 ];
 
 const count = (text, re) => (text.match(re) || []).length;
