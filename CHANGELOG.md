@@ -21,6 +21,9 @@ Notable changes are recorded here; since v1.0.0, tags and releases follow `vX.Y.
 *ENV-11/12/13 CI legs: real watchOS `xcodebuild` + packaging (run 39455179337), Fitbit `fitbit-build` self-check + `.fba` (run 39455185737), and Zepp `zeus` self-check + `.zab` (same run) passed; ENV-11/12 are closed, while ENV-13's simulator install remains an external manual leg. The ENV-07 NetBSD job is wired; its first run failed on missing `curl` and awaits a rerun.*
 
 ### Fixed
+- **rustls-webpki 0.103.16**：修复 RUSTSEC-2026-0382（证书路径可能接受已泄漏私钥的 distrusted emSign 中间证书）；`cargo update -p rustls-webpki` 升级，`cargo deny check advisories` 通过。
+
+*rustls-webpki 0.103.16: fixes RUSTSEC-2026-0382 (certificate paths could accept distrusted emSign intermediates with now-public private keys); upgraded with `cargo update -p rustls-webpki`, and `cargo deny check advisories` passes.*
 - **发布工作流版本闸门**：构建前校验 tag 与 `poly-cli` Cargo 版本一致；install-smoke 断言安装后的 `poly --version` 等于 tag，避免再次发布版本号错误的二进制。
 - **文档更正**：ENV-01 进度 / 矩阵 / GUI 腿改为与实际 CI 证据一致；ENV-14 与 README 的 Garmin 文案改为「内建 iq 打包器已交付，剩余 monkeyc/devkey 编译腿」；安装示例从 `v1.11.0` 更新到 `v1.13.1`；ADR 0006 / 0008 增加后续更新说明；INITIATIVES / TASKS 的 E1 交付状态与 M9 总述更新；`release.rs` 注释改为 `poly verify --sbom`。
 
