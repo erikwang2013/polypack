@@ -31,7 +31,7 @@
 | ENV-04 | T-M3-05 / T-M3-06 | 微信 / 支付宝 / 抖音开发者工具预览 | PARTIAL | HOST | core + release-sec | §3 ENV-04 | miniprogram-contract |
 | ENV-05 | T-M4-15 | Roku 真机侧载 | PARTIAL | HOST | core | §3 ENV-05 | — |
 | ENV-06 | T-M5-07 | OpenBSD VM 安装冒烟 | PARTIAL | CI | infra | §3 ENV-06 | bsd-ci |
-| ENV-07 | T-M5-08 | NetBSD `bmake` / pkgsrc | PARTIAL | CI | infra | §3 ENV-07 | bsd-ci · netbsd |
+| ENV-07 | T-M5-08 | NetBSD `bmake` / pkgsrc | CLOSED | CI | infra | run 39489096346 · netbsd | bsd-ci · netbsd |
 | ENV-08 | T-M6-03 / T-M6-09 | QNX SDP + QEMU 冒烟 | PARTIAL | CI | infra | §3 ENV-08 | embedded-ci |
 | ENV-09 | T-M6-05 | VxWorks `wr-cc` 链接腿 | PARTIAL | CI | infra | §3 ENV-09 | embedded-ci |
 | ENV-10 | T-M7-04 | Wear OS 设备 / 模拟器冒烟 | PARTIAL | CI | infra | §3 ENV-10 | wear-release-smoke |
@@ -188,16 +188,16 @@ pkg_add mozilla-rootcerts-openssl pkgin   # 生成 /etc/openssl/certs/ca-certifi
 pkgin -y install rust bmake
 cargo build -p poly-cli --ignore-rust-version
 cd core && cargo build --release --ignore-rust-version   # 原生核心，替换骨架里的 Linux 载荷
-fetch -o /tmp/pkgsrc.tar.gz https://cdn.netbsd.org/pub/pkgsrc/current/pkgsrc.tar.gz && tar xzf /tmp/pkgsrc.tar.gz -C /usr
+curl -fsSL -o /tmp/pkgsrc.tar.gz https://cdn.netbsd.org/pub/pkgsrc/current/pkgsrc.tar.gz && tar xzf /tmp/pkgsrc.tar.gz -C /usr
 cp -R <骨架> /usr/pkgsrc/misc/<DISTNAME> && cd /usr/pkgsrc/misc/<DISTNAME>
 bmake package PACKAGES=/tmp/pkgsrc-packages
 pkg_add -v /tmp/pkgsrc-packages/<DISTNAME>.tgz
 pkg_info <DISTNAME> && pkg_info -L <DISTNAME> && /usr/pkg/bin/polypack-app
 ```
 - 证据：`bmake package` 退出码 0；`pkg_add` / `pkg_info` 输出；安装后的二进制输出；`.tgz` SHA-256；NetBSD 版本与 `bmake -V MAKE_VERSION`；CI 首跑 run ID + artifact。
-- 现状：`PARTIAL`（工作流已接线，首跑证据待补）。bsd-ci `netbsd` 作业在 Linux 宿主生成骨架，VM 内原生构建应用核心后跑 `bmake package` → `pkg_add` → 运行安装二进制（不构建 poly CLI：pkgsrc rust 1.96 低于仓库 MSRV 1.98，且该槽只验证 pkgsrc 打包）；缺工具或任一步失败即作业红。 负责人：infra。
-- 下一步：dispatch `bsd-ci` 的 `netbsd` 作业，归档 run ID / 日志 / `.tgz` 摘要；绿后回写本卡与 TASKS。
-- 阻塞：首跑风险——NetBSD 11.0 二进制仓库的 rust 为 1.96.1nb2（低于 `rust-version = 1.98`，靠 `--ignore-rust-version`；若源码用到更新语言特性会硬失败）；pkgsrc 树 / 镜像带宽与 TCG 速度为外部变量。 运行位置：CI（NetBSD VM）可关闭。
+- 现状：`CLOSED`（2026-10-21）。run 39489096346 的 `netbsd / 11.0 / qemu` 在 Linux 宿主生成骨架，NetBSD 11.0 VM 内原生构建应用核心，`bmake package` → `pkg_add` / `pkg_info` → 运行安装二进制全部通过；`.tgz` 摘要与日志已归档。不构建 poly CLI：pkgsrc rust 1.96 低于仓库 MSRV 1.98，本槽只验证 pkgsrc 打包。 负责人：infra。
+- 下一步：无（该槽已关闭）；pkgsrc / NetBSD 大版本升级时复跑。
+- 阻塞：无；生产 pkgsrc 仓库签名与发布仍由部署者负责。
 
 ### ENV-08 · QNX SDP + QEMU 冒烟
 
@@ -491,7 +491,7 @@ poly preview --dry-run --target android --device android-phone --device android-
 | ENV-04 | `.github/workflows/miniprogram-contract.yml` | `real / macos-14` | CLI 预览测试接线；vars / secrets 未设时 NOTE |
 | ENV-05 | — | — | 无 Roku 作业 |
 | ENV-06 | `.github/workflows/bsd-ci.yml` | `openbsd` | VM 作业存在，`continue-on-error` 且 TCG 启动失败 |
-| ENV-07 | `.github/workflows/bsd-ci.yml` | `netbsd` | Linux 生成 pkgsrc 骨架 → NetBSD 11.0 VM 原生 cargo build + `bmake package` → `pkg_add` / `pkg_info` / 运行安装二进制；首跑证据待补 |
+| ENV-07 | `.github/workflows/bsd-ci.yml` | `netbsd` | Linux 生成 pkgsrc 骨架 → NetBSD 11.0 VM 原生应用核心构建 + `bmake package` → `pkg_add` / `pkg_info` / 运行安装二进制（run 39489096346 通过；不构建 poly CLI） |
 | ENV-08 | `.github/workflows/embedded-ci.yml` | `embedded`（matrix `qnx`） | 构建 / doctor / QEMU 接线；SDP 缺失即 SKIP |
 | ENV-09 | `.github/workflows/embedded-ci.yml` | `embedded`（matrix `vxworks`） | 构建接线；`wr-cc` 缺失即 SKIP |
 | ENV-10 | `.github/workflows/wear-release-smoke.yml` | `wear-device-smoke` | 发版硬门；缺 KVM / APK 阻断 |
@@ -526,7 +526,7 @@ poly preview --dry-run --target android --device android-phone --device android-
 | --- | --- | --- |
 | Vault 默认后端链 | 已关闭（代码） | `default_backends()` 已按环境装配 Vault；ENV-16 只剩真实服务 E2E |
 | Garmin 内建 iq 打包器 | 已交付 | `poly build --target garmin` 已有内建打包器；ENV-14 只关编译器 / 真机腿 |
-| 缺失的 CI 作业 | 基建 | NetBSD 首跑因缺 curl 失败，已改用 curl 待复跑；Garmin / Roku 仍只有执行卡，没有工作流 |
+| 缺失的 CI 作业 | 基建 | Garmin / Roku 仍只有执行卡，没有工作流 |
 
 ## 8. 参考
 
