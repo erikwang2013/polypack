@@ -6,9 +6,9 @@
 
 ## 1. Conclusion
 
-- The workspace version is raised from `0.0.0` to `1.12.0` with `Cargo.lock` synced; `poly --version` now matches the latest tag.
+- The workspace version is raised from `0.0.0` to `1.13.0` with `Cargo.lock` synced; `poly --version` now matches the latest tag.
 - All 9 crates have `description`, `license`, `repository`, `readme`, `keywords`, and `categories`. `readme` inherits the root `README.md`, while `keywords` / `categories` are declared once in the root manifest.
-- Internal workspace path dependencies now carry `version = "1.12.0"`; without a version, `cargo package` refuses to package them (path dependency without version).
+- Internal workspace path dependencies now carry `version = "1.13.0"`; without a version, `cargo package` refuses to package them (path dependency without version).
 - Every crate still sets `publish = false`. Nothing was published or uploaded, and no crates.io token was used.
 - Two names are already owned by others on crates.io: `poly-cli` and `poly-core`; the other 7 are available. Publication requires a rename or ownership transfer, which is a maintainer decision.
 - `cargo package --list` passes 9/9 (content audit); `cargo publish --dry-run` is refused because of `publish = false`. That is the intended release gate, not a metadata error.
@@ -31,7 +31,7 @@
 
 | Field | Source | Current value / status |
 | --- | --- | --- |
-| `version` | `[workspace.package]` | `1.12.0` |
+| `version` | `[workspace.package]` | `1.13.0` |
 | `description` | each crate `Cargo.toml` | filled for 9/9 |
 | `license` | `[workspace.package]` | `Apache-2.0` (required by crates.io) |
 | `repository` | `[workspace.package]` | `https://github.com/erikwang2013/polypack` |
@@ -45,8 +45,8 @@
 
 | Blocker | Evidence | Status / exit condition |
 | --- | --- | --- |
-| Version was `0.0.0` | root manifest value; `poly --version` printed `0.0.0` | resolved: raised to `1.12.0` |
-| Path dependencies had no `version` | `cargo package` reports "all dependencies must have a version specified when packaging" | resolved: workspace dependencies now carry `1.12.0` |
+| Version was `0.0.0` | root manifest value; `poly --version` printed `0.0.0` | resolved: raised to `1.13.0` |
+| Path dependencies had no `version` | `cargo package` reports "all dependencies must have a version specified when packaging" | resolved: workspace dependencies now carry `1.13.0` |
 | `publish = false` | set on 9/9 crates | open: remove in a separate commit after the maintainer approves the plan |
 | `poly-cli` name taken | crates.io has 0.5.0 owned outside this repository | open: rename to `polypack-cli` (available) or obtain ownership |
 | `poly-core` name taken | crates.io has 0.0.1 owned outside this repository | open: rename to `polypack-engine` (available) or obtain ownership |
@@ -95,10 +95,10 @@ cargo publish -p poly-cli
 | 3 | Remove the release gate | separate commit deleting `publish = false` | 9/9 crates publishable and CI still green |
 | 4 | Tests | `cargo test --workspace --no-fail-fast` | all green |
 | 5 | Lint | `cargo clippy --workspace --all-targets -- -D warnings` | all green |
-| 6 | Version consistency | `cargo run -p poly-cli -- --version` | prints `1.12.0`, matching `[workspace.package].version` |
+| 6 | Version consistency | `cargo run -p poly-cli -- --version` | prints `1.13.0`, matching `[workspace.package].version` |
 | 7 | Topological dry-run | `cargo publish --dry-run -p <crate>` | all pass in §2 order |
 | 8 | Actual publication | `cargo publish -p <crate>` | succeeds in §2 order; continue only after the index shows the crate |
-| 9 | Install verification | `cargo install poly-cli --version 1.12.0 --locked` | installs bin `poly`; `poly --version` prints `1.12.0` |
+| 9 | Install verification | `cargo install poly-cli --version 1.13.0 --locked` | installs bin `poly`; `poly --version` prints `1.13.0` |
 
 ## 7. Version and Tag Policy
 
