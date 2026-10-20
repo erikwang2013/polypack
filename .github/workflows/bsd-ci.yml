@@ -218,7 +218,7 @@ jobs:
               echo "$PKG_HTTPS" > /usr/pkg/etc/pkgin/repositories.conf
             fi
             pkgin -y update
-            pkgin -y install rust bmake
+            pkgin -y install rust bmake curl
             rustc --version
             cargo --version
           run: |
@@ -237,7 +237,7 @@ jobs:
             }
 
             # 工具在场门：缺任一工具立即失败（不落 SKIP 注记）。
-            for tool in rustc cargo bmake pkg_add pkg_info fetch; do
+            for tool in rustc cargo bmake pkg_add pkg_info curl; do
               command -v "$tool" >/dev/null || { echo "缺少工具：$tool"; exit 1; }
             done
             run_stage rustc rustc --version
@@ -253,7 +253,7 @@ jobs:
             test -x "$APP_CORE"
 
             # pkgsrc mk 基础设施（bmake 需要 ${PKGSRCDIR}/mk；骨架无 distfile，无需 distfiles）。
-            fetch -o /tmp/pkgsrc.tar.gz https://cdn.netbsd.org/pub/pkgsrc/current/pkgsrc.tar.gz \
+            curl -fsSL -o /tmp/pkgsrc.tar.gz https://cdn.netbsd.org/pub/pkgsrc/current/pkgsrc.tar.gz \
               >"$LOGS/pkgsrc-fetch.log" 2>&1
             cat "$LOGS/pkgsrc-fetch.log"
             tar xzf /tmp/pkgsrc.tar.gz -C /usr

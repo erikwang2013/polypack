@@ -35,9 +35,9 @@
 | ENV-08 | T-M6-03 / T-M6-09 | QNX SDP + QEMU 冒烟 | PARTIAL | CI | infra | §3 ENV-08 | embedded-ci |
 | ENV-09 | T-M6-05 | VxWorks `wr-cc` 链接腿 | PARTIAL | CI | infra | §3 ENV-09 | embedded-ci |
 | ENV-10 | T-M7-04 | Wear OS 设备 / 模拟器冒烟 | PARTIAL | CI | infra | §3 ENV-10 | wear-release-smoke |
-| ENV-11 | T-M7-05 / T-M7-06 | watchOS `xcodebuild` 真构建 | PARTIAL | CI | core + release-sec | §3 ENV-11 | mobile-contract · watchos |
-| ENV-12 | T-M7-07 | Fitbit `fitbit-build` 自检 | PARTIAL | CI | infra | §3 ENV-12 | wear-js-contract · fitbit |
-| ENV-13 | T-M7-08 | Zepp `zeus` + 模拟器安装 | PARTIAL | HOST | core | §3 ENV-13 | wear-js-contract · zepp |
+| ENV-11 | T-M7-05 / T-M7-06 | watchOS `xcodebuild` 真构建 | CLOSED | CI | core + release-sec | run 39455179337 · watchos | mobile-contract · watchos |
+| ENV-12 | T-M7-07 | Fitbit `fitbit-build` 自检 | CLOSED | CI | infra | run 39455185737 · fitbit | wear-js-contract · fitbit |
+| ENV-13 | T-M7-08 | Zepp `zeus` + 模拟器安装 | PARTIAL | HOST | core | run 39455185737 · zepp | wear-js-contract · zepp |
 | ENV-14 | T-M7-09 | Garmin Connect IQ SDK / devkey 编译 | PARTIAL | CI | core | §3 ENV-14 | — |
 | ENV-15 | T-M8-03 | keyring 信任根载体 | CLOSED | CI | release-sec | run 39409593528 · keyring-real | rust-ci · keyring-real |
 | ENV-16 | T-M8-03 | Vault 信任根载体 | CLOSED | CI | release-sec + core | run 39414212765 · vault-real | rust-ci · vault-real |
@@ -269,8 +269,8 @@ xcodebuild -project PolyPackWatch.xcodeproj -scheme PolyPackWatch \
 poly build --target watchos --json   # package 阶段内部跑 xcodebuild archive + ditto
 ```
 - 证据：`xcodebuild` 的 `BUILD SUCCEEDED`；build JSONL 的 `packaged`（format=watch）、无 `目标 watchos 未打包`；`.polypack/packages/watchos/export/Payload/polypack-watch.app` 的 `Info.plist` / `PkgInfo` / 可执行文件与 SHA-256；Xcode 版本与 SDK 列表；CI 首跑 run ID + artifact。
-- 现状：`PARTIAL`（工作流已接线，首跑证据待补）。macos-14 `watchos` 作业真跑 simulator SDK 编译与 `poly build --target watchos`；无 Apple 凭据时 sign / `codesign-verify` 如实告警未签名，不作为打包成功证据。 负责人：core。
-- 下一步：dispatch `mobile-contract` 的 `watchos` 作业，归档 run ID / xcodebuild 日志 / `.app` 摘要；绿后回写本卡。
+- 现状：`CLOSED`（2026-10-20）。run 39455179337 的 `watchos / macos-14` 真跑 `xcodebuild -sdk watchsimulator` 与 `poly build --target watchos` 通过（`BUILD SUCCEEDED`、`packaged` / `format=watch`、Payload `.app` 结构与摘要归档）；无 Apple 凭据时 sign / `codesign-verify` 仍如实告警未签名。 负责人：core。
+- 下一步：签名 / 公证腿在取得 Apple 凭据后另行立槽。
 - 阻塞：首跑风险——runner 镜像的 Xcode 需同时提供 watchOS 与 watchOS Simulator SDK；签名 / 公证需 Apple 凭据（保持外部）。 运行位置：CI（macos-14）可关闭打包腿；签名腿需凭据。
 
 ### ENV-12 · Fitbit `fitbit-build` 自检
@@ -288,8 +288,8 @@ poly build --target fitbit --json
 poly verify --target fitbit --json
 ```
 - 证据：`fitbit-build --help` 退出码 0；verify JSONL 出现 `fitbit-build 自检真跑通过`，且不含 `自检 SKIP-with-print` / `自检未通过`；`verified` / `fitbit-structure-check` 事件；`.fba` SHA-256；CI 首跑 run ID + artifact。
-- 现状：`PARTIAL`（工作流已接线，首跑证据待补）。`wear-js-contract` 的 `fitbit` 作业安装官方 CLI 后真跑 build / verify；工具缺席或自检失败即作业红。 负责人：infra。
-- 下一步：dispatch `wear-js-contract` 的 `fitbit` 作业，归档 run ID / verify JSONL / `.fba` 摘要；绿后回写本卡。
+- 现状：`CLOSED`（2026-10-20）。run 39455185737 的 `fitbit` 作业安装官方 CLI，`fitbit-build` 自检、`.fba` build / verify 通过并归档。 负责人：infra。
+- 下一步：`@fitbit/sdk-cli` 的交互入口在 Node 22 上游缺陷不影响本链路；升级 Node / CLI 时复跑。
 - 阻塞：首跑风险——keytar 在 Node 22 需系统 `libsecret-1-dev`（缺则 npm 安装直接失败）；`contract_m7_wear_js` 的旧断言要求 CLI 缺席时打印 SKIP，装 CLI 后该测试不适用（本作业改用直接 `poly build/verify`，不改测试）；`@fitbit/sdk-cli` 的 `fitbit` 入口在 Node 22 上因 `@openid/appauth` 1.4 模块布局变化报 `MODULE_NOT_FOUND`（本链路只用 `fitbit-build`，作业仅断言 `fitbit` 已安装、不执行它）；冷缓存首跑还要在 runner 上编 wasmtime（作业上限 60 min，已去 debuginfo / 关增量）。 运行位置：CI（ubuntu）可关闭。
 
 ### ENV-13 · Zepp `zeus` + 模拟器安装
@@ -308,8 +308,8 @@ poly verify --target zepp --json
 # 模拟器（外部人工腿）：手动把 .polypack/packages/zepp/*.zab 装入 Zepp OS 模拟器并截图
 ```
 - 证据：`zeus --version` 输出；verify JSONL 出现 `zeus 自检真跑通过`，且不含 `zeus 自检 SKIP-with-print` / `自检未通过`；`模拟器安装腿 SKIP-with-print` 注记保留；`verified` / `zepp-structure-check` 事件；`.zab` SHA-256；CI 首跑 run ID + artifact。
-- 现状：`PARTIAL`（工作流已接线，首跑证据待补）。`wear-js-contract` 的 `zepp` 作业真跑非 GUI 自检 / 打包；模拟器安装腿仍为外部人工腿。 负责人：core。
-- 下一步：dispatch `wear-js-contract` 的 `zepp` 作业并归档 run ID / verify JSONL / `.zab` 摘要；模拟器腿由人工执行并把截图附到 ENV-13 issue。
+- 现状：`PARTIAL`（2026-10-20）。run 39455185737 的 `zepp` 作业真跑 `zeus` 自检与 `.zab` build / verify 通过；模拟器安装腿仍为外部人工腿。 负责人：core。
+- 下一步：模拟器腿由人工执行并把截图附到 ENV-13 issue；其余 CI 腿已关。
 - 阻塞：首跑风险——`@zeppos/zeus-cli@1.9.3` 的 `zeus --version` 在 Node 22 的行为需首跑确认；模拟器是 GUI 应用，无法在 headless runner 自动安装 / 启动；冷缓存首跑需在 runner 上编 wasmtime（作业上限 60 min，已去 debuginfo / 关增量）。 运行位置：`zeus` 自检在 CI；模拟器安装需物理 GUI 宿主。
 
 ### ENV-14 · Garmin Connect IQ SDK / devkey 编译
@@ -495,9 +495,9 @@ poly preview --dry-run --target android --device android-phone --device android-
 | ENV-08 | `.github/workflows/embedded-ci.yml` | `embedded`（matrix `qnx`） | 构建 / doctor / QEMU 接线；SDP 缺失即 SKIP |
 | ENV-09 | `.github/workflows/embedded-ci.yml` | `embedded`（matrix `vxworks`） | 构建接线；`wr-cc` 缺失即 SKIP |
 | ENV-10 | `.github/workflows/wear-release-smoke.yml` | `wear-device-smoke` | 发版硬门；缺 KVM / APK 阻断 |
-| ENV-11 | `.github/workflows/mobile-contract.yml` | `watchos / macos-14` | 真 `xcodebuild`（watchsimulator）+ `poly build --target watchos`；签名 / 公证无 Apple 凭据（外部腿）；首跑证据待补 |
-| ENV-12 | `.github/workflows/wear-js-contract.yml` | `fitbit` | 安装 `@fitbit/sdk-cli` + `@fitbit/sdk`；`fitbit-build` 自检真跑 + `.fba` build/verify；SKIP / 自检未通过即红；首跑证据待补 |
-| ENV-13 | `.github/workflows/wear-js-contract.yml` | `zepp` | `zeus --version` + `.zab` build/verify；GUI 模拟器安装腿保持外部人工；首跑证据待补 |
+| ENV-11 | `.github/workflows/mobile-contract.yml` | `watchos / macos-14` | 真 `xcodebuild`（watchsimulator）+ `poly build --target watchos`，run 39455179337 通过；签名 / 公证无 Apple 凭据（外部腿） |
+| ENV-12 | `.github/workflows/wear-js-contract.yml` | `fitbit` | 安装 `@fitbit/sdk-cli` + `@fitbit/sdk`；`fitbit-build` 自检 + `.fba` build/verify，run 39455185737 通过；SKIP / 自检未通过即红 |
+| ENV-13 | `.github/workflows/wear-js-contract.yml` | `zepp` | `zeus --version` + `.zab` build/verify，run 39455185737 通过；GUI 模拟器安装腿保持外部人工 |
 | ENV-14 | — | — | 无 Connect IQ 作业 |
 | ENV-15 | `.github/workflows/rust-ci.yml` | `keyring-real` | Secret Service 真跑（run 39409593528）：`keyring_real` 真写 / 真读 / 真删 + CLI keyring 信任根 `plugin_granted` / `packaged` / `E_PLUGIN_0010`；作业内 SKIP 即失败 |
 | ENV-16 | `.github/workflows/rust-ci.yml` | `vault-real` | Vault dev（KV v2，run 39414212765）：`vault_real` 真读写 / 404 / 403 脱敏 + CLI Vault 信任根 `plugin_granted` / `packaged` / `E_PLUGIN_0010`；作业内 SKIP 即失败 |
@@ -526,7 +526,7 @@ poly preview --dry-run --target android --device android-phone --device android-
 | --- | --- | --- |
 | Vault 默认后端链 | 已关闭（代码） | `default_backends()` 已按环境装配 Vault；ENV-16 只剩真实服务 E2E |
 | Garmin 内建 iq 打包器 | 已交付 | `poly build --target garmin` 已有内建打包器；ENV-14 只关编译器 / 真机腿 |
-| 缺失的 CI 作业 | 基建 | NetBSD / watchOS / Fitbit / Zepp 作业已接线（首跑证据待补）；Garmin / Roku 仍只有执行卡，没有工作流 |
+| 缺失的 CI 作业 | 基建 | NetBSD 首跑因缺 curl 失败，已改用 curl 待复跑；Garmin / Roku 仍只有执行卡，没有工作流 |
 
 ## 8. 参考
 
