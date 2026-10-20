@@ -326,7 +326,7 @@ This document covers 22 candidates: 7 incubation items, 8 planned platforms, 2 o
 
 ### M9-D1 · Plugin marketplace distribution: official registry vs decentralized index
 
-- Status: candidate · unscheduled; decision recorded: signed decentralized index ([ADR 0004](../decisions/0004-plugin-marketplace.md)).
+- Status: candidate · partially delivered; the decision is a signed decentralized index ([ADR 0004](../decisions/0004-plugin-marketplace.md)), and T-M9-41's signed index plus `poly plugin add/search` are delivered; the official registry / production key ceremony remain external.
 - Trigger: at least 3 third-party plugins, or the first external request for "how to discover / install plugins".
 - Why: ADR 0003 fixed the WASM sandbox and `target-spec/v1`, but plugins are distributed only as files (`crates/poly-plugin`, `crates/poly-cli/src/plugin_new.rs`) with no index, version resolution, revocation, or provenance display.
 - Goals: choose a distribution model and define a verifiable index format. Non-goals: a paid marketplace, hosted plugin execution, or changing the SRI / signature trust chain.
@@ -344,7 +344,7 @@ This document covers 22 candidates: 7 incubation items, 8 planned platforms, 2 o
 
 ### M9-D2 · Remote farm: self-hosted only vs hosted service
 
-- Status: candidate · unscheduled; decision recorded: self-hosted only for GA ([ADR 0005](../decisions/0005-farm-hosting.md)).
+- Status: candidate · partially delivered; GA is self-hosted only ([ADR 0005](../decisions/0005-farm-hosting.md)), and T-M9-44's hardening checklist + preflight / drill are delivered; a production-host drill remains external.
 - Trigger: external users lack macOS / Windows build hosts and explicitly ask for hosting; or self-hosted deployment support becomes a burden.
 - Why: farm v1 already has a protocol, isolation, shared cache, and deployment guide (`crates/poly-cli/src/farm.rs`, `docs/FARM.md`, `docs/FARM-DEPLOY.md`), but the ROADMAP principle says user code and keys are not hosted; hosting changes the trust boundary and business model.
 - Goals: make a clear "self-hosted only" or "hosted service" decision with boundaries. Non-goals: this document does not commit to implementing hosting or change current self-hosted capability.
