@@ -40,7 +40,7 @@ Environment slots are tracked separately from code gaps: a slot closes with envi
 | ENV-13 | T-M7-08 | Zepp `zeus` + simulator install | PARTIAL | HOST | core | §3 ENV-13 | — |
 | ENV-14 | T-M7-09 | Garmin Connect IQ SDK / devkey compile | PARTIAL | CI | core | §3 ENV-14 | — |
 | ENV-15 | T-M8-03 | keyring trust-root carrier | CLOSED | CI | release-sec | run 39409593528 · keyring-real | rust-ci · keyring-real |
-| ENV-16 | T-M8-03 | Vault trust-root carrier | OPEN | CI | release-sec + core | §3 ENV-16 | — |
+| ENV-16 | T-M8-03 | Vault trust-root carrier | CLOSED | CI | release-sec + core | run 39414212765 · vault-real | rust-ci · vault-real |
 | ENV-17 | T-M8-09 | Real S3 / OSS round-trip + farm second run | OPEN | CI | infra + release-sec | §3 ENV-17 | — |
 | ENV-18 | T-M2-12 | Branch protection admin bypass | CLOSED | HUMAN | maintainer | §3 ENV-18 | secret-scan |
 | ENV-19 | GA §7.2 | Human external developer trial | OPEN | HUMAN | docs | §3 ENV-19 | — |
@@ -341,21 +341,20 @@ dbus-run-session -- bash -c '
 
 ### ENV-16 · Vault trust-root carrier
 
-- Linked task: T-M8-03 (plugin trust root). Gap: `vault_real` verifies `VaultBackend` KV v2 read/write; `default_backends()` now adds `VaultBackend<HttpVaultClient>` when `VAULT_ADDR` / `VAULT_TOKEN` are available (plugin trust roots, publishing, and signing share the same backend chain), so the code gap is closed. The remaining work is a real Vault service plus a real-component CLI E2E.
+- Linked task: T-M8-03 (plugin trust root). Gap: `vault_real` verifies `VaultBackend`'s own KV v2 read/write; `default_backends()` adds `VaultBackend<HttpVaultClient>` when `VAULT_ADDR` / `VAULT_TOKEN` are available (plugin trust roots, publishing, and signing share the same backend chain), so the code gap is closed. The CLI E2E `plugin_trust_root_vault` (only changing to `source = "vault"`) is wired into the rust-ci `vault-real` job, and its first real Vault service run (run 39414212765) passed.
 - Environment / toolchain / credentials: Vault service (dev or real cluster), `VAULT_ADDR`, `VAULT_TOKEN`, KV v2 path; plugin public-key payload `base64(JSON)`.
-- Gates: `POLY_VAULT_REAL=1`, `VAULT_ADDR`, `VAULT_TOKEN`; CLI config `source = "vault"`.
+- Gates: `POLY_VAULT_REAL=1`, `VAULT_ADDR`, `VAULT_TOKEN`; CLI config `trust_root = { name = "plugin-trust-root", source = "vault" }`.
 - Commands:
 ```sh
-vault server -dev -dev-root-token-id=root &
+vault server -dev -dev-root-token-id=root -dev-listen-address=127.0.0.1:8200 &
 export VAULT_ADDR=http://127.0.0.1:8200 VAULT_TOKEN=root
 POLY_VAULT_REAL=1 cargo test -p poly-sign --test vault_real -- --nocapture
-# With VAULT_* set, the default backend chain includes VaultBackend; this runs the real plugin trust-root E2E
-poly build --target linux-reference --json
+POLY_VAULT_REAL=1 cargo test -p poly-cli --test plugin_trust_root_vault -- --nocapture
 ```
-- Evidence (required before closure): the `vault_real` round-trip alone is insufficient; need real CLI-side `plugin_granted` / `packaged` and `E_PLUGIN_0010` error-path output, with no token in logs.
-- Status: `OPEN` (environment slot: needs a real Vault service and credentials); the code side is wired, and `vault_real` remains gated by `POLY_VAULT_REAL=1`. Owner: release-sec + core.
-- Next action: run the real E2E on a host with a Vault service (`vault_real` + CLI trust-root / publishing), with no token in logs.
-- Blocker: needs a Vault service and credentials; the code gap is closed. Execution mode: CI (Vault dev server) can close it; no service is available now.
+- Evidence: `vault_real` real KV v2 round-trip / 404 / 403 redaction output; `plugin_trust_root_vault` runs `poly build --target linux-reference --json` and emits `plugin_granted` / `packaged`, with `E_PLUGIN_0010` after the KV entry is deleted; no token in logs. The rust-ci `vault-real` first run, 39414212765, passed.
+- Status: `CLOSED` (2026-10-20). The CI job and gated E2E passed on a real Vault dev service, and any SKIP fails the job. Owner: release-sec + core.
+- Next action: a real cluster / private-CA scenario is a separate slot; dev-server evidence must not be presented as production Vault.
+- Blocker: none (the CI dev server is provided); the code gap is closed.
 
 ### ENV-17 · Real S3 / OSS round-trip + farm second run
 
@@ -486,7 +485,7 @@ Suggested evidence path: `env-slots/<ENV-XX>/<UTC timestamp>/`. The repository d
 | ENV-13 | — | — | No `zeus` job |
 | ENV-14 | — | — | No Connect IQ job |
 | ENV-15 | `.github/workflows/rust-ci.yml` | `keyring-real` | Real Secret Service (run 39409593528): `keyring_real` write / read / delete + CLI keyring trust root `plugin_granted` / `packaged` / `E_PLUGIN_0010`; a SKIP fails the job |
-| ENV-16 | — | — | No Vault job; the default backend chain is wired from the environment |
+| ENV-16 | `.github/workflows/rust-ci.yml` | `vault-real` | Vault dev (KV v2, run 39414212765): `vault_real` real read/write / 404 / 403 redaction + CLI Vault trust root `plugin_granted` / `packaged` / `E_PLUGIN_0010`; a SKIP fails the job |
 | ENV-17 | — | — | No S3 job |
 | ENV-18 | `.github/workflows/secret-scan.yml` | `scan` (3 hosts) | Supplies required checks; admin bypass was closed on 2026-10-20 and is not a workflow setting |
 | ENV-19 | — | — | Human trial, no workflow |
@@ -512,7 +511,7 @@ Suggested evidence path: `env-slots/<ENV-XX>/<UTC timestamp>/`. The repository d
 | --- | --- | --- |
 | Vault default backend chain | Closed (code) | `default_backends()` assembles Vault from the environment; ENV-16 is down to the real-service E2E |
 | Garmin built-in iq packager | Delivered | `poly build --target garmin` now has a built-in packager; ENV-14 closes only the compiler / device leg |
-| Missing CI jobs | Infrastructure | NetBSD / S3 / Vault / watchOS / Fitbit / Zepp / Garmin / Roku have run cards only, no workflow |
+| Missing CI jobs | Infrastructure | NetBSD / S3 / watchOS / Fitbit / Zepp / Garmin / Roku have run cards only, no workflow |
 
 ## 8. References
 

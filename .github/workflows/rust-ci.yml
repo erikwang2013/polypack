@@ -212,6 +212,86 @@ jobs:
             fi
           done
 
+  # ENV-16：真实 Vault（dev 模式，KV v2）上的 Vault 信任根载体（Linux 腿）。
+  #
+  # 官方 HashiCorp apt 源安装，不钉版本（源里的旧版本会自然过期，钉死反而静默腐烂）。
+  # dev 服务器只监听 127.0.0.1，root token 是显式的 dev 令牌，不是 secrets；任何步骤
+  # 都不得把它 echo 出去，启动横幅也重定向到文件、失败回显先滤掉 Root Token 行。
+  # 两个测试自带「缺环境即 SKIP 并绿」的本地守卫；CI 里 SKIP 等同缺证据：日志 grep
+  # 兜底，必须看到各测试名真跑通过，不能 0 个测试也算绿。
+  vault-real:
+    name: vault-real / trust-root-carrier
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      VAULT_ADDR: http://127.0.0.1:8200
+      VAULT_TOKEN: root
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Rust toolchain（stable）
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: 构建缓存
+        uses: Swatinem/rust-cache@v2
+
+      - name: 安装 Vault（HashiCorp 官方 apt 源）
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq gnupg gpg wget
+          wget -qO- https://apt.releases.hashicorp.com/gpg \
+            | sudo gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
+          echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" \
+            | sudo tee /etc/apt/sources.list.d/hashicorp.list > /dev/null
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq vault
+          vault version
+
+      - name: 启动 Vault dev 并播种 KV v2
+        run: |
+          set -euo pipefail
+          vault server -dev -dev-root-token-id=root -dev-listen-address=127.0.0.1:8200 \
+            > /tmp/vault-dev.log 2>&1 &
+          for _ in $(seq 1 60); do
+            if vault status > /dev/null 2>&1; then break; fi
+            sleep 1
+          done
+          if ! vault status; then
+            echo "vault-real：Vault dev 服务器未就绪" >&2
+            grep -v "Root Token" /tmp/vault-dev.log | tail -n 50 >&2 || true
+            exit 1
+          fi
+          # 与 HttpVaultClient 同一 KV v2 契约：secret/data/<名>，字段 payload = base64(JSON)。
+          # 测试会用自己的一次性公钥覆盖同名条目；这里先证明挂载点与路径可用。
+          payload=$(printf '{"public_key":"c2VlZA=="}' | base64 -w0)
+          vault kv put secret/plugin-trust-root payload="$payload" > /dev/null
+          test "$(vault kv get -field=payload secret/plugin-trust-root)" = "$payload"
+
+      - name: 真实 Vault 闭环 + CLI 信任根 E2E
+        env:
+          POLY_VAULT_REAL: "1"
+        run: |
+          set -euo pipefail
+          cargo test -p poly-sign --test vault_real -- --nocapture 2>&1 \
+            | tee /tmp/poly-vault-real.log
+          cargo test -p poly-cli --test plugin_trust_root_vault -- --nocapture 2>&1 \
+            | tee -a /tmp/poly-vault-real.log
+          if grep -q "SKIP" /tmp/poly-vault-real.log; then
+            echo "vault-real：测试打印了 SKIP（缺 Vault 环境 / gpg），不能当真实证据" >&2
+            exit 1
+          fi
+          for expected in \
+            "test real_vault_kv_v2_round_trip_through_backend ... ok" \
+            "test missing_entry_is_reported_with_path_and_no_token_leak ... ok" \
+            "test bad_token_is_403_and_errors_stay_redacted ... ok" \
+            "test cli_resolves_trust_root_from_vault_and_loads_signed_plugin ... ok"; do
+            if ! grep -qF "$expected" /tmp/poly-vault-real.log; then
+              echo "vault-real：测试未真跑通过：$expected" >&2
+              exit 1
+            fi
+          done
+
   # T-M9-53/54：真实 Tauri v2 样例 → WiX MSI → 安装 / 启动 / 卸载 / 残留。
   #
   # 前置：windows-2022 预装 WebView2 Runtime 与 WiX Toolset v3.14（candle / light）。

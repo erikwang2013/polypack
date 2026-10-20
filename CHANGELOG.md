@@ -4,6 +4,13 @@
 版本号自 v1.0.0 起按语义化版本递增（tag 与 GitHub Release 名称一致，见 [README](README.md#路线图)）。
 Notable changes are recorded here; since v1.0.0, tags and releases follow `vX.Y.Z` semantic increments.
 
+## [Unreleased]
+
+### Fixed
+- **wasmtime 49.0.4**：修复 RUSTSEC-2026-0378（组件模型流载荷类型 panic）与 RUSTSEC-2026-0379（aarch64 Cranelift `br_table` 跳转错误）；精确版本钉从 `=49.0.3` 提升到 `=49.0.4`，`Cargo.lock` 同步，`cargo deny check advisories` 通过。
+
+*wasmtime 49.0.4: fixes RUSTSEC-2026-0378 (component-model stream payload panic) and RUSTSEC-2026-0379 (aarch64 Cranelift `br_table` mis-jump); the exact pin moves from `=49.0.3` to `=49.0.4`, `Cargo.lock` is synced, and `cargo deny check advisories` passes.*
+
 ## [1.13.0] — 2026-10-20
 
 ### Added
