@@ -173,7 +173,7 @@ GPG 操作用一次性 0700 `GNUPGHOME`；信任根只接受公钥，绝不内�
 - 每个任务在 worker 进程内执行；`--work-dir` 下每任务一个 0700 一次性目录，目录名只含 pid + 序号，结束即 `remove_dir_all`，worker 退出删除工作根；失败返回 `E_FARM_0006`。
 - 凭据只经 `--credential <档案名>=env:<变量名>` 注入内存，任务结束随 `CredentialScope` 清空；参数与值不进 argv、日志或磁盘。磁盘 / 日志零明文由演练脚本断言（Round 3）。
 - `--cache <共享目录>` 使用 `DirSharedStore` 共享目录 CAS：同一输入在不同 worker 上产生同一缓存键，二跑命中 100%；对象写入用同目录临时文件 + 原子 rename。共享目录不可用时告警并降级到工程本地 CAS，构建继续。
-- `--cache s3://<bucket>[/<prefix>]` 使用 S3 / OSS 兼容后端（AWS SigV4；`x-oss-s3-compat` 覆盖 OSS 的 S3 兼容模式）。配置 / IAM 见 FARM-DEPLOY §6.2；对象布局与共享目录一致（`aws s3 sync` 可迁移）。已用进程内 mock S3 做网络契约验证（服务端独立重算签名）；真实云环境槽 `POLYPACK_S3_REAL=1` 尚未跑通，不宣称真实云已验证。后端不可达时同样告警一次并降级到工程本地 CAS。
+- `--cache s3://<bucket>[/<prefix>]` 使用 S3 / OSS 兼容后端（AWS SigV4；`x-oss-s3-compat` 覆盖 OSS 的 S3 兼容模式）。配置 / IAM 见 FARM-DEPLOY §6.2；对象布局与共享目录一致（`aws s3 sync` 可迁移）。已用进程内 mock S3 与 MinIO CI（ENV-17，run 39425835979）验证兼容契约和两 worker 二跑；AWS / 阿里云 OSS 原生仍未跑通，不宣称第三方云已验证。后端不可达时同样告警一次并降级到工程本地 CAS。
 
 ### 4.3 发布流水线
 
@@ -327,11 +327,11 @@ CARGO_TARGET_DIR=target cargo test -p poly-cli --test plugin_trust_root_env
 |---|---|---|
 | 无独立 `poly plugin check` | 作者需手工串 build / test / digest / build | 已修：`poly plugin check <dir>` 一条命令校验脚手架文件 / WIT 同步 / 产物摘要（产物缺失仅警告） |
 | 模板 WIT 与宿主 WIT 无自动比对 | 接口升级需手工同步模板副本 | 已修：`tools/check-docs.mjs` 新增模板 WIT ↔ 宿主 WIT 逐字比对门禁；`poly plugin check` 对工程 WIT 做同口径校验 |
-| 签名 / 信任根未在演练端到端走查 | 演练只覆盖 SRI 负向 | 已修（2026-10-19）：§6.6 `tools/plugin-signature-drill.sh` 真跑签名链 8/8（有效 / 篡改 / 缺签名 / 错公钥 / SRI 先行 / 信任根不可用 / 无泄漏 / 配置引用）；同节 `plugin_trust_root_env` 已自动化 CLI env 载体 + 真实组件制品的 `poly build` 通过 / 失败路径（有效签名出包、错公钥 `E_PLUGIN_0009`、缺 env `E_PLUGIN_0010`）。剩余：keyring / Vault 载体已接线（`default_backends()` 按 `VAULT_ADDR` / `VAULT_TOKEN` 装配 Vault；keyring 走宿主 Secret Service / Keychain / Credential Manager）；真实服务上的 E2E 仍是环境槽（见 [ENV-SLOTS](ENV-SLOTS.md)） |
+| 签名 / 信任根未在演练端到端走查 | 演练只覆盖 SRI 负向 | 已修（2026-10-19）：§6.6 `tools/plugin-signature-drill.sh` 真跑签名链 8/8（有效 / 篡改 / 缺签名 / 错公钥 / SRI 先行 / 信任根不可用 / 无泄漏 / 配置引用）；同节 `plugin_trust_root_env` 已自动化 CLI env 载体 + 真实组件制品的 `poly build` 通过 / 失败路径（有效签名出包、错公钥 `E_PLUGIN_0009`、缺 env `E_PLUGIN_0010`）。剩余：keyring / Vault 载体已关闭——ENV-15（run 39409593528）与 ENV-16（run 39414212765）已在隔离 Secret Service / Vault dev 服务上真跑通过；生产 Vault 集群 / 私有 CA 另行立槽 |
 | 单全局 `--credential` 无法满足异构多目标 | rpm/deb 与 pkg 需不同签名材料时只能分次发布 | 已修：`poly release` 支持重复 `--credential` 与 `TARGET=REF` 映射；裸 `REF` 仍为全局缺省；未知/重复映射报 `E_PLAN_0002`；异构真跑仍需真实 keyring / Vault 环境 |
 | keyring 3.6.3 拉入 zbus 4.x（unmaintained） | 供应链告警（非漏洞） | 已升级 keyring 4.2.0（`v1` 兼容层）→ zbus 5.19；zbus 5 仍以独立 crate 携带 `zvariant` / `zvariant_derive` / `zbus_names`，RUSTSEC-2026-0370/0371/0372 豁免保留（升级路径 zbus 6） |
 | macOS 农场 IPA R3 为环境槽 SKIP | Linux 环境无 Xcode / codesign | 按 FARM-DEPLOY §9 保持开放，macOS 主机执行后替换 |
-| 真实云对象存储（S3 / OSS）未在真实云上跑通 | 已实现 S3 兼容后端（SigV4 + OSS `x-oss-s3-compat`），mock 契约已验证 | 已实现，mock-verified；真实云环境槽（`POLYPACK_S3_REAL=1` + `POLYPACK_S3_TEST_URI`）保持开放，跑通前不宣称真实云已验证 |
+| 真实云对象存储（AWS S3 / 阿里云 OSS 原生）未跑通 | S3 兼容后端（SigV4 + OSS `x-oss-s3-compat`）已实现；MinIO CI 已覆盖兼容往返与两 worker 二跑 | ENV-17 已关闭（run 39425835979）：`s3_real` PUT / GET / LIST / DELETE + 共享桶 1/1 命中通过；AWS / 阿里云 OSS 原生证据另行提供，MinIO 结果不代表第三方云 |
 | Garmin 无真实 Connect IQ SDK / 设备证据 | 内建 iq 打包器已落地，只做结构自检；真实编译 / 真机行为仍需环境槽 | 设 `CIQ_MONKEYC` / `CIQ_HOME` / `CONNECTIQ_HOME` + `CIQ_DEVKEY` 后真跑 `monkeyc`；结构自检 `check_garmin_iq_structure` 已入 verify；真机走查见 [ENV-SLOTS](ENV-SLOTS.md) |
 | 8 个规划平台尚未声明 TargetSpec | 49 目标表中标注「规划中」 | 详细立项与条件任务见 [INITIATIVES](INITIATIVES.md) §3（M9-P1..P8）；平台结论见 [ADR 0006](decisions/0006-platform-decisions.md)；按 ROADMAP 推进，生成表随注册表更新 |
 
@@ -340,9 +340,9 @@ CARGO_TARGET_DIR=target cargo test -p poly-cli --test plugin_trust_root_env
 | 动作 | 触发条件 | 验收 |
 |---|---|---|
 | 人类外部开发者试用 | GA 发布后 | 记录卡点并回写文档；协议与任务见 [INITIATIVES](INITIATIVES.md) M9-G2 |
-| keyring / Vault 信任根载体端到端 | 下一次涉及签名发布的演练（需宿主 Secret Service / Keychain / Credential Manager 或 Vault 服务） | 代码侧已接线（`default_backends()` 按环境装配 Vault）；仍需在真实服务上跑 keyring / Vault 解析信任根 + `poly build` 真实插件产物的验签通过 / 失败路径（env 载体已由 §6.6 `plugin_trust_root_env` 自动化） |
+| 真实 AWS / 阿里云 OSS 原生证据 | 有对应云账号 / 桶 / 凭据 | 设 `POLYPACK_S3_REAL=1` + `POLYPACK_S3_TEST_URI` 跑 `tests/s3_real.rs`，再做两 worker 二跑命中；MinIO 证据（ENV-17）不能替代 |
 | macOS worker + IPA 真跑 | 有 macOS 主机 | FARM-DEPLOY §9 日志与产物归档 |
-| 真实云对象存储二跑命中 | 有 S3 / OSS 桶与凭据 | 设 `POLYPACK_S3_REAL=1` + `POLYPACK_S3_TEST_URI` 跑 `tests/s3_real.rs`，再做两 worker 二跑命中 |
+
 | Garmin 真编译 + 真机走查 | SDK + devkey + 设备就绪 | 真 `.iq` 经 `check_garmin_iq_structure` 且完成设备 / 模拟器走查；见 [ENV-SLOTS](ENV-SLOTS.md) |
 
-参考：[README](../README.md) · [ROADMAP](ROADMAP.md) · [TASKS](TASKS.md) · [FARM-DEPLOY](FARM-DEPLOY.md) · [EXPERIMENTAL-TARGETS](EXPERIMENTAL-TARGETS.md) · [INITIATIVES](INITIATIVES.md) · [ENV-SLOTS](ENV-SLOTS.md) · English: [GA.en.md](GA.en.md)
+参考：[README](../README.md) · [ROADMAP](ROADMAP.md) · [TASKS](TASKS.md) · [FARM-DEPLOY](FARM-DEPLOY.md) · [EXPERIMENTAL-TARGETS](EXPERIMENTAL-TARGETS.md) · [INITIATIVES](INITIATIVES.md) · [ENV-SLOTS](ENV-SLOTS.md) · [ENV-PROVIDE](ENV-PROVIDE.md) · English: [GA.en.md](GA.en.md)

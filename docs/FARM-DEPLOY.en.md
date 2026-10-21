@@ -392,7 +392,7 @@ POLY=/usr/local/bin/poly tools/farm-preflight.sh \
 - `crates/poly-core/src/farm/`: protocol, pool scheduling, one-shot work directories.
 - `crates/poly-cache/src/store.rs`: shared-directory CAS, shared object envelope and fallback backend.
 - `crates/poly-cache/src/s3.rs`, `crates/poly-cache/src/s3/sigv4.rs`: S3 / OSS-compatible backend and SigV4 signing.
-- `crates/poly-cache/tests/s3_contract.rs`: mock-S3 wire contract (independent SigV4 recomputation); `tests/s3_real.rs` is the real-cloud environment slot (`POLYPACK_S3_REAL=1`).
+- `crates/poly-cache/tests/s3_contract.rs`: mock-S3 wire contract (independent SigV4 recomputation); `tests/s3_real.rs` is the S3 / OSS-compatible environment slot (`POLYPACK_S3_REAL=1`); MinIO CI passes (ENV-17, run 39425835979), with native AWS / Alibaba OSS evidence separate.
 - `crates/poly-sign/src/secret.rs`, `crates/poly-sign/src/inject.rs`: credential backend contract and memory injection.
 - `tools/farm-drill.sh`: the executable drill for §8.
 - `tools/farm-preflight.sh`: the production preflight for §11.1.

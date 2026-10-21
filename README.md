@@ -7,6 +7,8 @@
 > **项目状态：M8 生态 GA 已交付并收口**（2026-10-18，13/13——wasmtime 插件沙箱与 `target-spec/v1` WIT 契约（默认零能力、显式授权与三道上限）、SRI + GPG 分离签名链（CredentialRef 信任根）、独立模板仓库与 `poly plugin new|digest`、内建目标统一 `TargetProvider`（内建即官方插件，无 builtin 特判）、农场 v1（并发/worker 池/超时重试/隔离/共享 CAS）、发布 GA（退避/幂等/回执 v2/`poly retry --from publish`）、49 目标现状表，双语 [GA 文档](docs/GA.md)、技术审查与「1 天新增目标」演练（独立开发者代理 38 min 完成脚手架→自定义出包）。M0–M8 里程碑均已收口（条件任务与环境槽按 TASKS 注记）；M7 细节：adapter-wear 紧凑 tokens、Wear OS 目标与表单冒烟双轨（含发版门）、watchOS SwiftUI 模板与打包/签名链（实验）、Fitbit `.fba` / Zepp `.zab`、Garmin Monkey C spike（实验）、实验目标三段式文档、穿戴契约与金样；xcodebuild / codesign / Wear 设备类环境槽按 SKIP-with-print，garmin 的内建 iq 打包器已接线（monkeyc 环境槽 + 结构自检））。可用命令：`poly doctor` / `poly init` / `poly build`（deb / AppDir / Web 静态包；**Android AAB/APK**；**iOS 未签名 IPA**（macOS 宿主）；**鸿蒙 HAP 打包 + hap-sign-tool 签名校验**；**微信/支付宝/抖音/快应用代码包**（含 wasm 沙箱出口随包）；**TV 家族：android-tv / fire-tv（Leanback）、tvos（复用 Apple 链）、tizen-tv / webos-tv / vidaa-tv / smartcast-tv（web 系）**；**穿戴：Wear OS / Fitbit / Zepp / watchOS※实验 / Garmin※实验**；sign/verify 入 DAG；`[budget]` 体积门禁 warn/fail）/ `poly bridge`（uniffi + **ohos NAPI** + **wasm** 三出口）/ `poly farm worker|submit`（远程农场）/ `poly scan`（密钥扫描）/ `poly verify --reproducible` / `poly targets`（目标矩阵 JSON，供 CI 派生）/ `poly retry --from sign|verify` / `poly plugin new|digest`（插件脚手架与 SRI 摘要） / `poly dev` / `poly clean` / `poly release`（自托管 rpm/deb/pkg 仓库元数据 + 签名 + 回执归档，`--target fedora,freebsd`）。十一工作流三宿主全绿 + `release` 发版工作流（新增 `wear-smoke` 夜跑表单冒烟与 `wear-release-smoke` 发版门；`bsd-ci`：FreeBSD 14.5 QEMU 原生构建 + 安装冒烟真跑；OpenBSD 7.9 为尽力腿，托管 runner 无 KVM、镜像 TCG 起不来时按 SKIP-with-print 留痕；每夜。新增 `embedded-ci`：tier-6 矩阵从 TargetSpec 派生 + QNX / Zephyr / FreeRTOS QEMU 冒烟，缺工具链按 SKIP-with-print 并在 job summary 列 REAL/SKIP；每夜）；tvOS 打包链 macos-14 真跑首证（XCFramework→archive→IPA 7,065B）；Android TV 设备冒烟 6/6 走查 + 「无指针完成核心任务」+ 焦点环像素实证；遥控器冒烟三腿复合 14 场景 / 69 键步全过。里程碑与环境槽注记见 [docs/TASKS.md](docs/TASKS.md)，规划见 [docs/ROADMAP.md](docs/ROADMAP.md)。
 >
 > **2026-10-19 缺口收口**：`poly release` 按目标凭据、Garmin 内建 `.iq` 打包器、Vault 信任根载体、keyring/zbus 升级、GitHub Releases 二进制与文档一致性已落地；环境槽关闭台账见 [ENV-SLOTS](docs/ENV-SLOTS.md)，未立项方向见 [INITIATIVES](docs/INITIATIVES.md)。
+>
+> **2026-10-21 · v1.15.0**：M9 收口——SBOM、多应用工作区、`release --changed`、OTA、商店元数据、GUI、设备预览协议、签名插件索引（`poly plugin add/search`）与农场加固已交付；ENV-01/07/11/12/15/16/17/18 已关闭。仍需你提供的凭据 / 授权 / 硬件 / 真人试用入口见 [ENV-PROVIDE](docs/ENV-PROVIDE.md)。新增命令：`poly history`、`poly update`、`poly preview`、`poly deploy line-liff`、`poly verify --sbom`、`poly plugin add|search`。
 
 ---
 
@@ -370,7 +372,7 @@ polypack/
 
 自 v1.0.0 起，本仓库的 tag 与 GitHub Release 名称统一按 `vX.Y.Z` 语义化递增（v1.0.0 = 本文档与规划基线）。
 
-已立项的扩展方向（SBOM / monorepo / 增量发布 / OTA / 商店元数据 / GUI 仪表盘 / 设备预览 / ADR）见 [docs/ROADMAP.md](docs/ROADMAP.md) 第 13 节；每个方向的详细立项、方案与任务分解见 [docs/INITIATIVES.md](docs/INITIATIVES.md)，环境槽关闭协议见 [docs/ENV-SLOTS.md](docs/ENV-SLOTS.md)。
+已立项的扩展方向（SBOM / monorepo / 增量发布 / OTA / 商店元数据 / GUI 仪表盘 / 设备预览 / ADR）见 [docs/ROADMAP.md](docs/ROADMAP.md) 第 13 节；每个方向的详细立项、方案与任务分解见 [docs/INITIATIVES.md](docs/INITIATIVES.md)，环境槽关闭协议见 [docs/ENV-SLOTS.md](docs/ENV-SLOTS.md)，需要你提供凭据 / 授权 / 硬件 / 真人试用时的入口见 [docs/ENV-PROVIDE.md](docs/ENV-PROVIDE.md)，SBOM 用法与样例见 [docs/SBOM.md](docs/SBOM.md)。
 
 | 里程碑 | 内容 |
 |---|---|

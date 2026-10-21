@@ -2329,7 +2329,7 @@ dependencies = [
 
 [[package]]
 name = "poly-cache"
-version = "1.14.0"
+version = "1.15.0"
 dependencies = [
  "blake3",
  "hmac",
@@ -2344,7 +2344,7 @@ dependencies = [
 
 [[package]]
 name = "poly-core"
-version = "1.14.0"
+version = "1.15.0"
 dependencies = [
  "poly-cache",
  "poly-targets",
@@ -2370,7 +2370,7 @@ dependencies = [
 
 [[package]]
 name = "poly-targets"
-version = "1.14.0"
+version = "1.15.0"
 dependencies = [
  "schemars 0.8.22",
  "serde",
@@ -2379,7 +2379,7 @@ dependencies = [
 
 [[package]]
 name = "poly-toolchain"
-version = "1.14.0"
+version = "1.15.0"
 dependencies = [
  "serde",
  "thiserror 2.0.21",

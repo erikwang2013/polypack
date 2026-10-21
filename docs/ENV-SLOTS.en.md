@@ -1,6 +1,6 @@
 # Environment slot close-out tracker (ENV-SLOTS)
 
-> Status snapshot: 2026-10-20 · Baseline: `main` (same revision as the current `TASKS.md` / `GA.md`).
+> Status snapshot: 2026-10-21 · Baseline: `main` (same revision as the current `TASKS.md` / `GA.md`).
 > This tracker records **environment slots only**: acceptance legs whose in-repo structure / mock / command-assembly parts already run, but whose real toolchain, physical device, real cloud, or human sign-off has not executed and therefore still prints SKIP-with-print.
 > Rule: `SKIP-with-print` is not PASS. A slot may not be marked ✅ in TASKS / GA without raw evidence (command, exit code, tool versions, artifact digest). 中文版：[ENV-SLOTS.md](ENV-SLOTS.md)
 

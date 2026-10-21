@@ -4,6 +4,18 @@
 版本号自 v1.0.0 起按语义化版本递增（tag 与 GitHub Release 名称一致，见 [README](README.md#路线图)）。
 Notable changes are recorded here; since v1.0.0, tags and releases follow `vX.Y.Z` semantic increments.
 
+## [1.15.0] — 2026-10-21
+
+### Added
+- **环境槽用户入口**：新增 `tools/env-provide.mjs` 与 `tools/env-providers.json`，为全部 12 个非 CLOSED 槽位提供凭据 / 授权 / 硬件 / 人工试用入口。凭据可经 GitHub Actions Secrets 网页上传，或在本地用隐藏 TTY 输入 / `--file` base64 经 `gh secret set` 上传，值不进 argv / 磁盘 / 日志；`--check --strict` 只核对名称。授权门户用 `--open ENV-XX` 打开，并经 issue 表单登记非机密编号；硬件与真人试用各有专用 issue 表单。新增 `docs/ENV-PROVIDE` 双语指南、`check-env-providers` 门禁（20 文档对、12 槽位覆盖）。
+
+*Environment-slot user entry points: adds `tools/env-provide.mjs` and `tools/env-providers.json` for all 12 non-CLOSED slots (credentials / authorizations / hardware / human trials). Credentials go through the GitHub Actions Secrets UI, or a hidden TTY prompt / `--file` base64 streamed to `gh secret set` locally, never through argv/disk/logs; `--check --strict` checks names only. `--open ENV-XX` opens authorization portals and issue forms record non-secret references; hardware and human trials have dedicated forms. Adds the bilingual `docs/ENV-PROVIDE` guide and the `check-env-providers` gate (20 doc pairs, 12 slots).*
+
+### Changed
+- **文档与图片同步**：重新生成全部架构 / 功能 / 生命周期 / 请求周期 SVG 与 Pax 表情资源；README 文档索引加入 SBOM 与 ENV-PROVIDE；ROADMAP 孵化项、GA 缺口、FARM-DEPLOY S3 描述更新到当前证据状态。
+
+*Documentation and image sync: regenerate all architecture / features / lifecycle / request-cycle SVGs and Pax assets; add SBOM and ENV-PROVIDE to the README doc index; update ROADMAP incubation status, GA gaps, and FARM-DEPLOY S3 wording to current evidence.*
+
 ## [1.14.0] — 2026-10-21
 
 ### Added

@@ -392,7 +392,7 @@ POLY=/usr/local/bin/poly tools/farm-preflight.sh \
 - `crates/poly-core/src/farm/`：协议、池调度、一次性工作目录。
 - `crates/poly-cache/src/store.rs`：共享目录 CAS、共享对象信封与降级后端。
 - `crates/poly-cache/src/s3.rs`、`crates/poly-cache/src/s3/sigv4.rs`：S3 / OSS 兼容后端与 SigV4 签名。
-- `crates/poly-cache/tests/s3_contract.rs`：mock S3 网络契约（独立重算 SigV4）；`tests/s3_real.rs` 为真实云环境槽（`POLYPACK_S3_REAL=1`）。
+- `crates/poly-cache/tests/s3_contract.rs`：mock S3 网络契约（独立重算 SigV4）；`tests/s3_real.rs` 为 S3 / OSS 兼容环境槽（`POLYPACK_S3_REAL=1`）；MinIO CI 已通过（ENV-17，run 39425835979），AWS / 阿里云 OSS 原生另行取证。
 - `crates/poly-sign/src/secret.rs`、`crates/poly-sign/src/inject.rs`：凭据后端契约与内存注入。
 - `tools/farm-drill.sh`：§8 的可执行演练。
 - `tools/farm-preflight.sh`：§11.1 的生产预检。
