@@ -1,0 +1,88 @@
+name: ENV hardware / host request
+description: Request device shipping, host or LAN access, a KVM self-hosted runner, or a cloud device farm for an environment slot. Never post addresses or personal data.
+title: "[ENV hardware] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this form to request the hardware, host, or network access an environment slot needs.
+
+        **Do not paste secrets, passwords, tokens, private keys, license files, shipping addresses, phone numbers, access codes, or serial numbers into this issue.** Credentials go through GitHub Actions Secrets or `node tools/env-provide.mjs --set-secret NAME`; shipping and access details go through a private channel arranged by a maintainer. See [docs/ENV-PROVIDE.md](https://github.com/erikwang2013/polypack/blob/main/docs/ENV-PROVIDE.md).
+
+  - type: dropdown
+    id: slot
+    attributes:
+      label: Environment slot
+      description: Choose the slot this hardware or host unblocks.
+      options:
+        - ENV-02 · Apple codesign / notarytool
+        - ENV-03 · macOS farm worker → IPA
+        - ENV-04 · WeChat / Alipay / Douyin devtools
+        - ENV-05 · Roku real-device sideload
+        - ENV-06 · OpenBSD VM install smoke
+        - ENV-08 · QNX SDP + QEMU smoke
+        - ENV-09 · VxWorks wr-cc link leg
+        - ENV-10 · Wear OS device / emulator
+        - ENV-13 · Zepp simulator
+        - ENV-14 · Garmin Connect IQ compile
+        - ENV-20 · Real-device preview
+        - Other / not sure
+    validations:
+      required: true
+
+  - type: dropdown
+    id: request_type
+    attributes:
+      label: Request type
+      options:
+        - Device loan or shipping
+        - Host / GUI access
+        - Self-hosted runner with KVM
+        - Same-LAN access to a device
+        - Cloud device-farm account
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: authorization_reference_type
+    attributes:
+      label: Approval / budget reference type (optional)
+      options:
+        - Purchase order / budget approval
+        - Account or project ID
+        - Loan approval
+        - Confidential — sent via private channel
+        - Not applicable
+
+  - type: input
+    id: authorization_reference
+    attributes:
+      label: Approval / budget reference (optional, non-secret)
+      description: Purchase order, loan approval, account or project ID. If the reference itself is confidential, type "confidential — sent via private channel". Do not paste credentials.
+      placeholder: "e.g. loan approval 2026-042 / AWS project ID"
+    validations:
+      required: false
+
+  - type: dropdown
+    id: contact_preference
+    attributes:
+      label: Contact preference
+      options:
+        - Reply in this issue (public)
+        - Private channel arranged by a maintainer
+        - No preference
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: confirmations
+    attributes:
+      label: Confirmations
+      options:
+        - label: I confirm this issue contains no secrets, passwords, tokens, private keys, or license files.
+          required: true
+        - label: I have not posted shipping addresses, phone numbers, access codes, or serial numbers; I will share them only through a private channel arranged by a maintainer.
+          required: true
+        - label: I understand the slot stays OPEN / PARTIAL until access is granted and real-run evidence is captured per docs/ENV-SLOTS.md §4.
+          required: true

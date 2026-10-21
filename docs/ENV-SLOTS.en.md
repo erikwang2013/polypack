@@ -47,6 +47,9 @@ Environment slots are tracked separately from code gaps: a slot closes with envi
 | ENV-20 | T-M9-21 | Real-device preview (Android + Android TV) | OPEN | HOST | core + infra | §3 ENV-20 | — |
 
 Owners use only five roles: `release-sec` / `core` / `docs` / `infra` / `maintainer`; combinations use ` + `. The evidence column points at the §3 run card; the real evidence bundle is still archived per §4.2 and this table never fabricates evidence. Real per-slot close-out remains external work; unclosed slots keep their current status.
+
+> **User entry points**: credentials → [GitHub Actions Secrets](https://github.com/erikwang2013/polypack/settings/secrets/actions) / [Variables](https://github.com/erikwang2013/polypack/settings/variables/actions) or `node tools/env-provide.mjs --slot ENV-XX`; authorization → `node tools/env-provide.mjs --open ENV-XX` + [authorization form](https://github.com/erikwang2013/polypack/issues/new?template=env-authorization.yml); hardware / human → [hardware request](https://github.com/erikwang2013/polypack/issues/new?template=env-hardware-request.yml) / [trial sign-up](https://github.com/erikwang2013/polypack/issues/new?template=human-trial-signup.yml). Full guide: [ENV-PROVIDE](ENV-PROVIDE.en.md).
+
 ## 3. Slot run cards
 
 ### ENV-01 · Windows real Tauri sample + default Program Files launch
@@ -72,7 +75,11 @@ msiexec /i ".polypack\packages\windows\Pax Notes_1.2.3_x64_en-US.msi" /qn
 - Next action: none (the slot is closed); re-run only when Windows / WebView2 / WiX versions change.
 - Blocker: none; visual GUI rendering still needs an interactive desktop, but install / default-path launch / exit / uninstall / residue are covered by CI.
 
+<a id="slot-env-02"></a>
+
 ### ENV-02 · macOS `codesign` + `notarytool` real execution
+
+- User entry: credentials → [ENV-PROVIDE §ENV-02](ENV-PROVIDE.en.md#env-02) ([Secrets](https://github.com/erikwang2013/polypack/settings/secrets/actions) or `node tools/env-provide.mjs --slot ENV-02`); authorization → [authorization form](https://github.com/erikwang2013/polypack/issues/new?template=env-authorization.yml).
 
 - Linked task: T-M2-10 (iOS signing and notarization). Gap: `ios_sign` only asserts command assembly and zero plaintext credentials; `ios_real_run` produces an unsigned IPA; real `codesign`, `notarytool submit`, `stapler`, and `spctl` have not run with Apple credentials.
 - Environment / toolchain / credentials: macOS 14 + Xcode, Apple Distribution certificate, Team ID, Apple ID + app-specific password (or a notarytool keychain profile), `xcrun` / `codesign` / `ditto` / `spctl`.
@@ -95,7 +102,11 @@ spctl --assess --type execute --verbose=4 "$APP"
 - Next action: configure Apple secrets on macos-14, run the commands once, and record the submission id in TASKS T-M2-10.
 - Blocker: the Apple developer account, certificate, and notarization credentials are held by the organization; without them evidence cannot be faked. Execution mode: CI (macos-14 + secrets) can close it; no physical device required.
 
+<a id="slot-env-03"></a>
+
 ### ENV-03 · macOS farm worker → IPA
+
+- User entry: credentials → [ENV-PROVIDE §ENV-03](ENV-PROVIDE.en.md#env-03); hardware host → [hardware request](https://github.com/erikwang2013/polypack/issues/new?template=env-hardware-request.yml); authorization → [authorization form](https://github.com/erikwang2013/polypack/issues/new?template=env-authorization.yml).
 
 - Linked task: T-M2-13 (remote farm v0), T-M8-09 (farm deployment guide). Gap: the Linux two-worker drill is green; macOS worker registration, cross-host submit, IPA landing in the shared farm directory, and macOS-side verification have not run.
 - Environment / toolchain / credentials: macOS worker (full Xcode, `xcode-select`, `rustup target add aarch64-apple-ios aarch64-apple-ios-sim x86_64-apple-ios`), Linux submit host, a farm directory / shared cache visible at the same path on both sides, Apple signing credentials.
@@ -118,7 +129,11 @@ spctl --assess --type execute --verbose=4 "$APP"
 - Next action: prepare a macOS host, execute FARM-DEPLOY §9, archive both transcripts, then remove this row from GA §7.1.
 - Blocker: a macOS host and a cross-host shared mount are required; a hosted Linux runner cannot run Xcode / codesign. Execution mode: physical macOS host + Linux submit host; not inside this repo's CI.
 
+<a id="slot-env-04"></a>
+
 ### ENV-04 · WeChat / Alipay / Douyin devtools preview
+
+- User entry: login state / variables → [ENV-PROVIDE §ENV-04](ENV-PROVIDE.en.md#env-04); three-account authorization → [authorization form](https://github.com/erikwang2013/polypack/issues/new?template=env-authorization.yml); GUI host → [hardware request](https://github.com/erikwang2013/polypack/issues/new?template=env-hardware-request.yml).
 
 - Linked task: T-M3-05 (Taro adapter), T-M3-06 (mini-program build pipeline). Gap: `contract_devtools_real_preview` calls the three CLIs under `POLY_CONTRACT_REAL=1`; when a tool is absent or logged out it only prints NOTE / SKIP. No real project preview QR code / device preview has been produced.
 - Environment / toolchain / credentials: macOS (best official devtools support), WeChat DevTools CLI, Alipay Mini Program Studio `minidev`, Douyin DevTools `tma`, logged-in accounts on all three (QR / 2FA); the Douyin token can be supplied to CI.
@@ -136,7 +151,11 @@ cargo test -p poly-cli --test contract_m3_devtools contract_devtools_real_previe
 - Next action: log in to all three tools on macOS, set CLI paths and login state, run the module test, and save QR / URLs; prefer the passwordless Douyin token for CI.
 - Blocker: WeChat / Alipay login involves QR or 2FA and cannot be stored in the public repo; Douyin accounts also require qualification review. Execution mode: GUI login needs physical macOS; once login state exists the command leg can run in CI.
 
+<a id="slot-env-05"></a>
+
 ### ENV-05 · Roku real-device sideload
+
+- User entry: device / LAN → [ENV-PROVIDE §ENV-05](ENV-PROVIDE.en.md#env-05) + [hardware request](https://github.com/erikwang2013/polypack/issues/new?template=env-hardware-request.yml); device password → [Secrets](https://github.com/erikwang2013/polypack/settings/secrets/actions) or `node tools/env-provide.mjs --set-secret ROKU_DEV_PASSWORD`.
 
 - Linked task: T-M4-15 (Roku channel packager and verifier). Gap: 19 structure checks run; the `POLY_ROKU_REAL=1` ECP probe and `plugin_install` have not executed against a real Roku.
 - Environment / toolchain / credentials: Roku device (developer mode), a host on the same LAN, device IP, developer password, `curl`, `zip` / `unzip`.
@@ -152,7 +171,11 @@ curl --connect-timeout 2 -s "http://<ip>:8060/"
 - Next action: run the commands on a developer-mode Roku, screenshot, and archive; if the device can stay online, add a self-hosted runner job.
 - Blocker: a real Roku on the LAN plus its developer password; a hosted runner has no device network. Execution mode: physical device + same-LAN host; cannot run on hosted CI.
 
+<a id="slot-env-06"></a>
+
 ### ENV-06 · OpenBSD VM install smoke
+
+- User entry: KVM runner / OpenBSD host → [ENV-PROVIDE §ENV-06](ENV-PROVIDE.en.md#env-06) + [hardware request](https://github.com/erikwang2013/polypack/issues/new?template=env-hardware-request.yml).
 
 - Linked task: T-M5-07 (OpenBSD ports target). Gap: bsd-ci has an `openbsd` job but it is `continue-on-error: true`; the OpenBSD VM fails to boot over TCG on hosted runners, so no green install evidence exists.
 - Environment / toolchain / credentials: a KVM-capable self-hosted runner (or physical OpenBSD host), OpenBSD 7.x image, `pkg_add rust`, ports tree, `signify`.
@@ -199,7 +222,11 @@ pkg_info <DISTNAME> && pkg_info -L <DISTNAME> && /usr/pkg/bin/polypack-app
 - Next action: none (slot closed); rerun on major pkgsrc / NetBSD upgrades.
 - Blocker: none; production pkgsrc repository signing and publishing remain the deployer's responsibility.
 
+<a id="slot-env-08"></a>
+
 ### ENV-08 · QNX SDP + QEMU smoke
+
+- User entry: SDP / license → [ENV-PROVIDE §ENV-08](ENV-PROVIDE.en.md#env-08); license authorization → [authorization form](https://github.com/erikwang2013/polypack/issues/new?template=env-authorization.yml); self-hosted runner → [hardware request](https://github.com/erikwang2013/polypack/issues/new?template=env-hardware-request.yml).
 
 - Linked task: T-M6-03 (QNX target), T-M6-09 (QNX QEMU smoke). Gap: the embedded-ci QNX entry SKIPs when `vars.POLYPACK_QNX_SDP` is absent; real SDP cross-compile, `.ifs` packaging, and QEMU serial self-check have not run.
 - Environment / toolchain / credentials: QNX SDP 7.1 (`qcc` / `nto*-gcc`, `mkifs`), QNX license, `source qnxsdp-env.sh`, `qemu-system-x86_64` (or board QEMU); optional `POLYPACK_QNX_QEMU_ARGS`.
@@ -218,7 +245,11 @@ POLYPACK_QNX_QEMU=/usr/bin/qemu-system-x86_64 poly verify --target qnx --json
 - Next action: install SDP 7.1 on a self-hosted runner, set `vars.POLYPACK_QNX_SDP`, and remove QNX from the job-summary SKIP list after the first green run.
 - Blocker: QNX SDP requires a commercial license and cannot be downloaded into a hosted runner. Execution mode: CI (self-hosted runner + license) can close it.
 
+<a id="slot-env-09"></a>
+
 ### ENV-09 · VxWorks `wr-cc` link leg
+
+- User entry: SDK / license → [ENV-PROVIDE §ENV-09](ENV-PROVIDE.en.md#env-09); Wind River authorization → [authorization form](https://github.com/erikwang2013/polypack/issues/new?template=env-authorization.yml); self-hosted runner → [hardware request](https://github.com/erikwang2013/polypack/issues/new?template=env-hardware-request.yml).
 
 - Linked task: T-M6-05 (VxWorks target). Gap: library / image packaging and the `nm` allowlist run; `wr-cc` is absent, so the link self-check is SKIP-with-print.
 - Environment / toolchain / credentials: Wind River Workbench / VxWorks 7 SDK, `wr-cc`, target triple (default `x86_64-wrs-vxworks`), license; a nightly toolchain for `-Z build-std`.
@@ -236,7 +267,11 @@ poly build --target vxworks --json
 - Next action: install the Workbench SDK on a self-hosted runner, set `WR_CC`, run once, and archive `check.sh` output.
 - Blocker: the VxWorks SDK and license require a commercial purchase. Execution mode: CI (self-hosted runner) can close it.
 
+<a id="slot-env-10"></a>
+
 ### ENV-10 · Wear OS device / emulator smoke
+
+- User entry: KVM / Wear device → [ENV-PROVIDE §ENV-10](ENV-PROVIDE.en.md#env-10) + [hardware request](https://github.com/erikwang2013/polypack/issues/new?template=env-hardware-request.yml).
 
 - Linked task: T-M7-04 (Wear OS dual smoke). Gap: the mock leg runs; install → launch → cases → uninstall on a real AVD or watch has not executed. `wear-release-smoke` hard-blocks when `/dev/kvm` or the prebuilt APK is absent.
 - Environment / toolchain / credentials: Linux KVM (`/dev/kvm`) or a physical Wear OS device with ADB authorization, Android SDK / `avdmanager`, Wear OS 5 (API 34) x86_64 image or prebuilt APK; `POLYPACK_WEAR_FORM_APK`.
@@ -292,7 +327,11 @@ poly verify --target fitbit --json
 - Next action: dispatch the `fitbit` job of `wear-js-contract`, archive the run ID / verify JSONL / `.fba` digest, then write the evidence back to this card.
 - Blocker: first-run risks — keytar on Node 22 needs system `libsecret-1-dev` (npm install fails without it); the old assertion in `contract_m7_wear_js` expects the CLI-absent SKIP text, so that test is not applicable once the CLI is installed (this job uses direct `poly build/verify` instead and does not edit the test); the `@fitbit/sdk-cli` `fitbit` entry point crashes on Node 22 with `MODULE_NOT_FOUND` because of the `@openid/appauth` 1.4 module layout (this chain uses only `fitbit-build`; the job asserts `fitbit` is installed but does not execute it); a cold first run also compiles wasmtime on the runner (60-minute job cap, debuginfo off / incremental off). Execution mode: CI (ubuntu) can close it.
 
+<a id="slot-env-13"></a>
+
 ### ENV-13 · Zepp `zeus` + simulator install
+
+- User entry: Zepp account / GUI simulator → [ENV-PROVIDE §ENV-13](ENV-PROVIDE.en.md#env-13); account authorization → [authorization form](https://github.com/erikwang2013/polypack/issues/new?template=env-authorization.yml); GUI host → [hardware request](https://github.com/erikwang2013/polypack/issues/new?template=env-hardware-request.yml).
 
 - Linked task: T-M7-08 (Zepp OS packager). Gap: `.zab` structure and md5 naming run; `zeus --version` SKIPs because the tool is absent; the simulator install leg always SKIP-with-print in verify (the code explicitly does not automate it).
 - Environment / toolchain / credentials: Node 22 + Zepp OS `zeus` CLI (`@zeppos/zeus-cli@1.9.3`), Zepp OS simulator (GUI, external), developer account (install / preview as officially required).
@@ -312,7 +351,11 @@ poly verify --target zepp --json
 - Next action: dispatch the `zepp` job of `wear-js-contract` and archive the run ID / verify JSONL / `.zab` digest; run the simulator leg manually and attach screenshots to the ENV-13 issue.
 - Blocker: first-run risks — the behaviour of `zeus --version` from `@zeppos/zeus-cli@1.9.3` on Node 22 needs first-run confirmation; the simulator is a GUI app and cannot be installed / launched automatically on a headless runner; a cold first run also compiles wasmtime on the runner (60-minute job cap, debuginfo off / incremental off). Execution mode: the `zeus` self-check runs in CI; simulator install needs a physical GUI host.
 
+<a id="slot-env-14"></a>
+
 ### ENV-14 · Garmin Connect IQ SDK / devkey compile
+
+- User entry: devkey / SDK → [ENV-PROVIDE §ENV-14](ENV-PROVIDE.en.md#env-14) (`node tools/env-provide.mjs --set-secret POLYPACK_GARMIN_DEVKEY_B64 --file developer_key.der`); Garmin account → [authorization form](https://github.com/erikwang2013/polypack/issues/new?template=env-authorization.yml).
 
 - Linked task: T-M7-09 (Garmin Monkey C transpile spike). Gap: 29/29 Node tests and structure checks run; `monkeyc` / `CIQ_DEVKEY` are absent, so the Monkey C compile leg SKIPs (PASS 4 / FAIL 0 / SKIP 3).
 - Environment / toolchain / credentials: Connect IQ SDK (`bin/monkeyc`), developer key `.der`, Java runtime; SDK download may be restricted by 403 / account.
@@ -408,7 +451,11 @@ gh api repos/erikwang2013/polypack/branches/main/protection/required_status_chec
 - Next action: keep the rule in place; if an emergency break-glass path is enabled, record the exception conditions, approver, and four-eyes review in GA §7, and restore `enforce_admins=true` afterwards.
 - Blocker: none (closed); later changes still require repository admin permission. Execution mode: HUMAN / GitHub settings, not inside the code repository.
 
+<a id="slot-env-19"></a>
+
 ### ENV-19 · Human external developer trial
+
+- User entry: [trial sign-up](https://github.com/erikwang2013/polypack/issues/new?template=human-trial-signup.yml) · [ENV-PROVIDE §ENV-19](ENV-PROVIDE.en.md#env-19) · [trial protocol](HUMAN-TRIAL.en.md).
 
 - Linked task: GA §7.2 "Human external developer trial". Gap: no real external developer has been recruited to add a custom target and produce a package within one day per GA §2; blockers are unrecorded.
 - Environment / toolchain / credentials: 3–5 external developers not involved in this repo, clean machines (at least one each of Linux / macOS / Windows), GA / README / plugin template, feedback template and timing sheet.
@@ -425,7 +472,11 @@ poly build --config <app>/polypack.toml --target pocket-notes
 - Next action: after GA release, recruit 3–5 people, collect reports with the template, and write blockers back into GA / README / templates.
 - Blocker: requires real external people and time; an agent cannot stand in. Execution mode: HUMAN; not in CI.
 
+<a id="slot-env-20"></a>
+
 ### ENV-20 · Real-device preview (Android + Android TV)
+
+- User entry: real devices / cloud farm → [ENV-PROVIDE §ENV-20](ENV-PROVIDE.en.md#env-20) + [hardware request](https://github.com/erikwang2013/polypack/issues/new?template=env-hardware-request.yml); cloud account → [authorization form](https://github.com/erikwang2013/polypack/issues/new?template=env-authorization.yml).
 
 - Linked task: T-M9-21 (device preview matrix). Gap: `poly preview --dry-run` is delivered (DevicePool / DeviceLease, deterministic plan, timeout / cleanup), but a real lease, install, launch, screenshot, logs, and cleanup have not run.
 - Environment / toolchain / credentials: two real devices (Android phone + Android TV) or equivalent cloud devices; `adb`; fixture APK; evidence directory; cloud vendor account if using a farm.
