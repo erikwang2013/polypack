@@ -33,6 +33,7 @@ const PAIRS = [
   ['docs/GA.md', 'docs/GA.en.md'],
   ['docs/INITIATIVES.md', 'docs/INITIATIVES.en.md'],
   ['docs/ENV-SLOTS.md', 'docs/ENV-SLOTS.en.md'],
+  ['docs/ENV-PROVIDE.md', 'docs/ENV-PROVIDE.en.md'],
   ['docs/INSTALL.md', 'docs/INSTALL.en.md'],
   ['docs/HUMAN-TRIAL.md', 'docs/HUMAN-TRIAL.en.md'],
   ['docs/STORE-METADATA.md', 'docs/STORE-METADATA.en.md'],

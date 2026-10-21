@@ -1,0 +1,423 @@
+{
+  "schema": 1,
+  "repo": "erikwang2013/polypack",
+  "slots": [
+    {
+      "id": "ENV-02",
+      "title": {
+        "zh": "macOS codesign + notarytool 真执行",
+        "en": "macOS codesign + notarytool real run"
+      },
+      "category": "credentials",
+      "secrets": [
+        {
+          "name": "POLYPACK_APPLE_APP_PASSWORD",
+          "description": "Apple ID app-specific password passed to notarytool (never the account password)."
+        }
+      ],
+      "variables": [
+        {
+          "name": "POLYPACK_IOS_IDENTITY",
+          "description": "Apple Distribution identity used for codesign -s (non-secret)."
+        },
+        {
+          "name": "POLYPACK_IOS_TEAM_ID",
+          "description": "Apple Developer Team ID (non-secret)."
+        },
+        {
+          "name": "POLYPACK_APPLE_ID",
+          "description": "Apple ID email used as the notarytool --apple-id argument."
+        }
+      ],
+      "portals": [
+        {
+          "label": { "zh": "Apple Developer 账号", "en": "Apple Developer account" },
+          "url": "https://developer.apple.com/account"
+        },
+        {
+          "label": { "zh": "App Store Connect", "en": "App Store Connect" },
+          "url": "https://appstoreconnect.apple.com"
+        }
+      ],
+      "request": {
+        "zh": "需要组织持有的 Apple Developer 账号、Apple Distribution 证书与 notarytool 凭据；在 macos-14 runner 上执行，无需物理设备。",
+        "en": "Needs the organization's Apple Developer account, Apple Distribution certificate and notarytool credentials; runs on a macos-14 runner, no physical device."
+      },
+      "docs": "docs/ENV-SLOTS.md#env-02--macos-codesign--notarytool-真执行"
+    },
+    {
+      "id": "ENV-03",
+      "title": {
+        "zh": "macOS 农场 worker → IPA",
+        "en": "macOS farm worker → IPA"
+      },
+      "category": "hardware",
+      "secrets": [],
+      "variables": [
+        {
+          "name": "POLYPACK_IOS_IDENTITY",
+          "description": "Apple Distribution identity available on the macOS farm worker (non-secret)."
+        },
+        {
+          "name": "POLYPACK_IOS_TEAM_ID",
+          "description": "Apple Developer Team ID used by the farm worker (non-secret)."
+        }
+      ],
+      "portals": [
+        {
+          "label": { "zh": "Apple Developer 账号", "en": "Apple Developer account" },
+          "url": "https://developer.apple.com/account"
+        }
+      ],
+      "request": {
+        "zh": "需要一台物理 macOS 主机（完整 Xcode）与 Linux 发起机共享同路径农场目录；托管 Linux runner 不能替代。",
+        "en": "Needs a physical macOS host (full Xcode) sharing a same-path farm directory with the Linux submitter; a hosted Linux runner cannot substitute."
+      },
+      "docs": "docs/ENV-SLOTS.md#env-03--macos-农场-worker--ipa"
+    },
+    {
+      "id": "ENV-04",
+      "title": {
+        "zh": "微信 / 支付宝 / 抖音开发者工具预览",
+        "en": "WeChat / Alipay / Douyin devtools preview"
+      },
+      "category": "mixed",
+      "secrets": [
+        {
+          "name": "POLYPACK_WECHAT_DEVTOOLS_LOGIN",
+          "description": "Exported WeChat DevTools login state consumed by miniprogram-contract."
+        },
+        {
+          "name": "POLYPACK_ALIPAY_DEVTOOLS_LOGIN",
+          "description": "Exported Alipay Mini Program Studio login state consumed by miniprogram-contract."
+        },
+        {
+          "name": "POLYPACK_DOUYIN_DEVTOOLS_LOGIN",
+          "description": "Exported Douyin DevTools login state consumed by miniprogram-contract."
+        }
+      ],
+      "variables": [
+        {
+          "name": "POLYPACK_WECHAT_DEVTOOLS_CLI",
+          "description": "Path to the WeChat DevTools CLI on the runner (vars.POLYPACK_WECHAT_DEVTOOLS_CLI)."
+        },
+        {
+          "name": "POLYPACK_ALIPAY_DEVTOOLS_CLI",
+          "description": "Path to Alipay minidev on the runner (vars.POLYPACK_ALIPAY_DEVTOOLS_CLI)."
+        },
+        {
+          "name": "POLYPACK_DOUYIN_DEVTOOLS_CLI",
+          "description": "Path to the Douyin tma CLI on the runner (vars.POLYPACK_DOUYIN_DEVTOOLS_CLI)."
+        },
+        {
+          "name": "POLYPACK_DEVTOOLS_LOGIN_FILE",
+          "description": "Path to the materialized devtools login file; Alipay also uses ALIPAY_IDENTITY_KEY_PATH."
+        }
+      ],
+      "portals": [
+        {
+          "label": { "zh": "微信开发者工具下载", "en": "WeChat DevTools download" },
+          "url": "https://developers.weixin.qq.com/miniprogram/dev/devtools/download.html"
+        },
+        {
+          "label": { "zh": "支付宝小程序开发者工具", "en": "Alipay Mini Program Studio" },
+          "url": "https://opendocs.alipay.com/mini/ide/download"
+        },
+        {
+          "label": { "zh": "抖音开发者工具下载", "en": "Douyin DevTools download" },
+          "url": "https://developer.open-douyin.com/docs/resource/zh-CN/mini-app/develop/developer-instrument/download/developer-instrument-update-and-download"
+        }
+      ],
+      "request": {
+        "zh": "需要 macOS 上的三端开发者工具与已登录账号（扫码 / 2FA）；登录态由人工准备，仓库只保存 secret 登录文件。",
+        "en": "Needs all three devtools and logged-in accounts (QR / 2FA) on macOS; a human prepares the login state and the repo stores only the secret login file."
+      },
+      "docs": "docs/ENV-SLOTS.md#env-04--微信--支付宝--抖音开发者工具预览"
+    },
+    {
+      "id": "ENV-05",
+      "title": {
+        "zh": "Roku 真机侧载",
+        "en": "Roku real-device sideload"
+      },
+      "category": "hardware",
+      "secrets": [
+        {
+          "name": "ROKU_DEV_PASSWORD",
+          "description": "Roku developer-mode device password used by the ECP sideload leg."
+        }
+      ],
+      "variables": [
+        {
+          "name": "ROKU_DEV_TARGET",
+          "description": "Roku device IP address on the same LAN as the host."
+        }
+      ],
+      "portals": [
+        {
+          "label": { "zh": "Roku 开发者模式设置", "en": "Roku developer mode setup" },
+          "url": "https://developer.roku.com/docs/developer-program/getting-started/developer-setup.md"
+        }
+      ],
+      "request": {
+        "zh": "需要局域网内开启开发者模式的真实 Roku 设备与设备 IP / 开发者密码；托管 runner 无设备网络。",
+        "en": "Needs a real Roku in developer mode on the local network plus its IP and developer password; hosted runners have no device network."
+      },
+      "docs": "docs/ENV-SLOTS.md#env-05--roku-真机侧载"
+    },
+    {
+      "id": "ENV-06",
+      "title": {
+        "zh": "OpenBSD VM 安装冒烟",
+        "en": "OpenBSD VM install smoke"
+      },
+      "category": "hardware",
+      "secrets": [],
+      "variables": [],
+      "portals": [
+        {
+          "label": { "zh": "GitHub self-hosted runner 文档", "en": "GitHub self-hosted runner docs" },
+          "url": "https://docs.github.com/en/actions/hosting-your-own-runners"
+        },
+        {
+          "label": { "zh": "OpenBSD 官网", "en": "OpenBSD website" },
+          "url": "https://www.openbsd.org/"
+        }
+      ],
+      "request": {
+        "zh": "需要支持 KVM 的 self-hosted runner（或物理 OpenBSD 主机）；无仓库凭据，首绿后移除 continue-on-error。",
+        "en": "Needs a KVM-capable self-hosted runner (or physical OpenBSD host); no repo credentials, remove continue-on-error after the first green run."
+      },
+      "docs": "docs/ENV-SLOTS.md#env-06--openbsd-vm-安装冒烟"
+    },
+    {
+      "id": "ENV-08",
+      "title": {
+        "zh": "QNX SDP + QEMU 冒烟",
+        "en": "QNX SDP + QEMU smoke"
+      },
+      "category": "authorization",
+      "secrets": [],
+      "variables": [
+        {
+          "name": "POLYPACK_QNX_SDP",
+          "description": "Absolute path to the QNX SDP 7.1 tree on a self-hosted runner (vars.POLYPACK_QNX_SDP)."
+        },
+        {
+          "name": "POLYPACK_QNX_QEMU",
+          "description": "Optional qemu-system-x86_64 path for the QNX smoke leg."
+        },
+        {
+          "name": "POLYPACK_QNX_QEMU_ARGS",
+          "description": "Optional extra QEMU arguments for the QNX smoke leg."
+        }
+      ],
+      "portals": [
+        {
+          "label": { "zh": "QNX 商业许可证", "en": "QNX commercial license" },
+          "url": "https://blackberry.qnx.com/en/products/qnx-license"
+        },
+        {
+          "label": { "zh": "QNX 软件下载", "en": "QNX software downloads" },
+          "url": "https://www.qnx.com/download/"
+        }
+      ],
+      "request": {
+        "zh": "需要自托管 runner 安装 QNX SDP 7.1 与商业许可证；许可证不能公开下载进托管 runner。",
+        "en": "Needs a self-hosted runner with QNX SDP 7.1 and a commercial license; the license cannot be publicly downloaded onto a hosted runner."
+      },
+      "docs": "docs/ENV-SLOTS.md#env-08--qnx-sdp--qemu-冒烟"
+    },
+    {
+      "id": "ENV-09",
+      "title": {
+        "zh": "VxWorks wr-cc 链接腿",
+        "en": "VxWorks wr-cc link leg"
+      },
+      "category": "authorization",
+      "secrets": [],
+      "variables": [
+        {
+          "name": "WR_CC",
+          "description": "Path to the Wind River wr-cc compiler on a self-hosted runner."
+        },
+        {
+          "name": "POLYPACK_VXWORKS_TRIPLE",
+          "description": "Target triple for the VxWorks link leg (default x86_64-wrs-vxworks)."
+        }
+      ],
+      "portals": [
+        {
+          "label": { "zh": "Wind River VxWorks", "en": "Wind River VxWorks" },
+          "url": "https://www.windriver.com/products/vxworks"
+        }
+      ],
+      "request": {
+        "zh": "需要自托管 runner 安装 Wind River Workbench / VxWorks 7 SDK 与商业许可证。",
+        "en": "Needs a self-hosted runner with Wind River Workbench / VxWorks 7 SDK and a commercial license."
+      },
+      "docs": "docs/ENV-SLOTS.md#env-09--vxworks-wr-cc-链接腿"
+    },
+    {
+      "id": "ENV-10",
+      "title": {
+        "zh": "Wear OS 设备 / 模拟器冒烟",
+        "en": "Wear OS device / emulator smoke"
+      },
+      "category": "hardware",
+      "secrets": [],
+      "variables": [
+        {
+          "name": "POLYPACK_WEAR_FORM_APK",
+          "description": "Path to the prebuilt Wear form APK (vars.POLYPACK_WEAR_FORM_APK)."
+        },
+        {
+          "name": "POLYPACK_WEAR_FORM_PACKAGE",
+          "description": "Wear form package id (default com.polypack.weatform)."
+        }
+      ],
+      "portals": [
+        {
+          "label": { "zh": "Wear OS 开发者文档", "en": "Wear OS developer docs" },
+          "url": "https://developer.android.com/training/wearables"
+        },
+        {
+          "label": { "zh": "adb 文档", "en": "adb docs" },
+          "url": "https://developer.android.com/tools/adb"
+        }
+      ],
+      "request": {
+        "zh": "需要 /dev/kvm 的 self-hosted runner 或已 ADB 授权的物理 Wear OS 设备，以及预构建表单 APK。",
+        "en": "Needs a self-hosted runner with /dev/kvm or a physical Wear OS device with ADB authorization, plus the prebuilt form APK."
+      },
+      "docs": "docs/ENV-SLOTS.md#env-10--wear-os-设备--模拟器冒烟"
+    },
+    {
+      "id": "ENV-13",
+      "title": {
+        "zh": "Zepp zeus + 模拟器安装",
+        "en": "Zepp zeus + simulator install"
+      },
+      "category": "human",
+      "secrets": [],
+      "variables": [],
+      "portals": [
+        {
+          "label": { "zh": "Zepp OS zeus 文档", "en": "Zepp OS zeus docs" },
+          "url": "https://docs.zepp.com/docs/guides/tools/zeus/"
+        },
+        {
+          "label": { "zh": "Zepp 开发者控制台", "en": "Zepp developer console" },
+          "url": "https://console.zepp.com/"
+        }
+      ],
+      "request": {
+        "zh": "模拟器安装是 GUI 人工腿；需桌面宿主手动装入 .zab 并截图，agent / headless runner 不能代替。",
+        "en": "Simulator install is a manual GUI leg; a desktop host must install the .zab and capture a screenshot; an agent or headless runner cannot substitute."
+      },
+      "docs": "docs/ENV-SLOTS.md#env-13--zepp-zeus--模拟器安装"
+    },
+    {
+      "id": "ENV-14",
+      "title": {
+        "zh": "Garmin Connect IQ SDK / devkey 编译",
+        "en": "Garmin Connect IQ SDK / devkey build"
+      },
+      "category": "credentials",
+      "secrets": [
+        {
+          "name": "POLYPACK_GARMIN_DEVKEY_B64",
+          "description": "Pilot name: base64 of developer_key.der; CI must decode it to a runner-local file and point CIQ_DEVKEY at that path. No workflow consumes it yet.",
+          "pilot": true
+        }
+      ],
+      "variables": [
+        {
+          "name": "CIQ_HOME",
+          "description": "Connect IQ SDK root on the runner."
+        },
+        {
+          "name": "CONNECTIQ_HOME",
+          "description": "Legacy alias for the Connect IQ SDK root."
+        },
+        {
+          "name": "CIQ_MONKEYC",
+          "description": "Explicit path to monkeyc (takes precedence over CIQ_HOME)."
+        },
+        {
+          "name": "CIQ_DEVKEY",
+          "description": "Runner-local path to the .der developer key materialized from POLYPACK_GARMIN_DEVKEY_B64."
+        }
+      ],
+      "portals": [
+        {
+          "label": { "zh": "Garmin Connect IQ SDK 下载", "en": "Garmin Connect IQ SDK download" },
+          "url": "https://developer.garmin.com/connect-iq/sdk/"
+        },
+        {
+          "label": { "zh": "Garmin 开发者控制台", "en": "Garmin developer portal" },
+          "url": "https://apps.garmin.com/developer"
+        }
+      ],
+      "request": {
+        "zh": "需要 Connect IQ SDK（可能需 Garmin 账号）与开发者生成的 .der devkey；devkey 只以 secret 注入并由 runner 解码到本地文件。",
+        "en": "Needs the Connect IQ SDK (Garmin account may be required) and a developer-generated .der devkey; inject the devkey only as a secret and decode it on the runner."
+      },
+      "docs": "docs/ENV-SLOTS.md#env-14--garmin-connect-iq-sdk--devkey-编译"
+    },
+    {
+      "id": "ENV-19",
+      "title": {
+        "zh": "人类外部开发者试用",
+        "en": "Human external developer trial"
+      },
+      "category": "human",
+      "secrets": [],
+      "variables": [],
+      "portals": [
+        {
+          "label": { "zh": "GA 试用协议", "en": "GA trial protocol" },
+          "url": "https://github.com/erikwang2013/polypack/blob/main/docs/GA.md"
+        },
+        {
+          "label": { "zh": "反馈 issue 模板", "en": "Feedback issue templates" },
+          "url": "https://github.com/erikwang2013/polypack/issues/new/choose"
+        }
+      ],
+      "request": {
+        "zh": "需要招募 3–5 名外部开发者，在干净的 Linux / macOS / Windows 机器上按 GA §2 试用并提交报告；纯人工流程。",
+        "en": "Needs 3–5 external developers to trial GA §2 on clean Linux / macOS / Windows machines and submit reports; a purely human process."
+      },
+      "docs": "docs/ENV-SLOTS.md#env-19--人类外部开发者试用"
+    },
+    {
+      "id": "ENV-20",
+      "title": {
+        "zh": "真机设备预览（Android + Android TV）",
+        "en": "Real-device preview (Android + Android TV)"
+      },
+      "category": "hardware",
+      "secrets": [],
+      "variables": [],
+      "portals": [
+        {
+          "label": { "zh": "Android adb 文档", "en": "Android adb docs" },
+          "url": "https://developer.android.com/tools/adb"
+        },
+        {
+          "label": { "zh": "Firebase Test Lab", "en": "Firebase Test Lab" },
+          "url": "https://firebase.google.com/docs/test-lab"
+        },
+        {
+          "label": { "zh": "AWS Device Farm", "en": "AWS Device Farm" },
+          "url": "https://aws.amazon.com/device-farm/"
+        }
+      ],
+      "request": {
+        "zh": "需要真实 Android 手机 + Android TV（或云设备农场账号）与 adb 授权；dry-run 已交付，真实安装 / 截图未执行。",
+        "en": "Needs a real Android phone + Android TV (or a cloud device-farm account) and adb authorization; dry-run is delivered, real install / screenshots are not."
+      },
+      "docs": "docs/ENV-SLOTS.md#env-20--真机设备预览android--android-tv"
+    }
+  ]
+}

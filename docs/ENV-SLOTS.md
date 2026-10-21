@@ -47,6 +47,9 @@
 | ENV-20 | T-M9-21 | 真机设备预览（Android + Android TV） | OPEN | HOST | core + infra | §3 ENV-20 | — |
 
 负责人只使用五个角色：`release-sec` / `core` / `docs` / `infra` / `maintainer`；组合用 ` + `。证据列指向 §3 的执行卡；真实证据包仍按 §4.2 归档，本表不伪造证据。真实逐槽关闭仍是外部工作，未关闭槽位保持原状态。
+
+> **用户入口**：凭据 → [GitHub Actions Secrets](https://github.com/erikwang2013/polypack/settings/secrets/actions) / [Variables](https://github.com/erikwang2013/polypack/settings/variables/actions) 或 `node tools/env-provide.mjs --slot ENV-XX`；授权 → `node tools/env-provide.mjs --open ENV-XX` + [授权登记表单](https://github.com/erikwang2013/polypack/issues/new?template=env-authorization.yml)；硬件 / 人工 → [硬件申请](https://github.com/erikwang2013/polypack/issues/new?template=env-hardware-request.yml) / [试用报名](https://github.com/erikwang2013/polypack/issues/new?template=human-trial-signup.yml)。完整说明见 [ENV-PROVIDE](ENV-PROVIDE.md)。
+
 ## 3. 槽位执行卡
 
 ### ENV-01 · Windows 真实 Tauri 样例 + 默认 Program Files 启动
@@ -72,7 +75,11 @@ msiexec /i ".polypack\packages\windows\Pax Notes_1.2.3_x64_en-US.msi" /qn
 - 下一步：无（该槽已关闭）；仅在新 Windows / WebView2 / WiX 版本变化时复跑。
 - 阻塞：无；GUI 目视渲染仍需交互桌面，但安装 / 默认路径启动 / 退出 / 卸载 / 残留已由 CI 覆盖。
 
+<a id="slot-env-02"></a>
+
 ### ENV-02 · macOS `codesign` + `notarytool` 真执行
+
+- 用户入口：凭据 → [ENV-PROVIDE §ENV-02](ENV-PROVIDE.md#env-02)（[Secrets](https://github.com/erikwang2013/polypack/settings/secrets/actions) 或 `node tools/env-provide.mjs --slot ENV-02`）；授权 → [授权登记](https://github.com/erikwang2013/polypack/issues/new?template=env-authorization.yml)。
 
 - 关联任务：T-M2-10（iOS 签名与公证）。 缺口：`ios_sign` 只做命令组装与凭据零明文断言；`ios_real_run` 产未签名 IPA；真实 `codesign`、`notarytool submit`、`stapler`、`spctl` 未在 Apple 凭据下跑过。
 - 环境 / 工具链 / 凭据：macOS 14 + Xcode、Apple Distribution 证书、Team ID、Apple ID + app-specific password（或 notarytool keychain profile）、`xcrun` / `codesign` / `ditto` / `spctl`。
@@ -95,7 +102,11 @@ spctl --assess --type execute --verbose=4 "$APP"
 - 下一步：在 macos-14 配 Apple secrets，按上述命令跑一次并把 submission id 写入 TASKS T-M2-10。
 - 阻塞：Apple 开发者账号、证书与公证凭据由组织持有；无凭据无法伪造。 运行位置：CI（macos-14 + secrets）可关闭；不需物理设备。
 
+<a id="slot-env-03"></a>
+
 ### ENV-03 · macOS 农场 worker → IPA
+
+- 用户入口：凭据 → [ENV-PROVIDE §ENV-03](ENV-PROVIDE.md#env-03)；硬件宿主 → [硬件申请](https://github.com/erikwang2013/polypack/issues/new?template=env-hardware-request.yml)；授权 → [授权登记](https://github.com/erikwang2013/polypack/issues/new?template=env-authorization.yml)。
 
 - 关联任务：T-M2-13（远程农场 v0）、T-M8-09（农场部署指南）。 缺口：Linux 双 worker 演练已绿；macOS worker 注册、跨宿主 submit、IPA 落在共享农场目录、macOS 侧验签未真跑。
 - 环境 / 工具链 / 凭据：macOS worker（完整 Xcode、`xcode-select`、`rustup target add aarch64-apple-ios aarch64-apple-ios-sim x86_64-apple-ios`）、Linux 发起机、两端同路径可见的农场目录 / 共享缓存、Apple 签名凭据。
@@ -118,7 +129,11 @@ spctl --assess --type execute --verbose=4 "$APP"
 - 下一步：准备 macOS 主机，按 FARM-DEPLOY §9 执行并把两侧 transcript 归档；随后把该槽从 GA §7.1 删除。
 - 阻塞：需要 macOS 主机与跨宿主共享挂载；托管 Linux runner 无法代跑 Xcode / codesign。 运行位置：物理 macOS 宿主 + Linux 发起机；不在本仓 CI 内。
 
+<a id="slot-env-04"></a>
+
 ### ENV-04 · 微信 / 支付宝 / 抖音开发者工具预览
+
+- 用户入口：登录态 / 变量 → [ENV-PROVIDE §ENV-04](ENV-PROVIDE.md#env-04)；三端账号授权 → [授权登记](https://github.com/erikwang2013/polypack/issues/new?template=env-authorization.yml)；GUI 宿主 → [硬件申请](https://github.com/erikwang2013/polypack/issues/new?template=env-hardware-request.yml)。
 
 - 关联任务：T-M3-05（Taro adapter）、T-M3-06（小程序构建管线）。 缺口：`contract_devtools_real_preview` 在 `POLY_CONTRACT_REAL=1` 下调用三端 CLI；工具未安装或未登录时只 NOTE / SKIP。真实项目预览码 / 真机预览未产出。
 - 环境 / 工具链 / 凭据：macOS（三端 devtools 官方支持最好）、WeChat DevTools CLI、Alipay Mini Program Studio `minidev`、Douyin DevTools `tma`、三端已登录账号（扫码 / 2FA）；抖音免密 Token 可走 CI。
@@ -136,7 +151,11 @@ cargo test -p poly-cli --test contract_m3_devtools contract_devtools_real_previe
 - 下一步：在 macOS 上登录三端工具，设置 CLI 路径与登录态，跑模块测试并保存二维码 / URL；抖音优先走免密 Token 以进 CI。
 - 阻塞：微信 / 支付宝登录态涉及扫码或 2FA，不能存进公开仓库；抖音账号资质另需审核。 运行位置：GUI 登录需物理 macOS；登录态就绪后命令腿可在 CI 跑。
 
+<a id="slot-env-05"></a>
+
 ### ENV-05 · Roku 真机侧载
+
+- 用户入口：设备 / 局域网 → [ENV-PROVIDE §ENV-05](ENV-PROVIDE.md#env-05) + [硬件申请](https://github.com/erikwang2013/polypack/issues/new?template=env-hardware-request.yml)；设备密码 → [Secrets](https://github.com/erikwang2013/polypack/settings/secrets/actions) 或 `node tools/env-provide.mjs --set-secret ROKU_DEV_PASSWORD`。
 
 - 关联任务：T-M4-15（Roku 频道包与校验器）。 缺口：结构自检 19 项真跑；`POLY_ROKU_REAL=1` 的 ECP 探测与 `plugin_install` 未对真实 Roku 执行。
 - 环境 / 工具链 / 凭据：Roku 设备（开发者模式）、与设备同局域网的宿主、设备 IP、开发者密码、`curl`、`zip` / `unzip`。
@@ -152,7 +171,11 @@ curl --connect-timeout 2 -s "http://<ip>:8060/"
 - 下一步：用一台开发者模式 Roku 执行上述命令，截图并归档；如设备可长期在线，再加自托管 runner 作业。
 - 阻塞：需要局域网内的真实 Roku 与开发者密码；托管 runner 无设备网络。 运行位置：物理设备 + 同 LAN 宿主，不能进托管 CI。
 
+<a id="slot-env-06"></a>
+
 ### ENV-06 · OpenBSD VM 安装冒烟
+
+- 用户入口：KVM runner / OpenBSD 宿主 → [ENV-PROVIDE §ENV-06](ENV-PROVIDE.md#env-06) + [硬件申请](https://github.com/erikwang2013/polypack/issues/new?template=env-hardware-request.yml)。
 
 - 关联任务：T-M5-07（OpenBSD ports 目标）。 缺口：bsd-ci 的 `openbsd` 作业存在但 `continue-on-error: true`；托管 runner 上 OpenBSD VM 在 TCG 下 SSH 启动失败，安装冒烟未产生绿色证据。
 - 环境 / 工具链 / 凭据：支持 KVM 的 self-hosted runner（或物理 OpenBSD 主机）、OpenBSD 7.x 镜像、`pkg_add rust`、ports 树、`signify`。
@@ -199,7 +222,11 @@ pkg_info <DISTNAME> && pkg_info -L <DISTNAME> && /usr/pkg/bin/polypack-app
 - 下一步：无（该槽已关闭）；pkgsrc / NetBSD 大版本升级时复跑。
 - 阻塞：无；生产 pkgsrc 仓库签名与发布仍由部署者负责。
 
+<a id="slot-env-08"></a>
+
 ### ENV-08 · QNX SDP + QEMU 冒烟
+
+- 用户入口：SDP / 许可证 → [ENV-PROVIDE §ENV-08](ENV-PROVIDE.md#env-08)；许可证授权 → [授权登记](https://github.com/erikwang2013/polypack/issues/new?template=env-authorization.yml)；self-hosted runner → [硬件申请](https://github.com/erikwang2013/polypack/issues/new?template=env-hardware-request.yml)。
 
 - 关联任务：T-M6-03（QNX 目标）、T-M6-09（QNX QEMU 冒烟）。 缺口：embedded-ci 的 QNX 条目在 `vars.POLYPACK_QNX_SDP` 缺失时 SKIP；SDP 真交叉编译、`.ifs` 出包、QEMU 串口自检未跑。
 - 环境 / 工具链 / 凭据：QNX SDP 7.1（`qcc` / `nto*-gcc`、`mkifs`）、QNX 许可证、`source qnxsdp-env.sh`、`qemu-system-x86_64`（或板级 QEMU）；可选 `POLYPACK_QNX_QEMU_ARGS`。
@@ -218,7 +245,11 @@ POLYPACK_QNX_QEMU=/usr/bin/qemu-system-x86_64 poly verify --target qnx --json
 - 下一步：在 self-hosted runner 安装 SDP 7.1 并设 `vars.POLYPACK_QNX_SDP`；首绿后把 QNX 条目从 job summary 的 SKIP 列表移除。
 - 阻塞：QNX SDP 需商业许可证，不能公开下载进托管 runner。 运行位置：CI（self-hosted runner + 许可证）可关闭。
 
+<a id="slot-env-09"></a>
+
 ### ENV-09 · VxWorks `wr-cc` 链接腿
+
+- 用户入口：SDK / 许可证 → [ENV-PROVIDE §ENV-09](ENV-PROVIDE.md#env-09)；Wind River 授权 → [授权登记](https://github.com/erikwang2013/polypack/issues/new?template=env-authorization.yml)；self-hosted runner → [硬件申请](https://github.com/erikwang2013/polypack/issues/new?template=env-hardware-request.yml)。
 
 - 关联任务：T-M6-05（VxWorks 目标）。 缺口：库 / 镜像打包与 `nm` 白名单真跑；`wr-cc` 缺席，链接自检腿 SKIP-with-print。
 - 环境 / 工具链 / 凭据：Wind River Workbench / VxWorks 7 SDK、`wr-cc`、目标 triple（默认 `x86_64-wrs-vxworks`）、许可证；`-Z build-std` 的 nightly toolchain。
@@ -236,7 +267,11 @@ poly build --target vxworks --json
 - 下一步：在 self-hosted runner 装 Workbench SDK，设 `WR_CC`，跑一次并归档 `check.sh` 输出。
 - 阻塞：VxWorks SDK 与许可证需商业采购。 运行位置：CI（self-hosted runner）可关闭。
 
+<a id="slot-env-10"></a>
+
 ### ENV-10 · Wear OS 设备 / 模拟器冒烟
+
+- 用户入口：KVM / Wear 设备 → [ENV-PROVIDE §ENV-10](ENV-PROVIDE.md#env-10) + [硬件申请](https://github.com/erikwang2013/polypack/issues/new?template=env-hardware-request.yml)。
 
 - 关联任务：T-M7-04（Wear OS 双冒烟）。 缺口：mock 腿真跑；真实 AVD 或手表上的 install → launch → 用例 → uninstall 未执行。`wear-release-smoke` 缺 `/dev/kvm` 或预构建 APK 时硬阻断。
 - 环境 / 工具链 / 凭据：Linux KVM（`/dev/kvm`）或物理 Wear OS 设备 + ADB 授权、Android SDK / `avdmanager`、Wear OS 5 (API 34) x86_64 镜像或预构建 APK；`POLYPACK_WEAR_FORM_APK`。
@@ -292,7 +327,11 @@ poly verify --target fitbit --json
 - 下一步：`@fitbit/sdk-cli` 的交互入口在 Node 22 上游缺陷不影响本链路；升级 Node / CLI 时复跑。
 - 阻塞：首跑风险——keytar 在 Node 22 需系统 `libsecret-1-dev`（缺则 npm 安装直接失败）；`contract_m7_wear_js` 的旧断言要求 CLI 缺席时打印 SKIP，装 CLI 后该测试不适用（本作业改用直接 `poly build/verify`，不改测试）；`@fitbit/sdk-cli` 的 `fitbit` 入口在 Node 22 上因 `@openid/appauth` 1.4 模块布局变化报 `MODULE_NOT_FOUND`（本链路只用 `fitbit-build`，作业仅断言 `fitbit` 已安装、不执行它）；冷缓存首跑还要在 runner 上编 wasmtime（作业上限 60 min，已去 debuginfo / 关增量）。 运行位置：CI（ubuntu）可关闭。
 
+<a id="slot-env-13"></a>
+
 ### ENV-13 · Zepp `zeus` + 模拟器安装
+
+- 用户入口：Zepp 账号 / GUI 模拟器 → [ENV-PROVIDE §ENV-13](ENV-PROVIDE.md#env-13)；账号授权 → [授权登记](https://github.com/erikwang2013/polypack/issues/new?template=env-authorization.yml)；GUI 宿主 → [硬件申请](https://github.com/erikwang2013/polypack/issues/new?template=env-hardware-request.yml)。
 
 - 关联任务：T-M7-08（Zepp OS 打包器）。 缺口：`.zab` 结构与 md5 命名真跑；`zeus --version` 因工具缺席 SKIP；模拟器安装腿在 verify 中恒 SKIP-with-print（代码明确不自动化）。
 - 环境 / 工具链 / 凭据：Node 22 + Zepp OS `zeus` CLI（`@zeppos/zeus-cli@1.9.3`）、Zepp OS 模拟器（GUI，外部）、开发者账号（安装 / 预览按官方要求）。
@@ -312,7 +351,11 @@ poly verify --target zepp --json
 - 下一步：模拟器腿由人工执行并把截图附到 ENV-13 issue；其余 CI 腿已关。
 - 阻塞：首跑风险——`@zeppos/zeus-cli@1.9.3` 的 `zeus --version` 在 Node 22 的行为需首跑确认；模拟器是 GUI 应用，无法在 headless runner 自动安装 / 启动；冷缓存首跑需在 runner 上编 wasmtime（作业上限 60 min，已去 debuginfo / 关增量）。 运行位置：`zeus` 自检在 CI；模拟器安装需物理 GUI 宿主。
 
+<a id="slot-env-14"></a>
+
 ### ENV-14 · Garmin Connect IQ SDK / devkey 编译
+
+- 用户入口：devkey / SDK → [ENV-PROVIDE §ENV-14](ENV-PROVIDE.md#env-14)（`node tools/env-provide.mjs --set-secret POLYPACK_GARMIN_DEVKEY_B64 --file developer_key.der`）；Garmin 账号 → [授权登记](https://github.com/erikwang2013/polypack/issues/new?template=env-authorization.yml)。
 
 - 关联任务：T-M7-09（Garmin Monkey C 转译 spike）。 缺口：29/29 Node 测试与结构自检真跑；`monkeyc` / `CIQ_DEVKEY` 缺席，Monkey C 编译腿 SKIP（PASS 4 / FAIL 0 / SKIP 3）。
 - 环境 / 工具链 / 凭据：Connect IQ SDK（`bin/monkeyc`）、开发者密钥 `.der`、Java 运行时；SDK 下载可能受 403 / 账号限制。
@@ -408,7 +451,11 @@ gh api repos/erikwang2013/polypack/branches/main/protection/required_status_chec
 - 下一步：保持规则不变；如启用紧急 break-glass 通道，须按 GA §7 记录例外条件、审批人与四眼复核记录，并在事后恢复 `enforce_admins=true`。
 - 阻塞：无（已关闭）；后续修改仍需仓库管理员权限。 运行位置：HUMAN / GitHub 设置，不在代码仓内。
 
+<a id="slot-env-19"></a>
+
 ### ENV-19 · 人类外部开发者试用
+
+- 用户入口：[试用报名](https://github.com/erikwang2013/polypack/issues/new?template=human-trial-signup.yml) · [ENV-PROVIDE §ENV-19](ENV-PROVIDE.md#env-19) · [试用协议](HUMAN-TRIAL.md)。
 
 - 关联任务：GA §7.2「人类外部开发者试用」。 缺口：未招募真实外部开发者按 GA §2 在 1 天内新增一个自定义目标并出包；卡点未记录。
 - 环境 / 工具链 / 凭据：3–5 名未参与本仓开发的外部开发者、干净机器（Linux / macOS / Windows 至少各一）、GA / README / 插件模板、反馈模板与计时表。
@@ -425,7 +472,11 @@ poly build --config <app>/polypack.toml --target pocket-notes
 - 下一步：GA 发布后招募 3–5 人，按模板收集报告，把卡点回写到 GA / README / 模板。
 - 阻塞：需要真实外部人员与时间，不能由 agent 代跑。 运行位置：HUMAN；不在 CI。
 
+<a id="slot-env-20"></a>
+
 ### ENV-20 · 真机设备预览（Android + Android TV）
+
+- 用户入口：真机 / 云农场 → [ENV-PROVIDE §ENV-20](ENV-PROVIDE.md#env-20) + [硬件申请](https://github.com/erikwang2013/polypack/issues/new?template=env-hardware-request.yml)；云账号 → [授权登记](https://github.com/erikwang2013/polypack/issues/new?template=env-authorization.yml)。
 
 - 关联任务：T-M9-21（设备预览矩阵）。 缺口：`poly preview --dry-run` 已交付（DevicePool / DeviceLease、确定性计划、超时 / 清理），但真实租约、安装、启动、截图、日志与清理未执行。
 - 环境 / 工具链 / 凭据：两台真实设备（Android 手机 + Android TV）或等价云设备；`adb`；夹具 APK；证据目录；云厂商账号（若走云）。

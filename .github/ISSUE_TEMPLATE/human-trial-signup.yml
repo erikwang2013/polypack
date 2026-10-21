@@ -1,0 +1,110 @@
+name: Human external developer trial sign-up
+description: Volunteer for the 90-minute external developer trial (ENV-19). Do not post names, email addresses, phone numbers, employers, or other sensitive identifiers.
+title: "[Human trial] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for volunteering. Read the protocol and consent terms in [docs/HUMAN-TRIAL.md](https://github.com/erikwang2013/polypack/blob/main/docs/HUMAN-TRIAL.md) before signing up.
+
+        **Do not post your name, email address, phone number, employer, address, or other sensitive identifiers, and do not paste secrets, passwords, tokens, or private keys.** We reply in this issue using your GitHub handle, or through a private channel arranged by a maintainer. Reports are published as anonymized IDs (P1, P2, …).
+
+  - type: dropdown
+    id: slot
+    attributes:
+      label: Environment slot
+      options:
+        - ENV-19 · Human external developer trial
+    validations:
+      required: true
+
+  - type: dropdown
+    id: request_type
+    attributes:
+      label: Request type
+      options:
+        - Trial participant
+        - Facilitator / observer
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: operating_system
+    attributes:
+      label: Operating system
+      description: The clean machine you would use for the trial.
+      options:
+        - Linux
+        - macOS
+        - Windows
+        - More than one
+    validations:
+      required: true
+
+  - type: dropdown
+    id: rust_background
+    attributes:
+      label: Rust background
+      options:
+        - No Rust experience
+        - Some / hobby Rust
+        - Professional Rust
+    validations:
+      required: true
+
+  - type: dropdown
+    id: primary_background
+    attributes:
+      label: Primary background
+      options:
+        - Mobile
+        - Frontend / web
+        - Cross-platform release
+        - Other / none of these
+    validations:
+      required: true
+
+  - type: dropdown
+    id: availability
+    attributes:
+      label: Availability for a 90-minute session
+      options:
+        - Within 1 week
+        - Within 1 month
+        - Flexible
+    validations:
+      required: true
+
+  - type: dropdown
+    id: recording_consent
+    attributes:
+      label: Screen / voice recording
+      description: Recording is optional and does not affect participation.
+      options:
+        - I consent to screen / voice recording
+        - I do not consent to recording
+    validations:
+      required: true
+
+  - type: dropdown
+    id: contact_preference
+    attributes:
+      label: Contact preference
+      options:
+        - Reply in this issue (GitHub handle only)
+        - Private channel arranged by a maintainer
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: consent
+    attributes:
+      label: Consent
+      options:
+        - label: I have read docs/HUMAN-TRIAL.md and consent to the 90-minute think-aloud protocol, including voluntary withdrawal at any time.
+          required: true
+        - label: I understand reports are anonymized and I will not post my name, email address, phone number, employer, or address here.
+          required: true
+        - label: I confirm this issue contains no secrets, passwords, tokens, private keys, or credentials.
+          required: true

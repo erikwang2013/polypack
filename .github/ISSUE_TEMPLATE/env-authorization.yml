@@ -1,0 +1,98 @@
+name: ENV authorization record
+description: Record a non-secret approval reference for an environment slot (Apple, QNX, Wind River, Garmin, Roku, mini-programs, cloud devices, or console NDA).
+title: "[ENV auth] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this form **after** a vendor or your organization approves access. It records a non-secret reference only.
+
+        **Do not paste secrets, passwords, tokens, license files or keys, private keys, certificates, or NDA text into this issue.** Upload credentials through GitHub Actions Secrets or `node tools/env-provide.mjs --set-secret NAME`; see [docs/ENV-PROVIDE.md](https://github.com/erikwang2013/polypack/blob/main/docs/ENV-PROVIDE.md).
+
+        Recording an authorization does **not** close a slot; real-run evidence is still required per [docs/ENV-SLOTS.md](https://github.com/erikwang2013/polypack/blob/main/docs/ENV-SLOTS.md) §4.
+
+  - type: dropdown
+    id: slot
+    attributes:
+      label: Environment slot
+      description: Choose the slot this authorization unblocks. Console NDAs have no ENV slot yet.
+      options:
+        - ENV-02 · Apple codesign / notarytool
+        - ENV-03 · macOS farm worker → IPA
+        - ENV-04 · WeChat / Alipay / Douyin devtools
+        - ENV-05 · Roku real-device sideload
+        - ENV-06 · OpenBSD VM install smoke
+        - ENV-08 · QNX SDP + QEMU smoke
+        - ENV-09 · VxWorks wr-cc link leg
+        - ENV-10 · Wear OS device / emulator
+        - ENV-13 · Zepp simulator
+        - ENV-14 · Garmin Connect IQ compile
+        - ENV-19 · Human external trial
+        - ENV-20 · Real-device preview
+        - Console NDA (PlayStation / Xbox / Nintendo)
+        - Other / not sure
+    validations:
+      required: true
+
+  - type: dropdown
+    id: request_type
+    attributes:
+      label: Request type
+      options:
+        - Developer program / account enrollment
+        - Commercial license / entitlement
+        - NDA / publisher approval
+        - Certificate or signing access
+        - Cloud / device-farm account
+        - Organization-internal approval
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: authorization_reference_type
+    attributes:
+      label: Authorization reference type
+      description: Choose the kind of non-secret reference below. Confidential references go through the private channel.
+      options:
+        - Vendor approval / support ticket
+        - Account or entitlement ID
+        - Certificate Common Name / Team ID
+        - NDA reference
+        - Purchase order / budget approval
+        - Confidential — sent via private channel
+        - Not applicable
+    validations:
+      required: true
+
+  - type: input
+    id: authorization_reference
+    attributes:
+      label: Authorization reference (non-secret)
+      description: Vendor ticket, account ID, entitlement ID, certificate Common Name, NDA reference, or approval email subject. If the reference itself is confidential, type "confidential — sent via private channel".
+      placeholder: "e.g. Team ID ABCDE12345 / QNX entitlement 123456"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: contact_preference
+    attributes:
+      label: Contact preference
+      options:
+        - Reply in this issue (public)
+        - Private channel arranged by a maintainer
+        - No preference
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: confirmations
+    attributes:
+      label: Confirmations
+      options:
+        - label: I confirm this issue contains no secrets, passwords, tokens, license files or keys, private keys, certificates, or NDA text.
+          required: true
+        - label: I am authorized to share this non-secret reference, or I have marked it as confidential for the private channel.
+          required: true
+        - label: I understand this record does not close the slot; evidence per docs/ENV-SLOTS.md §4 is still required.
+          required: true
