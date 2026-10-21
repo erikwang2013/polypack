@@ -8,6 +8,8 @@
 >
 > **2026-10-19 gap closure**: per-target `poly release` credentials, the built-in Garmin `.iq` packager, the Vault trust-root carrier, the keyring/zbus upgrade, GitHub Releases binaries, and documentation consistency have landed; the environment-slot ledger is in [ENV-SLOTS](docs/ENV-SLOTS.en.md) and uninitiated directions are in [INITIATIVES](docs/INITIATIVES.en.md).
 >
+> **2026-10-21 · v1.15.0**: M9 close-out — SBOM, multi-app workspaces, `release --changed`, OTA, store metadata, the GUI, the device-preview protocol, the signed plugin index (`poly plugin add/search`), and farm hardening are delivered; ENV-01/07/11/12/15/16/17/18 are closed. Entry points for credentials / authorizations / hardware / human trials you must supply are in [ENV-PROVIDE](docs/ENV-PROVIDE.en.md). New commands: `poly history`, `poly update`, `poly preview`, `poly deploy line-liff`, `poly verify --sbom`, `poly plugin add|search`.
+>
 > **Note on diagram labels:** the embedded diagrams are labeled in Chinese (the project's primary language). English-labeled variants are available under `docs/assets/en/`.
 
 ---
@@ -372,7 +374,7 @@ Docs are part of the product; diagrams and prose must stay single-sourced:
 
 Releases: since v1.0.0, tags and GitHub Release names follow `vX.Y.Z` semantic increments (v1.0.0 = this documentation and planning baseline).
 
-Incubated extension directions (SBOM / monorepo / incremental releases / OTA / store metadata / GUI dashboard / device previews / ADR) live in [docs/ROADMAP.en.md](docs/ROADMAP.en.md) §13; detailed initiation, design, and task breakdowns are in [docs/INITIATIVES.en.md](docs/INITIATIVES.en.md), and the environment-slot close-out protocol is in [docs/ENV-SLOTS.en.md](docs/ENV-SLOTS.en.md).
+Incubated extension directions (SBOM / monorepo / incremental releases / OTA / store metadata / GUI dashboard / device previews / ADR) live in [docs/ROADMAP.en.md](docs/ROADMAP.en.md) §13; detailed initiation, design, and task breakdowns are in [docs/INITIATIVES.en.md](docs/INITIATIVES.en.md), the environment-slot close-out protocol is in [docs/ENV-SLOTS.en.md](docs/ENV-SLOTS.en.md), the entry points for credentials / authorizations / hardware / human trials you must supply are in [docs/ENV-PROVIDE.en.md](docs/ENV-PROVIDE.en.md), and SBOM usage plus a sample are in [docs/SBOM.en.md](docs/SBOM.en.md).
 
 | Milestone | Scope |
 |---|---|

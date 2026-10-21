@@ -1,6 +1,6 @@
 # How to provide missing environment-slot inputs (ENV-PROVIDE)
 
-> Status: user entry-point guide (2026-10-21, baseline `main` v1.14.0). This page explains how to hand over inputs **only you can supply**: credentials, authorizations, hardware / hosts, and human trials.
+> Status: user entry-point guide (2026-10-21, baseline `main` v1.15.0). This page explains how to hand over inputs **only you can supply**: credentials, authorizations, hardware / hosts, and human trials.
 > Real slot status and evidence stay authoritative in [ENV-SLOTS](ENV-SLOTS.en.md); **providing an input does not close a slot** — closure still needs the real-run evidence and review in §4.2.
 > Chinese: [ENV-PROVIDE.md](ENV-PROVIDE.md)
 

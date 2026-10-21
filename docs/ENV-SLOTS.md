@@ -1,6 +1,6 @@
 # 环境槽关闭台账（ENV-SLOTS）
 
-> 状态快照：2026-10-20 · 基线：`main`（与 `TASKS.md` / `GA.md` 当前版本同批）。
+> 状态快照：2026-10-21 · 基线：`main`（与 `TASKS.md` / `GA.md` 当前版本同批）。
 > 本台账只登记**环境槽**：仓内结构 / mock / 命令组装腿已真跑，但真实工具链、真机、真实云或人工签字尚未执行，因而只能 SKIP-with-print 的验收腿。
 > 纪律：`SKIP-with-print` 不是 PASS；没有原始证据（命令、退出码、工具版本、产物摘要）的槽位不得在 TASKS / GA 标 ✅ 关闭。English: [ENV-SLOTS.en.md](ENV-SLOTS.en.md)
 
