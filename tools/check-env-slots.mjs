@@ -9,12 +9,16 @@
  *   3) owner tokens use only the five assigned roles
  *   4) every linked T-Mx-yy task ID (where present) exists in docs/TASKS.md
  *   5) Chinese and English rows agree on ID / status / mode / owner / evidence
+ *   6) tools/env-providers.json covers every non-CLOSED slot (see
+ *      check-env-providers.mjs)
  *
  * Read-only. Usage: node tools/check-env-slots.mjs (exit 0 clean, 1 drift)
  */
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+
+import { checkEnvProviders } from './check-env-providers.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const TASKS_FILE = 'docs/TASKS.md';
@@ -150,6 +154,11 @@ try {
   const zh = checkLedger(LEDGERS[0], taskIds);
   const en = checkLedger(LEDGERS[1], taskIds);
   crossCheck(zh, en);
+  const providers = checkEnvProviders();
+  for (const message of providers.errors) bad(message);
+  if (providers.failed === 0) {
+    ok('tools/env-providers.json · every non-CLOSED slot covered; names, https portals and anchors valid');
+  }
 } catch (err) {
   bad(err.message);
 }
