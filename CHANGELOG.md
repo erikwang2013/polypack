@@ -4,6 +4,13 @@
 版本号自 v1.0.0 起按语义化版本递增（tag 与 GitHub Release 名称一致，见 [README](README.md#路线图)）。
 Notable changes are recorded here; since v1.0.0, tags and releases follow `vX.Y.Z` semantic increments.
 
+## [Unreleased]
+
+### Added
+- **下载目录页**：新增 `site/downloads/` 双语下载页，集中列出 Linux deb / AppImage、Windows MSI、macOS pkg、便携压缩包、SHA-256 校验与系统要求；首页导航与下载区直接进入该页，sitemap / 检查门禁同步。
+
+*Download directory page: adds the bilingual `site/downloads/` page with Linux deb / AppImage, Windows MSI, macOS pkg, portable archives, SHA-256 verification and system requirements; the home nav and download section link to it, with sitemap/check gates updated.*
+
 ## [1.16.0] — 2026-10-22
 
 ### Added

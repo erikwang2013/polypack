@@ -12,53 +12,58 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SITE = path.join(ROOT, 'site');
-const INDEX = path.join(SITE, 'index.html');
+const PAGES = ['index.html', 'downloads/index.html'];
 
 let failed = 0;
 const ok = (message) => console.log(`ok   ${message}`);
 const bad = (message) => { failed += 1; console.error(`ERROR ${message}`); };
 const read = (rel) => fs.readFileSync(path.join(SITE, rel), 'utf8');
 
-const html = fs.readFileSync(INDEX, 'utf8');
+const pages = PAGES.map((rel) => ({ rel, html: read(rel) }));
+const html = pages[0].html;
 
-// 1) Local references exist (src/href/url() in inline style are covered separately).
-const refs = new Set([...html.matchAll(/(?:src|href)="([^"]+)"/g)].map((m) => m[1]));
-for (const ref of refs) {
-  if (/^(https?:|#|mailto:|data:|\/\/)/.test(ref)) continue;
-  const clean = ref.split(/[?#]/)[0];
-  if (!fs.existsSync(path.join(SITE, clean))) bad(`index.html references missing local asset: ${ref}`);
+// 1) Local references exist in every HTML page.
+for (const page of pages) {
+  const refs = new Set([...page.html.matchAll(/(?:src|href)="([^"]+)"/g)].map((m) => m[1]));
+  for (const ref of refs) {
+    if (/^(https?:|#|mailto:|data:|\/\/)/.test(ref)) continue;
+    const clean = ref.split(/[?#]/)[0];
+    const target = path.resolve(path.dirname(path.join(SITE, page.rel)), clean);
+    if (!fs.existsSync(target)) bad(`${page.rel} references missing local asset: ${ref}`);
+  }
 }
-ok('local asset references resolve');
+ok(`${pages.length} HTML pages resolve local assets`);
 
-// 2) Bilingual attributes are paired.
-const zh = [...html.matchAll(/data-zh="([^"]*)"/g)].length;
-const en = [...html.matchAll(/data-en="([^"]*)"/g)].length;
-const zhHtml = [...html.matchAll(/data-zh-html="([^"]*)"/g)].length;
-const enHtml = [...html.matchAll(/data-en-html="([^"]*)"/g)].length;
+// 2) Bilingual attributes are paired on every page.
+const count = (text, attr) => [...text.matchAll(new RegExp(`${attr}="([^"]*)"`, 'g'))].length;
+const zh = pages.reduce((n, page) => n + count(page.html, 'data-zh'), 0);
+const en = pages.reduce((n, page) => n + count(page.html, 'data-en'), 0);
+const zhHtml = pages.reduce((n, page) => n + count(page.html, 'data-zh-html'), 0);
+const enHtml = pages.reduce((n, page) => n + count(page.html, 'data-en-html'), 0);
 if (zh !== en) bad(`data-zh (${zh}) and data-en (${en}) counts differ`);
 if (zhHtml !== enHtml) bad(`data-zh-html (${zhHtml}) and data-en-html (${enHtml}) counts differ`);
 if (zh + zhHtml === 0) bad('no bilingual text attributes found');
 else ok(`bilingual attributes paired (${zh + zhHtml} entries)`);
 
 // 3) Required SEO / PWA-ish files and metadata.
-for (const file of ['robots.txt', 'sitemap.xml', 'manifest.webmanifest', 'assets/og/cover.png', 'vendor/three.min.js', 'vendor/three.LICENSE']) {
+for (const file of ['robots.txt', 'sitemap.xml', 'manifest.webmanifest', 'downloads/index.html', 'assets/og/cover.png', 'vendor/three.min.js', 'vendor/three.LICENSE']) {
   if (!fs.existsSync(path.join(SITE, file))) bad(`missing ${file}`);
 }
-for (const needle of ['<link rel="canonical"', 'application/ld+json', 'og:image', 'hreflang="en"', 'perf-output']) {
-  // perf-output is created by JS; the marker lives in site.js, not index.html.
-  const hay = needle === 'perf-output' ? read('js/site.js') : html;
-  if (!hay.includes(needle)) bad(`missing SEO/perf marker: ${needle}`);
+for (const needle of ['<link rel="canonical"', 'application/ld+json', 'og:image', 'hreflang="en"']) {
+  if (!html.includes(needle)) bad(`missing SEO marker: ${needle}`);
 }
+if (!read('js/site.js').includes('perf-output')) bad('missing perf marker: perf-output');
+if (!read('downloads/index.html').includes('canonical')) bad('downloads page missing canonical');
 ok('SEO, sitemap, OG and perf markers present');
 
 // 4) No remote runtime assets except the requested Busuanzi stats script.
-const remoteScripts = [...html.matchAll(/<script[^>]+src="([^"]+)"/g)].map((m) => m[1]).filter((u) => /^https?:/.test(u));
-const remoteCss = [...html.matchAll(/<link[^>]+href="(https?:[^"]+\.css[^"]*)"/g)].map((m) => m[1]);
+const remoteScripts = pages.flatMap((page) => [...page.html.matchAll(/<script[^>]+src="([^"]+)"/g)].map((m) => m[1]).filter((u) => /^https?:/.test(u)));
+const remoteCss = pages.flatMap((page) => [...page.html.matchAll(/<link[^>]+href="(https?:[^"]+\.css[^"]*)"/g)].map((m) => m[1]));
 if (remoteScripts.length || remoteCss.length) bad(`remote runtime assets found: ${[...remoteScripts, ...remoteCss].join(', ')}`);
 else ok('no remote runtime assets (three.js is vendored)');
 
 // 5) JS syntax.
-for (const file of ['js/site.js', 'js/three-worker.js']) {
+for (const file of ['js/site.js', 'js/downloads.js', 'js/three-worker.js']) {
   const result = spawnSync(process.execPath, ['--check', path.join(SITE, file)], { encoding: 'utf8' });
   if (result.status !== 0) bad(`${file}: ${result.stderr.trim() || 'syntax error'}`);
 }
