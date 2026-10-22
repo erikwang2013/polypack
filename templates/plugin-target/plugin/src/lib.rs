@@ -15,7 +15,7 @@ use alloc::vec::Vec;
 
 wit_bindgen::generate!({ world: "polypack-target", path: "wit" });
 
-/// 插件 id（由 `poly plugin new` 替换；与 contract 测试的断言保持同步）。
+/// 插件 id（由 `polypack plugin new` 替换；与 contract 测试的断言保持同步）。
 const PLUGIN_ID: &str = "__polypack_plugin_id__";
 
 #[global_allocator]

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Build a .deb for the poly CLI. Usage: build-deb.sh <binary> <version> <output.deb> [arch]
+# Build a .deb for the polypack CLI. Usage: build-deb.sh <binary> <version> <output.deb> [arch]
 set -euo pipefail
 
 binary=${1:?usage: build-deb.sh <binary> <version> <output.deb> [arch]}
@@ -8,14 +8,15 @@ output=${3:?output required}
 arch=${4:-amd64}
 stage=$(mktemp -d)
 trap 'rm -rf "$stage"' EXIT
-mkdir -p "$stage/DEBIAN" "$stage/usr/bin" "$stage/usr/share/applications" \
-  "$stage/usr/share/icons/hicolor/scalable/apps"
-install -m 0755 "$binary" "$stage/usr/bin/poly"
-install -m 0644 "$(dirname "$0")/poly.desktop" "$stage/usr/share/applications/polypack.desktop"
+mkdir -p "$stage/DEBIAN" "$stage/opt/polypack/bin" "$stage/usr/bin" \
+  "$stage/usr/share/applications" "$stage/usr/share/icons/hicolor/scalable/apps"
+install -m 0755 "$binary" "$stage/opt/polypack/bin/polypack"
+ln -s /opt/polypack/bin/polypack "$stage/usr/bin/polypack"
+install -m 0644 "$(dirname "$0")/polypack.desktop" "$stage/usr/share/applications/polypack.desktop"
 install -m 0644 "$(dirname "$0")/../../site/assets/img/pax-mark.svg" \
-  "$stage/usr/share/icons/hicolor/scalable/apps/poly.svg"
+  "$stage/usr/share/icons/hicolor/scalable/apps/polypack.svg"
 cat > "$stage/DEBIAN/control" <<EOF
-Package: polypack-cli
+Package: polypack
 Version: $version
 Section: devel
 Priority: optional

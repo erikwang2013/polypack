@@ -1,11 +1,11 @@
 # 发布前设备预览矩阵（M9-E7）
 
-> 状态：T-M9-19（设备农场调研矩阵）与 T-M9-20（`DevicePool` / `DeviceLease` 协议 + `poly preview --dry-run`）已交付；**T-M9-21 真机安装 / 启动 / 截图是外部环境工作，未执行、不标 ✅**。
+> 状态：T-M9-19（设备农场调研矩阵）与 T-M9-20（`DevicePool` / `DeviceLease` 协议 + `polypack preview --dry-run`）已交付；**T-M9-21 真机安装 / 启动 / 截图是外部环境工作，未执行、不标 ✅**。
 > English: [DEVICE-PREVIEW.en.md](DEVICE-PREVIEW.en.md)
 
 ## 1. 状态与范围
 
-本文件回答三件事：买还是自建设备农场；设备池与租约协议长什么样；真机演练需要哪些命令与证据。`poly preview --dry-run` 只生成确定性计划，不租设备、不读凭据、不访问网络；真实执行留给 T-M9-21 的外部设备与人工证据归档。
+本文件回答三件事：买还是自建设备农场；设备池与租约协议长什么样；真机演练需要哪些命令与证据。`polypack preview --dry-run` 只生成确定性计划，不租设备、不读凭据、不访问网络；真实执行留给 T-M9-21 的外部设备与人工证据归档。
 
 非目标：完整设备农场产品、无人值守审核、为所有 49 个目标承诺真机覆盖。设备可用性（尤其 Android TV / Wear OS）随 provider 目录变化，租用前必须按当时目录核对。
 
@@ -67,7 +67,7 @@
 ## 6. Dry-run 命令与计划
 
 ```bash
-poly preview --dry-run --json --at 0 --timeout 900 \
+polypack preview --dry-run --json --at 0 --timeout 900 \
   --device "firebase-test-lab/Pixel 7/android" \
   --device "self-hosted/tv-lab-01/android/android-tv"
 ```
@@ -105,18 +105,18 @@ poly preview --dry-run --json --at 0 --timeout 900 \
 ## 7. 租约、超时与清理语义
 
 - 租约按 `--device` 声明序编号，同一输入与 `--at` 生成逐字节相同的 JSON；重跑可对比差异。
-- `expires_at = acquired_at + timeout_secs`，加法做溢出检查；`--timeout 0` 与溢出都以 `poly::E_PLAN_0001` 拒绝。
+- `expires_at = acquired_at + timeout_secs`，加法做溢出检查；`--timeout 0` 与溢出都以 `polypack::E_PLAN_0001` 拒绝。
 - 成功释放；失败释放并保留证据；超时强制释放。三条路径都要求卸载夹具应用并从 provider 释放设备。
 - 证据目录固定在 `.polypack/preview/<target>/<device>/`；device / os / target 含 `/`、`\`、控制字符或为 `.` / `..` 时拒绝，避免证据路径逃逸。
-- dry-run 是纯函数路径：不读凭据、不起子进程、不建 socket。真实执行未接线，不带 `--dry-run` 直接以 `poly::E_FARM_0005` 拒绝，避免伪造结果。
+- dry-run 是纯函数路径：不读凭据、不起子进程、不建 socket。真实执行未接线，不带 `--dry-run` 直接以 `polypack::E_FARM_0005` 拒绝，避免伪造结果。
 
 | 条件 | 稳定错误码 | 状态 |
 | --- | --- | --- |
-| provider / 设备表达式 / 空列表 / 重复设备非法 | `poly::E_FARM_0002` | 已实现 |
-| 租约时长非法或溢出 | `poly::E_PLAN_0001` | 已实现 |
-| 未带 `--dry-run` 的真实执行 | `poly::E_FARM_0005` | 已实现（明确拒绝） |
-| 租约到期仍未完成 | `poly::E_FARM_0004` | 计划中，未实现 |
-| 远端安装 / 启动失败 | `poly::E_FARM_0003` | 计划中，未实现 |
+| provider / 设备表达式 / 空列表 / 重复设备非法 | `polypack::E_FARM_0002` | 已实现 |
+| 租约时长非法或溢出 | `polypack::E_PLAN_0001` | 已实现 |
+| 未带 `--dry-run` 的真实执行 | `polypack::E_FARM_0005` | 已实现（明确拒绝） |
+| 租约到期仍未完成 | `polypack::E_FARM_0004` | 计划中，未实现 |
+| 远端安装 / 启动失败 | `polypack::E_FARM_0003` | 计划中，未实现 |
 
 ## 8. T-M9-21 外部真机演练（未交付）
 
@@ -126,7 +126,7 @@ poly preview --dry-run --json --at 0 --timeout 900 \
 
 ```bash
 # 0. 确定性租约计划（先归档，证明设备与时间窗）
-poly preview --dry-run --json --at 0 --timeout 900 \
+polypack preview --dry-run --json --at 0 --timeout 900 \
   --device "self-hosted/<android-serial>/android" \
   --device "self-hosted/<android-tv-serial>/android/android-tv"
 
@@ -154,8 +154,8 @@ adb devices -l
 
 | 证据 | 要求 |
 | --- | --- |
-| 计划 | `poly preview --dry-run --json` 原始输出，含 lease_id 与时间窗 |
-| 产物 | APK 路径 + 构建回执中的 blake3 摘要（`poly build --json`） |
+| 计划 | `polypack preview --dry-run --json` 原始输出，含 lease_id 与时间窗 |
+| 产物 | APK 路径 + 构建回执中的 blake3 摘要（`polypack build --json`） |
 | 设备 | `adb devices -l` 输出、型号、API level（`getprop ro.build.version.sdk`） |
 | 安装 | 完整 `adb install` 命令与退出码 |
 | 启动 | `am start -W` 输出含 `Status: ok`，且焦点活动等于目标 activity |

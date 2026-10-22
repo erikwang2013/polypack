@@ -1,13 +1,13 @@
 # LINE LIFF deploy mode (M9-P3)
 
-> Status: `poly deploy line-liff` is delivered (T-M9-26/27, 2026-10-20); the command is always a dry run — no network, no upload, and no platform package. See [ADR 0009](decisions/0009-line-deploy.md) for the decision and [ADR 0006](decisions/0006-platform-decisions.md) for the platform verdict.
+> Status: `polypack deploy line-liff` is delivered (T-M9-26/27, 2026-10-20); the command is always a dry run — no network, no upload, and no platform package. See [ADR 0009](decisions/0009-line-deploy.md) for the decision and [ADR 0006](decisions/0006-platform-decisions.md) for the platform verdict.
 
 ## 1. Positioning
 
 LIFF apps are registered by **hosted URL** in the LINE Developers Console (LINE Login channel → LIFF); there is no official local upload format, LIFF config file, or CI upload API. This feature is therefore a **deploy mode, not a TargetSpec**:
 
 - it does not enter `TargetRegistry` and does not change the 49-target table or L1–L7 counts;
-- it produces no "platform package"; `poly deploy line-liff` only validates the config and static directory;
+- it produces no "platform package"; `polypack deploy line-liff` only validates the config and static directory;
 - the actual upload / release is done manually in the Console; the command does not call the LINE API.
 
 ## 2. Configuration
@@ -34,16 +34,16 @@ Unknown fields are rejected so typos cannot be silently ignored.
 
 ```bash
 # First produce the Web static directory (use the project's actual command)
-poly build --target web
+polypack build --target web
 
 # Validate and print the manual Console steps
-poly deploy line-liff --dir dist --config line-liff.toml
+polypack deploy line-liff --dir dist --config line-liff.toml
 
 # Machine-readable event
-poly deploy line-liff --dir dist --config line-liff.toml --json
+polypack deploy line-liff --dir dist --config line-liff.toml --json
 ```
 
-Validation failures return `poly::E_DEPLOY_0001` for: `schema` not 1, a missing or empty required field, a non-numeric `channel_id`, an Endpoint that is not HTTPS / lacks a host / contains a fragment, empty `scopes`, or a `--dir` that does not exist or is not a directory.
+Validation failures return `polypack::E_DEPLOY_0001` for: `schema` not 1, a missing or empty required field, a non-numeric `channel_id`, an Endpoint that is not HTTPS / lacks a host / contains a fragment, empty `scopes`, or a `--dir` that does not exist or is not a directory.
 
 `--json` emits a single event:
 
@@ -63,7 +63,7 @@ Validation failures return `poly::E_DEPLOY_0001` for: `schema` not 1, a missing 
 
 - **No network**: the command does not contact LINE or any remote host; `network=false` is a fixed contract, not a switch.
 - **No upload API**: LINE provides no LIFF create / upload API, so automatic registration and `--publish` are not implemented.
-- **No TargetSpec**: no entry is added to `crates/poly-targets/src/builtin.rs`; if LINE later publishes a verifiable local package format with upload / review processes, a new ADR will evaluate promoting this mode.
+- **No TargetSpec**: no entry is added to `crates/polypack-targets/src/builtin.rs`; if LINE later publishes a verifiable local package format with upload / review processes, a new ADR will evaluate promoting this mode.
 - **Manual drill**: real Console registration needs a LINE account and HTTPS hosting, which are external steps; the repository only verifies config rules, dry-run output, and error codes.
 
-Related files: `crates/poly-cli/src/deploy.rs`, `crates/poly-cli/tests/deploy.rs`, [ADR 0009](decisions/0009-line-deploy.md).
+Related files: `crates/polypack-cli/src/deploy.rs`, `crates/polypack-cli/tests/deploy.rs`, [ADR 0009](decisions/0009-line-deploy.md).

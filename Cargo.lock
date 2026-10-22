@@ -1518,12 +1518,12 @@ dependencies = [
 ]
 
 [[package]]
-name = "poly-bundle"
+name = "polypack-bundle"
 version = "1.16.0"
 dependencies = [
  "flate2",
  "md-5",
- "poly-targets",
+ "polypack-targets",
  "serde",
  "serde_json",
  "sha2 0.10.9",
@@ -1532,7 +1532,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "poly-cache"
+name = "polypack-cache"
 version = "1.16.0"
 dependencies = [
  "blake3",
@@ -1547,7 +1547,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "poly-cli"
+name = "polypack-cli"
 version = "1.16.0"
 dependencies = [
  "base64 0.22.1",
@@ -1555,14 +1555,14 @@ dependencies = [
  "clap",
  "flate2",
  "keyring",
- "poly-bundle",
- "poly-cache",
- "poly-core",
- "poly-plugin",
- "poly-publish",
- "poly-sign",
- "poly-targets",
- "poly-toolchain",
+ "polypack-bundle",
+ "polypack-cache",
+ "polypack-core",
+ "polypack-plugin",
+ "polypack-publish",
+ "polypack-sign",
+ "polypack-targets",
+ "polypack-toolchain",
  "semver",
  "serde",
  "serde_json",
@@ -1571,12 +1571,12 @@ dependencies = [
 ]
 
 [[package]]
-name = "poly-core"
+name = "polypack-core"
 version = "1.16.0"
 dependencies = [
- "poly-cache",
- "poly-targets",
- "poly-toolchain",
+ "polypack-cache",
+ "polypack-targets",
+ "polypack-toolchain",
  "schemars",
  "serde",
  "serde_json",
@@ -1586,15 +1586,15 @@ dependencies = [
 ]
 
 [[package]]
-name = "poly-plugin"
+name = "polypack-plugin"
 version = "1.16.0"
 dependencies = [
  "base64 0.22.1",
  "blake3",
  "libc",
- "poly-core",
- "poly-sign",
- "poly-targets",
+ "polypack-core",
+ "polypack-sign",
+ "polypack-targets",
  "rustls-native-certs",
  "thiserror",
  "ureq",
@@ -1602,14 +1602,14 @@ dependencies = [
 ]
 
 [[package]]
-name = "poly-publish"
+name = "polypack-publish"
 version = "1.16.0"
 dependencies = [
  "base64 0.22.1",
  "blake3",
  "flate2",
  "percent-encoding",
- "poly-core",
+ "polypack-core",
  "ring",
  "rsa",
  "rustls-native-certs",
@@ -1622,12 +1622,12 @@ dependencies = [
 ]
 
 [[package]]
-name = "poly-sign"
+name = "polypack-sign"
 version = "1.16.0"
 dependencies = [
  "base64 0.22.1",
  "keyring",
- "poly-core",
+ "polypack-core",
  "rustls-native-certs",
  "serde",
  "serde_json",
@@ -1637,7 +1637,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "poly-targets"
+name = "polypack-targets"
 version = "1.16.0"
 dependencies = [
  "schemars",
@@ -1647,7 +1647,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "poly-toolchain"
+name = "polypack-toolchain"
 version = "1.16.0"
 dependencies = [
  "serde",

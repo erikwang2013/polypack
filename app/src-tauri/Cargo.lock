@@ -2328,7 +2328,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "poly-cache"
+name = "polypack-cache"
 version = "1.16.0"
 dependencies = [
  "blake3",
@@ -2343,12 +2343,12 @@ dependencies = [
 ]
 
 [[package]]
-name = "poly-core"
+name = "polypack-core"
 version = "1.16.0"
 dependencies = [
- "poly-cache",
- "poly-targets",
- "poly-toolchain",
+ "polypack-cache",
+ "polypack-targets",
+ "polypack-toolchain",
  "schemars 0.8.22",
  "serde",
  "serde_json",
@@ -2358,10 +2358,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "poly-gui"
+name = "polypack-gui"
 version = "0.1.0"
 dependencies = [
- "poly-core",
+ "polypack-core",
  "serde",
  "serde_json",
  "tauri",
@@ -2369,7 +2369,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "poly-targets"
+name = "polypack-targets"
 version = "1.16.0"
 dependencies = [
  "schemars 0.8.22",
@@ -2378,7 +2378,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "poly-toolchain"
+name = "polypack-toolchain"
 version = "1.16.0"
 dependencies = [
  "serde",

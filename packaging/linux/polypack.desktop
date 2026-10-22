@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=PolyPack
+Comment=Cross-platform packaging pipeline
+Exec=/opt/polypack/bin/polypack
+Icon=polypack
+Terminal=true
+Categories=Development;

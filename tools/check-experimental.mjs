@@ -2,14 +2,14 @@
 /**
  * check-experimental.mjs — `experimental` 三处一致性校验（T-M6-13）
  *
- * 单一事实源仍是 `crates/poly-targets/src/builtin.rs` 的 `TargetSpec`。对每个已注册
+ * 单一事实源仍是 `crates/polypack-targets/src/builtin.rs` 的 `TargetSpec`。对每个已注册
  * `tier = 6` 目标核对三处：
  *
  *   (a) TargetSpec.experimental —— 声明源（本脚本直接解析 Rust 字面量，不编译）；
  *   (b) 生成的文档状态表 —— `tools/gen-target-table.mjs` 写入四份文档标记块的
  *       `experimental` 列（这里读**落盘文档**，不读生成器内存值：手改文档同样会炸）；
  *   (c) CI 强度 —— `.github/workflows/embedded-ci.yml` 的矩阵口径：
- *       - tier-6 无 UI 目标必须由 `poly targets --tier 6 --headless` 动态派生进矩阵
+ *       - tier-6 无 UI 目标必须由 `polypack targets --tier 6 --headless` 动态派生进矩阵
  *         （不得被 `matrix.id != ...` 显式排除）；
  *       - 带 UI 的 tier-6 目标不入嵌入式矩阵，由 rust-ci 的 workspace 测试覆盖；
  *       - 矩阵作业必须保留 `SKIP-with-print` 如实打印（环境槽跳过不得静默）。
@@ -89,7 +89,7 @@ export function ciModel() {
   const rustCi = fs.readFileSync(path.join(ROOT, RUST_CI), 'utf8');
   return {
     // 矩阵条目必须由 TargetSpec 派生（新增目标自动进矩阵的唯一机制）。
-    derivesMatrix: /poly targets\s+--tier\s+6\s+--headless\s+--json/.test(workflow),
+    derivesMatrix: /polypack targets\s+--tier\s+6\s+--headless\s+--json/.test(workflow),
     // 显式排除（`matrix.id != 'qnx'`）会把目标从矩阵里摘掉——不允许对已注册目标做。
     exclusions: [...workflow.matchAll(/matrix\.id\s*!=\s*'([^']+)'/g)].map((m) => m[1]),
     // 环境槽跳过必须如实打印（job summary 收集 warning 事件 + SKIP-with-print 语义）。
@@ -104,7 +104,7 @@ export function ciModel() {
 function strength(spec, ci) {
   if (spec.ui.length === 0) {
     if (!ci.derivesMatrix) {
-      return { kind: 'absent', detail: 'embedded-ci 未从 `poly targets --tier 6 --headless` 派生矩阵' };
+      return { kind: 'absent', detail: 'embedded-ci 未从 `polypack targets --tier 6 --headless` 派生矩阵' };
     }
     if (ci.exclusions.includes(spec.id)) {
       return { kind: 'absent', detail: `embedded-ci 用 matrix.id != '${spec.id}' 显式排除` };

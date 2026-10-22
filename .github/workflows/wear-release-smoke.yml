@@ -85,13 +85,13 @@ jobs:
       - name: Wear 表单冒烟（run.mjs 全生命周期：install → launch → 用例 → uninstall）
         # runner 上下文只许在步骤级 env（job 级会致工作流加载被拒）。
         env:
-          POLYPACK_WEAR_SMOKE_LOGS: ${{ runner.temp }}/poly-wear-release-logs
+          POLYPACK_WEAR_SMOKE_LOGS: ${{ runner.temp }}/polypack-wear-release-logs
         run: node ui/smoke/wear/run.mjs --leg android --serial emulator-5554
 
       - name: 发布门判定（SKIP / 空跑 / 失败一律阻断；打印具体表单步骤定位）
         if: always()
         env:
-          POLYPACK_WEAR_SMOKE_LOGS: ${{ runner.temp }}/poly-wear-release-logs
+          POLYPACK_WEAR_SMOKE_LOGS: ${{ runner.temp }}/polypack-wear-release-logs
         run: |
           file="$POLYPACK_WEAR_SMOKE_LOGS/result.json"
           if [ ! -f "$file" ]; then
@@ -126,7 +126,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: wear-release-smoke-evidence
-          path: ${{ runner.temp }}/poly-wear-release-logs/**
+          path: ${{ runner.temp }}/polypack-wear-release-logs/**
           # result.json 恒写（含失败 / SKIP 记录）：空上传=真异常
           if-no-files-found: error
           retention-days: 90

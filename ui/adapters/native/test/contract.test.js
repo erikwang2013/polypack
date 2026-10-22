@@ -135,7 +135,7 @@ test("T-M3-02 鸿蒙 NAPI 注册位：口径按 target 分族（moduleName = UDL
 });
 
 test("T-M2-02 口径哨兵：host 示例描述符与真跑夹具一致（库名 / UDL namespace）", (t) => {
-  const fixture = path.resolve(HERE, "../../../../crates/poly-core/tests/fixtures/bridge_core");
+  const fixture = path.resolve(HERE, "../../../../crates/polypack-core/tests/fixtures/bridge_core");
   const cargo = path.join(fixture, "Cargo.toml");
   const udl = path.join(fixture, "src/pax.udl");
   if (!fs.existsSync(cargo) || !fs.existsSync(udl)) {

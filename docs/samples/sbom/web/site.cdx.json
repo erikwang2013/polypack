@@ -34,7 +34,7 @@
     "tools": {
       "components": [
         {
-          "name": "poly",
+          "name": "polypack",
           "type": "application",
           "version": "1.13.0"
         }

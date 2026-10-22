@@ -66,7 +66,7 @@ test("装配链闭合：AppRegistry 键三处一致（app.json / mount / ios 工
 
 test("target id 哨兵：createAdapter 的 target 是 capabilities 矩阵内的目标（'tvos'，TV 基线）", () => {
   const target = INDEX.match(/createAdapter\(\{ target: "([^"]+)"/)?.[1];
-  assert.equal(target, "tvos", "target = TargetSpec id（crates/poly-targets/src/builtin.rs）");
+  assert.equal(target, "tvos", "target = TargetSpec id（crates/polypack-targets/src/builtin.rs）");
   assert.ok(Object.hasOwn(CAPABILITY_MATRIX, target));
   assert.deepEqual(CAPABILITY_MATRIX.tvos, { focusNav: true, safeArea: true, gestures: false });
   // TV 基线经宿主真路径成立（未知目标会在此抛错）；pointer none 不改变 TV 基线
@@ -262,7 +262,7 @@ test("宿主依赖与阻塞说明：adapter 本地接线、RN-tvOS 别名钉版�
     "metro.config.js 须把 adapter 包纳入 watch 树",
   );
   const readme = read("README.md");
-  for (const marker of ["阻塞", "useTVEventHandler", "TVEventControl", "POLYPACK_KEY", "poly build --target tvos"]) {
+  for (const marker of ["阻塞", "useTVEventHandler", "TVEventControl", "POLYPACK_KEY", "polypack build --target tvos"]) {
     assert.ok(readme.includes(marker), `宿主 README 缺说明: ${marker}`);
   }
 });

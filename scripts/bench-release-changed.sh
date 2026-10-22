@@ -1,20 +1,20 @@
 #!/usr/bin/env bash
-# T-M9-09：5 目标仓库二次 `poly release --changed` 实测（无网络）。
+# T-M9-09：5 目标仓库二次 `polypack release --changed` 实测（无网络）。
 #
 # 首跑发布 5 个目标；只改一个产物后二跑应只发布 1 个、其余 4 个输出
 # `release-skipped`，且 skipped 回执零重写。后端调用以 published 事件计数
 # （--changed 命中 skipped 时不触仓库后端）。
 #
-# 依赖：gpg（一次性签名密钥）、dpkg-deb（夹具产物）、POLY_BIN 或 cargo。
+# 依赖：gpg（一次性签名密钥）、dpkg-deb（夹具产物）、POLYPACK_BIN 或 cargo。
 # Linux-only（GNU date / base64 -w0）。用法：
 #   scripts/bench-release-changed.sh
-#   POLY_BIN=target/debug/poly scripts/bench-release-changed.sh
-#   POLY_BENCH_DIR=/tmp/bench POLY_BENCH_KEEP=1 scripts/bench-release-changed.sh
+#   POLYPACK_BIN=target/debug/polypack scripts/bench-release-changed.sh
+#   POLYPACK_BENCH_DIR=/tmp/bench POLYPACK_BENCH_KEEP=1 scripts/bench-release-changed.sh
 set -euo pipefail
 
 repo_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
-work=${POLY_BENCH_DIR:-$(mktemp -d)}
-keep=${POLY_BENCH_KEEP:-0}
+work=${POLYPACK_BENCH_DIR:-$(mktemp -d)}
+keep=${POLYPACK_BENCH_KEEP:-0}
 cleanup() { [ "$keep" = 1 ] || rm -rf "$work"; }
 trap cleanup EXIT
 
@@ -29,11 +29,11 @@ for tool in gpg dpkg-deb base64 grep; do
   }
 done
 
-poly() {
-  if [ -n "${POLY_BIN:-}" ]; then
-    "$POLY_BIN" "$@"
+polypack() {
+  if [ -n "${POLYPACK_BIN:-}" ]; then
+    "$POLYPACK_BIN" "$@"
   else
-    (cd "$repo_root" && cargo run -q -p poly-cli -- "$@")
+    (cd "$repo_root" && cargo run -q -p polypack-cli -- "$@")
   fi
 }
 
@@ -41,7 +41,7 @@ now_ms() { echo $(($(date +%s%N) / 1000000)); }
 fail() { echo "bench-release-changed: $*" >&2; exit 1; }
 
 # 预热：计时不含 cargo 编译 / 进程首次启动的噪声。
-poly --version >/dev/null
+polypack --version >/dev/null
 
 targets=(linux web windows macos android)
 changed=android
@@ -68,8 +68,8 @@ key=$(gpg --batch --no-options --pinentry-mode loopback --passphrase "$pass" \
   --export-secret-keys | base64 -w0)
 [ -n "$key" ] || fail "gpg 私钥导出为空"
 payload_json=$(printf '{"keystore":"%s","store_password":"%s"}' "$key" "$pass")
-POLY_RELEASE_KEY=$(printf '%s' "$payload_json" | base64 -w0)
-export POLY_RELEASE_KEY
+POLYPACK_RELEASE_KEY=$(printf '%s' "$payload_json" | base64 -w0)
+export POLYPACK_RELEASE_KEY
 gpgconf --homedir "$GNUPGHOME" --kill gpg-agent >/dev/null 2>&1 || true
 
 make_deb() { # target marker
@@ -91,10 +91,10 @@ done
 
 target_list=$(IFS=,; echo "${targets[*]}")
 common=(release --config "$app/polypack.toml" --repo "$work/repo" \
-  --target "$target_list" --changed --credential env:POLY_RELEASE_KEY --json)
+  --target "$target_list" --changed --credential env:POLYPACK_RELEASE_KEY --json)
 
 first_start=$(now_ms)
-poly "${common[@]}" >"$work/first.jsonl" || fail "首跑失败（见 $work/first.jsonl）"
+polypack "${common[@]}" >"$work/first.jsonl" || fail "首跑失败（见 $work/first.jsonl）"
 first_ms=$(($(now_ms) - first_start))
 
 first_published=$(grep -c '"event":"published"' "$work/first.jsonl" || true)
@@ -108,7 +108,7 @@ receipts_before=$(find "$app/.polypack/release" -type f -name '*.json' |
 make_deb "$changed" "$changed-v2"
 
 second_start=$(now_ms)
-poly "${common[@]}" >"$work/second.jsonl" || fail "二跑失败（见 $work/second.jsonl）"
+polypack "${common[@]}" >"$work/second.jsonl" || fail "二跑失败（见 $work/second.jsonl）"
 second_ms=$(($(now_ms) - second_start))
 
 second_published=$(grep -c '"event":"published"' "$work/second.jsonl" || true)

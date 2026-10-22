@@ -8,9 +8,9 @@
 
 | 平台 | 架构 | Rust target | Release 资产 |
 | --- | --- | --- | --- |
-| Linux | x86_64 | `x86_64-unknown-linux-gnu` | `poly-x86_64-unknown-linux-gnu.tar.gz` |
-| macOS | Apple Silicon（arm64） | `aarch64-apple-darwin` | `poly-aarch64-apple-darwin.tar.gz` |
-| Windows（Git Bash） | x86_64 | `x86_64-pc-windows-msvc` | `poly-x86_64-pc-windows-msvc.zip` |
+| Linux | x86_64 | `x86_64-unknown-linux-gnu` | `polypack-x86_64-unknown-linux-gnu.tar.gz` |
+| macOS | Apple Silicon（arm64） | `aarch64-apple-darwin` | `polypack-aarch64-apple-darwin.tar.gz` |
+| Windows（Git Bash） | x86_64 | `x86_64-pc-windows-msvc` | `polypack-x86_64-pc-windows-msvc.zip` |
 
 安装脚本只覆盖上表；其他组合（Linux aarch64、macOS x86_64、Windows arm64 等）没有预编译产物，脚本会明确报错退出，不会回退到未校验下载。
 
@@ -21,11 +21,11 @@
 ```bash
 git clone https://github.com/erikwang2013/polypack.git
 cd polypack
-cargo install --path crates/poly-cli --locked
-poly --version
+cargo install --path crates/polypack-cli --locked
+polypack --version
 ```
 
-`cargo install` 只安装 bin `poly`；首次编译较慢，后续可复用 `target/`。
+`cargo install` 只安装 bin `polypack`；首次编译较慢，后续可复用 `target/`。
 
 ## 3. 预编译二进制
 
@@ -34,12 +34,12 @@ poly --version
 ```bash
 TAG=v1.16.0
 TARGET=x86_64-unknown-linux-gnu
-curl -fsSLO "https://github.com/erikwang2013/polypack/releases/download/$TAG/poly-$TARGET.tar.gz"
-tar -xzf "poly-$TARGET.tar.gz"
-install -m 0755 "poly-$TARGET" "$HOME/.local/bin/poly"
+curl -fsSLO "https://github.com/erikwang2013/polypack/releases/download/$TAG/polypack-$TARGET.tar.gz"
+tar -xzf "polypack-$TARGET.tar.gz"
+install -m 0755 "polypack-$TARGET" "$HOME/.local/polypack/bin/polypack"
 ```
 
-Windows 资产是 `.zip`，解压后把 `poly-x86_64-pc-windows-msvc.exe` 放到 PATH 中并改名为 `poly.exe`。
+Windows 资产是 `.zip`，解压后把 `polypack-x86_64-pc-windows-msvc.exe` 放到 PATH 中并改名为 `polypack.exe`。
 
 ### 3.1 桌面安装器
 
@@ -47,10 +47,10 @@ Release 还会附带由 GitHub Actions 在三宿主原生构建的安装器：
 
 | 平台 | 资产 | 安装 |
 | --- | --- | --- |
-| Debian / Ubuntu | `polypack-cli_<version>_amd64.deb` | `sudo dpkg -i polypack-cli_<version>_amd64.deb` |
-| 通用 Linux | `poly-<version>-x86_64.AppImage` | `chmod +x` 后直接运行 |
-| Windows | `poly-<version>-x86_64.msi` | 双击或在 PowerShell 执行 `msiexec /i <msi>` |
-| macOS arm64 | `poly-<version>-aarch64.pkg` | `sudo installer -pkg <pkg> -target /` |
+| Debian / Ubuntu | `polypack_<version>_amd64.deb` | `sudo dpkg -i polypack_<version>_amd64.deb` |
+| 通用 Linux | `polypack-<version>-x86_64.AppImage` | `chmod +x` 后直接运行 |
+| Windows | `polypack-<version>-x86_64.msi` | 双击或在 PowerShell 执行 `msiexec /i <msi>` |
+| macOS arm64 | `polypack-<version>-aarch64.pkg` | `sudo installer -pkg <pkg> -target /` |
 
 安装器目前未做商业代码签名：Windows SmartScreen 可能提示未知发布者；macOS Gatekeeper 可能要求右键打开或在“隐私与安全性”中允许。需要正式签名 / 公证时由维护者配置证书后重发。
 
@@ -78,14 +78,14 @@ bash install.sh
 
 | 变量 | 默认值 | 作用 |
 | --- | --- | --- |
-| `POLY_VERSION` | 最新 Release | 指定 tag（`v1.16.0` 或 `1.16.0`） |
-| `POLY_INSTALL_DIR` | `~/.local/bin` | 安装目录 |
-| `POLY_REPO` | `erikwang2013/polypack` | GitHub 仓库 |
-| `POLY_RELEASE_BASE_URL` | GitHub Release URL | 镜像 / 离线测试基础 URL |
-| `POLY_REQUIRE_SIGNATURE` | 空 | 设为 `1` 时强制验证 minisign 签名 |
-| `POLY_MINISIGN_PUBKEY` | 空 | minisign 公钥文件路径（严格模式必填） |
+| `POLYPACK_VERSION` | 最新 Release | 指定 tag（`v1.16.0` 或 `1.16.0`） |
+| `POLYPACK_INSTALL_DIR` | `~/.local/polypack/bin` | 安装目录 |
+| `POLYPACK_REPO` | `erikwang2013/polypack` | GitHub 仓库 |
+| `POLYPACK_RELEASE_BASE_URL` | GitHub Release URL | 镜像 / 离线测试基础 URL |
+| `POLYPACK_REQUIRE_SIGNATURE` | 空 | 设为 `1` 时强制验证 minisign 签名 |
+| `POLYPACK_MINISIGN_PUBKEY` | 空 | minisign 公钥文件路径（严格模式必填） |
 
-脚本行为：识别平台 → 解析 tag → 下载资产与 `SHA256SUMS.txt` → 强制 SHA-256 校验 → 安装 → 执行 `poly --version` 打印版本。没有跳过校验的开关；校验文件缺失、资产条目缺失或摘要不匹配都会在落盘前失败。严格签名模式还要求 `SHA256SUMS.txt.minisig` 与 `minisign` 可用，缺任何一项都不会安装。
+脚本行为：识别平台 → 解析 tag → 下载资产与 `SHA256SUMS.txt` → 强制 SHA-256 校验 → 安装 → 执行 `polypack --version` 打印版本。没有跳过校验的开关；校验文件缺失、资产条目缺失或摘要不匹配都会在落盘前失败。严格签名模式还要求 `SHA256SUMS.txt.minisig` 与 `minisign` 可用，缺任何一项都不会安装。
 
 签名是可选发布步骤：Release 工作流仅在配置 `MINISIGN_SECRET_KEY` secret（base64 编码的 minisign 私钥文件）时签名并上传 `SHA256SUMS.txt.minisig`；未配置时明确跳过，发布物只有校验和。公钥由维护者随文档发布，不要自行生成或编造发布密钥。
 
@@ -93,20 +93,20 @@ bash install.sh
 
 | 检查项 | 现状 | 结论 |
 | --- | --- | --- |
-| workspace crate `publish` | 全部为 `false` | `cargo install poly-cli` 不可用 |
+| workspace crate `publish` | 全部为 `false` | `cargo install polypack-cli` 不可用 |
 | 根清单版本 | `1.16.0` | 已与最新 tag 对齐 |
 | 发布审计 | `cargo package --list` 9/9 通过；`cargo publish --dry-run` 被 `publish = false` 拒绝 | 审计已完成，实际发布关闭 |
-| 名称可用性 | `poly-cli`、`poly-core` 已被他人占用 | 发布前需改名或取得所有权 |
+| 名称可用性 | `polypack-cli`、`polypack-core` 已被他人占用 | 发布前需改名或取得所有权 |
 | crates.io token | 仓库与 CI 均无 | 未配置发布 secret |
 | 安装入口 | 源码路径 / GitHub Release | 当前唯一受支持路径 |
 
-结论：审计（T-M9-45）已完成，版本与元数据已就绪，但全部 workspace crate 仍为 `publish = false`，且 `poly-cli` / `poly-core` 名称被占用、无发布 token；在这些维护者决策完成前，不要改动该标志，也不要声称支持 crates.io 安装。细节见 `docs/CRATES-IO.md`。
+结论：审计（T-M9-45）已完成，版本与元数据已就绪，但全部 workspace crate 仍为 `publish = false`，且 `polypack-cli` / `polypack-core` 名称被占用、无发布 token；在这些维护者决策完成前，不要改动该标志，也不要声称支持 crates.io 安装。细节见 `docs/CRATES-IO.md`。
 
 ## 7. 验证与卸载
 
 ```bash
-poly --version
-poly doctor
+polypack --version
+polypack doctor
 ```
 
-卸载：删除 `POLY_INSTALL_DIR` 下的 `poly`（Windows 为 `poly.exe`）。安装脚本不写系统目录、不改 shell 配置。
+卸载：删除 `POLYPACK_INSTALL_DIR` 下的 `polypack`（Windows 为 `polypack.exe`）。安装脚本不写系统目录、不改 shell 配置。

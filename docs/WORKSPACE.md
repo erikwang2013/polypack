@@ -1,6 +1,6 @@
 # 多应用工作区（M9-E2）
 
-> 状态：代码与测试已交付（T-M9-04/05/06）；单应用行为与缓存键保持不变。`poly build`、`poly verify`、`poly retry` 均支持 `--workspace` / `--app`。
+> 状态：代码与测试已交付（T-M9-04/05/06）；单应用行为与缓存键保持不变。`polypack build`、`polypack verify`、`polypack retry` 均支持 `--workspace` / `--app`。
 
 ## 1. 目录布局
 
@@ -57,17 +57,17 @@ format = "deb"
 
 ```bash
 # 构建工作区全部成员（按声明序）
-poly build --workspace
+polypack build --workspace
 
 # 只构建一个成员
-poly build --app notes
+polypack build --app notes
 
 # 指定目标（与现有 --target 组合）
-poly build --workspace --target linux
+polypack build --workspace --target linux
 
 # 校验 / 重试同样接受工作区选择器
-poly verify --workspace
-poly retry --from verify --app notes
+polypack verify --workspace
+polypack retry --from verify --app notes
 ```
 
 `--workspace` 与 `--app` 互斥；都不给时行为与单应用版本一致。构建产物与快照按应用隔离：
@@ -80,7 +80,7 @@ poly retry --from verify --app notes
 
 共享 core 的 compile 缓存键不含 app id（跨应用复用）；UI bundle 缓存键混入 app id（避免串包）。
 
-> 可运行 `scripts/demo-workspace.sh` 用 `poly init` 生成两个应用并演示二跑缓存命中；用 `POLY_BIN` 指定 `poly` 路径，用 `POLY_DEMO_TARGET` 覆盖目标。
+> 可运行 `scripts/demo-workspace.sh` 用 `polypack init` 生成两个应用并演示二跑缓存命中；用 `POLYPACK_BIN` 指定 `polypack` 路径，用 `POLYPACK_DEMO_TARGET` 覆盖目标。
 
 ## 5. 诊断
 

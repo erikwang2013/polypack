@@ -4,11 +4,11 @@
 
 [简体中文](README.md) · [Project site](https://package.erik.xyz/polypack/) · [Roadmap](docs/ROADMAP.en.md) · [Architecture](#architecture) · [Platforms](#platform-matrix)
 
-> **Project status: M8 ecosystem GA delivered and closed** (2026-10-18, 13/13 — the wasmtime plugin sandbox and the `target-spec/v1` WIT contract (deny-by-default, explicit grants, three resource limits), SRI + GPG detached-signature chain (CredentialRef trust root), the standalone template repo and `poly plugin new|digest`, built-in targets unified behind `TargetProvider` (built-ins are official plugins, no builtin special-casing), farm v1 (concurrency/worker pool/timeout retries/isolation/shared CAS), the publishing GA (backoff/idempotency/receipt v2/`poly retry --from publish`) and the 49-target status table, plus the bilingual [GA docs](docs/GA.en.md), technical review and the "add a target in one day" rehearsal (an independent developer agent completed scaffolding→custom packaging in 38 min). M0–M8 milestones closed (conditional tasks and environment slots recorded in TASKS); M7 details: adapter-wear compact tokens, the Wear OS target with its dual form-smoke tracks (incl. a release gate), the watchOS SwiftUI template plus packaging/signing chain (experimental), Fitbit `.fba` / Zepp `.zab`, the Garmin Monkey C spike (experimental), the experimental-target three-section docs, and wearable contracts with goldens; xcodebuild / codesign / Wear-device environment slots record SKIP-with-print, and the built-in Garmin iq packager is wired (monkeyc environment slot + structure check)). Available commands: `poly doctor` / `poly init` / `poly build` (deb / AppDir / web static bundles; **Android AAB/APK**; **iOS unsigned IPA** on macOS hosts; **HarmonyOS HAP packaging + hap-sign-tool signing/verification**; **WeChat/Alipay/Douyin/Quick-App bundles** (wasm sandbox outlet shipped inside); **TV family: android-tv / fire-tv (Leanback), tvos (Apple chain reuse), tizen-tv / webos-tv / vidaa-tv / smartcast-tv (web tier)**; **wearables: Wear OS / Fitbit / Zepp / watchOS※experimental / Garmin※experimental**; sign/verify wired into the DAG; `[budget]` size gate warn/fail) / `poly bridge` (uniffi + **ohos NAPI** + **wasm** outlets) / `poly farm worker|submit` (remote farm) / `poly scan` (secret scan) / `poly verify --reproducible` / `poly targets` (target-matrix JSON for CI derivation) / `poly retry --from sign|verify` / `poly plugin new|digest` (plugin scaffolding and SRI digest) / `poly dev` / `poly clean` / `poly release` (self-hosted rpm/deb/pkg repo metadata + signing + receipt archival, `--target fedora,freebsd`). Eleven workflows green across three hosts plus a `release` workflow (new `wear-smoke` nightly form smoke and `wear-release-smoke` release gate; `bsd-ci`: native FreeBSD 14.5 QEMU build + install smoke runs for real; OpenBSD 7.9 is a best-effort leg that records SKIP-with-print when the image cannot boot under TCG on KVM-less runners; nightly. New `embedded-ci`: the tier-6 matrix is derived from TargetSpec, with QNX / Zephyr / FreeRTOS QEMU smokes and a REAL/SKIP job summary, missing toolchains recorded as SKIP-with-print; nightly); the tvOS chain proven on macos-14 (XCFramework→archive→IPA 7,065 B); Android TV device smoke 6/6 walk + "core task with no pointer" + focus-ring pixel evidence; the remote-control smoke suite runs three legs, 14 scenarios / 69 key steps, all green. Milestone and environment-slot notes live in [docs/TASKS.en.md](docs/TASKS.en.md); planning in [docs/ROADMAP.en.md](docs/ROADMAP.en.md).
+> **Project status: M8 ecosystem GA delivered and closed** (2026-10-18, 13/13 — the wasmtime plugin sandbox and the `target-spec/v1` WIT contract (deny-by-default, explicit grants, three resource limits), SRI + GPG detached-signature chain (CredentialRef trust root), the standalone template repo and `polypack plugin new|digest`, built-in targets unified behind `TargetProvider` (built-ins are official plugins, no builtin special-casing), farm v1 (concurrency/worker pool/timeout retries/isolation/shared CAS), the publishing GA (backoff/idempotency/receipt v2/`polypack retry --from publish`) and the 49-target status table, plus the bilingual [GA docs](docs/GA.en.md), technical review and the "add a target in one day" rehearsal (an independent developer agent completed scaffolding→custom packaging in 38 min). M0–M8 milestones closed (conditional tasks and environment slots recorded in TASKS); M7 details: adapter-wear compact tokens, the Wear OS target with its dual form-smoke tracks (incl. a release gate), the watchOS SwiftUI template plus packaging/signing chain (experimental), Fitbit `.fba` / Zepp `.zab`, the Garmin Monkey C spike (experimental), the experimental-target three-section docs, and wearable contracts with goldens; xcodebuild / codesign / Wear-device environment slots record SKIP-with-print, and the built-in Garmin iq packager is wired (monkeyc environment slot + structure check)). Available commands: `polypack doctor` / `polypack init` / `polypack build` (deb / AppDir / web static bundles; **Android AAB/APK**; **iOS unsigned IPA** on macOS hosts; **HarmonyOS HAP packaging + hap-sign-tool signing/verification**; **WeChat/Alipay/Douyin/Quick-App bundles** (wasm sandbox outlet shipped inside); **TV family: android-tv / fire-tv (Leanback), tvos (Apple chain reuse), tizen-tv / webos-tv / vidaa-tv / smartcast-tv (web tier)**; **wearables: Wear OS / Fitbit / Zepp / watchOS※experimental / Garmin※experimental**; sign/verify wired into the DAG; `[budget]` size gate warn/fail) / `polypack bridge` (uniffi + **ohos NAPI** + **wasm** outlets) / `polypack farm worker|submit` (remote farm) / `polypack scan` (secret scan) / `polypack verify --reproducible` / `polypack targets` (target-matrix JSON for CI derivation) / `polypack retry --from sign|verify` / `polypack plugin new|digest` (plugin scaffolding and SRI digest) / `polypack dev` / `polypack clean` / `polypack release` (self-hosted rpm/deb/pkg repo metadata + signing + receipt archival, `--target fedora,freebsd`). Eleven workflows green across three hosts plus a `release` workflow (new `wear-smoke` nightly form smoke and `wear-release-smoke` release gate; `bsd-ci`: native FreeBSD 14.5 QEMU build + install smoke runs for real; OpenBSD 7.9 is a best-effort leg that records SKIP-with-print when the image cannot boot under TCG on KVM-less runners; nightly. New `embedded-ci`: the tier-6 matrix is derived from TargetSpec, with QNX / Zephyr / FreeRTOS QEMU smokes and a REAL/SKIP job summary, missing toolchains recorded as SKIP-with-print; nightly); the tvOS chain proven on macos-14 (XCFramework→archive→IPA 7,065 B); Android TV device smoke 6/6 walk + "core task with no pointer" + focus-ring pixel evidence; the remote-control smoke suite runs three legs, 14 scenarios / 69 key steps, all green. Milestone and environment-slot notes live in [docs/TASKS.en.md](docs/TASKS.en.md); planning in [docs/ROADMAP.en.md](docs/ROADMAP.en.md).
 >
-> **2026-10-19 gap closure**: per-target `poly release` credentials, the built-in Garmin `.iq` packager, the Vault trust-root carrier, the keyring/zbus upgrade, GitHub Releases binaries, and documentation consistency have landed; the environment-slot ledger is in [ENV-SLOTS](docs/ENV-SLOTS.en.md) and uninitiated directions are in [INITIATIVES](docs/INITIATIVES.en.md).
+> **2026-10-19 gap closure**: per-target `polypack release` credentials, the built-in Garmin `.iq` packager, the Vault trust-root carrier, the keyring/zbus upgrade, GitHub Releases binaries, and documentation consistency have landed; the environment-slot ledger is in [ENV-SLOTS](docs/ENV-SLOTS.en.md) and uninitiated directions are in [INITIATIVES](docs/INITIATIVES.en.md).
 >
-> **2026-10-21 · v1.15.0**: M9 close-out — SBOM, multi-app workspaces, `release --changed`, OTA, store metadata, the GUI, the device-preview protocol, the signed plugin index (`poly plugin add/search`), and farm hardening are delivered; ENV-01/07/11/12/15/16/17/18 are closed. Entry points for credentials / authorizations / hardware / human trials you must supply are in [ENV-PROVIDE](docs/ENV-PROVIDE.en.md). New commands: `poly history`, `poly update`, `poly preview`, `poly deploy line-liff`, `poly verify --sbom`, `poly plugin add|search`.
+> **2026-10-21 · v1.15.0**: M9 close-out — SBOM, multi-app workspaces, `release --changed`, OTA, store metadata, the GUI, the device-preview protocol, the signed plugin index (`polypack plugin add/search`), and farm hardening are delivered; ENV-01/07/11/12/15/16/17/18 are closed. Entry points for credentials / authorizations / hardware / human trials you must supply are in [ENV-PROVIDE](docs/ENV-PROVIDE.en.md). New commands: `polypack history`, `polypack update`, `polypack preview`, `polypack deploy line-liff`, `polypack verify --sbom`, `polypack plugin add|search`.
 >
 > **Note on diagram labels:** the embedded diagrams are labeled in Chinese (the project's primary language). English-labeled variants are available under `docs/assets/en/`.
 
@@ -36,7 +36,7 @@ PolyPack is a **write-once, package-everywhere build tool**: a single Rust core 
 
 ### Why it exists
 
-- **Fragmented targets.** Multi-platform builds today are separate fiefdoms — Gradle for Android, Xcode for iOS, a different vendor IDE per mini-program platform, bespoke packaging scripts per desktop OS. PolyPack collapses them into one `poly` command.
+- **Fragmented targets.** Multi-platform builds today are separate fiefdoms — Gradle for Android, Xcode for iOS, a different vendor IDE per mini-program platform, bespoke packaging scripts per desktop OS. PolyPack collapses them into one `polypack` command.
 - **One stack.** Business logic in Rust, written once, reused everywhere; UI in React, written once, re-skinned per platform by the adapter layer.
 - **One chain.** Toolchain probe → cross-compile → UI bundle → sign / notarize / harden → package → store submission, orchestrated, cached, and reproducible end to end.
 - **Extensible.** A new platform is a TargetSpec plus a WASM plugin — no waiting for an official release.
@@ -44,7 +44,7 @@ PolyPack is a **write-once, package-everywhere build tool**: a single Rust core 
 ### How it works (the 90-second version)
 
 ```bash
-poly release --target android,ios,wechat,tizen --publish
+polypack release --target android,ios,wechat,tizen --publish
 ```
 
 1. Load `polypack.toml` and resolve a **TargetSpec** for every requested target (runtime, package format, signing requirements, distribution channel);
@@ -116,25 +116,25 @@ The full 13-step journey is in [Request lifecycle](#request-lifecycle) below.
 
 ### L6 embedded / automotive status table (generated from TargetSpec)
 
-The table below covers the eleven registered L6 embedded / automotive / wearable targets. Every field is reproduced from the `TargetSpec` declarations in `crates/poly-targets/src/builtin.rs` (`notes` keeps the declaration's original Chinese text). Do not edit it by hand: run `node tools/gen-target-table.mjs` to regenerate; `node tools/gen-target-table.mjs --check` fails when the table drifts from the registry.
+The table below covers the eleven registered L6 embedded / automotive / wearable targets. Every field is reproduced from the `TargetSpec` declarations in `crates/polypack-targets/src/builtin.rs` (`notes` keeps the declaration's original Chinese text). Do not edit it by hand: run `node tools/gen-target-table.mjs` to regenerate; `node tools/gen-target-table.mjs --check` fails when the table drifts from the registry.
 
 <!-- BEGIN GENERATED: l6-embedded-status -->
 | Target | Runtime | Bridge | Packager & artifact | Signing | Artifact verification | Publishing channel | experimental | notes |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `android-automotive` | `native` | `uniffi` | `apk` · `android-aapt2` | `android-keystore` | `apksigner-verify`, `bundletool-validate` | `oem-channel` | `false` | AAOS 清单（android.hardware.type.automotive）；车厂渠道，无统一公开 API——发布需 OEM 凭据引用（占位 Publisher，不伪造提交） |
-| `autosar` | `staticlib` | `cffi` | `arxml` · `autosar-adaptive` | none | `arxml-schema`, `c-abi-symbols` | `self-hosted` | `false` | 无 UI、自部署；AUTOSAR Adaptive 清单（ARXML）由 poly_engine_* C ABI 单一来源派生（服务 / 端口与导出符号一一对应）；no_std 可选（引擎层 --no-default-features，应用提供 global_allocator / panic_handler） |
+| `autosar` | `staticlib` | `cffi` | `arxml` · `autosar-adaptive` | none | `arxml-schema`, `c-abi-symbols` | `self-hosted` | `false` | 无 UI、自部署；AUTOSAR Adaptive 清单（ARXML）由 polypack_engine_* C ABI 单一来源派生（服务 / 端口与导出符号一一对应）；no_std 可选（引擎层 --no-default-features，应用提供 global_allocator / panic_handler） |
 | `fitbit` | `none` | `none` | `fba` · `fitbit-build` | none | `fitbit-structure-check` | `fitbit-gallery` | `false` | 核心不直接运行、能力由 JS 侧实现（runtime = none；Fitbit OS 侧 JS SDK 应用包 `.fba`：应用清单 + device-<family>.zip + 可选 companion.zip，结构同官方 SDK 6.1）；fitbit-build 缺席时 CLI 自检 SKIP-with-print，结构断言真跑；签名 / 提审归 Fitbit Gallery 平台侧 |
-| `freertos` | `staticlib` | `cffi` | `board` · `freertos-qemu` | none | `c-abi-symbols`, `freertos-qemu-smoke` | `self-hosted` | `false` | 无 UI、cffi、no_std；FreeRTOS 示例板包（mps2-an385 / Cortex-M3，静态库 + 启动 / 中断 / UART / FreeRTOSConfig / Makefile 工程模板）；内核 V11.1.0 按 tag + sha256 现拉不入库；`make smoke` 在 QEMU 中调用 poly_engine_* 并以 semihosting 退出码 0 结束；arm-none-eabi-gcc / qemu-system-arm / 网络缺席时按环境槽 SKIP-with-print |
+| `freertos` | `staticlib` | `cffi` | `board` · `freertos-qemu` | none | `c-abi-symbols`, `freertos-qemu-smoke` | `self-hosted` | `false` | 无 UI、cffi、no_std；FreeRTOS 示例板包（mps2-an385 / Cortex-M3，静态库 + 启动 / 中断 / UART / FreeRTOSConfig / Makefile 工程模板）；内核 V11.1.0 按 tag + sha256 现拉不入库；`make smoke` 在 QEMU 中调用 polypack_engine_* 并以 semihosting 退出码 0 结束；arm-none-eabi-gcc / qemu-system-arm / 网络缺席时按环境槽 SKIP-with-print |
 | `garmin` | `none` | `none` | `iq` · `garmin-monkeyc` | none | `iq-structure-check` | `connect-iq-store` | `true` | 实验：Monkey C 子集受限转译——仅 UI 子集 + 原生逻辑（Monkey C 重写，无 JS 运行时）；工程结构自检可用，Connect IQ 编译与真机实证待补（T-M7-10 触发前置；能力边界见 ui/adapters/garmin/CAPABILITY-BOUNDARY-DRAFT.md） |
 | `qnx` | `staticlib` | `cffi` | `image` · `qnx-sdp` | none | `qnx-image-structure`, `c-abi-symbols`, `qnx-qemu-smoke` | `self-hosted` | `false` | headless 核心（可选 HMI 归平台侧）；静态库 + 部署镜像（附 mkifs buildfile，可引导 .ifs / QEMU 归 T-M6-09）；交叉编译需 QNX SDP（$QNX_HOST / $QNX_TARGET）与 Rust QNX target，无 SDP 时按环境槽 SKIP-with-print，不伪造二进制；自部署 |
 | `vxworks` | `staticlib` | `cffi` | `library` · `vxworks-wr` | none | `c-abi-symbols`, `vxworks-ld-check` | `self-hosted` | `false` | 无 UI、cffi、no_std；format = `library`（默认，静态库）或 `image`（部署 kit zip，配置 [targets.vxworks].format 覆盖）；wr-cc / wr-ld 缺席时产物用 nm 符号闭包 + 结构断言校验并 SKIP-with-print，绝不伪造可加载镜像 |
-| `watchos` | `none` | `none` | `watch` · `watchos-xcodebuild` | `apple-codesign` | `codesign-verify` | `app-store` | `true` | 实验：SwiftUI 伴生模板（核心 API 调用桩 + WatchConnectivity 说明），核心不直接运行（runtime = none）；模板经 `poly init --target watchos` 生成，macOS 宿主 `xcodebuild` 构建；Linux / Windows 发起走远程农场 macOS worker（R3）；签名复用 M2 Apple 链（codesign，凭据只以 apple-codesign 引用出现） |
+| `watchos` | `none` | `none` | `watch` · `watchos-xcodebuild` | `apple-codesign` | `codesign-verify` | `app-store` | `true` | 实验：SwiftUI 伴生模板（核心 API 调用桩 + WatchConnectivity 说明），核心不直接运行（runtime = none）；模板经 `polypack init --target watchos` 生成，macOS 宿主 `xcodebuild` 构建；Linux / Windows 发起走远程农场 macOS worker（R3）；签名复用 M2 Apple 链（codesign，凭据只以 apple-codesign 引用出现） |
 | `wearos` | `native` | `uniffi` | `apk` · `android-aapt2` | `android-keystore` | `apksigner-verify`, `bundletool-validate` | `google-play-wear` | `false` | Wear OS 清单（android.hardware.type.watch，minSdkVersion ≥ 26）；UI 运行时（RN on Wear）为 beta，打包与签名走 Android 基座 |
 | `zephyr` | `staticlib` | `cffi` | `west` · `zephyr-west` | none | `c-abi-symbols`, `zephyr-west-build`, `zephyr-qemu-smoke` | `self-hosted` | `false` | 无 UI、cffi、no_std；west 工程模板（zephyr module + 引擎静态库模块链入），qemu_x86 / qemu_cortex_m3 两板 `west build` 验收；最小 CONFIG_* 集随模板版本化；west / Zephyr SDK 缺席时按环境槽 SKIP-with-print |
 | `zepp` | `none` | `none` | `zab` · `zeus` | none | `zepp-structure-check` | `zepp-store` | `false` | 核心不直接运行、能力由 Zepp JS API 侧实现（runtime = none）；Zepp 小程序 `.zab`（外层 manifest.json + <md5>.zpk，zpk 内含 device.zip / app-side.zip，结构同 zpm）；zeus / 模拟器缺席时安装与工具链校验 SKIP-with-print，结构断言真跑；签名 / 提审归 Zepp 商店平台侧 |
 <!-- END GENERATED: l6-embedded-status -->
 
-**`garmin` packaging status**: T-M7-09's Monkey C transpile is a standalone Node module under `ui/adapters/garmin`; `poly-bundle` now ships the built-in `iq` packager (`crates/poly-bundle/src/packagers/garmin.rs`), so `poly build --target garmin` produces a `.iq` and runs the structure self-check; the remaining gap is the `monkeyc` / devkey compile leg (environment-gated SKIP-with-print, never faking compiled output). See [docs/EXPERIMENTAL-TARGETS.en.md](docs/EXPERIMENTAL-TARGETS.en.md) for watchOS / Garmin capability / gap / alternatives; `wearos` is platform-level (its beta boundary is recorded in the same chapter and carries no ※experimental marker).
+**`garmin` packaging status**: T-M7-09's Monkey C transpile is a standalone Node module under `ui/adapters/garmin`; `polypack-bundle` now ships the built-in `iq` packager (`crates/polypack-bundle/src/packagers/garmin.rs`), so `polypack build --target garmin` produces a `.iq` and runs the structure self-check; the remaining gap is the `monkeyc` / devkey compile leg (environment-gated SKIP-with-print, never faking compiled output). See [docs/EXPERIMENTAL-TARGETS.en.md](docs/EXPERIMENTAL-TARGETS.en.md) for watchOS / Garmin capability / gap / alternatives; `wearos` is platform-level (its beta boundary is recorded in the same chapter and carries no ※experimental marker).
 
 ### 49-target status table (generated from TargetSpec and the planning manifest)
 
@@ -154,11 +154,11 @@ The table below covers all 49 platforms: 41 rows are generated field by field fr
 | L2 | Alipay Mini Program (`alipay`) | `wasm` | `wasm-bindgen` | `alipay` · `taro-alipay` | none | `alipay-devtools-cli` | `alipay-open-platform` | `false` | 小程序代码包（Taro 编译）；wasm 进宿主沙箱（T-M3-07） |
 | L2 | Douyin Mini Program (`douyin`) | `wasm` | `wasm-bindgen` | `tt` · `taro-tt` | none | `douyin-devtools-cli` | `douyin-open-platform` | `false` | 小程序代码包（Taro 编译，平台 `tt`）；wasm 进宿主沙箱（T-M3-07） |
 | L2 | Quick App (快应用) (`quickapp`) | `wasm` | `wasm-bindgen` | `rpk` · `hap-toolkit` | none | `hap-toolkit-lint` | `quickapp-union-store` | `false` | 快应用 `.rpk`（hap-toolkit 构建）；lint 入 verify、提审走联盟商店（T-M3-12） |
-| L2 | TikTok Minis (`tiktok-minis`) | `html5` | `html5` | `zip` · `tiktok-minis` | none | `tiktok-minis-structure-check` | none | `true` | HTML5 页面（react-dom）→ 确定性 zip：包根 minis.config.json（build 块，dev 删除）+ minis.manifest.json（resource_list 由包内文件生成，.map 不计）+ UI dist；结构自检与 verify 腿 tiktok-minis-structure-check 同一实现。字段 / 产物形态按 TikTok Minis CLI @tiktok-minis/cli 1.2.0 （https://www.npmjs.com/package/@tiktok-minis/cli）build 输出核对；index.html 须由 UI 构建带入 TTMinis SDK 引用（打包器不注入 clientKey）。本机无 TikTok 开发者平台沙箱 / 上传入口——平台侧审核 SKIP-with-print，不声明商店受理；poly-publish 无 tiktok-minis 客户端（publish 留空） |
+| L2 | TikTok Minis (`tiktok-minis`) | `html5` | `html5` | `zip` · `tiktok-minis` | none | `tiktok-minis-structure-check` | none | `true` | HTML5 页面（react-dom）→ 确定性 zip：包根 minis.config.json（build 块，dev 删除）+ minis.manifest.json（resource_list 由包内文件生成，.map 不计）+ UI dist；结构自检与 verify 腿 tiktok-minis-structure-check 同一实现。字段 / 产物形态按 TikTok Minis CLI @tiktok-minis/cli 1.2.0 （https://www.npmjs.com/package/@tiktok-minis/cli）build 输出核对；index.html 须由 UI 构建带入 TTMinis SDK 引用（打包器不注入 clientKey）。本机无 TikTok 开发者平台沙箱 / 上传入口——平台侧审核 SKIP-with-print，不声明商店受理；polypack-publish 无 tiktok-minis 客户端（publish 留空） |
 | L2 | Google Play Instant (retired) | native | uniffi | instant-aab · android-aapt2 | android-keystore | bundletool-validate | google-play | none | Retired: Google stopped accepting Instant Apps submissions and shut down Play services Instant APIs in Dec 2025; the row is kept for history, with no TargetSpec. |
-| L2 | Facebook Instant Games (`facebook-instant-games`) | `html5` | `html5` | `zip` · `facebook-instant-games` | none | `facebook-instant-games-structure-check` | none | `true` | HTML5 页面（react-dom）→ 确定性 zip：包根 index.html + fbapp-config.json（instant_games：platform_version=RICH_GAMEPLAY / orientation=LANDSCAPE / navigation_menu_version=NAV_FLOATING）+ UI dist；结构自检与 verify 腿 facebook-instant-games-structure-check 同一实现。字段按官方 Bundle Config 文档 https://developers.facebook.com/docs/games/instant-games/bundle-config；index.html 须引用 connect.facebook.net 的 fbinstant SDK。本机无 Meta 应用后台 / 沙箱——平台侧审核 SKIP-with-print，不声明商店受理；poly-publish 无 facebook-instant-games 客户端（publish 留空） |
+| L2 | Facebook Instant Games (`facebook-instant-games`) | `html5` | `html5` | `zip` · `facebook-instant-games` | none | `facebook-instant-games-structure-check` | none | `true` | HTML5 页面（react-dom）→ 确定性 zip：包根 index.html + fbapp-config.json（instant_games：platform_version=RICH_GAMEPLAY / orientation=LANDSCAPE / navigation_menu_version=NAV_FLOATING）+ UI dist；结构自检与 verify 腿 facebook-instant-games-structure-check 同一实现。字段按官方 Bundle Config 文档 https://developers.facebook.com/docs/games/instant-games/bundle-config；index.html 须引用 connect.facebook.net 的 fbinstant SDK。本机无 Meta 应用后台 / 沙箱——平台侧审核 SKIP-with-print，不声明商店受理；polypack-publish 无 facebook-instant-games 客户端（publish 留空） |
 | L2 | Snapchat Mini (closed · next review 2027-01-20) | HTML5 | HTML5 | zip | none | Snap sandbox self-check | Snap platform | none | Closed · quarterly review (next 2027-01-20): the official Snap Minis docs entry (docs.snap.com/minis/getting-started/home/) returns 404 and the developers.snap.com sitemap has no Minis docs; npm @snapchat/minis-sdk (3.0.5, 2022) is marked "deprecating minis" — no verifiable official zip / manifest / packaging contract, so no TargetSpec. |
-| L2 | LINE Mini App (conditional · deploy mode) | LIFF (web) | HTTPS | static bundle + LIFF config | HTTPS / platform TLS | LIFF config check | LINE platform | none | Conditional (deploy mode, no TargetSpec): LIFF apps are registered as hosted URLs in the LINE Developers Console (LINE Login channel → LIFF; the endpoint URL must be HTTPS without fragments); `poly deploy line-liff` only validates config and prints manual Console steps — no platform package, no network, and no official upload format or CI upload API. |
+| L2 | LINE Mini App (conditional · deploy mode) | LIFF (web) | HTTPS | static bundle + LIFF config | HTTPS / platform TLS | LIFF config check | LINE platform | none | Conditional (deploy mode, no TargetSpec): LIFF apps are registered as hosted URLs in the LINE Developers Console (LINE Login channel → LIFF; the endpoint URL must be HTTPS without fragments); `polypack deploy line-liff` only validates config and prints manual Console steps — no platform package, no network, and no official upload format or CI upload API. |
 | L3 | Android TV (`android-tv`) | `native` | `uniffi` | `apk` · `android-aapt2` | `android-keystore` | `apksigner-verify`, `bundletool-validate` | `google-play-tv` | `false` | Leanback 清单（android.software.leanback） |
 | L3 | Apple tvOS (`tvos`) | `native` | `uniffi` | `ipa` · `tvos-xcodebuild` | `apple-codesign` | `codesign-verify`, `spctl` | `app-store-connect` | `false` | RN-tvOS 承载 UI；需 macOS 宿主 |
 | L3 | HarmonyOS TV (`harmonyos-tv`) | `native` | `napi` | `hap` · `harmonyos-hvigor` | `harmonyos-hap-sign` | `hap-sign-verify`, `hap-structure-check` | `appgallery-connect` | `false` | RNOH TV 形态（T-M4-14：deviceTypes 含 `tv`、焦点 / 安全区复用 adapter-tv）；复用 HarmonyHap 打包链；无 hdc TV 设备——真机焦点走查 SKIP；发布走 AppGallery Connect（华为视频商店无独立渠道 id） |
@@ -168,8 +168,8 @@ The table below covers all 49 platforms: 41 rows are generated field by field fr
 | L3 | Amazon Fire TV (`fire-tv`) | `native` | `uniffi` | `apk` · `android-aapt2` | `android-keystore` | `apksigner-verify`, `bundletool-validate` | `amazon-appstore` | `false` | 复用 Android TV 同一 APK 链，渠道指向亚马逊应用商店 |
 | L3 | Vizio SmartCast (`smartcast-tv`) | `wasm` | `wasm-bindgen` | `web-app` · `smartcast-web-app` | none | `sandbox-selfcheck` | `vizio-platform` | `false` | web 运行时（Vizio SmartCast，远程托管）；无签名、无推送——只出沙箱自检包（入口 / 清单字段 / 体积），提报与安装归平台侧 |
 | L3 | Hisense VIDAA (`vidaa-tv`) | `wasm` | `wasm-bindgen` | `web-app` · `vidaa-web-app` | none | `sandbox-selfcheck` | `vidaa-store` | `false` | web 运行时（海信 VIDAA）；无签名、无推送——只出沙箱自检包（入口 / 清单字段 / 体积），提审与安装归平台商店侧 |
-| L4 | GrapheneOS (`grapheneos`) | `native` | `uniffi` | `apk` · `android-aapt2` | `android-keystore` | `apksigner-verify`, `bundletool-validate` | `self-hosted` | `false` | 复用 Android APK 链（同 aapt2 / keystore / 校验）；无独立无 GMS 打包档（GMS 剔除归应用侧）；发布走自托管（`self-hosted`；无 F-Droid 客户端 id）；可复现性走 `poly verify --reproducible`（同输入二跑，未实现上游构建对拍） |
-| L4 | KaiOS (`kaios`) | `wasm` | `wasm-bindgen` | `zip` · `kaios-webapp` | none | `kaios-structure-check` | none | `false` | react-dom web 栈（wasm · wasm-bindgen）→ 打包应用 zip（manifest.webapp + UI dist，确定性归档）；结构自检（清单 / 入口 / 条目）与 verify 腿 kaios-structure-check 同一实现。普通应用本地不签名，提审与平台侧签名归 KaiStore；poly-publish 无 kaistore 客户端，publish 留空；本机无 KaiOS 设备 / 模拟器与商店凭据——设备 / 商店腿 SKIP-with-print |
+| L4 | GrapheneOS (`grapheneos`) | `native` | `uniffi` | `apk` · `android-aapt2` | `android-keystore` | `apksigner-verify`, `bundletool-validate` | `self-hosted` | `false` | 复用 Android APK 链（同 aapt2 / keystore / 校验）；无独立无 GMS 打包档（GMS 剔除归应用侧）；发布走自托管（`self-hosted`；无 F-Droid 客户端 id）；可复现性走 `polypack verify --reproducible`（同输入二跑，未实现上游构建对拍） |
+| L4 | KaiOS (`kaios`) | `wasm` | `wasm-bindgen` | `zip` · `kaios-webapp` | none | `kaios-structure-check` | none | `false` | react-dom web 栈（wasm · wasm-bindgen）→ 打包应用 zip（manifest.webapp + UI dist，确定性归档）；结构自检（清单 / 入口 / 条目）与 verify 腿 kaios-structure-check 同一实现。普通应用本地不签名，提审与平台侧签名归 KaiStore；polypack-publish 无 kaistore 客户端，publish 留空；本机无 KaiOS 设备 / 模拟器与商店凭据——设备 / 商店腿 SKIP-with-print |
 | L4 | Sailfish OS (planned) | native | cffi | rpm | RPM GPG | rpmlint | Jolla Store | none | Planned: the existing linux-rpm chain only emits a desktop Tauri RPM (bare product + .desktop); missing the Qt / Silica QML host, the Sailfish SDK cross toolchain (armv7hl / aarch64), and harbour packaging / signing; no TargetSpec yet. |
 | L4 | Ubuntu Touch (planned) | native | cffi | .click (Clickable) | Clickable packaging | Clickable build check | OpenStore | none | Planned: the existing Linux deb chain cannot produce .click (different format / AppArmor / click manifest); missing Clickable / Ubuntu Touch SDK and the WebView shell; no TargetSpec yet. |
 | L5 | Ubuntu (`ubuntu`) | `native` | `tauri-ipc` | `deb` · `linux-deb` | `linux-repo-gpg` | `lintian`, `appstream-validate`, `flatpak-lint`, `snap-lint` | `flathub`, `snapcraft`, `self-hosted` | `false` | L5 发行版：deb 主档；Flatpak 权限恰为 [--share=ipc, --socket=wayland, --socket=fallback-x11, --device=dri]，Snap plugs 恰为 [desktop, wayland, x11, opengl]（与打包器常量同源，T-M5-02/03） |
@@ -179,13 +179,13 @@ The table below covers all 49 platforms: 41 rows are generated field by field fr
 | L5 | FreeBSD (`freebsd`) | `native` | `tauri-ipc` | `pkg` · `freebsd-pkg` | `freebsd-repo-pkg` | `pkg-check` | `freebsd-repo` | `false` | 原生 pkg create 链（Tauri IPC 核心即宿主，FreeBSD 用户态）；Linux 只做交叉发起 + 暂存树 / manifest 结构自检，pkg create / pkg check / pkg install 真跑归 FreeBSD VM（T-M5-09）；仓库签名走 pkg repo rsa\|ecdsa\|eddsa:<keyfile>（catalogue 内签名，客户端 PUBKEY） |
 | L5 | OpenBSD (`openbsd`) | `native` | `tauri-ipc` | `ports` · `openbsd-ports` | `openbsd-signify` | `portcheck` | `openbsd-ports` | `false` | ports 目录骨架（Makefile / pkg/PLIST / pkg/DESCR + files 载荷，无 distfile）；signify 包签名（pkg_sign，钥经 POLYPACK_OPENBSD_SIGNIFY_KEY）；make package 与 portcheck 真跑归 OpenBSD VM（T-M5-09），Linux 宿主只生成骨架并做结构自检 |
 | L5 | BSD family (NetBSD / DragonFly, …) (`netbsd`) | `native` | `tauri-ipc` | `pkgsrc` · `pkgsrc` | `netbsd-repo-gpg` | `pkgsrc-check` | `netbsd-repo` | `false` | pkgsrc 骨架（Makefile / PLIST / DESCR + files 载荷，无 distfile；NetBSD / DragonFly 等同源）；Linux 交叉发起只生成骨架并做结构自检，bmake package / pkg_add 真跑归 NetBSD VM（T-M5-09）；仓库签名走 pkg_admin gpg-sign-package（逐包 GPG，仓库为扁平 .tgz + pkg_summary.gz，客户端 GPG_KEYRING_VERIFY） |
-| L6 | Apple watchOS (`watchos`) | `none` | `none` | `watch` · `watchos-xcodebuild` | `apple-codesign` | `codesign-verify` | `app-store` | `true` | 实验：SwiftUI 伴生模板（核心 API 调用桩 + WatchConnectivity 说明），核心不直接运行（runtime = none）；模板经 `poly init --target watchos` 生成，macOS 宿主 `xcodebuild` 构建；Linux / Windows 发起走远程农场 macOS worker（R3）；签名复用 M2 Apple 链（codesign，凭据只以 apple-codesign 引用出现） |
+| L6 | Apple watchOS (`watchos`) | `none` | `none` | `watch` · `watchos-xcodebuild` | `apple-codesign` | `codesign-verify` | `app-store` | `true` | 实验：SwiftUI 伴生模板（核心 API 调用桩 + WatchConnectivity 说明），核心不直接运行（runtime = none）；模板经 `polypack init --target watchos` 生成，macOS 宿主 `xcodebuild` 构建；Linux / Windows 发起走远程农场 macOS worker（R3）；签名复用 M2 Apple 链（codesign，凭据只以 apple-codesign 引用出现） |
 | L6 | Wear OS (`wearos`) | `native` | `uniffi` | `apk` · `android-aapt2` | `android-keystore` | `apksigner-verify`, `bundletool-validate` | `google-play-wear` | `false` | Wear OS 清单（android.hardware.type.watch，minSdkVersion ≥ 26）；UI 运行时（RN on Wear）为 beta，打包与签名走 Android 基座 |
 | L6 | Android Automotive (`android-automotive`) | `native` | `uniffi` | `apk` · `android-aapt2` | `android-keystore` | `apksigner-verify`, `bundletool-validate` | `oem-channel` | `false` | AAOS 清单（android.hardware.type.automotive）；车厂渠道，无统一公开 API——发布需 OEM 凭据引用（占位 Publisher，不伪造提交） |
 | L6 | QNX (`qnx`) | `staticlib` | `cffi` | `image` · `qnx-sdp` | none | `qnx-image-structure`, `c-abi-symbols`, `qnx-qemu-smoke` | `self-hosted` | `false` | headless 核心（可选 HMI 归平台侧）；静态库 + 部署镜像（附 mkifs buildfile，可引导 .ifs / QEMU 归 T-M6-09）；交叉编译需 QNX SDP（$QNX_HOST / $QNX_TARGET）与 Rust QNX target，无 SDP 时按环境槽 SKIP-with-print，不伪造二进制；自部署 |
-| L6 | AUTOSAR (Adaptive) (`autosar`) | `staticlib` | `cffi` | `arxml` · `autosar-adaptive` | none | `arxml-schema`, `c-abi-symbols` | `self-hosted` | `false` | 无 UI、自部署；AUTOSAR Adaptive 清单（ARXML）由 poly_engine_* C ABI 单一来源派生（服务 / 端口与导出符号一一对应）；no_std 可选（引擎层 --no-default-features，应用提供 global_allocator / panic_handler） |
+| L6 | AUTOSAR (Adaptive) (`autosar`) | `staticlib` | `cffi` | `arxml` · `autosar-adaptive` | none | `arxml-schema`, `c-abi-symbols` | `self-hosted` | `false` | 无 UI、自部署；AUTOSAR Adaptive 清单（ARXML）由 polypack_engine_* C ABI 单一来源派生（服务 / 端口与导出符号一一对应）；no_std 可选（引擎层 --no-default-features，应用提供 global_allocator / panic_handler） |
 | L6 | VxWorks (`vxworks`) | `staticlib` | `cffi` | `library` · `vxworks-wr` | none | `c-abi-symbols`, `vxworks-ld-check` | `self-hosted` | `false` | 无 UI、cffi、no_std；format = `library`（默认，静态库）或 `image`（部署 kit zip，配置 [targets.vxworks].format 覆盖）；wr-cc / wr-ld 缺席时产物用 nm 符号闭包 + 结构断言校验并 SKIP-with-print，绝不伪造可加载镜像 |
-| L6 | RTOS (Zephyr / FreeRTOS) (`zephyr` + `freertos`) | `staticlib` | `cffi` | `west` · `zephyr-west`; `board` · `freertos-qemu` | none | `c-abi-symbols`, `zephyr-west-build`, `zephyr-qemu-smoke`, `freertos-qemu-smoke` | `self-hosted` | `false` | zephyr：无 UI、cffi、no_std；west 工程模板（zephyr module + 引擎静态库模块链入），qemu_x86 / qemu_cortex_m3 两板 `west build` 验收；最小 CONFIG_* 集随模板版本化；west / Zephyr SDK 缺席时按环境槽 SKIP-with-print；freertos：无 UI、cffi、no_std；FreeRTOS 示例板包（mps2-an385 / Cortex-M3，静态库 + 启动 / 中断 / UART / FreeRTOSConfig / Makefile 工程模板）；内核 V11.1.0 按 tag + sha256 现拉不入库；`make smoke` 在 QEMU 中调用 poly_engine_* 并以 semihosting 退出码 0 结束；arm-none-eabi-gcc / qemu-system-arm / 网络缺席时按环境槽 SKIP-with-print |
+| L6 | RTOS (Zephyr / FreeRTOS) (`zephyr` + `freertos`) | `staticlib` | `cffi` | `west` · `zephyr-west`; `board` · `freertos-qemu` | none | `c-abi-symbols`, `zephyr-west-build`, `zephyr-qemu-smoke`, `freertos-qemu-smoke` | `self-hosted` | `false` | zephyr：无 UI、cffi、no_std；west 工程模板（zephyr module + 引擎静态库模块链入），qemu_x86 / qemu_cortex_m3 两板 `west build` 验收；最小 CONFIG_* 集随模板版本化；west / Zephyr SDK 缺席时按环境槽 SKIP-with-print；freertos：无 UI、cffi、no_std；FreeRTOS 示例板包（mps2-an385 / Cortex-M3，静态库 + 启动 / 中断 / UART / FreeRTOSConfig / Makefile 工程模板）；内核 V11.1.0 按 tag + sha256 现拉不入库；`make smoke` 在 QEMU 中调用 polypack_engine_* 并以 semihosting 退出码 0 结束；arm-none-eabi-gcc / qemu-system-arm / 网络缺席时按环境槽 SKIP-with-print |
 | L6 | Fitbit OS (`fitbit`) | `none` | `none` | `fba` · `fitbit-build` | none | `fitbit-structure-check` | `fitbit-gallery` | `false` | 核心不直接运行、能力由 JS 侧实现（runtime = none；Fitbit OS 侧 JS SDK 应用包 `.fba`：应用清单 + device-<family>.zip + 可选 companion.zip，结构同官方 SDK 6.1）；fitbit-build 缺席时 CLI 自检 SKIP-with-print，结构断言真跑；签名 / 提审归 Fitbit Gallery 平台侧 |
 | L6 | Garmin (Connect IQ) (`garmin`) | `none` | `none` | `iq` · `garmin-monkeyc` | none | `iq-structure-check` | `connect-iq-store` | `true` | 实验：Monkey C 子集受限转译——仅 UI 子集 + 原生逻辑（Monkey C 重写，无 JS 运行时）；工程结构自检可用，Connect IQ 编译与真机实证待补（T-M7-10 触发前置；能力边界见 ui/adapters/garmin/CAPABILITY-BOUNDARY-DRAFT.md） |
 | L6 | Zepp OS (`zepp`) | `none` | `none` | `zab` · `zeus` | none | `zepp-structure-check` | `zepp-store` | `false` | 核心不直接运行、能力由 Zepp JS API 侧实现（runtime = none）；Zepp 小程序 `.zab`（外层 manifest.json + <md5>.zpk，zpk 内含 device.zip / app-side.zip，结构同 zpm）；zeus / 模拟器缺席时安装与工具链校验 SKIP-with-print，结构断言真跑；签名 / 提审归 Zepp 商店平台侧 |
@@ -202,8 +202,8 @@ The table below covers all 49 platforms: 41 rows are generated field by field fr
 
 Five layers, top to bottom:
 
-1. **Entry layer** — the `poly` CLI (single binary), the `poly-gui` console (Tauri + React), and CI pipelines all submit build requests to the core;
-2. **Rust core workspace** — `poly-core` pipeline orchestration, `poly-targets` target registry (50+ TargetSpecs), `poly-toolchain` toolchain probing, `poly-bundle` the packager matrix, `poly-sign` signing / notarization / hardening, `poly-publish` store submission;
+1. **Entry layer** — the `polypack` CLI (single binary), the `polypack-gui` console (Tauri + React), and CI pipelines all submit build requests to the core;
+2. **Rust core workspace** — `polypack-core` pipeline orchestration, `polypack-targets` target registry (50+ TargetSpecs), `polypack-toolchain` toolchain probing, `polypack-bundle` the packager matrix, `polypack-sign` signing / notarization / hardening, `polypack-publish` store submission;
 3. **Side resources** — the build cache (content-addressed, incremental), the remote build farm (Apple targets require a macOS host; a macOS worker pool covers them), and the key vault (Keychain / Vault references — keys never enter the repository);
 4. **React UI adapter layer** — the `@polypack/ui` design system (tokens + headless primitives) plus platform render adapters (react-dom / react-native / Taro / TV / wearable) that re-skin one interface per platform;
 5. **Artifacts and recipients** — APK / IPA / HAP / MSI / DMG / AppImage / wgt / ipk / mini-program bundles… delivered to 50+ stores and channels.
@@ -212,9 +212,9 @@ Rust and React communicate across four bridges: **napi-rs** (Node / Taro side), 
 
 ## Request lifecycle
 
-![Request lifecycle of one poly release](docs/assets/en/request-cycle.svg)
+![Request lifecycle of one polypack release](docs/assets/en/request-cycle.svg)
 
-The full journey of one `poly release`: 13 steps in 5 phases.
+The full journey of one `polypack release`: 13 steps in 5 phases.
 
 | Phase | Steps |
 |---|---|
@@ -232,7 +232,7 @@ Five capability families:
 
 - **Targets & coverage** — declarative target registry (50+ TargetSpecs), one-command multi-target releases, OS-variant support (GrapheneOS / KaiOS / HarmonyOS family);
 - **Build & cache** — automatic toolchain probing and installation, content-addressed caching (incremental, reproducible), remote build farm (macOS worker pool);
-- **Cross-platform UI** — the `@polypack/ui` design system, platform component adaptation (Material / HIG / HarmonyOS styles), `poly dev` hot preview;
+- **Cross-platform UI** — the `@polypack/ui` design system, platform component adaptation (Material / HIG / HarmonyOS styles), `polypack dev` hot preview;
 - **Signing & publishing** — vault integration (Keychain / Vault references), signing · notarization · hardening (notarize / AVB), store pipelines (Play / ASC / AGC / mini-program platforms);
 - **Ecosystem & operations** — WASM plugins (custom targets, sandboxed), CI integrations, diagnostics (build explanations, failure localization).
 
@@ -266,27 +266,27 @@ The interface is written once (React) and mapped by the adapter layer onto **eac
 
 ```bash
 # not on crates.io yet (all workspace crates set publish = false): install from source
-cargo install --path crates/poly-cli   # or cargo run -p poly-cli --
-poly init                   # generate polypack.toml
-poly dev                    # hot preview
-poly build --target all     # build every buildable target in this environment
-poly history --limit 10     # latest build status / duration / artifact per target
-poly release --target fedora,freebsd   # deb / rpm / pkg / pkgsrc self-hosted repos
+cargo install --path crates/polypack-cli   # or cargo run -p polypack-cli --
+polypack init                   # generate polypack.toml
+polypack dev                    # hot preview
+polypack build --target all     # build every buildable target in this environment
+polypack history --limit 10     # latest build status / duration / artifact per target
+polypack release --target fedora,freebsd   # deb / rpm / pkg / pkgsrc self-hosted repos
 ```
 
 > `--target all` = every **buildable** target in the current environment; exclusions (license-gated, unreachable host/credentials) and their reasons are listed during the plan stage.
 >
-> Current commands: `poly doctor` / `poly init` / `poly build` / `poly history` / `poly dev` / `poly clean` / `poly bridge` / `poly farm` / `poly scan` / `poly verify` / `poly targets` / `poly retry` / `poly plugin` / `poly release`. `poly release` targets deb / rpm / pkg / pkgsrc self-hosted repos; mini-program submission goes through `poly publish`; `poly update` generates / verifies signed OTA manifests. `poly history` reads `.polypack/history/events.jsonl` (path redaction, 5 MiB / 10,000-record rotation).
+> Current commands: `polypack doctor` / `polypack init` / `polypack build` / `polypack history` / `polypack dev` / `polypack clean` / `polypack bridge` / `polypack farm` / `polypack scan` / `polypack verify` / `polypack targets` / `polypack retry` / `polypack plugin` / `polypack release`. `polypack release` targets deb / rpm / pkg / pkgsrc self-hosted repos; mini-program submission goes through `polypack publish`; `polypack update` generates / verifies signed OTA manifests. `polypack history` reads `.polypack/history/events.jsonl` (path redaction, 5 MiB / 10,000-record rotation).
 >
-> `poly release --credential` is repeatable: a bare `REF` is the global default and `TARGET=REF` overrides it per target (e.g. `--credential fedora=keyring:fedora-gpg --credential freebsd=env:FREEBSD_KEY`).
+> `polypack release --credential` is repeatable: a bare `REF` is the global default and `TARGET=REF` overrides it per target (e.g. `--credential fedora=keyring:fedora-gpg --credential freebsd=env:FREEBSD_KEY`).
 >
-> `poly release --changed`: unchanged targets emit a distinct `release-skipped` event and exit 0 without rewriting the receipt or incrementing `runs`; `--since` returns `E_PLAN_0002` in release mode (use `--changed` or pre-filter `--target`).
+> `polypack release --changed`: unchanged targets emit a distinct `release-skipped` event and exit 0 without rewriting the receipt or incrementing `runs`; `--since` returns `E_PLAN_0002` in release mode (use `--changed` or pre-filter `--target`).
 >
-> Store metadata: `store/metadata/<platform>/<locale>.toml`; `poly publish --check-metadata --metadata-dir store/metadata --channel wechat-open-platform` validates only, and `--metadata-dir` is mutually exclusive with `--materials`. See [docs/STORE-METADATA.en.md](docs/STORE-METADATA.en.md).
+> Store metadata: `store/metadata/<platform>/<locale>.toml`; `polypack publish --check-metadata --metadata-dir store/metadata --channel wechat-open-platform` validates only, and `--metadata-dir` is mutually exclusive with `--materials`. See [docs/STORE-METADATA.en.md](docs/STORE-METADATA.en.md).
 >
-> Multi-app workspace: root `polypack.toml` `[workspace] members`; `poly build --workspace` / `--app <id>`. See [docs/WORKSPACE.en.md](docs/WORKSPACE.en.md).
+> Multi-app workspace: root `polypack.toml` `[workspace] members`; `polypack build --workspace` / `--app <id>`. See [docs/WORKSPACE.en.md](docs/WORKSPACE.en.md).
 >
-> OTA: `poly update manifest` generates and signs a Tauri v2 `latest.json`; `poly update check` verifies it. See [docs/OTA.en.md](docs/OTA.en.md).
+> OTA: `polypack update manifest` generates and signs a Tauri v2 `latest.json`; `polypack update check` verifies it. See [docs/OTA.en.md](docs/OTA.en.md).
 >
 > Prebuilt binaries: pushing a `v*` tag makes `.github/workflows/release.yml` build all three hosts and attach them to the GitHub Release (Linux x86_64 / macOS arm64 / Windows x86_64), with a `SHA256SUMS.txt`.
 
@@ -326,19 +326,19 @@ stores = ["play", "appstore", "appgallery"]
 ```text
 polypack/
 ├── crates/
-│   ├── poly-cli/          # command line entry (clap)
-│   ├── poly-core/         # pipeline orchestration, JobSpec, event bus
-│   ├── poly-targets/      # TargetSpec registry (49-target matrix; 43 declared targets)
-│   ├── poly-toolchain/    # SDK / NDK / Xcode / emsdk probe & install
-│   ├── poly-bundle/       # packager matrix (apk / ipa / hap / msi / dmg / deb / rpm / wgt / …)
-│   ├── poly-sign/         # signing, notarization, hardening
-│   ├── poly-publish/      # store and mini-program platform submission
-│   ├── poly-cache/        # content-addressed build cache
-│   └── poly-plugin/       # WASM plugin host (custom targets)
+│   ├── polypack-cli/          # command line entry (clap)
+│   ├── polypack-core/         # pipeline orchestration, JobSpec, event bus
+│   ├── polypack-targets/      # TargetSpec registry (49-target matrix; 43 declared targets)
+│   ├── polypack-toolchain/    # SDK / NDK / Xcode / emsdk probe & install
+│   ├── polypack-bundle/       # packager matrix (apk / ipa / hap / msi / dmg / deb / rpm / wgt / …)
+│   ├── polypack-sign/         # signing, notarization, hardening
+│   ├── polypack-publish/      # store and mini-program platform submission
+│   ├── polypack-cache/        # content-addressed build cache
+│   └── polypack-plugin/       # WASM plugin host (custom targets)
 ├── ui/
 │   ├── polypack-ui/       # @polypack/ui design system (tokens + headless primitives)
 │   └── adapters/          # react-dom / react-native / taro / tv / wear adapters
-├── app/                   # poly-gui console (Tauri + React)
+├── app/                   # polypack-gui console (Tauri + React)
 ├── docs/
 │   ├── ROADMAP.en.md      # detailed plan (milestones, risks, support matrix)
 │   ├── TASKS.en.md        # task plan (116 tasks / 283 person-days + M9 candidates)
@@ -352,7 +352,7 @@ polypack/
     └── build-pax.mjs        # Pax generator: expressions + icon + contact sheet + playground
 ```
 
-(M0 delivered: the 9-crate workspace skeleton plus `poly-cli` / `poly-core` / `poly-targets` / `poly-toolchain`; since M2 `ui/` has landed — `ui/adapters/native` native adapter v0 + RN host skeleton (T-M2-04/05); M3 adds `ui/adapters/taro` (mini-program family) and the `ui/adapters/native/host/harmony` RNOH host template; `app/` remains target shape.)
+(M0 delivered: the 9-crate workspace skeleton plus `polypack-cli` / `polypack-core` / `polypack-targets` / `polypack-toolchain`; since M2 `ui/` has landed — `ui/adapters/native` native adapter v0 + RN host skeleton (T-M2-04/05); M3 adds `ui/adapters/taro` (mini-program family) and the `ui/adapters/native/host/harmony` RNOH host template; `app/` remains target shape.)
 
 ## Documentation sync convention
 
@@ -378,7 +378,7 @@ Incubated extension directions (SBOM / monorepo / incremental releases / OTA / s
 
 | Milestone | Scope |
 |---|---|
-| M0 | repo skeleton, `polypack.toml` schema, TargetSpec DSL, `poly doctor` |
+| M0 | repo skeleton, `polypack.toml` schema, TargetSpec DSL, `polypack doctor` |
 | M1 | Windows / macOS / Linux / Web end-to-end + content-addressed cache + **English-labeled diagrams** |
 | M2 | Android / iOS (RN bridge + signing pipeline) |
 | M3 | HarmonyOS (RNOH) + WeChat / Alipay / Douyin mini programs (Taro) |

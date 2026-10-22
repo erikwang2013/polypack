@@ -6,7 +6,7 @@ import prodConfig from './prod'
 // Taro 编译配置（T-M3-06）：四目标共用一份配置，平台经 `taro build --type <platform>` 切换
 // （weapp / alipay / tt；快应用无 Taro 平台插件，口径见 test/host-structure.test.js 的注记）。
 //
-// outputRoot 走 `POLYPACK_OUTPUT_ROOT` 注入：poly-bundle 的小程序打包器按目标给目录，
+// outputRoot 走 `POLYPACK_OUTPUT_ROOT` 注入：polypack-bundle 的小程序打包器按目标给目录，
 // 四份产物互不覆盖；本地手跑回落 `dist/`（Taro 模板默认）。
 export default defineConfig(async (merge, { command, mode }) => {
   const baseConfig = {

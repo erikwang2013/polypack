@@ -12,7 +12,7 @@
 
 ## 决策（Decision）
 
-1. 插件是 WASM 组件；接口由 `crates/poly-plugin/wit/polypack-target.wit` 的 `world polypack-target` 描述（`inputs` / `describe` / `package`）。
+1. 插件是 WASM 组件；接口由 `crates/polypack-plugin/wit/polypack-target.wit` 的 `world polypack-target` 描述（`inputs` / `describe` / `package`）。
 2. 运行时为 wasmtime，版本钉死 `=49.0.3`，只启用 `component-model`、`cranelift`、`runtime`、`std`（根 `Cargo.toml`）。
 3. 默认零能力：无文件系统、无网络；`fs_read` / `fs_write` / `net` 按插件显式授权，越权返回 `E_PLUGIN_0001` / `0002`。
 4. 资源上限：fuel / epoch / 线性内存，配置只能收紧不能放开；超限中止插件调用，不影响宿主进程（GA §3.3）。
@@ -39,7 +39,7 @@
 
 - [ROADMAP](../ROADMAP.md) §4.5（[English](../ROADMAP.en.md) §4.5）
 - [GA](../GA.md) §1.1–1.2、§2.5、§3
-- [crates/poly-plugin](../../crates/poly-plugin/)
-- [WIT 契约](../../crates/poly-plugin/wit/polypack-target.wit)
+- [crates/polypack-plugin](../../crates/polypack-plugin/)
+- [WIT 契约](../../crates/polypack-plugin/wit/polypack-target.wit)
 - [插件模板](../../templates/plugin-target/)
-- 提交：`00a0695`（沙箱 + `polypack-target` world v1）、`97e9a2a`（模板与 `poly plugin new/digest`）
+- 提交：`00a0695`（沙箱 + `polypack-target` world v1）、`97e9a2a`（模板与 `polypack plugin new/digest`）

@@ -107,7 +107,7 @@ jobs:
       - name: Wear 表单腿（门缺席时驱动自身 SKIP-with-print 并写 result.json）
         # runner 上下文只许在步骤级 env（job 级会致工作流加载被拒）。
         env:
-          POLYPACK_WEAR_SMOKE_LOGS: ${{ runner.temp }}/poly-wear-smoke-logs
+          POLYPACK_WEAR_SMOKE_LOGS: ${{ runner.temp }}/polypack-wear-smoke-logs
         run: node ui/smoke/wear/run.mjs --leg android --serial emulator-5554 --logs "$POLYPACK_WEAR_SMOKE_LOGS"
 
       - name: 留证据（result.json + dump + 失败截图；失败也留）
@@ -115,7 +115,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: wear-smoke-evidence
-          path: ${{ runner.temp }}/poly-wear-smoke-logs/**
+          path: ${{ runner.temp }}/polypack-wear-smoke-logs/**
           # result.json 恒写（全 SKIP 也写）：空上传=真异常
           if-no-files-found: error
           retention-days: 14

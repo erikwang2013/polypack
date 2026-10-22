@@ -95,13 +95,13 @@ try {
 }
 
 // GA 缺口：模板 WIT 与宿主 WIT 逐字节一致（两处接口定义不得漂移）。
-const HOST_WIT = 'crates/poly-plugin/wit/polypack-target.wit';
+const HOST_WIT = 'crates/polypack-plugin/wit/polypack-target.wit';
 const TEMPLATE_WIT = 'templates/plugin-target/plugin/wit/polypack-target.wit';
 try {
   const host = fs.readFileSync(path.join(ROOT, HOST_WIT));
   const template = fs.readFileSync(path.join(ROOT, TEMPLATE_WIT));
   if (host.equals(template)) {
-    console.log('ok   WIT 同步 · crates/poly-plugin ↔ templates/plugin-target');
+    console.log('ok   WIT 同步 · crates/polypack-plugin ↔ templates/plugin-target');
   } else {
     failed += 1;
     console.error(`DRIFT ${HOST_WIT} ↔ ${TEMPLATE_WIT} · WIT 字节不一致`);

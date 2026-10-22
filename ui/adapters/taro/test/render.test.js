@@ -1,6 +1,6 @@
 // T-M3-05 代理渲染测试：同一示例页面组件树经 react-dom/server 静态渲染。
 // 定位：devtools 真预览（微信 / 支付宝 / 抖音）需本机工具链，本测试是代理证据，非真预览证据；
-// 断言两件事：① 页面语义标记与 poly init 模板页一致；② 焦点环由 capabilities 声明驱动。
+// 断言两件事：① 页面语义标记与 polypack init 模板页一致；② 焦点环由 capabilities 声明驱动。
 // react/react-dom 未安装（CI 无 npm install）时 skip 不 fail。
 
 import assert from "node:assert/strict";
@@ -12,7 +12,7 @@ import { fileURLToPath } from "node:url";
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const TEMPLATE_MAIN_JSX = path.resolve(
   HERE,
-  "../../../../crates/poly-cli/templates/app/ui/main.jsx",
+  "../../../../crates/polypack-cli/templates/app/ui/main.jsx",
 );
 
 // 只吞「react/react-dom 未安装」这一类失败；本包自身的加载错误必须炸出来，
@@ -49,7 +49,7 @@ function render(host) {
   return mods.server.renderToStaticMarkup(mods.react.createElement(Page));
 }
 
-test("代理渲染：同一示例页面组件树可渲染，语义标记与 poly init 模板页一致", { skip }, () => {
+test("代理渲染：同一示例页面组件树可渲染，语义标记与 polypack init 模板页一致", { skip }, () => {
   const html = render({ pointer: "touch" });
   const template = fs.readFileSync(TEMPLATE_MAIN_JSX, "utf8");
   for (const marker of ["PolyPack App", "版本 0.1.0 · 由 PolyPack 构建", "点击计数："]) {

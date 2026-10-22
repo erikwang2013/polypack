@@ -1,5 +1,5 @@
-// 示例页面（T-M3-05 验收的「同一页面组件树」）：与 poly init 模板页
-// （crates/poly-cli/templates/app/ui/main.jsx）语义同形——图标 / 标题 / 版本行 / 计数按钮 /
+// 示例页面（T-M3-05 验收的「同一页面组件树」）：与 polypack init 模板页
+// （crates/polypack-cli/templates/app/ui/main.jsx）语义同形——图标 / 标题 / 版本行 / 计数按钮 /
 // 提示行；差异仅在渲染原语（Taro View/Text/Button/Image vs RN / DOM）。
 // 原语由宿主注入：宿主传 @tarojs/components；测试传 DOM 标签做代理渲染（test/helpers/dom-primitives.js）。
 
@@ -49,7 +49,7 @@ export function createExamplePage(primitives, adapter) {
       h(
         Text,
         { style: styles.muted },
-        `版本 0.1.0 · 由 PolyPack 构建（poly build --target ${adapter.target}）`,
+        `版本 0.1.0 · 由 PolyPack 构建（polypack build --target ${adapter.target}）`,
       ),
       // testID → Taro 的 `id` 属性：devtools 走查与契约测试的节点锚点
       h(

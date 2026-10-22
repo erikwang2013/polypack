@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
-# M9-E2 demo: generate two apps with `poly init`, declare a root workspace, and
+# M9-E2 demo: generate two apps with `polypack init`, declare a root workspace, and
 # build them twice to show per-app outputs and second-run cache hits.
 #
 # Usage:
-#   POLY_BIN=/path/to/poly ./scripts/demo-workspace.sh
-#   # or with cargo: POLY_BIN="cargo run -q -p poly-cli --" ./scripts/demo-workspace.sh
+#   POLYPACK_BIN=/path/to/polypack ./scripts/demo-workspace.sh
+#   # or with cargo: POLYPACK_BIN="cargo run -q -p polypack-cli --" ./scripts/demo-workspace.sh
 set -euo pipefail
 
-POLY_BIN="${POLY_BIN:-poly}"
-TARGET="${POLY_DEMO_TARGET:-}"
+POLYPACK_BIN="${POLYPACK_BIN:-polypack}"
+TARGET="${POLYPACK_DEMO_TARGET:-}"
 
 if [ -z "$TARGET" ]; then
   case "$(uname -s)" in
@@ -27,7 +27,7 @@ for app in notes timer; do
   (
     cd "$root/apps/$app"
     # shellcheck disable=SC2086
-    $POLY_BIN init >/dev/null
+    $POLYPACK_BIN init >/dev/null
   )
 done
 
@@ -42,14 +42,14 @@ echo "== first workspace build"
 (
   cd "$root"
   # shellcheck disable=SC2086
-  $POLY_BIN build --workspace --target "$TARGET"
+  $POLYPACK_BIN build --workspace --target "$TARGET"
 )
 
 echo "== second workspace build (expect cache hits)"
 (
   cd "$root"
   # shellcheck disable=SC2086
-  $POLY_BIN build --workspace --target "$TARGET"
+  $POLYPACK_BIN build --workspace --target "$TARGET"
 )
 
 echo "== per-app packages"

@@ -2,7 +2,7 @@
 
 `@polypack/adapter-native` 的 tvOS 承载宿主：装配层注册组件、接遥控器 / Back 事件源，10-foot
 蒙皮由 `createAdapter({ target: "tvos" })` 绑定（页面 `platformStyle()` 零参直取，T-M4-06）。
-打包链复用 M2 Xcode 链（T-M4-07，`poly build --target tvos`），本目录的 `ios/` 是 Xcode 工程位。
+打包链复用 M2 Xcode 链（T-M4-07，`polypack build --target tvos`），本目录的 `ios/` 是 Xcode 工程位。
 
 ## 铺开布局（与 android / harmony 宿主同规矩：模板按工程根铺开）
 
@@ -68,14 +68,14 @@ AppRegistry(PaxApp) → host/tvos/index.js
 ## 桥产物挂载点（T-M4-07 口径）
 
 Apple 侧无 android AAR / harmony `.so` 形态的 JS 注册位：核心 staticlib + uniffi Swift 绑定经
-Xcode 链编入 App（`poly build --target tvos`：cargo 出 `aarch64-apple-tvos{,-sim}` 静态库 →
+Xcode 链编入 App（`polypack build --target tvos`：cargo 出 `aarch64-apple-tvos{,-sim}` 静态库 →
 xcodebuild 归档 → ipa），不经 `adapter.native.register`。`ios/` 工程位铺 RN-tvOS 的
 `*.xcodeproj`（内含 App + App-tvOS target）；未就位时打包链用骨架工程（T-M4-07 同 ios 链）。
 
 ## 构建环境前置
 
 - **macOS + Xcode**（tvOS SDK）：打包 / 模拟器真跑均只在 macOS 宿主（
-  `crates/poly-bundle` 的宿上门禁：非 macOS 报 `ToolMissing`）。Linux / Windows 经远程农场
+  `crates/polypack-bundle` 的宿上门禁：非 macOS 报 `ToolMissing`）。Linux / Windows 经远程农场
   发起（T-M2-13：显式 `--target tvos` 不被发起宿主过滤，等 macOS worker）。
 - **Rust 交叉**：`rustup target add aarch64-apple-tvos aarch64-apple-tvos-sim`（打包链前置检查
   会点名缺失项；该两 target 为 Rust tier-3，rustup 是否分发 rust-std 以实际安装为准——

@@ -78,7 +78,7 @@ arm64 仅到 ELF 符号层，未上机。
   `"none"` 即无指针形态（焦点环 + `focusNav`）。用 app.json 而非 `process.env`：RN 运行时
   `process.env` 只保证 `NODE_ENV`（`Libraries/Core/setUpGlobals.js`），自定义 env 不在打包内联
   且无插件支持（`@react-native/babel-preset` 无 inline-env），写 env 会**静默失效**。
-- **桥产物挂载点（T-M2-02 口径）**：`poly bridge aar [--abi ...] [--out P]` 产出
+- **桥产物挂载点（T-M2-02 口径）**：`polypack bridge aar [--abi ...] [--out P]` 产出
   `<工程根>/bridge/android/<核心库名>.aar`（内件 `jni/<abi>/lib<核心库名>.so` + 可选 `classes.jar`；
   非 maven 坐标、不放 `libs/`）。**前置**：本骨架是模板，按工程根布局铺开——`android/` 与
   `polypack.toml`、`bridge/` 同级（CLI 只认 `project.root/bridge/android`）；因此仓库内此目录

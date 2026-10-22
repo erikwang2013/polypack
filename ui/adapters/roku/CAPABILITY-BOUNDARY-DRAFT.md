@@ -83,11 +83,11 @@ spike 包：`src/subset.js`（受限词汇 + 示例页面子集；布局手算�
 | G3 | 精确字号需 Font 节点 / BRS 赋值；内置 role 尺寸随分辨率 | 10-foot tokens 对拍存在近似误差 | BRS 赋值通道（官方 `helloworld.xml` 实证 `font.size=92`）；后续随资产管线带字体文件 | 官方 |
 | G4 | Rectangle 无圆角 / 描边字段 | 包 radius=24 的视觉降级 | 描边 → 双层矩形（已落地）；圆角 → 9 切片贴图（T-M4-15 资产管线）或方角（本 spike 取方角） | 实证 |
 | G5 | SceneGraph 内建焦点机制 ≠ 内核口径（无边界自环落点解析、无焦点记忆栈；内建 roving 行为不可编程） | 直接放养会破坏「无死路 / 焦点记忆」语义 | Scene 层消费方向键 + 遍历表驱动（本 spike 机制；`onKeyEvent` 返回 true 即接管）；遍历图与 adapter-tv 同为几何推导口径（T-M4-02 `deriveFocusNodes`，已入 main），数据级等价已证，行为级随 G6 | 实证 |
-| G6 | **本机无 Roku SDK / 设备 / 模拟器**；开发文档域网络受限（GitHub 绕行取官方样例） | 侧载与渲染无法本机复现 | 结构自检 19 项 + SKIP-with-print 手册腿（已交付；`POLY_ROKU_REAL=1` 真跑形态就绪）；真机实证列 T-M4-15 触发前置 | 本机探测实证 |
+| G6 | **本机无 Roku SDK / 设备 / 模拟器**；开发文档域网络受限（GitHub 绕行取官方样例） | 侧载与渲染无法本机复现 | 结构自检 19 项 + SKIP-with-print 手册腿（已交付；`POLYPACK_ROKU_REAL=1` 真跑形态就绪）；真机实证列 T-M4-15 触发前置 | 本机探测实证 |
 | G7 | 单层 demo：Back 空历史无动作；退出频道 / 分层 Back 未做 | 完整返回链未覆盖 | 分层 Back 口径已就绪（T-M4-03 `layers.js` / `handleTvKey` 三层裁决，已入 main）——spike demo 未接线，列为 T-M4-15 承载面扩展；退出 = main.brs 消息循环收尾（形态已在） | 口径已就绪（未接线） |
 | G8 | 浏览类组件（RowList / MarkupGrid / Video）未入 demo；数字键未实现 | 「浏览→详情→播放」核心任务未覆盖（属 M4-13 冒烟范围） | 官方有对应组件（hero-grid 实证 RowList 用法）；列为 T-M4-15 承载面扩展；数字键口径已就绪（T-M4-03 `shortcuts.js`，已入 main，spike 未接线） | 官方（hero-grid） |
-| G9 | 资产管线缺位（图标 / 启动图 / 圆角贴图） | manifest 图标 / splash 字段省略（dev 侧载可运行形态） | T-M4-15 接 poly 资产管线；manifest 字段随资产补齐 | 实证 |
-| G10 | 构建依赖系统 zip / unzip | Windows 原生缺 zip | 现行走 WSL/Git-Bash；未来打包器复用仓内既有 Rust zip 基建（zip 9.0.3：`poly-bundle::zipwrite` / `poly-publish::package`） | 本仓 crate 实证 |
+| G9 | 资产管线缺位（图标 / 启动图 / 圆角贴图） | manifest 图标 / splash 字段省略（dev 侧载可运行形态） | T-M4-15 接 polypack 资产管线；manifest 字段随资产补齐 | 实证 |
+| G10 | 构建依赖系统 zip / unzip | Windows 原生缺 zip | 现行走 WSL/Git-Bash；未来打包器复用仓内既有 Rust zip 基建（zip 9.0.3：`polypack-bundle::zipwrite` / `polypack-publish::package`） | 本仓 crate 实证 |
 
 无「无替代」硬项。G1 / G6 为影响最大两项：G1 收窄功能面（设计使然），G6 是唯一未闭环验证（前置条件已写明）。
 

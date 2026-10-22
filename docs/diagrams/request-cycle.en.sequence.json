@@ -3,15 +3,15 @@
   "diagram_type": "sequence",
   "meta": {
     "title": "Build Request Cycle",
-    "subtitle": "The full journey of one poly release — from a single command to multi-platform artifacts and publishing",
+    "subtitle": "The full journey of one polypack release — from a single command to multi-platform artifacts and publishing",
     "output": "docs/diagrams/build/request-cycle.en.html",
     "viewBox": [920, 840],
     "quality_profile": "showcase"
   },
   "participants": [
     { "id": "dev", "type": "external", "label": "Dev / CI", "sublabel": "trigger build" },
-    { "id": "cli", "type": "frontend", "label": "poly CLI", "sublabel": "args · manifest" },
-    { "id": "core", "type": "backend", "label": "poly-core", "sublabel": "orchestration · scheduling" },
+    { "id": "cli", "type": "frontend", "label": "polypack CLI", "sublabel": "args · manifest" },
+    { "id": "core", "type": "backend", "label": "polypack-core", "sublabel": "orchestration · scheduling" },
     { "id": "tools", "type": "database", "label": "Toolchain", "sublabel": "SDK probing · cache" },
     { "id": "comp", "type": "backend", "label": "Rust build", "sublabel": "cargo + SDK" },
     { "id": "ui", "type": "frontend", "label": "UI bundle", "sublabel": "adapter transforms" },
@@ -26,7 +26,7 @@
     { "from": 688, "to": 720, "label": "05 · Delivery" }
   ],
   "messages": [
-    { "id": "release-cmd", "from": "dev", "to": "cli", "y": 185, "label": "poly release --target …", "variant": "emphasis" },
+    { "id": "release-cmd", "from": "dev", "to": "cli", "y": 185, "label": "polypack release --target …", "variant": "emphasis" },
     { "id": "load-manifest", "from": "cli", "to": "core", "y": 225, "label": "load polypack.toml → JobSpec" },
     { "id": "probe-toolchain", "from": "core", "to": "tools", "y": 265, "label": "probe SDK / NDK" },
     { "id": "toolchain-ready", "from": "tools", "to": "core", "y": 305, "label": "ready · cache hit", "variant": "return" },

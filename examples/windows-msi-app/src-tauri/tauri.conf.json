@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Poly MSI Sample",
+  "productName": "Polypack MSI Sample",
   "version": "0.1.0",
   "identifier": "com.polypack.windows-msi-sample",
   "build": {
@@ -9,7 +9,7 @@
   "app": {
     "windows": [
       {
-        "title": "Poly MSI Sample",
+        "title": "Polypack MSI Sample",
         "width": 420,
         "height": 260,
         "resizable": false

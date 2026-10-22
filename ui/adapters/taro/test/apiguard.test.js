@@ -93,10 +93,10 @@ test("过：属性键形态 `window:` 不算使用 DOM 全局（Taro app.config 
   );
 });
 
-test("放行标记 poly:allow-api：同行豁免（构造样本 / 文档示例的出口）", () => {
+test("放行标记 polypack:allow-api：同行豁免（构造样本 / 文档示例的出口）", () => {
   const code = [
-    "const doc = document; // poly:allow-api 构造样本",
-    "Taro.request({}); // poly:allow-api",
+    "const doc = document; // polypack:allow-api 构造样本",
+    "Taro.request({}); // polypack:allow-api",
   ].join("\n");
   assert.deepEqual(checkSource(code).violations, []);
 });

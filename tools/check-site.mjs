@@ -54,6 +54,7 @@ for (const needle of ['<link rel="canonical"', 'application/ld+json', 'og:image'
 }
 if (!read('js/site.js').includes('perf-output')) bad('missing perf marker: perf-output');
 if (!read('downloads/index.html').includes('canonical')) bad('downloads page missing canonical');
+if (!read('downloads/index.html').includes('pan.baidu.com/s/1Jgi5Z-sgoAIkHqGbSekePw?pwd=3128')) bad('downloads page missing Baidu mirror');
 ok('SEO, sitemap, OG and perf markers present');
 
 // 4) No remote runtime assets except the requested Busuanzi stats script.
@@ -79,13 +80,13 @@ ok('donation QR images present');
 
 // 7) Downloads are served from site/downloads/, never from the release page.
 const DOWNLOADS = [
-  'polypack-cli_1.16.0_amd64.deb',
-  'poly-1.16.0-x86_64.AppImage',
-  'poly-1.16.0-x86_64.msi',
-  'poly-1.16.0-aarch64.pkg',
-  'poly-x86_64-unknown-linux-gnu.tar.gz',
-  'poly-aarch64-apple-darwin.tar.gz',
-  'poly-x86_64-pc-windows-msvc.zip',
+  'polypack_1.16.0_amd64.deb',
+  'polypack-1.16.0-x86_64.AppImage',
+  'polypack-1.16.0-x86_64.msi',
+  'polypack-1.16.0-aarch64.pkg',
+  'polypack-x86_64-unknown-linux-gnu.tar.gz',
+  'polypack-aarch64-apple-darwin.tar.gz',
+  'polypack-x86_64-pc-windows-msvc.zip',
   'SHA256SUMS.txt',
 ];
 for (const file of DOWNLOADS) {

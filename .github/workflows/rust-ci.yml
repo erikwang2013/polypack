@@ -69,13 +69,13 @@ jobs:
       # 仅当工具链真的不可用时才会打印 SKIP。
       - name: NSIS 真编译（聚焦）
         if: runner.os == 'Windows'
-        run: cargo test -p poly-bundle --test packagers_windows nsis_real_build_produces_pe_installer -- --nocapture
+        run: cargo test -p polypack-bundle --test packagers_windows nsis_real_build_produces_pe_installer -- --nocapture
 
       # T-M1-05 聚焦冒烟：静默安装 → 启动已安装 PE → 静默卸载。夹具 PE 由宿主 rustc
       # 现编译；测试内部仍有 Windows / makensis / rustc skip 守卫。
       - name: NSIS 安装/启动/卸载冒烟（聚焦）
         if: runner.os == 'Windows'
-        run: cargo test -p poly-bundle --test packagers_windows nsis_install_launch_uninstall_smoke -- --nocapture
+        run: cargo test -p polypack-bundle --test packagers_windows nsis_install_launch_uninstall_smoke -- --nocapture
 
       - name: cargo test
         # --no-fail-fast：一次看到全部失败面（cargo 默认在首个失败二进制处中止，
@@ -87,8 +87,8 @@ jobs:
       - name: cargo package audit（非发布）
         if: runner.os == 'Linux'
         run: |
-          for p in poly-targets poly-cache poly-toolchain poly-core poly-bundle \
-                   poly-sign poly-publish poly-plugin poly-cli; do
+          for p in polypack-targets polypack-cache polypack-toolchain polypack-core polypack-bundle \
+                   polypack-sign polypack-publish polypack-plugin polypack-cli; do
             echo "== cargo package --list -p $p =="
             cargo package --list -p "$p" --locked --offline
           done
@@ -98,12 +98,12 @@ jobs:
       - name: release --changed 5 目标实测（Linux 聚焦）
         if: runner.os == 'Linux'
         run: |
-          cargo test -p poly-cli --test release five_target_changed -- --nocapture 2>&1 \
+          cargo test -p polypack-cli --test release five_target_changed -- --nocapture 2>&1 \
             | tee /tmp/release-changed.log
           grep -q "first_published=5 second_published=1" /tmp/release-changed.log
 
       # T-M1-07 聚焦真跑：工具只在通用 cargo test 之后安装。若提前安装，
-      # `poly build` 的 verify 会对测试用 debug deb 触发 lintian 错误，污染通用测试面。
+      # `polypack build` 的 verify 会对测试用 debug deb 触发 lintian 错误，污染通用测试面。
       # appimagetool 固定 1.9.1，按 GitHub release 发布的 sha256 校验后安装（不裸下载）；
       # extract-and-run 让 appimagetool 自身与产物都不依赖 FUSE。
       - name: 安装 AppImage / lintian（Linux 聚焦真跑）
@@ -127,7 +127,7 @@ jobs:
 
       - name: packager 真跑（AppImage + lintian，聚焦）
         if: runner.os == 'Linux'
-        run: cargo test -p poly-bundle --test packagers_linux -- --nocapture
+        run: cargo test -p polypack-bundle --test packagers_linux -- --nocapture
 
       # UI 适配层测试（T-M2-04/05 native；T-M3-05 taro、T-M4-01 tv 同挂）：纯 node:test，
       # 无 npm install 也绿（缺依赖时 skip 不 fail）；目录未落地时跳过（前向兼容新包）
@@ -155,7 +155,7 @@ jobs:
 
   # ENV-15：真实 Secret Service 上的 keyring 信任根载体（Linux 腿）。
   #
-  # 隔离配方与 `crates/poly-sign/tests/keyring_real.rs` 文件头一致：dbus-run-session 起
+  # 隔离配方与 `crates/polypack-sign/tests/keyring_real.rs` 文件头一致：dbus-run-session 起
   # 私有会话总线，非空密码解锁，`GNOME_KEYRING_CUSTOM_LOCAL_PATH` 指向临时空目录
   # （Deepin 补丁版会无视 HOME / XDG_DATA_HOME）。工具链装在 runner 的真实 HOME，
   # 故显式保留 CARGO_HOME / RUSTUP_HOME，只隔离钥匙串路径。
@@ -184,29 +184,29 @@ jobs:
       - name: 真实 keyring 闭环 + CLI 信任根 E2E（隔离会话总线）
         run: |
           set -euo pipefail
-          mkdir -p -m 700 /tmp/poly-keyring-rt /tmp/poly-keyring-home/keyrings
+          mkdir -p -m 700 /tmp/polypack-keyring-rt /tmp/polypack-keyring-home/keyrings
           dbus-run-session -- bash -c '
             set -euo pipefail
             REAL_HOME="$HOME"
             export CARGO_HOME="${CARGO_HOME:-$REAL_HOME/.cargo}" \
                    RUSTUP_HOME="${RUSTUP_HOME:-$REAL_HOME/.rustup}"
-            export HOME=/tmp/poly-keyring-home XDG_RUNTIME_DIR=/tmp/poly-keyring-rt \
-                   XDG_DATA_HOME=/tmp/poly-keyring-home/.local/share \
-                   GNOME_KEYRING_CUSTOM_LOCAL_PATH=/tmp/poly-keyring-home/keyrings
-            printf "poly-it-pass\n" | gnome-keyring-daemon --unlock --components=secrets --foreground &
+            export HOME=/tmp/polypack-keyring-home XDG_RUNTIME_DIR=/tmp/polypack-keyring-rt \
+                   XDG_DATA_HOME=/tmp/polypack-keyring-home/.local/share \
+                   GNOME_KEYRING_CUSTOM_LOCAL_PATH=/tmp/polypack-keyring-home/keyrings
+            printf "polypack-it-pass\n" | gnome-keyring-daemon --unlock --components=secrets --foreground &
             sleep 3
-            export POLY_KEYRING_REAL=1
-            cargo test -p poly-sign --test keyring_real -- --nocapture
-            cargo test -p poly-cli --test plugin_trust_root_keyring -- --nocapture
-          ' 2>&1 | tee /tmp/poly-keyring-real.log
-          if grep -q "SKIP" /tmp/poly-keyring-real.log; then
+            export POLYPACK_KEYRING_REAL=1
+            cargo test -p polypack-sign --test keyring_real -- --nocapture
+            cargo test -p polypack-cli --test plugin_trust_root_keyring -- --nocapture
+          ' 2>&1 | tee /tmp/polypack-keyring-real.log
+          if grep -q "SKIP" /tmp/polypack-keyring-real.log; then
             echo "keyring-real：测试打印了 SKIP（缺 Secret Service / gdbus / gpg），不能当真实证据" >&2
             exit 1
           fi
           for expected in \
             "test real_keyring_write_read_delete_round_trip ... ok" \
             "test cli_resolves_trust_root_from_keyring_and_loads_signed_plugin ... ok"; do
-            if ! grep -qF "$expected" /tmp/poly-keyring-real.log; then
+            if ! grep -qF "$expected" /tmp/polypack-keyring-real.log; then
               echo "keyring-real：测试未真跑通过：$expected" >&2
               exit 1
             fi
@@ -270,14 +270,14 @@ jobs:
 
       - name: 真实 Vault 闭环 + CLI 信任根 E2E
         env:
-          POLY_VAULT_REAL: "1"
+          POLYPACK_VAULT_REAL: "1"
         run: |
           set -euo pipefail
-          cargo test -p poly-sign --test vault_real -- --nocapture 2>&1 \
-            | tee /tmp/poly-vault-real.log
-          cargo test -p poly-cli --test plugin_trust_root_vault -- --nocapture 2>&1 \
-            | tee -a /tmp/poly-vault-real.log
-          if grep -q "SKIP" /tmp/poly-vault-real.log; then
+          cargo test -p polypack-sign --test vault_real -- --nocapture 2>&1 \
+            | tee /tmp/polypack-vault-real.log
+          cargo test -p polypack-cli --test plugin_trust_root_vault -- --nocapture 2>&1 \
+            | tee -a /tmp/polypack-vault-real.log
+          if grep -q "SKIP" /tmp/polypack-vault-real.log; then
             echo "vault-real：测试打印了 SKIP（缺 Vault 环境 / gpg），不能当真实证据" >&2
             exit 1
           fi
@@ -286,7 +286,7 @@ jobs:
             "test missing_entry_is_reported_with_path_and_no_token_leak ... ok" \
             "test bad_token_is_403_and_errors_stay_redacted ... ok" \
             "test cli_resolves_trust_root_from_vault_and_loads_signed_plugin ... ok"; do
-            if ! grep -qF "$expected" /tmp/poly-vault-real.log; then
+            if ! grep -qF "$expected" /tmp/polypack-vault-real.log; then
               echo "vault-real：测试未真跑通过：$expected" >&2
               exit 1
             fi
@@ -398,7 +398,7 @@ jobs:
       - name: 真实 S3 往返（s3_real）
         run: |
           set -euo pipefail
-          cargo test -p poly-cache --test s3_real -- --nocapture 2>&1 \
+          cargo test -p polypack-cache --test s3_real -- --nocapture 2>&1 \
             | tee /tmp/s3-real.log
           if grep -q "SKIP" /tmp/s3-real.log; then
             echo "s3-real：s3_real 打印了 SKIP（MinIO / 凭据缺失），不能当真实证据" >&2
@@ -412,7 +412,7 @@ jobs:
       - name: 两 worker 农场二跑（MinIO 共享桶必须 1/1 命中）
         run: |
           set -euo pipefail
-          cargo test -p poly-cli --test farm_cache \
+          cargo test -p polypack-cli --test farm_cache \
             shared_cache_hits_across_worker_processes_on_s3 -- --nocapture 2>&1 \
             | tee -a /tmp/s3-real.log
           if grep -q "SKIP" /tmp/s3-real.log; then
@@ -434,7 +434,7 @@ jobs:
   #
   # 前置：windows-2022 预装 WebView2 Runtime 与 WiX Toolset v3.14（candle / light）。
   # Tauri CLI 非必需：样例前端是已提交的静态 dist，`cargo build --release` 即产出
-  # 真实 Tauri exe；MSI 由仓库内 poly-bundle 的 WiX 打包器（candle + light）生成，
+  # 真实 Tauri exe；MSI 由仓库内 polypack-bundle 的 WiX 打包器（candle + light）生成，
   # 这样测试覆盖的是本项目打包器，而不是 `tauri build --bundles msi`。
   # 任何前置缺失都会在本作业内显式失败，测试自身的 SKIP 仅用于本地/降级宿主。
   windows-msi-real:
@@ -442,7 +442,7 @@ jobs:
     runs-on: windows-2022
     timeout-minutes: 60
     env:
-      POLY_MSI_REAL: "1"
+      POLYPACK_MSI_REAL: "1"
     steps:
       - uses: actions/checkout@v4
 
@@ -499,9 +499,9 @@ jobs:
           cargo build --release --manifest-path examples/windows-msi-app/src-tauri/Cargo.toml 2>&1 |
             Tee-Object -FilePath $log
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          $exe = (Resolve-Path 'examples/windows-msi-app/src-tauri/target/release/poly-msi-sample.exe').Path
-          "POLY_TAURI_CORE_BIN=$exe" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-          "POLY_MSI_REAL_OUT=$(Join-Path $env:RUNNER_TEMP 'poly-msi-real')" |
+          $exe = (Resolve-Path 'examples/windows-msi-app/src-tauri/target/release/polypack-msi-sample.exe').Path
+          "POLYPACK_TAURI_CORE_BIN=$exe" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "POLYPACK_MSI_REAL_OUT=$(Join-Path $env:RUNNER_TEMP 'polypack-msi-real')" |
             Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
           Get-FileHash $exe -Algorithm SHA256 |
             Format-List |
@@ -512,7 +512,7 @@ jobs:
         shell: pwsh
         run: |
           $log = Join-Path $env:RUNNER_TEMP 'msi-real.log'
-          cargo test -p poly-bundle --test windows_msi_real -- --nocapture 2>&1 |
+          cargo test -p polypack-bundle --test windows_msi_real -- --nocapture 2>&1 |
             Tee-Object -FilePath $log
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           # CI 前置已校验，SKIP 在此作业等同于缺少证据：不得把跳过当通过。
@@ -524,7 +524,7 @@ jobs:
         if: always()
         shell: pwsh
         run: |
-          $dir = Join-Path $env:RUNNER_TEMP 'poly-msi-real'
+          $dir = Join-Path $env:RUNNER_TEMP 'polypack-msi-real'
           $sha = Join-Path $env:RUNNER_TEMP 'msi.sha256'
           if (Test-Path $dir) {
             Get-ChildItem $dir -Filter *.msi | ForEach-Object {
@@ -545,18 +545,18 @@ jobs:
             ${{ runner.temp }}/msi-real.log
             ${{ runner.temp }}/sample-exe.sha256
             ${{ runner.temp }}/msi.sha256
-            ${{ runner.temp }}/poly-msi-real/
+            ${{ runner.temp }}/polypack-msi-real/
           if-no-files-found: warn
           retention-days: 30
 
   # T-M9-12：真实 Tauri v2 自托管更新 / 回滚演练。
   #
   # 每次运行现场生成一对一次性 Tauri updater 密钥（私钥只在
-  # `%RUNNER_TEMP%\poly-updater-drill-secrets`，不可上传），构建 0.1.0 / 0.1.1
-  # 两个 NSIS 安装器与 updater 签名，用仓库自身的 `poly update manifest` 生成
+  # `%RUNNER_TEMP%\polypack-updater-drill-secrets`，不可上传），构建 0.1.0 / 0.1.1
+  # 两个 NSIS 安装器与 updater 签名，用仓库自身的 `polypack update manifest` 生成
   # 并 GPG 签名的静态 `latest.json`，本地 HTTP 服务模拟自托管渠道：
   # 安装 0.1.0 → 应用内检查 / 验签 / 安装 0.1.1 → 恢复 0.1.0 清单 → 应用内回滚。
-  # 脚本失败带稳定 `POLY_UPDATER_DRILL_0001..0009` 码；CI 不允许 SKIP。
+  # 脚本失败带稳定 `POLYPACK_UPDATER_DRILL_0001..0009` 码；CI 不允许 SKIP。
   windows-updater-real:
     name: windows-updater-real / update-rollback
     runs-on: windows-2022
@@ -590,7 +590,7 @@ jobs:
           npm install --global '@tauri-apps/cli@^2'
           tauri --version
 
-      # 清单签名复用宿主现有的 gpg；Git for Windows 的 MSYS 版由 poly-sign 自动
+      # 清单签名复用宿主现有的 gpg；Git for Windows 的 MSYS 版由 polypack-sign 自动
       # 转换路径参数，无需安装 Gpg4win（choco 安装器在 windows-2022 上会挂起）。
       - name: 检查 GnuPG（清单签名）
         shell: pwsh
@@ -600,11 +600,11 @@ jobs:
           Write-Host "gpg: $($gpg.Source)"
           gpg --version
 
-      - name: 构建 poly CLI（release）
+      - name: 构建 polypack CLI（release）
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          cargo build -p poly-cli --release
+          cargo build -p polypack-cli --release
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: 真实更新 / 回滚演练
@@ -616,10 +616,10 @@ jobs:
             Tee-Object -FilePath $log
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           # 不得把跳过当通过：必须有完整的 PASS 证据行。
-          if (-not (Select-String -Path $log -Pattern 'POLY_UPDATER_DRILL_RESULT: PASS' -SimpleMatch)) {
+          if (-not (Select-String -Path $log -Pattern 'POLYPACK_UPDATER_DRILL_RESULT: PASS' -SimpleMatch)) {
             throw 'windows-updater-real：未产出 PASS 证据'
           }
-          if (Select-String -Path $log -Pattern 'POLY_UPDATER_DRILL_RESULT: FAIL' -SimpleMatch) {
+          if (Select-String -Path $log -Pattern 'POLYPACK_UPDATER_DRILL_RESULT: FAIL' -SimpleMatch) {
             throw 'windows-updater-real：演练失败'
           }
 
@@ -628,9 +628,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: windows-updater-real-evidence
-          # `poly-updater-drill-secrets`（一次性私钥与 GPG home）刻意不在路径内。
+          # `polypack-updater-drill-secrets`（一次性私钥与 GPG home）刻意不在路径内。
           path: |
             ${{ runner.temp }}/updater-drill.log
-            ${{ runner.temp }}/poly-updater-drill/
+            ${{ runner.temp }}/polypack-updater-drill/
           if-no-files-found: warn
           retention-days: 30

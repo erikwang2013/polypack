@@ -8,7 +8,7 @@
 
 ## 背景（Context）
 
-农场 v1 已具备协议、worker、隔离、共享缓存与部署指南（[`docs/FARM.md`](../FARM.md)、[`docs/FARM-DEPLOY.md`](../FARM-DEPLOY.md)、`crates/poly-cli/src/farm.rs`）。它解决的是 Apple 系目标必须 macOS 宿主、Windows / Linux 用户需要一台构建机的问题。当前模型是「发起地决定构建什么，构建地决定怎么构建并独占凭据」，凭据只以 `CredentialRef` 引用跨边界传输，明文不进入协议帧、命令行、计划或日志。
+农场 v1 已具备协议、worker、隔离、共享缓存与部署指南（[`docs/FARM.md`](../FARM.md)、[`docs/FARM-DEPLOY.md`](../FARM-DEPLOY.md)、`crates/polypack-cli/src/farm.rs`）。它解决的是 Apple 系目标必须 macOS 宿主、Windows / Linux 用户需要一台构建机的问题。当前模型是「发起地决定构建什么，构建地决定怎么构建并独占凭据」，凭据只以 `CredentialRef` 引用跨边界传输，明文不进入协议帧、命令行、计划或日志。
 
 ROADMAP §2 的非目标明确写着「不托管用户代码与密钥（构建可本地或自建农场，密钥只以引用形式出现）」。托管服务会直接改变这条边界：项目从软件提供方变成计算与数据托管方，需要承担租户隔离、密钥托管、数据驻留、审计、滥用处理与 SLA。INITIATIVES M9-D2 要求先做决策，不承诺实现。
 
@@ -36,7 +36,7 @@ ROADMAP §2 的非目标明确写着「不托管用户代码与密钥（构建�
 | 共享缓存 / 对象存储 | 用户自有目录或用户云账号 | 不可见 | 用户 |
 | 农场协议实现与文档 | 仓库与发行包 | 公开 | 项目 |
 
-协议边界保持不变：`JobSpec.secrets` 只装引用；worker 在执行时向本机后端取值；仓库出现明文凭据即构建失败（`poly scan`）。项目不提供「托管密钥」后门，因为这与 ROADMAP §7 的「密钥零入库、凭据只以引用出现」冲突。
+协议边界保持不变：`JobSpec.secrets` 只装引用；worker 在执行时向本机后端取值；仓库出现明文凭据即构建失败（`polypack scan`）。项目不提供「托管密钥」后门，因为这与 ROADMAP §7 的「密钥零入库、凭据只以引用出现」冲突。
 
 ### 3. 为什么 GA 不做托管
 
@@ -89,7 +89,7 @@ ROADMAP §2 的非目标明确写着「不托管用户代码与密钥（构建�
 
 ### 7. 规范边界
 
-- 本 ADR 不实现控制面、计费、租户隔离或 BYOC 模板，不修改 `crates/poly-cli/src/farm.rs`、`docs/FARM.md`、`docs/FARM-DEPLOY.md`。
+- 本 ADR 不实现控制面、计费、租户隔离或 BYOC 模板，不修改 `crates/polypack-cli/src/farm.rs`、`docs/FARM.md`、`docs/FARM-DEPLOY.md`。
 - 不改变农场协议 v0 / v1 的线格式与凭据模型；不新增密钥托管能力。
 - 不承诺托管服务的发布日期、价格或区域。
 
@@ -118,4 +118,4 @@ ROADMAP §2 的非目标明确写着「不托管用户代码与密钥（构建�
 - [FARM](../FARM.md)（发起地 / 构建地、协议 v0、凭据模型）
 - [FARM-DEPLOY](../FARM-DEPLOY.md)（拓扑、worker 池、隔离、缓存、凭据、演练）
 - [GA](../GA.md) §4.1（农场 v1 GA 范围）
-- [`crates/poly-cli/src/farm.rs`](../../crates/poly-cli/src/farm.rs)（农场协议实现）
+- [`crates/polypack-cli/src/farm.rs`](../../crates/polypack-cli/src/farm.rs)（农场协议实现）

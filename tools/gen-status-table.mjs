@@ -94,8 +94,8 @@ const PLATFORMS = [
     verify: bi('LIFF 配置检查', 'LIFF config check'),
     publish: bi('LINE 平台', 'LINE platform'),
     notes: bi(
-      '条件支持（部署模式，不声明 TargetSpec）：LIFF 应用由 LINE Developers Console 托管 URL 注册（LINE Login 渠道 → LIFF；Endpoint URL 须 HTTPS 且不得含 fragment）；`poly deploy line-liff` 只校验配置并输出 Console 人工步骤，不生成平台包、不触网，官方无本地上传包格式或 CI 上传 API。',
-      'Conditional (deploy mode, no TargetSpec): LIFF apps are registered as hosted URLs in the LINE Developers Console (LINE Login channel → LIFF; the endpoint URL must be HTTPS without fragments); `poly deploy line-liff` only validates config and prints manual Console steps — no platform package, no network, and no official upload format or CI upload API.',
+      '条件支持（部署模式，不声明 TargetSpec）：LIFF 应用由 LINE Developers Console 托管 URL 注册（LINE Login 渠道 → LIFF；Endpoint URL 须 HTTPS 且不得含 fragment）；`polypack deploy line-liff` 只校验配置并输出 Console 人工步骤，不生成平台包、不触网，官方无本地上传包格式或 CI 上传 API。',
+      'Conditional (deploy mode, no TargetSpec): LIFF apps are registered as hosted URLs in the LINE Developers Console (LINE Login channel → LIFF; the endpoint URL must be HTTPS without fragments); `polypack deploy line-liff` only validates config and prints manual Console steps — no platform package, no network, and no official upload format or CI upload API.',
     ),
   }, 'conditional'),
 

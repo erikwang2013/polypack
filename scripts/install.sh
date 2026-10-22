@@ -2,25 +2,25 @@
 # PolyPack CLI installer (M9-G1 / T-M9-47).
 #
 # Detects Linux x86_64, macOS arm64, or Windows x86_64 (Git Bash), downloads the
-# matching asset from a GitHub Release (latest, or POLY_VERSION), verifies it
-# against SHA256SUMS.txt, installs `poly` into POLY_INSTALL_DIR (default
-# ~/.local/bin), and prints the installed version.
+# matching asset from a GitHub Release (latest, or POLYPACK_VERSION), verifies it
+# against SHA256SUMS.txt, installs `polypack` into POLYPACK_INSTALL_DIR (default
+# ~/.local/polypack/bin), and prints the installed version.
 #
 # Fail closed: a missing SHA256SUMS.txt entry, a digest mismatch, or a failed
-# signature check (when POLY_REQUIRE_SIGNATURE=1) aborts before anything is
+# signature check (when POLYPACK_REQUIRE_SIGNATURE=1) aborts before anything is
 # installed. There is no unverified or unsigned fallback.
 #
 # Environment:
-#   POLY_VERSION             release tag (v1.13.1 or 1.13.1); default: latest
-#   POLY_INSTALL_DIR         install directory; default: ~/.local/bin
-#   POLY_REPO                GitHub repo; default: erikwang2013/polypack
-#   POLY_RELEASE_BASE_URL    override release download base (mirrors / tests)
-#   POLY_REQUIRE_SIGNATURE   set to 1 to require a valid minisign signature
-#   POLY_MINISIGN_PUBKEY     path to the minisign public key (strict mode)
+#   POLYPACK_VERSION             release tag (v1.13.1 or 1.13.1); default: latest
+#   POLYPACK_INSTALL_DIR         install directory; default: ~/.local/polypack/bin
+#   POLYPACK_REPO                GitHub repo; default: erikwang2013/polypack
+#   POLYPACK_RELEASE_BASE_URL    override release download base (mirrors / tests)
+#   POLYPACK_REQUIRE_SIGNATURE   set to 1 to require a valid minisign signature
+#   POLYPACK_MINISIGN_PUBKEY     path to the minisign public key (strict mode)
 set -euo pipefail
 
 readonly DEFAULT_REPO="erikwang2013/polypack"
-readonly DEFAULT_INSTALL_DIR="${HOME}/.local/bin"
+readonly DEFAULT_INSTALL_DIR="${HOME}/.local/polypack/bin"
 
 log()  { printf 'install: %s\n' "$*"; }
 warn() { printf 'install: warning: %s\n' "$*" >&2; }
@@ -39,36 +39,37 @@ detect_target() {
       [ "$arch" = "x86_64" ] || die "unsupported Linux architecture: $arch (only x86_64 prebuilt assets exist; build from source)"
       TARGET="x86_64-unknown-linux-gnu"
       ASSET_EXT="tar.gz"
-      BIN_NAME="poly"
+      BIN_NAME="polypack"
       ;;
     Darwin)
       [ "$arch" = "arm64" ] || die "unsupported macOS architecture: $arch (only arm64 prebuilt assets exist; build from source)"
       TARGET="aarch64-apple-darwin"
       ASSET_EXT="tar.gz"
-      BIN_NAME="poly"
+      BIN_NAME="polypack"
       ;;
     MINGW* | MSYS* | CYGWIN*)
       [ "$arch" = "x86_64" ] || die "unsupported Windows architecture: $arch (only x86_64 prebuilt assets exist)"
       TARGET="x86_64-pc-windows-msvc"
       ASSET_EXT="zip"
-      BIN_NAME="poly.exe"
+      BIN_NAME="polypack.exe"
       ;;
     *)
       die "unsupported operating system: $os (supported: Linux x86_64, macOS arm64, Windows x86_64 Git Bash)"
       ;;
   esac
-  ASSET="poly-${TARGET}.${ASSET_EXT}"
+  ASSET_PREFIX="polypack"
+  ASSET="${ASSET_PREFIX}-${TARGET}.${ASSET_EXT}"
 }
 
 resolve_tag() {
-  if [ -n "${POLY_VERSION:-}" ]; then
-    case "$POLY_VERSION" in
-      v*) TAG="$POLY_VERSION" ;;
-      *) TAG="v$POLY_VERSION" ;;
+  if [ -n "${POLYPACK_VERSION:-}" ]; then
+    case "$POLYPACK_VERSION" in
+      v*) TAG="$POLYPACK_VERSION" ;;
+      *) TAG="v$POLYPACK_VERSION" ;;
     esac
     return 0
   fi
-  [ -z "${POLY_RELEASE_BASE_URL:-}" ] || die "POLY_VERSION is required when POLY_RELEASE_BASE_URL is set"
+  [ -z "${POLYPACK_RELEASE_BASE_URL:-}" ] || die "POLYPACK_VERSION is required when POLYPACK_RELEASE_BASE_URL is set"
   local effective
   effective="$(curl -fsSIL --proto '=https' --tlsv1.2 -o /dev/null -w '%{url_effective}' \
     "https://github.com/${REPO}/releases/latest")" \
@@ -81,20 +82,24 @@ resolve_tag() {
 }
 
 base_url() {
-  if [ -n "${POLY_RELEASE_BASE_URL:-}" ]; then
-    printf '%s' "${POLY_RELEASE_BASE_URL%/}"
+  if [ -n "${POLYPACK_RELEASE_BASE_URL:-}" ]; then
+    printf '%s' "${POLYPACK_RELEASE_BASE_URL%/}"
   else
     printf '%s' "https://github.com/${REPO}/releases/download/${TAG}"
   fi
 }
 
-fetch() {
+try_fetch() {
   local url="$1" dest="$2"
   local -a args=(-fsSL --retry 3 --retry-delay 2)
   case "$url" in
     https://*) args+=(--proto '=https' --tlsv1.2) ;;
   esac
-  curl "${args[@]}" -o "$dest" "$url" || die "download failed: $url"
+  curl "${args[@]}" -o "$dest" "$url"
+}
+
+fetch() {
+  try_fetch "$@" || die "download failed: $1"
 }
 
 sha256_of() {
@@ -110,15 +115,15 @@ sha256_of() {
 }
 
 verify_signature() {
-  if [ "${POLY_REQUIRE_SIGNATURE:-}" != "1" ]; then
-    warn "minisign check not requested (POLY_REQUIRE_SIGNATURE=1 to enforce); SHA-256 is always verified"
+  if [ "${POLYPACK_REQUIRE_SIGNATURE:-}" != "1" ]; then
+    warn "minisign check not requested (POLYPACK_REQUIRE_SIGNATURE=1 to enforce); SHA-256 is always verified"
     return 0
   fi
-  [ -n "${POLY_MINISIGN_PUBKEY:-}" ] || die "POLY_REQUIRE_SIGNATURE=1 requires POLY_MINISIGN_PUBKEY"
-  [ -r "$POLY_MINISIGN_PUBKEY" ] || die "minisign public key not readable: $POLY_MINISIGN_PUBKEY"
+  [ -n "${POLYPACK_MINISIGN_PUBKEY:-}" ] || die "POLYPACK_REQUIRE_SIGNATURE=1 requires POLYPACK_MINISIGN_PUBKEY"
+  [ -r "$POLYPACK_MINISIGN_PUBKEY" ] || die "minisign public key not readable: $POLYPACK_MINISIGN_PUBKEY"
   need minisign
   fetch "${BASE}/SHA256SUMS.txt.minisig" "$SIG_FILE"
-  minisign -Vm "$SUMS_FILE" -p "$POLY_MINISIGN_PUBKEY" -x "$SIG_FILE" >/dev/null \
+  minisign -Vm "$SUMS_FILE" -p "$POLYPACK_MINISIGN_PUBKEY" -x "$SIG_FILE" >/dev/null \
     || die "minisign signature verification failed (unsigned fallback is disabled)"
   log "signature verified: SHA256SUMS.txt.minisig"
 }
@@ -140,7 +145,7 @@ extract_archive() {
     tar.gz)
       need tar
       tar -xzf "$ARCHIVE" -C "$WORKDIR"
-      BIN_SRC="$WORKDIR/poly-${TARGET}"
+      BIN_SRC="$WORKDIR/${ASSET_PREFIX}-${TARGET}"
       ;;
     zip)
       if command -v unzip >/dev/null 2>&1; then
@@ -152,7 +157,7 @@ extract_archive() {
       else
         die "no zip extractor found (need unzip or powershell.exe + cygpath)"
       fi
-      BIN_SRC="$WORKDIR/poly-${TARGET}.exe"
+      BIN_SRC="$WORKDIR/${ASSET_PREFIX}-${TARGET}.exe"
       ;;
     *)
       die "unsupported archive type: ${ASSET_EXT}"
@@ -172,20 +177,26 @@ install_binary() {
 }
 
 main() {
-  REPO="${POLY_REPO:-$DEFAULT_REPO}"
-  INSTALL_DIR="${POLY_INSTALL_DIR:-$DEFAULT_INSTALL_DIR}"
+  REPO="${POLYPACK_REPO:-$DEFAULT_REPO}"
+  INSTALL_DIR="${POLYPACK_INSTALL_DIR:-$DEFAULT_INSTALL_DIR}"
   need curl
   detect_target
   resolve_tag
   BASE="$(base_url)"
-  WORKDIR="$(mktemp -d "${TMPDIR:-/tmp}/poly-install.XXXXXX")"
+  WORKDIR="$(mktemp -d "${TMPDIR:-/tmp}/polypack-install.XXXXXX")"
   trap 'rm -rf "$WORKDIR"' EXIT
   ARCHIVE="$WORKDIR/$ASSET"
   SUMS_FILE="$WORKDIR/SHA256SUMS.txt"
   SIG_FILE="$WORKDIR/SHA256SUMS.txt.minisig"
 
-  log "installing poly ${TAG} for ${TARGET}"
-  fetch "${BASE}/${ASSET}" "$ARCHIVE"
+  log "installing polypack ${TAG} for ${TARGET}"
+  if ! try_fetch "${BASE}/${ASSET}" "$ARCHIVE"; then
+    # shortcut: pre-rename releases only have the poly-* asset name, drop after v1.16.0
+    ASSET_PREFIX="poly"
+    ASSET="${ASSET_PREFIX}-${TARGET}.${ASSET_EXT}"
+    log "new asset missing; falling back to legacy ${ASSET}"
+    fetch "${BASE}/${ASSET}" "$ARCHIVE"
+  fi
   fetch "${BASE}/SHA256SUMS.txt" "$SUMS_FILE"
   verify_signature
   verify_checksum

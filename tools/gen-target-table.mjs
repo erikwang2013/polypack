@@ -2,7 +2,7 @@
 /**
  * gen-target-table.mjs — L6 嵌入式 / 车机状态表生成器（T-M6-12）
  *
- * 单一事实源：crates/poly-targets/src/builtin.rs 的 `TargetSpec` 字面量。
+ * 单一事实源：crates/polypack-targets/src/builtin.rs 的 `TargetSpec` 字面量。
  * 本脚本解析 Rust 源码（不编译、不依赖 Rust 工具链），按 id 排序渲染中英双语
  * Markdown 表格，写入 README / ROADMAP 的标记块；`--check` 校验标记块与
  * TargetSpec 是否漂移（CI 用，漂移即非零退出）。
@@ -20,7 +20,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const SPEC_FILE = 'crates/poly-targets/src/builtin.rs';
+const SPEC_FILE = 'crates/polypack-targets/src/builtin.rs';
 
 export const BEGIN = '<!-- BEGIN GENERATED: l6-embedded-status -->';
 export const END = '<!-- END GENERATED: l6-embedded-status -->';

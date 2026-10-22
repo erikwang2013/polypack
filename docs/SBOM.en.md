@@ -8,20 +8,20 @@
 | --- | --- |
 | One SPDX 2.3 document, one CycloneDX 1.5 document, and one in-toto Statement provenance per artifact | Not SLSA certification and claims no SLSA level |
 | Dependency graph comes from `cargo metadata --locked --offline` and is aligned with `Cargo.lock` | No network, Sigstore / Rekor, or remote attestation |
-| Deterministic output: the same input produces byte-identical files on a second run | Not a substitute for artifact signing; `poly sign` / `poly verify` still own signatures and checksums |
+| Deterministic output: the same input produces byte-identical files on a second run | Not a substitute for artifact signing; `polypack sign` / `polypack verify` still own signatures and checksums |
 
 ## 2. Generate
 
 Build first, then let `verify` generate SBOMs for the staged artifacts:
 
 ```bash
-poly build --target web
-poly verify --sbom --target web
+polypack build --target web
+polypack verify --sbom --target web
 # JSON event stream for automation
-poly verify --sbom --target web --json
+polypack verify --sbom --target web --json
 ```
 
-`--sbom` can run alongside other verifiers; a target with no staged artifact warns and is skipped rather than emitting an empty SBOM. Generation failures return `poly::E_VERIFY_0003` and never degrade silently.
+`--sbom` can run alongside other verifiers; a target with no staged artifact warns and is skipped rather than emitting an empty SBOM. Generation failures return `polypack::E_VERIFY_0003` and never degrade silently.
 
 ## 3. Output layout
 
@@ -43,7 +43,7 @@ For example the `site` artifact yields `site.spdx.json`, `site.cdx.json`, and `s
 
 ## 5. Release receipts
 
-`poly release` computes `sbom_digest` with the same artifact-set digest algorithm used for SBOMs and writes it into the receipt. The field is optional and old receipts without it are treated as absent, so release records and SBOMs reference the same artifact digests.
+`polypack release` computes `sbom_digest` with the same artifact-set digest algorithm used for SBOMs and writes it into the receipt. The field is optional and old receipts without it are treated as absent, so release records and SBOMs reference the same artifact digests.
 
 ## 6. Sample and tests
 
@@ -59,7 +59,7 @@ jq -r '._type' docs/samples/sbom/web/site.intoto.jsonl     # https://in-toto.io/
 Acceptance tests:
 
 ```bash
-cargo test -p poly-cli --test sbom
+cargo test -p polypack-cli --test sbom
 node tools/check-docs.mjs
 ```
 
@@ -67,4 +67,4 @@ node tools/check-docs.mjs
 
 | Code | Meaning |
 | --- | --- |
-| `poly::E_VERIFY_0003` | SBOM generation failed (missing `Cargo.lock`, offline `cargo metadata` failure, or artifact digest failure); run `poly build` and retry |
+| `polypack::E_VERIFY_0003` | SBOM generation failed (missing `Cargo.lock`, offline `cargo metadata` failure, or artifact digest failure); run `polypack build` and retry |

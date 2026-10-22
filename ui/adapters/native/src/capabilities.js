@@ -1,5 +1,5 @@
 // capabilities 契约（ROADMAP §6）：`capabilities(): { focusNav, safeArea, gestures }`。
-// 矩阵与 poly-targets 内建 TargetSpec（crates/poly-targets/src/builtin.rs）逐一对照；
+// 矩阵与 polypack-targets 内建 TargetSpec（crates/polypack-targets/src/builtin.rs）逐一对照；
 // JS 侧不依赖 cargo，漂移由 test/capabilities.test.js 解析该单源文件哨兵断言。
 
 /** 目标 id → 能力基线。只列本包（RN / RNOH）承载的目标；react-dom 族是 adapter-dom 的职责，

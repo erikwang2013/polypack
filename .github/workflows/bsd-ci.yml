@@ -1,15 +1,15 @@
 # BSD 原生构建 + 安装冒烟（T-M5-09）：仅每夜与手动触发——QEMU VM 成本不进每提交 / PR。
 #
-# - freebsd 腿（真跑）：vmactions/freebsd-vm@v1（14.5 x86_64）内构建 poly，
-#   `poly build --target freebsd` 产出 .pkg → `poly release --target freebsd`（一次性
+# - freebsd 腿（真跑）：vmactions/freebsd-vm@v1（14.5 x86_64）内构建 polypack，
+#   `polypack build --target freebsd` 产出 .pkg → `polypack release --target freebsd`（一次性
 #   RSA 密钥，CI 专用）刷新并签名 pkg 仓库 → `pkg update/install/check -s` 消费签名仓库；
 #   第二跑断言 cache_hit=true / runs=2 / 仓库字节不变。日志与仓库/回执/包全部归档。
-# - netbsd 腿（真跑）：netbsd TargetSpec.hosts 只含 Linux，`poly build --target netbsd`
+# - netbsd 腿（真跑）：netbsd TargetSpec.hosts 只含 Linux，`polypack build --target netbsd`
 #   在 NetBSD 内会被判不可达；故 Ubuntu 宿主先生成 pkgsrc 骨架（结构自检真跑），
-#   vmactions/netbsd-vm@v1（11.0 x86_64）内原生 `cargo build` poly + 应用核心，
+#   vmactions/netbsd-vm@v1（11.0 x86_64）内原生 `cargo build` polypack + 应用核心，
 #   再 `bmake package` → `pkg_add` → `pkg_info` → 运行安装后的二进制。任一工具缺席、
 #   bmake/pkg_add 失败即作业失败，绝不 SKIP 即绿。
-# - openbsd 腿（尽力真跑）：vmactions/openbsd-vm@v1（7.9 x86_64）内构建 poly 与 ports
+# - openbsd 腿（尽力真跑）：vmactions/openbsd-vm@v1（7.9 x86_64）内构建 polypack 与 ports
 #   骨架；ports 树就绪后 `make package` → `pkg_add` → `pkg_check`。make 腿失败按
 #   SKIP-with-print 注记（T-M5-09 评估：镜像带宽不足，本地未真跑；以 CI 结果为准）。
 #
@@ -57,7 +57,7 @@ jobs:
             WORKSPACE=$(pwd)
             APP=/tmp/bsd-app
             export CARGO_TARGET_DIR=/tmp/polypack-cargo
-            POLY="$CARGO_TARGET_DIR/debug/poly"
+            POLYPACK="$CARGO_TARGET_DIR/debug/polypack"
             LOGS="$WORKSPACE/.polypack/ci-logs/freebsd"
             ART="$WORKSPACE/.polypack/ci-artifacts/freebsd"
             mkdir -p "$LOGS" "$ART"
@@ -71,10 +71,10 @@ jobs:
 
             run_stage rustc rustc --version
             run_stage cargo-version cargo --version
-            run_stage build cargo build -p poly-cli
-            run_stage init "$POLY" init "$APP"
+            run_stage build cargo build -p polypack-cli
+            run_stage init "$POLYPACK" init "$APP"
             cd "$APP"
-            run_stage poly-build "$POLY" build --target freebsd
+            run_stage polypack-build "$POLYPACK" build --target freebsd
 
             # CI 专用一次性 RSA 密钥：只用于冒烟验证 pkg repo 签名链路，绝不入库/入 artifact。
             openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out /tmp/pkg-repo-key.pem
@@ -84,13 +84,13 @@ jobs:
             POLYPACK_PKG_CRED=$(cat /tmp/pkg-credential.b64)
             export POLYPACK_PKG_CRED
 
-            run_stage release-1 "$POLY" release --target freebsd \
+            run_stage release-1 "$POLYPACK" release --target freebsd \
               --credential env:POLYPACK_PKG_CRED --json
             grep -q '"event":"published"' "$LOGS/release-1.log"
             grep -q '"cache_hit":false' "$LOGS/release-1.log"
             find .polypack/release/freebsd -name '*.json' | grep -q .
 
-            # pkg 客户端：file:// 仓库 + PUBKEY 验签（pubkey 由 poly release 从同一私钥导出）
+            # pkg 客户端：file:// 仓库 + PUBKEY 验签（pubkey 由 polypack release 从同一私钥导出）
             mkdir -p /tmp/pkg-repos
             cat > /tmp/pkg-repos/polypack.conf <<EOF
             polypack: {
@@ -114,7 +114,7 @@ jobs:
             # 二跑幂等：cache_hit=true、runs=2，仓库文件字节与 mtime 不变
             sha256 .polypack/repo/* > /tmp/repo-before.sha256
             find .polypack/repo -type f -exec stat -f '%N %m %z' {} + | sort > /tmp/repo-before.stat
-            run_stage release-2 "$POLY" release --target freebsd \
+            run_stage release-2 "$POLYPACK" release --target freebsd \
               --credential env:POLYPACK_PKG_CRED --json
             grep -q '"cache_hit":true' "$LOGS/release-2.log"
             grep -q '"runs":2' "$LOGS/release-2.log"
@@ -162,16 +162,16 @@ jobs:
           set -euo pipefail
           # target/debug 留在 RUNNER_TEMP：vmactions 默认同步整个 workspace，避免把
           # 数 GB 构建目录 rsync 进 VM / copyback。
-          export CARGO_TARGET_DIR="$RUNNER_TEMP/poly-netbsd-cargo"
-          POLY="$CARGO_TARGET_DIR/debug/poly"
-          APP="$RUNNER_TEMP/poly-netbsd-app"
+          export CARGO_TARGET_DIR="$RUNNER_TEMP/polypack-netbsd-cargo"
+          POLYPACK="$CARGO_TARGET_DIR/debug/polypack"
+          APP="$RUNNER_TEMP/polypack-netbsd-app"
           OUT="$GITHUB_WORKSPACE/.ci/netbsd"
           mkdir -p "$OUT"
-          cargo build -p poly-cli
-          "$POLY" init "$APP"
+          cargo build -p polypack-cli
+          "$POLYPACK" init "$APP"
           (
             cd "$APP"
-            "$POLY" build --target netbsd --json
+            "$POLYPACK" build --target netbsd --json
           ) | tee "$OUT/build.jsonl"
           grep -q '"event":"packaged"' "$OUT/build.jsonl"
           grep -q '"format":"pkgsrc"' "$OUT/build.jsonl"
@@ -244,7 +244,7 @@ jobs:
             run_stage cargo-version cargo --version
 
             # 原生构建应用核心：骨架载荷里的可执行文件是 Linux ELF，安装后跑不起来。
-            # 不在 VM 内构建 poly CLI：pkgsrc 的 rust 1.96 低于仓库 rust-version 1.98，
+            # 不在 VM 内构建 polypack CLI：pkgsrc 的 rust 1.96 低于仓库 rust-version 1.98，
             # 且会拖入 wasmtime；本槽验证的是 pkgsrc 打包 / pkg_add，不是 CLI 自身。
             ( cd "$WORKSPACE/.ci/netbsd/app/core" \
                 && CARGO_TARGET_DIR=/tmp/app-core-target cargo build --release --ignore-rust-version ) \
@@ -333,7 +333,7 @@ jobs:
             WORKSPACE=$(pwd)
             APP=/tmp/bsd-app
             export CARGO_TARGET_DIR=/tmp/polypack-cargo
-            POLY="$CARGO_TARGET_DIR/debug/poly"
+            POLYPACK="$CARGO_TARGET_DIR/debug/polypack"
             LOGS="$WORKSPACE/.polypack/ci-logs/openbsd"
             ART="$WORKSPACE/.polypack/ci-artifacts/openbsd"
             mkdir -p "$LOGS" "$ART"
@@ -346,11 +346,11 @@ jobs:
             }
 
             run_stage rustc rustc --version
-            run_stage build cargo build -p poly-cli --ignore-rust-version
-            run_stage init "$POLY" init "$APP"
+            run_stage build cargo build -p polypack-cli --ignore-rust-version
+            run_stage init "$POLYPACK" init "$APP"
             cd "$APP"
             # ports 基础设施此时尚未铺开：打包器只生成骨架并 SKIP make package（如实注记）
-            run_stage poly-build "$POLY" build --target openbsd
+            run_stage polypack-build "$POLYPACK" build --target openbsd
             PORT_SRC=$(find .polypack/packages/openbsd/ports -mindepth 1 -maxdepth 1 -type d -print -quit)
             test -n "$PORT_SRC"
 

@@ -785,7 +785,7 @@ rect.c-bg-rect { fill: var(--bg); }</style><rect class="c-bg-rect" width="100%" 
 
         <!-- Transition paths -->
         <path data-edge-from="init" data-edge-to="dev" data-edge-key="0" data-edge-id="init-dev" data-composition-points="153,157;189,157" d="M 153 157 L 189 157" class="a-default" stroke-width="1.1" marker-end="url(#arrowhead)"/>
-        <path data-edge-from="dev" data-edge-to="build" data-edge-label="poly build" data-edge-key="1" data-edge-id="dev-build" data-composition-points="307,157;343,157" d="M 307 157 L 343 157" class="a-emphasis" stroke-width="2" marker-end="url(#arrowhead-emphasis)"/>
+        <path data-edge-from="dev" data-edge-to="build" data-edge-label="polypack build" data-edge-key="1" data-edge-id="dev-build" data-composition-points="307,157;343,157" d="M 307 157 L 343 157" class="a-emphasis" stroke-width="2" marker-end="url(#arrowhead-emphasis)"/>
         <path data-edge-from="build" data-edge-to="verify" data-edge-label="产物就绪" data-edge-key="2" data-edge-id="build-verify" data-composition-points="461,157;497,157" d="M 461 157 L 497 157" class="a-default" stroke-width="1.1" marker-end="url(#arrowhead)"/>
         <path data-edge-from="verify" data-edge-to="release" data-edge-label="签名通过" data-edge-key="3" data-edge-id="verify-release" data-composition-points="615,157;651,157" d="M 615 157 L 651 157" class="a-emphasis" stroke-width="2" marker-end="url(#arrowhead-emphasis)"/>
         <path data-edge-from="verify" data-edge-to="keys" data-edge-label="缺少密钥" data-edge-key="4" data-edge-id="verify-keys" data-composition-points="556,188;556,278" d="M 556 188 L 556 278" class="a-security" stroke-width="1.1" marker-end="url(#arrowhead-security)"/>
@@ -798,8 +798,8 @@ rect.c-bg-rect { fill: var(--bg); }</style><rect class="c-bg-rect" width="100%" 
         <path data-edge-from="release" data-edge-to="archived" data-edge-label="停止维护" data-edge-key="11" data-edge-id="release-archived" data-composition-points="769,157;790,157;790,408;689,408;710,450" d="M 769 157 L 780 157 Q 790 157 790 167 L 790 398 Q 790 408 780 408 L 699 408 Q 689 408 693.4721359549995 416.94427190999915 L 710 450" class="a-default" stroke-width="1.1" marker-end="url(#arrowhead)"/>
 
         <!-- States -->
-        <g id="node-init" data-node-id="init" data-node-label="初始化" tabindex="0" role="button" aria-label="Focus 初始化, poly init · 生成清单, 项目阶段" aria-pressed="false" data-node-kind="start" data-node-sublabel="poly init · 生成清单" data-node-tag="entry" data-node-context="项目阶段">
-          <title>初始化 · poly init · 生成清单 · 项目阶段 · entry</title>
+        <g id="node-init" data-node-id="init" data-node-label="初始化" tabindex="0" role="button" aria-label="Focus 初始化, polypack init · 生成清单, 项目阶段" aria-pressed="false" data-node-kind="start" data-node-sublabel="polypack init · 生成清单" data-node-tag="entry" data-node-context="项目阶段">
+          <title>初始化 · polypack init · 生成清单 · 项目阶段 · entry</title>
           <rect x="35" y="126" width="118" height="62" rx="7" class="c-mask"/>
           <rect x="35" y="126" width="118" height="62" rx="7" class="c-frontend" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="start" class="semantic-sigil s-frontend" transform="translate(136 132) scale(0.6875)">
@@ -808,12 +808,12 @@ rect.c-bg-rect { fill: var(--bg); }</style><rect class="c-bg-rect" width="100%" 
           </g>
         <text data-detail="fine" x="45" y="140" class="t-frontend" font-size="7" font-weight="700">01</text>
           <text data-detail-anchor="" x="94" y="147" class="t-primary" font-size="10" font-weight="600" text-anchor="middle">初始化</text>
-          <text data-detail="context" x="94" y="163" class="t-muted" font-size="7" text-anchor="middle">poly init · 生成清单</text>
+          <text data-detail="context" x="94" y="163" class="t-muted" font-size="7" text-anchor="middle">polypack init · 生成清单</text>
         <text data-detail="fine" x="94" y="177" class="t-frontend" font-size="7" text-anchor="middle">entry</text>
         </g>
 
-        <g id="node-dev" data-node-id="dev" data-node-label="开发迭代" tabindex="0" role="button" aria-label="Focus 开发迭代, poly dev · 热预览, 项目阶段" aria-pressed="false" data-node-kind="active" data-node-sublabel="poly dev · 热预览" data-node-context="项目阶段">
-          <title>开发迭代 · poly dev · 热预览 · 项目阶段</title>
+        <g id="node-dev" data-node-id="dev" data-node-label="开发迭代" tabindex="0" role="button" aria-label="Focus 开发迭代, polypack dev · 热预览, 项目阶段" aria-pressed="false" data-node-kind="active" data-node-sublabel="polypack dev · 热预览" data-node-context="项目阶段">
+          <title>开发迭代 · polypack dev · 热预览 · 项目阶段</title>
           <rect x="189" y="126" width="118" height="62" rx="7" class="c-mask"/>
           <rect x="189" y="126" width="118" height="62" rx="7" class="c-backend" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="active" class="semantic-sigil s-backend" transform="translate(290 132) scale(0.6875)">
@@ -821,7 +821,7 @@ rect.c-bg-rect { fill: var(--bg); }</style><rect class="c-bg-rect" width="100%" 
           </g>
         <text data-detail="fine" x="199" y="140" class="t-backend" font-size="7" font-weight="700">02</text>
           <text data-detail-anchor="" x="248" y="147" class="t-primary" font-size="10" font-weight="600" text-anchor="middle">开发迭代</text>
-          <text data-detail="context" x="248" y="163" class="t-muted" font-size="7" text-anchor="middle">poly dev · 热预览</text>
+          <text data-detail="context" x="248" y="163" class="t-muted" font-size="7" text-anchor="middle">polypack dev · 热预览</text>
         </g>
 
         <g id="node-build" data-node-id="build" data-node-label="构建" tabindex="0" role="button" aria-label="Focus 构建, 交叉编译 + UI 打包, 项目阶段" aria-pressed="false" data-node-kind="active" data-node-sublabel="交叉编译 + UI 打包" data-node-context="项目阶段">
@@ -925,9 +925,9 @@ rect.c-bg-rect { fill: var(--bg); }</style><rect class="c-bg-rect" width="100%" 
 
         <!-- Transition labels -->
 
-        <g data-detail="context" data-edge-from="dev" data-edge-to="build" data-edge-label="poly build" data-edge-key="1" data-edge-id="dev-build">
+        <g data-detail="context" data-edge-from="dev" data-edge-to="build" data-edge-label="polypack build" data-edge-key="1" data-edge-id="dev-build">
           <rect x="294.5" y="191" width="61" height="16" rx="4" class="c-mask"/>
-          <text x="325" y="202" class="t-backend" font-size="8" text-anchor="middle">poly build</text>
+          <text x="325" y="202" class="t-backend" font-size="8" text-anchor="middle">polypack build</text>
         </g>
         <g data-detail="context" data-edge-from="build" data-edge-to="verify" data-edge-label="产物就绪" data-edge-key="2" data-edge-id="build-verify">
           <rect x="453.4" y="191" width="51.2" height="16" rx="4" class="c-mask"/>

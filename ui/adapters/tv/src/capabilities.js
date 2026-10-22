@@ -8,7 +8,7 @@
 // 目标 id 口径：L3 七枚（lead 定案——android-tv / fire-tv / tizen-tv / webos-tv / vidaa-tv /
 // smartcast-tv / harmonyos-tv；导出面不带 -tv 后缀的 tvos 归 T-M4-07 单独声明，不在本矩阵）。
 // android-tv / fire-tv 由 RN 承载（adapter-native），harmonyos-tv 由 RNOH 承载；能力面与
-// web 电视族同口径（TV 基线）——本矩阵是 L3 能力声明的单一入口。poly-targets 登记
+// web 电视族同口径（TV 基线）——本矩阵是 L3 能力声明的单一入口。polypack-targets 登记
 // （T-M4-04/08/09/10 落位）后由 test/capabilities.test.js 哨兵收口（内建 `*-tv` 目标 ⊆ 本矩阵）。
 export const CAPABILITY_MATRIX = Object.freeze({
   "android-tv": Object.freeze({ focusNav: true, safeArea: true, gestures: false }),

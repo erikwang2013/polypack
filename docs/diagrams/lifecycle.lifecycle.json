@@ -15,8 +15,8 @@
     { "id": "terminal", "label": "终态" }
   ],
   "states": [
-    { "id": "init", "type": "start", "label": "初始化", "sublabel": "poly init · 生成清单", "lane": "main", "col": 0, "step": "01", "tag": "entry" },
-    { "id": "dev", "type": "active", "label": "开发迭代", "sublabel": "poly dev · 热预览", "lane": "main", "col": 1, "step": "02" },
+    { "id": "init", "type": "start", "label": "初始化", "sublabel": "polypack init · 生成清单", "lane": "main", "col": 0, "step": "01", "tag": "entry" },
+    { "id": "dev", "type": "active", "label": "开发迭代", "sublabel": "polypack dev · 热预览", "lane": "main", "col": 1, "step": "02" },
     { "id": "build", "type": "active", "label": "构建", "sublabel": "交叉编译 + UI 打包", "lane": "main", "col": 2, "step": "03" },
     { "id": "verify", "type": "decision", "label": "签名与校验", "sublabel": "公证 · 完整性", "lane": "main", "col": 3, "step": "04" },
     { "id": "release", "type": "success", "label": "发布", "sublabel": "商店 / 自托管", "lane": "main", "col": 4, "step": "05" },
@@ -28,7 +28,7 @@
   ],
   "transitions": [
     { "id": "init-dev", "from": "init", "to": "dev", "variant": "default" },
-    { "id": "dev-build", "from": "dev", "to": "build", "label": "poly build", "variant": "emphasis", "labelAt": [325, 202] },
+    { "id": "dev-build", "from": "dev", "to": "build", "label": "polypack build", "variant": "emphasis", "labelAt": [325, 202] },
     { "id": "build-verify", "from": "build", "to": "verify", "label": "产物就绪", "variant": "default", "labelAt": [479, 202] },
     { "id": "verify-release", "from": "verify", "to": "release", "label": "签名通过", "variant": "emphasis", "labelAt": [633, 202] },
     { "id": "verify-keys", "from": "verify", "to": "keys", "label": "缺少密钥", "variant": "security", "fromSide": "bottom", "toSide": "top", "route": "straight", "labelAt": [510, 233] },

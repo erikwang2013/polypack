@@ -1,0 +1,14 @@
+# T-M2-14 真跑夹具：最小核心静态库（Apple triple 交叉编译 → 切片 → XCFramework → IPA）。
+# 刻意不依赖 uniffi：绑定三件套由测试按夹具形态写入，使 macos-14 nightly 的真跑
+# 不受 uniffi-bindgen CLI 版本牵制（真绑定面由 T-M2-01 生成器产出）。
+# 独立工作区：避免被上层目录的 Cargo workspace 接管（同 polypack-cli 模板 core 的先例）。
+[package]
+name = "pax_core"
+version = "0.0.0"
+edition = "2024"
+publish = false
+
+[lib]
+crate-type = ["staticlib"]
+
+[workspace]

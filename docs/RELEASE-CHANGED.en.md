@@ -1,6 +1,6 @@
-# Incremental releases: `poly release --changed`
+# Incremental releases: `polypack release --changed`
 
-`poly release --changed` republishes only the targets that changed in a multi-target
+`polypack release --changed` republishes only the targets that changed in a multi-target
 repository. The decision key comes from the artifact set's manifest digest
 (`manifest_digest` / `cache_key`); a target that matches an existing receipt emits a
 distinct `release-skipped` event and exits 0 without touching the repository backend,
@@ -15,7 +15,7 @@ rewriting the receipt, or incrementing `runs`.
   `manifest_digest`), repository root and repository format all match.
 - Misses (new artifacts / targets / repository) publish normally and record
   `cache_key` on the `--changed` path.
-- Receipts written by a plain `poly release` first run have no `cache_key`: the next
+- Receipts written by a plain `polypack release` first run have no `cache_key`: the next
   `--changed` run falls back to `manifest_digest` (`key_source: "manifest_digest"`,
   still skipped); later `--changed` receipts carry `cache_key`
   (`key_source: "cache_key"`).
@@ -40,7 +40,7 @@ Both runs use the same command; the first run has no receipts, so all five targe
 publish, and the second run publishes only the changed target:
 
 ```bash
-poly release --changed \
+polypack release --changed \
   --target linux,web,windows,macos,android \
   --repo .polypack/repo \
   --credential env:RELEASE_GPG_KEY \
@@ -95,7 +95,7 @@ the already-built test binary):
 - name: release --changed 5-target measurement (Linux focused)
   if: runner.os == 'Linux'
   run: |
-    cargo test -p poly-cli --test release five_target_changed -- --nocapture 2>&1 \
+    cargo test -p polypack-cli --test release five_target_changed -- --nocapture 2>&1 \
       | tee /tmp/release-changed.log
     grep -q "first_published=5 second_published=1" /tmp/release-changed.log
 ```
@@ -106,7 +106,7 @@ actually reached the measurement instead of silently skipping. `cargo test
 
 ## `--since` limitation
 
-`poly release` does not build, and receipts carry no per-target source/package path
+`polypack release` does not build, and receipts carry no per-target source/package path
 mapping, so git diff cannot robustly decide whether a target changed. `--since <REF>`
-therefore returns `poly::E_PLAN_0002` in this mode instead of being silently ignored;
+therefore returns `polypack::E_PLAN_0002` in this mode instead of being silently ignored;
 use `--changed` (receipt-based) or pre-filter `--target` from a git diff.

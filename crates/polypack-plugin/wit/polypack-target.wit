@@ -1,0 +1,93 @@
+// PolyPack 插件接口 target-spec/v1（ROADMAP §4.5）。
+//
+// 版本策略：破坏性变更走新版本号（target-spec/v2），宿主拒绝非 v1 插件并给出迁移提示。
+// 默认能力为空：`world polypack-target` 只导入只读 `inputs`；文件系统 / 出网是
+// `world polypack-target-sandboxed` 按 `JobSpec.plugins` 显式授权后才可导入的接口。
+package polypack:target-spec@1.0.0;
+
+// 接口数据类型（world 通过 use 引入，保持 §4.5 的 import/export 逐行一致）。
+interface types {
+  // 接口版本协商字符串；宿主只接受 `target-spec/v1`。
+  type target-spec-version = string;
+
+  // 只读构建输入。
+  record build-inputs {
+    name: string,
+    version: string,
+    target: string,
+  }
+
+  // 插件声明的目标规格（字段与 ROADMAP §4.3 TargetSpec 对齐）。
+  record target-spec {
+    spec-version: target-spec-version,
+    id: string,
+    tier: u8,
+    runtime: string,
+    bridge: string,
+    package-format: string,
+    builder: string,
+    hosts: list<string>,
+  }
+
+  // UI 支线产物。
+  record ui-bundle {
+    entry: string,
+    files: list<tuple<string, list<u8>>>,
+  }
+
+  // Rust 核心库产物。
+  record core-lib {
+    triple: string,
+    bytes: list<u8>,
+  }
+
+  // 打包产物。
+  record artifact {
+    format: string,
+    bytes: list<u8>,
+  }
+
+  // 稳定错误：`code` 为 `polypack::E_PLUGIN_xxxx` 或插件自定义码。
+  record error {
+    code: string,
+    message: string,
+  }
+}
+
+// 文件系统能力：路径按工程根解析，仅授权目录内可读写；越界 / 穿越 / 符号链接逃逸拒绝。
+interface filesystem {
+  use types.{error};
+  read: func(path: string) -> result<list<u8>, error>;
+  write: func(path: string, contents: list<u8>) -> result<u32, error>;
+}
+
+// 出网能力：仅显式授权的域名（`host` 或 `host:port`）可访问。
+interface network {
+  use types.{error};
+  fetch: func(url: string) -> result<string, error>;
+}
+
+world polypack-target {
+  // 只读输入
+  import inputs: func() -> build-inputs;
+  // 插件声明自己的目标规格
+  export describe: func() -> target-spec;
+  // 承接打包阶段
+  export %package: func(bundle: ui-bundle, lib: core-lib) -> result<artifact, error>;
+  use types.{build-inputs, target-spec, ui-bundle, core-lib, artifact, error};
+}
+
+// 能力扩展世界：在基础 world 上追加显式授权的文件系统 / 出网导入。
+world polypack-target-sandboxed {
+  include polypack-target;
+  import filesystem;
+  import network;
+}
+
+// 沙箱逃逸负向测试探针：`run` 的 `arg` 是路径或 URL。
+world polypack-capability-probe {
+  import filesystem;
+  import network;
+  export run: func(case: string, arg: string) -> result<string, error>;
+  use types.{error};
+}

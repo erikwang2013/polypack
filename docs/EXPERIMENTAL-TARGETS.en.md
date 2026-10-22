@@ -1,7 +1,7 @@
 # PolyPack experimental targets: capability / gap / alternatives
 
 > Applies to `watchos` / `garmin` (`experimental = true`). Wear OS is platform-level (`experimental = false`); see §4 for its boundary.
-> Single source of truth: `TargetSpec.experimental` in `crates/poly-targets/src/builtin.rs`. The generated documentation status tables (README ×2 / ROADMAP ×2) and CI strength are checked for three-way consistency by `node tools/check-experimental.mjs`; this file and its Chinese counterpart are reconciled by `node tools/check-docs.mjs` (heading and table-row counts).
+> Single source of truth: `TargetSpec.experimental` in `crates/polypack-targets/src/builtin.rs`. The generated documentation status tables (README ×2 / ROADMAP ×2) and CI strength are checked for three-way consistency by `node tools/check-experimental.mjs`; this file and its Chinese counterpart are reconciled by `node tools/check-docs.mjs` (heading and table-row counts).
 > Decision: both experimental targets **continue in constrained mode** — watchOS ships a SwiftUI companion template with the Apple packaging/signing chain; Garmin ships a build-time Monkey C subset emitter with a constrained packaging surface. Trigger prerequisites (compiler / on-device closure) are listed per section.
 
 ## 1. Classification and decisions
@@ -17,11 +17,11 @@
 
 | Capability | Description | Evidence |
 |---|---|---|
-| Template generation | `poly init --target watchos` emits a minimal buildable SwiftUI watch app: `@main` entry, ContentView, CoreBridge stub, WatchConnectivity skeleton, Info.plist (WKApplication), Xcode project + shared scheme | `crates/poly-cli/templates/watchos/`; TargetSpec `watchos` |
-| Packaging | `watchos-xcodebuild`: `xcodebuild archive` → `ditto` → `export/Payload/PolyPackWatch.app`; `plan()` is pure assembly and runs on any host | `crates/poly-bundle/src/packagers/watchos.rs` |
+| Template generation | `polypack init --target watchos` emits a minimal buildable SwiftUI watch app: `@main` entry, ContentView, CoreBridge stub, WatchConnectivity skeleton, Info.plist (WKApplication), Xcode project + shared scheme | `crates/polypack-cli/templates/watchos/`; TargetSpec `watchos` |
+| Packaging | `watchos-xcodebuild`: `xcodebuild archive` → `ditto` → `export/Payload/PolyPackWatch.app`; `plan()` is pure assembly and runs on any host | `crates/polypack-bundle/src/packagers/watchos.rs` |
 | Signing / verification | Reuses the M2 Apple chain (`apple-codesign`, codesign hardened runtime + timestamp); `codesign --verify --deep --strict` + `spctl --assess`; credentials appear only as CredentialRef | TargetSpec verify; template README |
 | Companion messaging | WatchConnectivity skeleton with three channels (`sendMessage` / `transferUserInfo` / `updateApplicationContext`); core calls are proxied by the iOS companion app | `WatchConnectivity.swift`; `CoreBridge.swift` |
-| Cross-host submission | On Linux / Windows the package stage reports `ToolMissing` (`poly::E_BND_0001`) and points to `poly farm submit --target watchos` (R3 macOS worker) | `packagers/watchos.rs`; template README |
+| Cross-host submission | On Linux / Windows the package stage reports `ToolMissing` (`polypack::E_BND_0001`) and points to `polypack farm submit --target watchos` (R3 macOS worker) | `packagers/watchos.rs`; template README |
 
 ### 2.2 Gaps and alternatives
 
@@ -49,8 +49,8 @@ Continue (constrained). `experimental = true` stays; the capability boundary shi
 | UI subset | View / card / text / Pressable composite (background + focus ring + label); colors / spacing / safe area share adapter-wear tokens; round 454×454 and square 320×320 reference viewports | Draft §2 tables A/C |
 | Interaction subset | Three keys UP / DOWN / SELECT / BACK; focus order = the shared focus kernel's `engine.order` linear cycle; Back history mirrors the kernel | Draft §2 table B |
 | Connect IQ project | `manifest.xml` + `monkey.jungle` + `resources/strings/strings.xml` + `source/*.mc`; reference devices `venu2` / `venusq`; app id = first 32 hex of `sha256(identifier)` | Draft §2 table D |
-| Verification | 29/29 Node tests plus the built-in Rust `.iq` structure check (root `manifest.xml` + ≥1 per-device `.prg`); the `iq-structure-check` verifier is wired into `poly verify`; `npm run build` really runs the structure self-check | Draft §5; `ui/adapters/garmin/test/`; `crates/poly-bundle/tests/packagers_garmin.rs` |
-| Compiler leg (when environment is ready) | The Rust packager `crates/poly-bundle/src/packagers/garmin.rs` resolves `<project>/garmin` (or the host root) and runs `monkeyc -e -w -r -o out.iq -y <devkey> -f monkey.jungle` → `.iq` (`manifest.xml` + per-device `.prg`); devkey path only (`CIQ_DEVKEY`) | Draft §2 table D, §5; `crates/poly-bundle/src/packagers/garmin.rs` |
+| Verification | 29/29 Node tests plus the built-in Rust `.iq` structure check (root `manifest.xml` + ≥1 per-device `.prg`); the `iq-structure-check` verifier is wired into `polypack verify`; `npm run build` really runs the structure self-check | Draft §5; `ui/adapters/garmin/test/`; `crates/polypack-bundle/tests/packagers_garmin.rs` |
+| Compiler leg (when environment is ready) | The Rust packager `crates/polypack-bundle/src/packagers/garmin.rs` resolves `<project>/garmin` (or the host root) and runs `monkeyc -e -w -r -o out.iq -y <devkey> -f monkey.jungle` → `.iq` (`manifest.xml` + per-device `.prg`); devkey path only (`CIQ_DEVKEY`) | Draft §2 table D, §5; `crates/polypack-bundle/src/packagers/garmin.rs` |
 
 ### 3.2 Gaps and alternatives
 
@@ -86,4 +86,4 @@ Continue (constrained). `experimental = true` stays. Trigger prerequisite: one C
 | Gap / alternative changes | Update this file and the README L6 notes in the same commit; every gap must keep an alternative or explicitly say "no alternative" |
 | CI checks | `node tools/gen-target-table.mjs --check`; `node tools/check-docs.mjs`; `node tools/check-experimental.mjs` |
 
-Sources: `ui/adapters/garmin/CAPABILITY-BOUNDARY-DRAFT.md` (T-M7-09), `crates/poly-bundle/src/packagers/garmin.rs`, `crates/poly-cli/templates/watchos/README.md`, `crates/poly-bundle/src/packagers/watchos.rs`, TargetSpec notes.
+Sources: `ui/adapters/garmin/CAPABILITY-BOUNDARY-DRAFT.md` (T-M7-09), `crates/polypack-bundle/src/packagers/garmin.rs`, `crates/polypack-cli/templates/watchos/README.md`, `crates/polypack-bundle/src/packagers/watchos.rs`, TargetSpec notes.

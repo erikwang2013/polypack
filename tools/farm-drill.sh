@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# T-M8-09 农场部署演练：真实 `poly farm submit` 多目标双 worker + 共享缓存二跑命中 +
+# T-M8-09 农场部署演练：真实 `polypack farm submit` 多目标双 worker + 共享缓存二跑命中 +
 # 凭据内存注入（哨兵扫描）+ 共享缓存降级。macOS / IPA 腿（R3）按环境槽 SKIP-with-print。
 #
 # 用法（先构建同一提交的 CLI）：
-#   cargo build -p poly-cli
-#   POLY=target/debug/poly tools/farm-drill.sh
+#   cargo build -p polypack-cli
+#   POLYPACK=target/debug/polypack tools/farm-drill.sh
 #   DRILL_OUT=/tmp/farm-drill tools/farm-drill.sh
 #
 # 产物归档在 $DRILL_OUT（缺省 target/farm-drill/<UTC 时间戳>）：transcript.log + logs/。
@@ -12,23 +12,23 @@
 set -euo pipefail
 
 ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
-POLY=${POLY:-poly}
-if ! command -v "$POLY" >/dev/null 2>&1; then
-  if [ -x "$ROOT/target/debug/poly" ]; then
-    POLY="$ROOT/target/debug/poly"
-  elif [ -x "$ROOT/target/release/poly" ]; then
-    POLY="$ROOT/target/release/poly"
+POLYPACK=${POLYPACK:-polypack}
+if ! command -v "$POLYPACK" >/dev/null 2>&1; then
+  if [ -x "$ROOT/target/debug/polypack" ]; then
+    POLYPACK="$ROOT/target/debug/polypack"
+  elif [ -x "$ROOT/target/release/polypack" ]; then
+    POLYPACK="$ROOT/target/release/polypack"
   else
-    echo "找不到 poly：先 cargo build -p poly-cli，或设 POLY=<二进制路径>" >&2
+    echo "找不到 polypack：先 cargo build -p polypack-cli，或设 POLYPACK=<二进制路径>" >&2
     exit 1
   fi
 fi
-POLY=$(command -v "$POLY")
-case "$POLY" in /*) ;; *) POLY="$(cd "$(dirname "$POLY")" && pwd)/$(basename "$POLY")" ;; esac
+POLYPACK=$(command -v "$POLYPACK")
+case "$POLYPACK" in /*) ;; *) POLYPACK="$(cd "$(dirname "$POLYPACK")" && pwd)/$(basename "$POLYPACK")" ;; esac
 
 OUT=${DRILL_OUT:-"$ROOT/target/farm-drill/$(date -u +%Y%m%dT%H%M%SZ)"}
 mkdir -p "$OUT"
-OUT=$(cd "$OUT" && pwd) # worker 在各自 cwd 下执行，OUT/POLY 必须是绝对路径
+OUT=$(cd "$OUT" && pwd) # worker 在各自 cwd 下执行，OUT/POLYPACK 必须是绝对路径
 SHARED="$OUT/cache"
 FARM="$OUT/farm"
 WORK="$OUT/work"
@@ -108,11 +108,11 @@ EOF
 start_worker() { # id 日志 cwd 缓存 [额外参数...]
   local id=$1 log=$2 cwd=$3 cache=$4
   shift 4
-  printf '\n$ (cd %s && poly farm worker --dir %s --id %s --cache %s --work-dir %s' \
+  printf '\n$ (cd %s && polypack farm worker --dir %s --id %s --cache %s --work-dir %s' \
     "$cwd" "$FARM" "$id" "$cache" "$WORK"
   printf ' %q' "$@"
   printf ')\n'
-  ( cd "$cwd" && exec "$POLY" farm worker --dir "$FARM" --id "$id" \
+  ( cd "$cwd" && exec "$POLYPACK" farm worker --dir "$FARM" --id "$id" \
       --cache "$cache" --work-dir "$WORK" "$@" ) >"$log" 2>&1 &
   LAST_PID=$!
   PIDS+=("$LAST_PID")
@@ -134,18 +134,18 @@ wait_worker() { # pid
 run_submit() { # 名称 cwd [参数...]
   local name=$1 cwd=$2
   shift 2
-  printf '\n$ (cd %s && poly farm submit' "$cwd"
+  printf '\n$ (cd %s && polypack farm submit' "$cwd"
   printf ' %q' "$@"
   printf ')\n'
-  ( cd "$cwd" && "$POLY" farm submit "$@" ) >"$OUT/logs/$name.log" 2>&1 || {
+  ( cd "$cwd" && "$POLYPACK" farm submit "$@" ) >"$OUT/logs/$name.log" 2>&1 || {
     tail -n 30 "$OUT/logs/$name.log" >&2
     fail "submit $name 退出码非 0"
   }
 }
 
 say "farm drill"
-printf 'poly:   %s\n' "$POLY"
-"$POLY" --version
+printf 'polypack:   %s\n' "$POLYPACK"
+"$POLYPACK" --version
 printf 'host:   %s\n' "$(uname -s)"
 printf 'shared: %s\n' "$SHARED"
 printf 'work:   %s\n' "$WORK"
@@ -157,10 +157,10 @@ write_site "$OUT/site-b"
 write_site "$OUT/site-c" # round 2 专用：本地缓存为空，命中只能来自共享 CAS
 
 # ---------------------------------------------------------------- 预检
-say "preflight: directory permissions, path isolation, poly scan"
-POLY="$POLY" "$ROOT/tools/farm-preflight.sh" --project "$OUT/site-a" "$FARM" "$SHARED" "$WORK" ||
+say "preflight: directory permissions, path isolation, polypack scan"
+POLYPACK="$POLYPACK" "$ROOT/tools/farm-preflight.sh" --project "$OUT/site-a" "$FARM" "$SHARED" "$WORK" ||
   fail "preflight 未通过"
-pass "preflight: dir permissions, path isolation and poly scan"
+pass "preflight: dir permissions, path isolation and polypack scan"
 
 # ---------------------------------------------------------------- Round 1
 say "ROUND 1: two workers, two targets, one submit"
@@ -258,16 +258,16 @@ cat <<'EOF'
 Run on the macOS build site (copy-paste):
   xcode-select --install
   rustup target add aarch64-apple-ios aarch64-apple-ios-sim x86_64-apple-ios
-  cd /srv/poly-src && cargo build --release -p poly-cli --locked
-  sudo install -m 755 target/release/poly /usr/local/bin/poly
+  cd /srv/polypack-src && cargo build --release -p polypack-cli --locked
+  sudo install -m 755 target/release/polypack /usr/local/bin/polypack
   xcrun notarytool store-credentials apple-codesign --apple-id "$APPLE_ID" --team-id "$TEAM_ID"
   export POLYPACK_IOS_IDENTITY='Apple Distribution: Example Ltd (TEAMID1234)'
   export POLYPACK_IOS_TEAM_ID='TEAMID1234'
-  poly farm worker --dir /srv/polypack-farm --id mac-01 --target ios --jobs 0 --idle 120 \
+  polypack farm worker --dir /srv/polypack-farm --id mac-01 --target ios --jobs 0 --idle 120 \
     --cache /srv/polypack-cache --work-dir /var/tmp/polypack-work
 
 Run on the Linux origin (copy-paste):
-  poly farm submit --dir /srv/polypack-farm --config /srv/proj/polypack.toml \
+  polypack farm submit --dir /srv/polypack-farm --config /srv/proj/polypack.toml \
     --target ios --wait 1800 --retries 1 --project-dir /srv/proj \
     --cache /srv/polypack-cache
 

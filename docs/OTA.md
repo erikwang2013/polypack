@@ -11,7 +11,7 @@
 | Google Play 应用内更新 | Play Core In-App Updates：`flexible`（后台下载）或 `immediate`（全屏强制重启）；Android 5.0 / API 21+；安装与重启由 Google Play 执行 | 由 Google Play 交付与安装；应用内更新 API 不自管签名（Play App Signing 模型，该页本次未直连） | Play Console / Developer API 的 staged rollout（`userFraction` 逐步放量、可 halt）；不支持 versionCode 降级，回滚需发布更高 versionCode（staged rollout 细节为检索摘要，官方页未直连） | 上传 AAB/APK → 审核 → 分阶段放量 → 观察 Android vitals → 提到 100%；异常时 halt 并发布更高 versionCode | https://developer.android.com/guide/playcore/in-app-updates（已直连，页面标注 2026-01-30 UTC）；https://developers.google.com/android-publisher/tracks（未直连） |
 | Apple App Store 分阶段发布 | App Store 系统更新；可选 phased release，对开启自动更新的用户 7 天放量 1% / 2% / 5% / 10% / 20% / 50% / 100% | Apple 代码签名与 App Review 审核后由 App Store 分发；开发者不自管更新签名 | 可暂停最多 30 天、暂停次数不限；下架会终止该版本的分阶段发布；不支持降级，需下架旧版并提交新版本恢复受控放量；手动下载不受阶段限制 | 提交版本 → 在 Phased Release 选 7 天 → 观察 → 必要时暂停 → 用新版本恢复 | https://developer.apple.com/help/app-store-connect/update-your-app/release-a-version-update-in-phases/（已直连） |
 | 微信小程序版本管理 | 开发版 → 审核版 → 线上版；发布后客户端在启动、定期检查、长时间未使用等时机检查更新；异步下载于下次冷启动生效，`wx.getUpdateManager` 可提示重启；全量发布约 24 小时覆盖 99% 以上 | 由微信平台审核与分发；开发者不控制二进制签名或更新通道；审核未通过不能发布 | 管理后台可回退版本（开发管理权限包含发布与回退）；可设「优先使用本地版本」「最低可用版本」；本次直连页面未见百分比灰度入口 | 上传代码 → 提交审核 → 审核通过后发布 → 异常时后台回退或调高最低可用版本 | https://developers.weixin.qq.com/miniprogram/en/dev/quickstart/basic/role.html、.../release.html、https://developers.weixin.qq.com/miniprogram/dev/framework/runtime/update-mechanism.html（均已直连） |
-| 自托管签名渠道（PolyPack） | 每渠道静态 `latest.json`（`/<channel>/latest.json`），结构与 Tauri 静态清单相同；同时保留 `/<channel>/<version>.json` 版本副本 | `poly update manifest` 用 GPG 分离签名清单（`latest.json.sig`），`poly update check --trust-root` 验签；产物 `signature` 字段仍是 Tauri `.sig`；凭据只以 `CredentialRef` 引用出现 | v1 单渠道、无百分比灰度；回滚把版本副本复制回 `latest.json` 并重新上传（客户端仍需允许降级或切渠道）；TUF 只作威胁模型参考，未实现 root / timestamp 等角色 | 逐平台生成清单并签名 → 上传 latest、版本副本与产物 → 保留旧版本副本 → 回滚时恢复旧清单 | https://theupdateframework.io/docs/overview/、https://theupdateframework.io/docs/security/（均已直连）；本仓库 `poly update` |
+| 自托管签名渠道（PolyPack） | 每渠道静态 `latest.json`（`/<channel>/latest.json`），结构与 Tauri 静态清单相同；同时保留 `/<channel>/<version>.json` 版本副本 | `polypack update manifest` 用 GPG 分离签名清单（`latest.json.sig`），`polypack update check --trust-root` 验签；产物 `signature` 字段仍是 Tauri `.sig`；凭据只以 `CredentialRef` 引用出现 | v1 单渠道、无百分比灰度；回滚把版本副本复制回 `latest.json` 并重新上传（客户端仍需允许降级或切渠道）；TUF 只作威胁模型参考，未实现 root / timestamp 等角色 | 逐平台生成清单并签名 → 上传 latest、版本副本与产物 → 保留旧版本副本 → 回滚时恢复旧清单 | https://theupdateframework.io/docs/overview/、https://theupdateframework.io/docs/security/（均已直连）；本仓库 `polypack update` |
 
 ## 2. 分类结论
 
@@ -45,7 +45,7 @@
 
 ### 3.2 签名与验签
 
-- 清单签名复用 `poly-sign` 的 `GpgSigner`（`RepoSigner::detach_sign`，SHA-256，ASCII armor），输出 `<manifest>.sig`。
+- 清单签名复用 `polypack-sign` 的 `GpgSigner`（`RepoSigner::detach_sign`，SHA-256，ASCII armor），输出 `<manifest>.sig`。
 - 凭据只接受 `env:VAR` / `keyring[:条目名]` / `vault[:条目名]` 引用；明文口令与私钥不进入命令行、日志或事件流。
 - 验签走 `ArtifactVerifier`，信任根载荷为 base64(JSON) `{"public_key":"<base64>"}`。
 - Tauri 原生校验各平台产物的 `.sig`（Tauri 密钥对），与本清单的 GPG 签名是两层，不能互相替代。
@@ -54,13 +54,13 @@
 
 ```bash
 # 生成并签名（默认写 <package-dir>/<channel>/latest.json 与 <version>.json）
-poly update manifest --channel stable --version 1.2.3 --notes "fix crash" \
+polypack update manifest --channel stable --version 1.2.3 --notes "fix crash" \
   --base-url https://updates.example.com/stable --platform linux --arch x86_64 \
   --package-dir .polypack/packages/linux-reference \
   --credential env:POLYPACK_UPDATE_KEY --pub-date 2026-10-20T00:00:00Z
 
 # 先做结构检查，再用信任根验签
-poly update check --manifest latest.json \
+polypack update check --manifest latest.json \
   --signature latest.json.sig --trust-root env:POLYPACK_UPDATE_TRUST
 ```
 
@@ -74,7 +74,7 @@ poly update check --manifest latest.json \
 
 ## 5. 环境门控与未验证项
 
-- **Tauri 二进制更新 / 回滚**：已由 `examples/updater-app`、`examples/updater-app/scripts/drill.ps1` 与 rust-ci `windows-updater-real` 作业覆盖（一次性 Tauri 密钥、真实 NSIS 安装 / 更新 / 回滚、证据归档）；windows-2022 run 39395255929 已通过。`poly update check` 本身仍只验证清单结构与 GPG 签名。
+- **Tauri 二进制更新 / 回滚**：已由 `examples/updater-app`、`examples/updater-app/scripts/drill.ps1` 与 rust-ci `windows-updater-real` 作业覆盖（一次性 Tauri 密钥、真实 NSIS 安装 / 更新 / 回滚、证据归档）；windows-2022 run 39395255929 已通过。`polypack update check` 本身仍只验证清单结构与 GPG 签名。
 - **Google Play staged rollout / Play App Signing**：官方页在本次环境不可达，表中相应细节来自检索摘要，标为未直连；已直连的只有 In-App Updates 的 flexible / immediate 流程。
 - **Apple 降级**：官方文档未提供版本降级；只能暂停分阶段发布或用新版本恢复。
 - **微信百分比灰度**：本次直连的版本管理与更新机制页面未列出百分比灰度入口，故不写入矩阵承诺。

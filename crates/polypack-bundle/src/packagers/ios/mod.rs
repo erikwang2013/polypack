@@ -1,0 +1,1084 @@
+//! iOS 打包器（T-M2-08）：Xcode 工程骨架生成/复用 + `xcodebuild archive`（未签名）+
+//! 归档 `Payload/` 直压出未签名 IPA。
+//!
+//! - **工程来源**：`inputs.ios.host_project` 下已有 `<产品名>.xcodeproj`（RN 宿主模板，
+//!   T-M2-04）即复用；否则生成最小工程骨架（pbxproj + Info.plist + App.swift +
+//!   ExportOptions.plist），链接 [swift](T-M2-03) 的 XCFramework 与 Swift 绑定。
+//! - **未签名产物**：archive 阶段 `CODE_SIGNING_ALLOWED=NO`（签名位由 T-M2-10 polypack-sign
+//!   iOS 链路接入）；IPA 由归档 `Payload/` 经 `ditto -c -k` 直压——`exportArchive` 对无 Team
+//!   的未签名归档必失败（真跑实证），该命令留给 T-M2-10 签名流。导出方式经
+//!   `POLYPACK_IOS_EXPORT_METHOD` 可配（缺省 `development`，写入 ExportOptions.plist）。
+//! - **宿主门控**：仅 macOS 宿主可执行（`xcodebuild` / `plutil` / `xcrun`）——非 macOS
+//!   `package()` 在动手前返回 [`BundleError::ToolMissing`]；`plan()` 为纯组装，任意宿主可跑。
+//! - 证书 / 描述文件只以凭据引用出现（T-M2-11 模型）：打包阶段不接触密钥材料。
+//!
+//! shortcut: 生成的工程骨架为静态文本（`objectVersion = 56`）：打包器直调路径已在 macos-14
+//! 全链真跑（T-M2-14 nightly：archive → Payload 直压 → IPA）；RN 宿主模板落地后走「复用」路径。
+//!
+//! T-M4-07：本链按 [`ApplePlatform`] 描述符参数化——`ios` / `tvos` 两目标共用一条 Xcode 链
+//! （SDKROOT / 部署目标 / 设备族 / 切片 / cargo triple 全取自描述符，见 [`apple_platform`]），
+//! 产物格式同为 `ipa`，故打包器矩阵按 `serves()` 判定服务范围而非 id 全等。
+
+pub mod swift;
+
+use std::path::{Path, PathBuf};
+
+use polypack_targets::TargetSpec;
+
+use crate::error::{BundleError, io_err};
+use crate::exec;
+use crate::fsutil;
+use crate::inputs::{BundleInputs, IosInputs, ProductInfo};
+use crate::packager::{Artifact, BundlePlan, Command, Packager, ScriptFile};
+
+/// iOS IPA 打包器。
+pub struct Ios;
+
+/// 目标 / 打包器标识。
+pub(crate) const IOS: &str = "ios";
+/// tvOS 目标标识（T-M4-07：与本打包器共链，见 [`TVOS_PLATFORM`]）。
+pub(crate) const TVOS: &str = "tvos";
+/// 产物格式。
+const IPA: &str = "ipa";
+
+// ------------------------------------------------- T-M4-07：Apple 平台描述符
+
+/// iOS 设备切片目录名（单源 = [`IOS_PLATFORM`]；[`swift`] 子模块随本描述符取用）。
+pub const DEVICE_SLICE: &str = "ios-arm64";
+/// iOS 模拟器切片目录名（arm64 + x86_64 合一，经 `lipo -create`）。
+pub const SIM_SLICE: &str = "ios-arm64_x86_64-simulator";
+/// iOS 设备静态库 triple。
+pub const DEVICE_TRIPLE: &str = "aarch64-apple-ios";
+/// iOS 模拟器（Apple Silicon）triple。
+pub const SIM_ARM64_TRIPLE: &str = "aarch64-apple-ios-sim";
+/// iOS 模拟器（Intel）triple。
+pub const SIM_X86_64_TRIPLE: &str = "x86_64-apple-ios";
+
+/// Apple 平台描述符（T-M4-07）：iOS / tvOS 共链的全部平台差异点。
+///
+/// 链上每一步（pbxproj 的 SDKROOT / 部署目标 / 设备族、Info.plist 键集、archive 的
+/// `-destination`、XCFramework 切片与 cargo triple）都从这里取值——加平台只加一枚描述符，
+/// 不散落 `if target == …`；切片集由 [`ApplePlatform::slices`] 派生，重复即结构不一致。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ApplePlatform {
+    /// 目标 id（= `TargetSpec.id`，同时决定骨架目录名 `<id>-skeleton`）。
+    pub id: &'static str,
+    /// pbxproj `SDKROOT`（`iphoneos` / `appletvos`）。
+    pub sdkroot: &'static str,
+    /// `xcodebuild archive -destination`（`generic/platform=iOS` / `generic/platform=tvOS`）。
+    pub destination: &'static str,
+    /// pbxproj 部署目标键（`IPHONEOS_DEPLOYMENT_TARGET` / `TVOS_DEPLOYMENT_TARGET`）。
+    pub deployment_key: &'static str,
+    /// 部署目标值（RN-tvOS 0.87 线要求 tvOS ≥ 15.1；iOS 16.0 为既有口径）。
+    pub deployment_target: &'static str,
+    /// `TARGETED_DEVICE_FAMILY`（iOS `1,2`；tvOS `3`）。
+    pub device_family: &'static str,
+    /// XCFramework 设备切片目录名。
+    pub device_slice: &'static str,
+    /// XCFramework 模拟器切片目录名。
+    pub sim_slice: &'static str,
+    /// 设备切片 cargo triple。
+    pub device_triple: &'static str,
+    /// 模拟器 cargo triple 集；>1 时经 `lipo -create` 合并为单一 sim 切片，=1 时该
+    /// triple 的产物本身就是切片（**无 lipo 合并步**——tvos 单架构模拟器）。
+    pub sim_triples: &'static [&'static str],
+    /// 骨架 Info.plist 是否带 iOS 专属键（`LSRequiresIPhoneOS` / `UI*`）。
+    pub ios_plist_keys: bool,
+}
+
+impl ApplePlatform {
+    /// 两枚 XCFramework 切片（device + simulator），顺序即命令序。
+    pub fn slices(&self) -> [&'static str; 2] {
+        [self.device_slice, self.sim_slice]
+    }
+}
+
+/// iOS 平台描述符（T-M2-03 / T-M2-08 既有口径）。
+pub static IOS_PLATFORM: ApplePlatform = ApplePlatform {
+    id: IOS,
+    sdkroot: "iphoneos",
+    destination: "generic/platform=iOS",
+    deployment_key: "IPHONEOS_DEPLOYMENT_TARGET",
+    deployment_target: "16.0",
+    device_family: "1,2",
+    device_slice: DEVICE_SLICE,
+    sim_slice: SIM_SLICE,
+    device_triple: DEVICE_TRIPLE,
+    sim_triples: &[SIM_ARM64_TRIPLE, SIM_X86_64_TRIPLE],
+    ios_plist_keys: true,
+};
+
+/// tvOS 平台描述符（T-M4-07，ROADMAP §3.4 Apple tvOS 行）：SDK / 部署目标 / 设备族与
+/// iOS 不同，切片为 tvos-arm64 + tvos-arm64-simulator（模拟器单架构，无 lipo 合并）。
+pub static TVOS_PLATFORM: ApplePlatform = ApplePlatform {
+    id: TVOS,
+    sdkroot: "appletvos",
+    destination: "generic/platform=tvOS",
+    deployment_key: "TVOS_DEPLOYMENT_TARGET",
+    deployment_target: "15.1",
+    device_family: "3",
+    device_slice: "tvos-arm64",
+    sim_slice: "tvos-arm64-simulator",
+    device_triple: "aarch64-apple-tvos",
+    sim_triples: &["aarch64-apple-tvos-sim"],
+    ios_plist_keys: false,
+};
+
+/// 目标 id → Apple 平台描述符；不服务的目标返回 `None`（服务范围闭合处）。
+pub fn apple_platform(target_id: &str) -> Option<&'static ApplePlatform> {
+    match target_id {
+        IOS => Some(&IOS_PLATFORM),
+        TVOS => Some(&TVOS_PLATFORM),
+        _ => None,
+    }
+}
+
+/// 导出方式环境变量（对应 ExportOptions.plist 的 `method` 键）。
+pub const EXPORT_METHOD_ENV: &str = "POLYPACK_IOS_EXPORT_METHOD";
+
+/// 骨架工程的 app target 对象 id（pbxproj 与共享 scheme 的 `BlueprintIdentifier` 必须一致）。
+const TARGET_ID: &str = "C0DE0000000000000000A002";
+
+/// Xcode 认可的导出方式（Xcode 15.4 起 `app-store-connect` / `release-testing` / `debugging`
+/// 为新名；`app-store` / `ad-hoc` / `development` 保留兼容）。
+const EXPORT_METHODS: &[&str] = &[
+    "app-store",
+    "app-store-connect",
+    "release-testing",
+    "ad-hoc",
+    "development",
+    "debugging",
+    "enterprise",
+    "validation",
+];
+
+impl Packager for Ios {
+    fn id(&self) -> &'static str {
+        IOS
+    }
+
+    fn format(&self) -> &'static str {
+        IPA
+    }
+
+    /// T-M4-07：一条 Apple 链服务 `ios` / `tvos` 两目标（`find` 据此匹配）。
+    fn serves(&self, target_id: &str) -> bool {
+        apple_platform(target_id).is_some()
+    }
+
+    fn plan(&self, inputs: &BundleInputs, spec: &TargetSpec) -> Result<BundlePlan, BundleError> {
+        check_format(spec, IPA)?;
+        let platform = platform_of(spec)?;
+        let ios = ios_inputs(inputs, spec)?;
+        // XCFramework（T-M2-03）是必需输入：iOS 包缺桥产物 = 装起来必崩，响亮拒绝
+        // （同 macOS .app 缺 icns 的先例，不静默省略）。
+        if !swift::xcframework_path(inputs).is_dir() {
+            return Err(BundleError::MissingInput {
+                packager: IOS,
+                field: "ios.xcframework",
+            });
+        }
+        let method = export_method()?;
+        // ExportOptions.plist：T-M2-10 签名导出的输入（未签名路径不经 exportArchive），
+        // 骨架与复用路径都落盘。
+        let mut plan = BundlePlan::new()
+            .with_script(export_options_path(inputs), export_options_plist(&method));
+
+        let project = match resolve_project(inputs, ios, platform) {
+            ProjectSource::Reuse(project) => {
+                // 复用不落盘脚本：以命令流留痕（T-M2-04 RN 宿主模板；骨架生成跳过）。
+                plan = plan.with_command(Command::new(
+                    "echo",
+                    ["复用宿主工程".into(), path_arg(&project)],
+                ));
+                project
+            }
+            ProjectSource::Skeleton(project) => {
+                for script in skeleton_scripts(inputs, ios, &project, platform)? {
+                    plan = plan.with_script(script.path, script.contents);
+                }
+                project
+            }
+        };
+        for command in build_commands(&project, inputs, platform) {
+            plan = plan.with_command(command);
+        }
+        Ok(plan)
+    }
+
+    fn package(&self, inputs: &BundleInputs, spec: &TargetSpec) -> Result<Artifact, BundleError> {
+        // 宿主门控最前置：非 macOS 宿主无从谈起（先于一切输入校验，也先于落盘）。
+        require_macos("xcodebuild")?;
+        let platform = platform_of(spec)?;
+        let plan = self.plan(inputs, spec)?;
+        let method = export_method()?;
+        // 输入契约校验（快速失败，不浪费 xcodebuild）：XCFramework 结构不合法即拒。
+        swift::validate_xcframework_layout(&inputs.out_dir, platform)?;
+
+        fsutil::write_scripts(&plan)?;
+        // 导出目录 + Payload 先铺：`ditto` 只保证建最终目录，中间层幂等先建（重跑安全）。
+        let export_dir = export_dir(inputs);
+        let payload = export_dir.join("Payload");
+        std::fs::create_dir_all(&payload).map_err(io_err(&payload))?;
+        exec::run_all(&plan.commands)?;
+
+        let ipa = find_ipa(&export_dir).ok_or(BundleError::MissingInput {
+            packager: IOS,
+            field: "export/*.ipa",
+        })?;
+        fsutil::file_artifact(
+            platform.id,
+            IPA,
+            &ipa,
+            vec![
+                "未签名 IPA（archive 阶段 CODE_SIGNING_ALLOWED=NO；签名位由 T-M2-10 polypack-sign \
+                 iOS 链路接入）"
+                    .to_string(),
+                "证书 / 描述文件只以凭据引用出现（T-M2-11 模型）：打包阶段不接触密钥材料"
+                    .to_string(),
+                format!(
+                    "未签名 IPA = 归档 `<产品名>.xcarchive/Products/Applications` 经 `ditto -c -k` \
+                     直压 Payload（不经 exportArchive：无 Team 的未签名归档必失败，真跑实证）；\
+                     导出方式 {method}（{} 可覆写）写入 ExportOptions.plist，供 T-M2-10 签名流",
+                    EXPORT_METHOD_ENV
+                ),
+                "真机执行阻塞（宿主）：xcodebuild archive / exportArchive 仅 macOS 宿主可跑；\
+                 macos-14 CI nightly 真跑（T-M2-14）"
+                    .to_string(),
+            ],
+        )
+    }
+}
+
+impl Ios {
+    /// 由本打包器生成/复用的工程路径（供测试与后续签名阶段定位 archive）。
+    pub fn project_path(
+        &self,
+        inputs: &BundleInputs,
+        spec: &TargetSpec,
+    ) -> Result<PathBuf, BundleError> {
+        check_format(spec, IPA)?;
+        let platform = platform_of(spec)?;
+        let ios = ios_inputs(inputs, spec)?;
+        Ok(match resolve_project(inputs, ios, platform) {
+            ProjectSource::Reuse(project) | ProjectSource::Skeleton(project) => project,
+        })
+    }
+}
+
+// ---------------------------------------------------------------- 工程来源
+
+/// 工程来源：复用宿主工程 or 生成骨架。
+enum ProjectSource {
+    /// 宿主工程的 `<产品名>.xcodeproj`（RN 宿主模板，T-M2-04）。
+    Reuse(PathBuf),
+    /// 生成的工程骨架 `<out>/<目标 id>-skeleton/<产品名>.xcodeproj`。
+    Skeleton(PathBuf),
+}
+
+/// 复用判定：`host_project`（或其 `ios/` 子目录）下已有 `<产品名>.xcodeproj` 即复用。
+fn resolve_project(
+    inputs: &BundleInputs,
+    ios: &IosInputs,
+    platform: &ApplePlatform,
+) -> ProjectSource {
+    let name = &inputs.product.name;
+    if let Some(host) = &ios.host_project {
+        let direct = host.join(format!("{name}.xcodeproj"));
+        let nested = host.join("ios").join(format!("{name}.xcodeproj"));
+        for candidate in [direct, nested] {
+            if candidate.is_dir() {
+                return ProjectSource::Reuse(candidate);
+            }
+        }
+    }
+    ProjectSource::Skeleton(skeleton_project_dir(inputs, platform))
+}
+
+/// 骨架工程目录（`<out>/<目标 id>-skeleton/<产品名>.xcodeproj`）。
+fn skeleton_project_dir(inputs: &BundleInputs, platform: &ApplePlatform) -> PathBuf {
+    skeleton_root(inputs, platform).join(format!("{}.xcodeproj", inputs.product.name))
+}
+
+/// 骨架根目录（按平台分目录：ios / tvos 互不覆盖）。
+fn skeleton_root(inputs: &BundleInputs, platform: &ApplePlatform) -> PathBuf {
+    inputs.out_dir.join(format!("{}-skeleton", platform.id))
+}
+
+// ---------------------------------------------------------------- 骨架生成
+
+/// 骨架脚本集：pbxproj + 共享 scheme + Info.plist + App.swift。
+fn skeleton_scripts(
+    inputs: &BundleInputs,
+    ios: &IosInputs,
+    project: &Path,
+    platform: &ApplePlatform,
+) -> Result<Vec<ScriptFile>, BundleError> {
+    let lib = ios
+        .lib_name
+        .as_deref()
+        .filter(|name| !name.is_empty())
+        .ok_or(BundleError::MissingInput {
+            packager: IOS,
+            field: "ios.lib_name",
+        })?;
+    let source_dir = skeleton_root(inputs, platform).join(&inputs.product.name);
+    Ok(vec![
+        ScriptFile {
+            path: project.join("project.pbxproj"),
+            contents: skeleton_pbxproj(
+                &inputs.product,
+                lib,
+                &swift::xcframework_path(inputs),
+                &swift::bindings_dir(inputs).join(format!("{lib}.swift")),
+                platform,
+            ),
+        },
+        ScriptFile {
+            path: project
+                .join("xcshareddata/xcschemes")
+                .join(format!("{}.xcscheme", inputs.product.name)),
+            contents: skeleton_scheme(&inputs.product),
+        },
+        ScriptFile {
+            path: source_dir.join("Info.plist"),
+            contents: skeleton_info_plist(&inputs.product, platform),
+        },
+        ScriptFile {
+            path: source_dir.join("App.swift"),
+            contents: skeleton_app_swift(&inputs.product),
+        },
+    ])
+}
+
+/// 最小 `project.pbxproj`（单 app target；链接 XCFramework + Swift 绑定进 Sources）。
+///
+/// XCFramework 由构造保证在 `<out>/`，故 `../<产品名>.xcframework`（相对 SRCROOT =
+/// `<out>/<目标 id>-skeleton`）恒成立；Swift 绑定则随 `IosInputs.bindings_dir` 走，**未必在
+/// `<out>` 下**（CLI 流落在 `<工程根>/bridge/swift`），故按绝对路径引用——写死相对路径会
+/// 让 `xcodebuild archive` 报「Build input file cannot be found」退出 65（dispatch
+/// 38693729015 实证：打包器直调绿、CLI 腿红，差异仅此）。
+pub fn skeleton_pbxproj(
+    product: &ProductInfo,
+    lib_name: &str,
+    xcframework: &Path,
+    swift_binding: &Path,
+    platform: &ApplePlatform,
+) -> String {
+    let name = &product.name;
+    let xcframework_ref = format!(
+        "../{}",
+        xcframework
+            .file_name()
+            .map(|file| file.to_string_lossy().into_owned())
+            .unwrap_or_else(|| format!("{name}.xcframework"))
+    );
+    format!(
+        r#"// !$*UTF8*$!
+{{
+	archiveVersion = 1;
+	classes = {{
+	}};
+	objectVersion = 56;
+	objects = {{
+
+/* Begin PBXBuildFile section */
+		C0DE0000000000000000B001 /* App.swift in Sources */ = {{isa = PBXBuildFile; fileRef = C0DE0000000000000000F001 /* App.swift */; }};
+		C0DE0000000000000000B002 /* {lib_name}.swift in Sources */ = {{isa = PBXBuildFile; fileRef = C0DE0000000000000000F004 /* {lib_name}.swift */; }};
+		C0DE0000000000000000B003 /* {name}.xcframework in Frameworks */ = {{isa = PBXBuildFile; fileRef = C0DE0000000000000000F005 /* {name}.xcframework */; }};
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		C0DE0000000000000000F001 /* App.swift */ = {{isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App.swift; sourceTree = "<group>"; }};
+		C0DE0000000000000000F002 /* Info.plist */ = {{isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; }};
+		C0DE0000000000000000F003 /* {name}.app */ = {{isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "{name}.app"; sourceTree = BUILT_PRODUCTS_DIR; }};
+		C0DE0000000000000000F004 /* {lib_name}.swift */ = {{isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "{lib_name}.swift"; path = "{swift_binding}"; sourceTree = "<absolute>"; }};
+		C0DE0000000000000000F005 /* {name}.xcframework */ = {{isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; name = "{name}.xcframework"; path = "{xcframework_ref}"; sourceTree = "<group>"; }};
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		C0DE0000000000000000D002 /* Frameworks */ = {{
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				C0DE0000000000000000B003 /* {name}.xcframework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		}};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		C0DE0000000000000000A003 = {{
+			isa = PBXGroup;
+			children = (
+				C0DE0000000000000000A004 /* {name} */,
+				C0DE0000000000000000F004 /* {lib_name}.swift */,
+				C0DE0000000000000000F005 /* {name}.xcframework */,
+				C0DE0000000000000000A005 /* Products */,
+			);
+			// `../…` 相对 SRCROOT（.xcodeproj 所在目录 = <out>/{platform_id}-skeleton）解析：
+			// XCFramework 恒在 <out>/；Swift 绑定随 bindings_dir 走（未必在 <out> 下，
+			// 故 F004 用 `<absolute>`）——二者挂在主组。
+			sourceTree = "<group>";
+		}};
+		C0DE0000000000000000A004 /* {name} */ = {{
+			isa = PBXGroup;
+			children = (
+				C0DE0000000000000000F001 /* App.swift */,
+				C0DE0000000000000000F002 /* Info.plist */,
+			);
+			path = "{name}";
+			sourceTree = "<group>";
+		}};
+		C0DE0000000000000000A005 /* Products */ = {{
+			isa = PBXGroup;
+			children = (
+				C0DE0000000000000000F003 /* {name}.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		}};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		{target_id} /* {name} */ = {{
+			isa = PBXNativeTarget;
+			buildConfigurationList = C0DE0000000000000000E002 /* Build configuration list for PBXNativeTarget "{name}" */;
+			buildPhases = (
+				C0DE0000000000000000D001 /* Sources */,
+				C0DE0000000000000000D002 /* Frameworks */,
+				C0DE0000000000000000D003 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = "{name}";
+			productName = "{name}";
+			productReference = C0DE0000000000000000F003 /* {name}.app */;
+			productType = "com.apple.product-type.application";
+		}};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		C0DE0000000000000000A001 /* Project object */ = {{
+			isa = PBXProject;
+			attributes = {{
+				BuildIndependentTargetsInParallel = 1;
+				LastUpgradeCheck = 1500;
+				TargetAttributes = {{
+					{target_id} = {{
+						CreatedOnToolsVersion = 15.0;
+					}};
+				}};
+			}};
+			buildConfigurationList = C0DE0000000000000000E001 /* Build configuration list for PBXProject "{name}" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = C0DE0000000000000000A003;
+			productRefGroup = C0DE0000000000000000A005 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				{target_id} /* {name} */,
+			);
+		}};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		C0DE0000000000000000D003 /* Resources */ = {{
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		}};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		C0DE0000000000000000D001 /* Sources */ = {{
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				C0DE0000000000000000B001 /* App.swift in Sources */,
+				C0DE0000000000000000B002 /* {lib_name}.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		}};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		C0DE0000000000000000C001 /* Debug */ = {{
+			isa = XCBuildConfiguration;
+			buildSettings = {{
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				{deployment_key} = {deployment_target};
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = {sdkroot};
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+			}};
+			name = Debug;
+		}};
+		C0DE0000000000000000C002 /* Release */ = {{
+			isa = XCBuildConfiguration;
+			buildSettings = {{
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				{deployment_key} = {deployment_target};
+				SDKROOT = {sdkroot};
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+			}};
+			name = Release;
+		}};
+		C0DE0000000000000000C003 /* Debug */ = {{
+			isa = XCBuildConfiguration;
+			buildSettings = {{
+				CODE_SIGNING_ALLOWED = NO;
+				CODE_SIGNING_REQUIRED = NO;
+				CODE_SIGN_IDENTITY = "";
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = "{name}/Info.plist";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = {version};
+				PRODUCT_BUNDLE_IDENTIFIER = {identifier};
+				PRODUCT_NAME = "{name}";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "{device_family}";
+			}};
+			name = Debug;
+		}};
+		C0DE0000000000000000C004 /* Release */ = {{
+			isa = XCBuildConfiguration;
+			buildSettings = {{
+				CODE_SIGNING_ALLOWED = NO;
+				CODE_SIGNING_REQUIRED = NO;
+				CODE_SIGN_IDENTITY = "";
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = "{name}/Info.plist";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = {version};
+				PRODUCT_BUNDLE_IDENTIFIER = {identifier};
+				PRODUCT_NAME = "{name}";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "{device_family}";
+			}};
+			name = Release;
+		}};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		C0DE0000000000000000E001 /* Build configuration list for PBXProject "{name}" */ = {{
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				C0DE0000000000000000C001 /* Debug */,
+				C0DE0000000000000000C002 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		}};
+		C0DE0000000000000000E002 /* Build configuration list for PBXNativeTarget "{name}" */ = {{
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				C0DE0000000000000000C003 /* Debug */,
+				C0DE0000000000000000C004 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		}};
+/* End XCConfigurationList section */
+	}};
+	rootObject = C0DE0000000000000000A001 /* Project object */;
+}}
+"#,
+        name = name,
+        lib_name = lib_name,
+        version = product.version,
+        identifier = product.identifier,
+        xcframework_ref = xcframework_ref,
+        swift_binding = swift_binding.display(),
+        target_id = TARGET_ID,
+        // 平台差异点（T-M4-07）：SDK / 部署目标 / 设备族全取自描述符
+        platform_id = platform.id,
+        sdkroot = platform.sdkroot,
+        deployment_key = platform.deployment_key,
+        deployment_target = platform.deployment_target,
+        device_family = platform.device_family,
+    )
+}
+
+/// 共享 scheme（`xcodebuild archive -scheme` 的必需输入）。
+///
+/// 裸 CI 上 Xcode 不会为工程自动生成 scheme，缺它 `xcodebuild` 直接报
+/// `does not contain a scheme named …`——故骨架自带一份共享 scheme。
+pub fn skeleton_scheme(product: &ProductInfo) -> String {
+    let name = &product.name;
+    format!(
+        r#"<?xml version="1.0" encoding="UTF-8"?>
+<Scheme LastUpgradeVersion = "1500" version = "1.7">
+   <BuildAction parallelizeBuildables = "YES" buildImplicitDependencies = "YES">
+      <BuildActionEntries>
+         <BuildActionEntry buildForTesting = "YES" buildForRunning = "YES" buildForProfiling = "YES" buildForArchiving = "YES" buildForAnalyzing = "YES">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "{target_id}"
+               BuildableName = "{name}.app"
+               BlueprintName = "{name}"
+               ReferencedContainer = "container:{name}.xcodeproj">
+            </BuildableReference>
+         </BuildActionEntry>
+      </BuildActionEntries>
+   </BuildAction>
+   <TestAction buildConfiguration = "Debug" selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB" selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB" shouldUseLaunchSchemeArgsEnv = "YES">
+      <Testables>
+      </Testables>
+   </TestAction>
+   <LaunchAction buildConfiguration = "Debug" selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB" selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB" launchStyle = "0" useCustomWorkingDirectory = "NO" ignoresPersistentStateOnLaunch = "NO" debugDocumentVersioning = "YES" debugServiceExtension = "internal" allowLocationSimulation = "YES">
+      <BuildableProductRunnable runnableDebuggingMode = "0">
+         <BuildableReference
+            BuildableIdentifier = "primary"
+            BlueprintIdentifier = "{target_id}"
+            BuildableName = "{name}.app"
+            BlueprintName = "{name}"
+            ReferencedContainer = "container:{name}.xcodeproj">
+         </BuildableReference>
+      </BuildableProductRunnable>
+   </LaunchAction>
+   <ProfileAction buildConfiguration = "Release" shouldUseLaunchSchemeArgsEnv = "YES" savedToolIdentifier = "" useCustomWorkingDirectory = "NO" debugDocumentVersioning = "YES">
+   </ProfileAction>
+   <AnalyzeAction buildConfiguration = "Debug"/>
+   <ArchiveAction buildConfiguration = "Release" revealArchiveInOrganizer = "YES"/>
+</Scheme>
+"#,
+        name = name,
+        target_id = TARGET_ID,
+    )
+}
+
+/// 骨架 `Info.plist`（Common + 平台键位最小集）：iOS 带 `LSRequiresIPhoneOS` 与 `UI*`；
+/// tvOS 不带（`ApplePlatform::ios_plist_keys`，tvOS 无该族键）。
+pub fn skeleton_info_plist(product: &ProductInfo, platform: &ApplePlatform) -> String {
+    let ios_keys = if platform.ios_plist_keys {
+        "    <key>LSRequiresIPhoneOS</key><true/>\n    <key>UILaunchScreen</key><dict/>\n    \
+         <key>UISupportedInterfaceOrientations</key>\n    <array>\n        \
+         <string>UIInterfaceOrientationPortrait</string>\n    </array>\n"
+    } else {
+        ""
+    };
+    format!(
+        r#"<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleDevelopmentRegion</key><string>en</string>
+    <key>CFBundleDisplayName</key><string>{name}</string>
+    <key>CFBundleExecutable</key><string>$(EXECUTABLE_NAME)</string>
+    <key>CFBundleIdentifier</key><string>{identifier}</string>
+    <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
+    <key>CFBundleName</key><string>$(PRODUCT_NAME)</string>
+    <key>CFBundlePackageType</key><string>APPL</string>
+    <key>CFBundleShortVersionString</key><string>{version}</string>
+    <key>CFBundleVersion</key><string>1</string>
+{ios_keys}</dict>
+</plist>
+"#,
+        name = product.name,
+        identifier = product.identifier,
+        version = product.version,
+    )
+}
+
+/// 骨架入口（SwiftUI 最小 App；桥绑定文件由工程 Sources 编译校验 modulemap）。
+pub fn skeleton_app_swift(product: &ProductInfo) -> String {
+    format!(
+        r#"import SwiftUI
+
+// PolyPack 生成的宿主骨架（T-M2-08）：桥绑定模块经工程 Sources 编译，
+// 真实宿主页面由 RN 宿主模板（T-M2-04）替换本文件。
+@main
+struct {ident}App: App {{
+    var body: some Scene {{
+        WindowGroup {{
+            ContentView()
+        }}
+    }}
+}}
+
+struct ContentView: View {{
+    var body: some View {{
+        Text("{name}")
+    }}
+}}
+"#,
+        ident = swift_ident(product),
+        name = product.name,
+    )
+}
+
+/// 导出配置（`xcodebuild -exportArchive -exportOptionsPlist` 的输入）。
+///
+/// `signingStyle = manual` + 空 teamID：导出未签名 IPA；证书 / 描述文件由 T-M2-10
+/// 签名链在构建地按需注入（不放此处，避免明文凭据入库）。
+pub fn export_options_plist(method: &str) -> String {
+    format!(
+        r#"<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>method</key><string>{method}</string>
+    <key>signingStyle</key><string>manual</string>
+    <key>stripSwiftSymbols</key><true/>
+    <key>compileBitcode</key><false/>
+</dict>
+</plist>
+"#
+    )
+}
+
+/// Swift 标识符形态（App.swift 的 `struct <ident>App`；非字母数字丢弃，数字开头前置 `App`）。
+fn swift_ident(product: &ProductInfo) -> String {
+    let mut ident: String = product
+        .name
+        .chars()
+        .filter(|ch| ch.is_alphanumeric())
+        .collect();
+    if ident.is_empty() {
+        ident = "PolyPack".to_string();
+    }
+    if ident.chars().next().is_some_and(|ch| ch.is_ascii_digit()) {
+        ident.insert_str(0, "App");
+    }
+    ident
+}
+
+// ---------------------------------------------------------------- 命令组装
+
+/// archive → exportArchive → 校验（plutil / xcrun lipo）的完整命令序。
+fn build_commands(project: &Path, inputs: &BundleInputs, platform: &ApplePlatform) -> Vec<Command> {
+    let name = &inputs.product.name;
+    let archive = inputs.out_dir.join(format!("{name}.xcarchive"));
+    let export = export_dir(inputs);
+    let payload = export.join("Payload");
+    let app = payload.join(format!("{name}.app"));
+    let ipa = export.join(format!("{name}.ipa"));
+    let archived = archive
+        .join("Products")
+        .join("Applications")
+        .join(format!("{name}.app"));
+    vec![
+        Command::new(
+            "xcodebuild",
+            [
+                "archive".into(),
+                "-project".into(),
+                path_arg(project),
+                "-scheme".into(),
+                name.clone(),
+                "-configuration".into(),
+                "Release".into(),
+                "-destination".into(),
+                platform.destination.into(),
+                "-archivePath".into(),
+                path_arg(&archive),
+                // 未签名归档：签名位由 T-M2-10 接入
+                "CODE_SIGNING_ALLOWED=NO".into(),
+                "CODE_SIGNING_REQUIRED=NO".into(),
+                "CODE_SIGN_IDENTITY=".into(),
+            ],
+        ),
+        // 未签名 IPA = 归档产物 → `Payload/` → `ditto -c -k` 直压。`-exportArchive` 对无 Team
+        // 的未签名归档必失败（macos-14 真跑实证「No Team Found in Archive」）；签名导出
+        // （T-M2-10）到位后换回 `-exportArchive`——ExportOptions.plist 即其输入，已随骨架落盘。
+        // 选项须先于操作数：BSD getopt 停在首个非选项（Android zipalign 同坑）。
+        Command::new("ditto", [path_arg(&archived), path_arg(&app)]),
+        Command::new(
+            "ditto",
+            [
+                "-c".into(),
+                "-k".into(),
+                "--sequesterRsrc".into(),
+                "--keepParent".into(),
+                path_arg(&payload),
+                path_arg(&ipa),
+            ],
+        ),
+        // 产物校验（T-M2-08 验收）：Info.plist 语法 + 架构
+        Command::new(
+            "plutil",
+            ["-lint".into(), path_arg(&app.join("Info.plist"))],
+        ),
+        Command::new(
+            "xcrun",
+            ["lipo".into(), "-info".into(), path_arg(&app.join(name))],
+        ),
+    ]
+}
+
+/// 导出方式（plan / package 读同一函数，保证落盘与产物流一致）。
+fn export_method() -> Result<String, BundleError> {
+    parse_export_method(std::env::var(EXPORT_METHOD_ENV).ok().as_deref())
+}
+
+/// 导出方式解析（纯函数：`None` → 缺省 `development`；白名单外响亮拒绝）。
+fn parse_export_method(raw: Option<&str>) -> Result<String, BundleError> {
+    let method = raw.unwrap_or("development");
+    if EXPORT_METHODS.contains(&method) {
+        return Ok(method.to_string());
+    }
+    Err(BundleError::InvalidInput {
+        packager: IOS,
+        field: EXPORT_METHOD_ENV,
+        value: method.to_string(),
+        reason: format!("合法导出方式：{}", EXPORT_METHODS.join(" / ")),
+    })
+}
+
+// ---------------------------------------------------------------- 定位与路径
+
+/// 目标 → Apple 平台描述符（服务范围闭合：非 `ios` / `tvos` 响亮拒绝）。
+pub(crate) fn platform_of(spec: &TargetSpec) -> Result<&'static ApplePlatform, BundleError> {
+    apple_platform(&spec.id).ok_or_else(|| BundleError::InvalidInput {
+        packager: IOS,
+        field: "spec.id",
+        value: spec.id.clone(),
+        reason: "Apple 打包器只服务 `ios` / `tvos` 目标".to_string(),
+    })
+}
+
+/// 取出 iOS 输入（目标 id / 产品元数据 / `ios` 段校验；缺失即报错）。
+pub(crate) fn ios_inputs<'a>(
+    inputs: &'a BundleInputs,
+    spec: &TargetSpec,
+) -> Result<&'a IosInputs, BundleError> {
+    platform_of(spec)?;
+    inputs.product.validate(IOS)?;
+    inputs.ios.as_ref().ok_or(BundleError::MissingInput {
+        packager: IOS,
+        field: "ios",
+    })
+}
+
+/// 宿主门控：Apple 打包链仅 macOS 宿主可跑（xcodebuild / plutil / xcrun / lipo）。
+pub(crate) fn require_macos(tool: &str) -> Result<(), BundleError> {
+    if polypack_targets::current_host() == Some(polypack_targets::Host::Macos) {
+        return Ok(());
+    }
+    Err(BundleError::ToolMissing {
+        packager: IOS,
+        tool: tool.to_string(),
+        hint: "Apple 工具链仅随 Xcode 提供（xcodebuild / plutil / xcrun / lipo）：\
+               iOS / tvOS 链路需 macOS 宿主（Linux 发起走远程农场 macOS worker，T-M2-13）"
+            .to_string(),
+    })
+}
+
+/// 打包格式与打包器声明必须一致（防「按 ipa 目标产出别的格式」）。
+fn check_format(spec: &TargetSpec, want: &str) -> Result<(), BundleError> {
+    if spec.package.format == want {
+        return Ok(());
+    }
+    Err(BundleError::InvalidInput {
+        packager: IOS,
+        field: "spec.package.format",
+        value: spec.package.format.clone(),
+        reason: format!("打包器要求格式 `{want}`（polypack.toml 的 [targets.*].package.format）"),
+    })
+}
+
+/// 导出目录（`xcodebuild -exportArchive -exportPath`）。
+fn export_dir(inputs: &BundleInputs) -> PathBuf {
+    inputs.out_dir.join("export")
+}
+
+/// ExportOptions.plist 落点（骨架 / 复用路径共用）。
+fn export_options_path(inputs: &BundleInputs) -> PathBuf {
+    inputs.out_dir.join("ExportOptions.plist")
+}
+
+/// 导出目录内的 `.ipa`（exportArchive 产物；不递归——布局固定）。
+fn find_ipa(export_dir: &Path) -> Option<PathBuf> {
+    std::fs::read_dir(export_dir)
+        .ok()?
+        .flatten()
+        .map(|entry| entry.path())
+        .find(|path| path.extension().is_some_and(|ext| ext == "ipa"))
+}
+
+/// 参数形态（路径一律显式传参，避免拼接成 shell 串）。
+fn path_arg(path: &Path) -> String {
+    path.display().to_string()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn product() -> ProductInfo {
+        ProductInfo {
+            name: "Pax Notes".to_string(),
+            version: "1.2.3".to_string(),
+            identifier: "com.polypack.paxnotes".to_string(),
+            manufacturer: "PolyPack".to_string(),
+            description: "示例".to_string(),
+            homepage: None,
+        }
+    }
+
+    /// 共享 scheme 与 pbxproj 的 target id 必须一致（xcodebuild 按 BlueprintIdentifier 解析）。
+    #[test]
+    fn scheme_target_id_matches_pbxproj() {
+        let product = product();
+        let scheme = skeleton_scheme(&product);
+        assert!(
+            scheme.contains(&format!("BlueprintIdentifier = \"{TARGET_ID}\"")),
+            "scheme 未引用 app target：{scheme}"
+        );
+        assert!(
+            scheme.contains("container:Pax Notes.xcodeproj"),
+            "scheme 的容器须指向骨架工程：{scheme}"
+        );
+        let pbxproj = skeleton_pbxproj(
+            &product,
+            "pax_core",
+            Path::new("/out/Pax Notes.xcframework"),
+            Path::new("/root/bridge/swift/pax_core.swift"),
+            &IOS_PLATFORM,
+        );
+        assert!(
+            pbxproj.contains(&format!("{TARGET_ID} /* Pax Notes */ = {{")),
+            "pbxproj 的 target id 与 scheme 不一致"
+        );
+        // 绑定引用按实参落 → 绝对引用（`bindings_dir` 未必在 `<out>` 下，写死相对路径
+        // 会让 xcodebuild archive 找不到构建输入）。
+        assert!(
+            pbxproj.contains(
+                "path = \"/root/bridge/swift/pax_core.swift\"; sourceTree = \"<absolute>\""
+            ),
+            "绑定文件须按实际落点绝对引用：{pbxproj}"
+        );
+    }
+
+    /// Swift 标识符派生：非字母数字丢弃、数字开头前置。
+    #[test]
+    fn swift_ident_is_a_valid_identifier() {
+        assert_eq!(swift_ident(&product()), "PaxNotes");
+        let mut numeric = product();
+        numeric.name = "2048 Game".to_string();
+        assert_eq!(swift_ident(&numeric), "App2048Game");
+    }
+
+    /// T-M4-07：平台描述符服务范围闭合（只认 ios / tvos），两平台差异点不串台。
+    #[test]
+    fn apple_platform_descriptors_are_closed_and_distinct() {
+        for (id, platform) in [("ios", &IOS_PLATFORM), ("tvos", &TVOS_PLATFORM)] {
+            assert_eq!(apple_platform(id).map(|p| p.id), Some(id));
+            assert_eq!(platform.id, id, "描述符 id 与查表键一致");
+            assert_eq!(
+                platform.slices(),
+                [platform.device_slice, platform.sim_slice]
+            );
+        }
+        assert!(
+            apple_platform("watchos").is_none(),
+            "非 Apple TV 域目标不服务"
+        );
+        assert!(apple_platform("macos").is_none(), "macOS 有独立 dmg 链");
+
+        let (ios, tvos) = (&IOS_PLATFORM, &TVOS_PLATFORM);
+        for (field, left, right) in [
+            ("sdkroot", ios.sdkroot, tvos.sdkroot),
+            ("destination", ios.destination, tvos.destination),
+            ("deployment_key", ios.deployment_key, tvos.deployment_key),
+            (
+                "deployment_target",
+                ios.deployment_target,
+                tvos.deployment_target,
+            ),
+            ("device_family", ios.device_family, tvos.device_family),
+            ("device_slice", ios.device_slice, tvos.device_slice),
+            ("sim_slice", ios.sim_slice, tvos.sim_slice),
+            ("device_triple", ios.device_triple, tvos.device_triple),
+        ] {
+            assert_ne!(left, right, "{field} 两平台不得同值");
+        }
+        assert_eq!(
+            tvos.sim_triples.len(),
+            1,
+            "tvOS 模拟器单架构：无 lipo 合并步"
+        );
+        assert_eq!(ios.sim_triples.len(), 2, "iOS 模拟器双架构合一");
+    }
+
+    /// T-M4-07：tvOS 骨架落 tvOS SDK / 部署目标 / 设备族，且 Info.plist 不带 iOS 专属键。
+    #[test]
+    fn tvos_skeleton_drops_ios_only_keys_and_switches_sdk() {
+        let product = product();
+        let pbxproj = skeleton_pbxproj(
+            &product,
+            "pax_core",
+            Path::new("/out/Pax Notes.xcframework"),
+            Path::new("/root/bridge/swift/pax_core.swift"),
+            &TVOS_PLATFORM,
+        );
+        assert!(pbxproj.contains("SDKROOT = appletvos;"), "{pbxproj}");
+        assert!(
+            pbxproj.contains("TVOS_DEPLOYMENT_TARGET = 15.1;"),
+            "{pbxproj}"
+        );
+        assert!(
+            pbxproj.contains("TARGETED_DEVICE_FAMILY = \"3\";"),
+            "{pbxproj}"
+        );
+        assert!(
+            !pbxproj.contains("IPHONEOS_DEPLOYMENT_TARGET"),
+            "tvOS 骨架不得残留 iOS 部署目标键"
+        );
+
+        let tvos_plist = skeleton_info_plist(&product, &TVOS_PLATFORM);
+        for key in [
+            "LSRequiresIPhoneOS",
+            "UILaunchScreen",
+            "UIInterfaceOrientation",
+        ] {
+            assert!(!tvos_plist.contains(key), "tvOS Info.plist 不得带 {key}");
+        }
+        assert!(tvos_plist.contains("<key>CFBundlePackageType</key><string>APPL</string>"));
+        let ios_plist = skeleton_info_plist(&product, &IOS_PLATFORM);
+        assert!(ios_plist.contains("<key>LSRequiresIPhoneOS</key><true/>"));
+    }
+
+    /// 导出方式白名单：缺省值 + 非法值响亮拒绝。
+    #[test]
+    fn export_method_whitelist() {
+        assert_eq!(parse_export_method(None).unwrap(), "development");
+        assert_eq!(
+            parse_export_method(Some("app-store-connect")).unwrap(),
+            "app-store-connect"
+        );
+        let err = parse_export_method(Some("bogus")).expect_err("非法导出方式应报错");
+        assert!(matches!(err, BundleError::InvalidInput { .. }));
+    }
+}

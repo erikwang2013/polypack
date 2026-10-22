@@ -56,20 +56,20 @@ Owners use only five roles: `release-sec` / `core` / `docs` / `infra` / `maintai
 
 - Linked task: T-M1-05 (Windows packagers), T-M1-03 (Tauri layout). Gap: the NSIS smoke uses a rustc fixture PE and a `/D=` temp directory; a real Tauri sample, the default `$PROGRAMFILES64\Pax Notes`, and Start-menu launch are unverified. `real_tauri_core_binary_resolves_injected_resources` currently pins `Host::Linux` and cannot produce Windows evidence.
 - Environment / toolchain / credentials: windows-2022 or a physical Windows 10/11 host, WebView2 Runtime, NSIS, WiX v3.14, Tauri CLI, a real Tauri sample project; no cloud credentials.
-- Gates: `POLY_TAURI_CORE_BIN=<real Tauri executable>`; the real MSI run also needs `POLY_MSI_REAL=1` and `POLY_MSI_REAL_OUT=<evidence dir>`; the NSIS tests need no extra gate.
+- Gates: `POLYPACK_TAURI_CORE_BIN=<real Tauri executable>`; the real MSI run also needs `POLYPACK_MSI_REAL=1` and `POLYPACK_MSI_REAL_OUT=<evidence dir>`; the NSIS tests need no extra gate.
 - Commands:
 ```powershell
-cargo test -p poly-bundle --test packagers_windows nsis_real_build_produces_pe_installer -- --nocapture
-cargo test -p poly-bundle --test packagers_windows nsis_install_launch_uninstall_smoke -- --nocapture
-$env:POLY_TAURI_CORE_BIN = "C:\work\pax-notes\target\release\pax-notes.exe"
-cargo test -p poly-bundle --test tauri_layout real_tauri_core_binary_resolves_injected_resources -- --nocapture
-$env:POLY_MSI_REAL = "1"; $env:POLY_MSI_REAL_OUT = "C:\work\msi-evidence"
-cargo test -p poly-bundle --test windows_msi_real -- --nocapture
-poly build --target windows
+cargo test -p polypack-bundle --test packagers_windows nsis_real_build_produces_pe_installer -- --nocapture
+cargo test -p polypack-bundle --test packagers_windows nsis_install_launch_uninstall_smoke -- --nocapture
+$env:POLYPACK_TAURI_CORE_BIN = "C:\work\pax-notes\target\release\pax-notes.exe"
+cargo test -p polypack-bundle --test tauri_layout real_tauri_core_binary_resolves_injected_resources -- --nocapture
+$env:POLYPACK_MSI_REAL = "1"; $env:POLYPACK_MSI_REAL_OUT = "C:\work\msi-evidence"
+cargo test -p polypack-bundle --test windows_msi_real -- --nocapture
+polypack build --target windows
 msiexec /i ".polypack\packages\windows\Pax Notes_1.2.3_x64_en-US.msi" /qn
 & "$env:ProgramFiles\Pax Notes\pax-notes.exe" --version
 ```
-- Progress (2026-10-20): the real Tauri v2 sample `examples/windows-msi-app/`, `crates/poly-bundle/tests/windows_msi_real.rs`, and the rust-ci `windows-msi-real` job have landed; real MSI / install / launch / uninstall / residue passed on windows-2022 run 39308849058 (and on main rerun 39399687968), closing the slot.
+- Progress (2026-10-20): the real Tauri v2 sample `examples/windows-msi-app/`, `crates/polypack-bundle/tests/windows_msi_real.rs`, and the rust-ci `windows-msi-real` job have landed; real MSI / install / launch / uninstall / residue passed on windows-2022 run 39308849058 (and on main rerun 39399687968), closing the slot.
 - Evidence: output of both NSIS tests; `--version` output and a window screenshot after installing the real sample into the default path; SHA-256 of `Pax Notes_1.2.3_x64-setup.exe`; the install directory is gone after uninstall. The current `tauri_layout` assertion is Linux-only; the Windows real-sample leg needs a new test or external script, and Linux output must not be presented as Windows evidence.
 - Status: `CLOSED` (2026-10-20). Run 39308849058's `windows-msi-real` job passed on windows-2022: build MSI → `msiexec /i /qn` → launch the installed copy with `--smoke` → `msiexec /x /qn` → check install-directory / Start-menu / HKCU / ARP residue; logs, MSI, `.wxs`, `smoke-marker.txt`, and digests are archived as CI artifacts. Owner: release-sec.
 - Next action: none (the slot is closed); re-run only when Windows / WebView2 / WiX versions change.
@@ -89,7 +89,7 @@ msiexec /i ".polypack\packages\windows\Pax Notes_1.2.3_x64_en-US.msi" /qn
 xcrun notarytool store-credentials apple-codesign \
   --apple-id "$POLYPACK_APPLE_ID" --team-id "$POLYPACK_IOS_TEAM_ID" \
   --password "$POLYPACK_APPLE_APP_PASSWORD"
-poly build --target ios --config /srv/proj/polypack.toml
+polypack build --target ios --config /srv/proj/polypack.toml
 APP="/srv/proj/.polypack/packages/ios/export/Payload/Pax Notes.app"
 codesign --verify --deep --strict --verbose=2 "$APP"
 ditto -c -k --keepParent "$APP" /tmp/pax-ios.zip
@@ -114,10 +114,10 @@ spctl --assess --type execute --verbose=4 "$APP"
 - Commands:
 ```sh
 # macOS worker
-poly farm worker --dir /srv/polypack-farm --id mac-01 --target ios --jobs 0 --idle 120 \
+polypack farm worker --dir /srv/polypack-farm --id mac-01 --target ios --jobs 0 --idle 120 \
   --cache /srv/polypack-cache --work-dir /var/tmp/polypack-work
 # Linux submit (project and farm directory visible at the same path)
-poly farm submit --dir /srv/polypack-farm --config /srv/proj/polypack.toml \
+polypack farm submit --dir /srv/polypack-farm --config /srv/proj/polypack.toml \
   --target ios --wait 1800 --retries 1 --project-dir /srv/proj \
   --cache /srv/polypack-cache
 APP=$(find .polypack/packages/ios -path '*/export/Payload/*.app' -print -quit)
@@ -135,16 +135,16 @@ spctl --assess --type execute --verbose=4 "$APP"
 
 - User entry: login state / variables → [ENV-PROVIDE §ENV-04](ENV-PROVIDE.en.md#env-04); three-account authorization → [authorization form](https://github.com/erikwang2013/polypack/issues/new?template=env-authorization.yml); GUI host → [hardware request](https://github.com/erikwang2013/polypack/issues/new?template=env-hardware-request.yml).
 
-- Linked task: T-M3-05 (Taro adapter), T-M3-06 (mini-program build pipeline). Gap: `contract_devtools_real_preview` calls the three CLIs under `POLY_CONTRACT_REAL=1`; when a tool is absent or logged out it only prints NOTE / SKIP. No real project preview QR code / device preview has been produced.
+- Linked task: T-M3-05 (Taro adapter), T-M3-06 (mini-program build pipeline). Gap: `contract_devtools_real_preview` calls the three CLIs under `POLYPACK_CONTRACT_REAL=1`; when a tool is absent or logged out it only prints NOTE / SKIP. No real project preview QR code / device preview has been produced.
 - Environment / toolchain / credentials: macOS (best official devtools support), WeChat DevTools CLI, Alipay Mini Program Studio `minidev`, Douyin DevTools `tma`, logged-in accounts on all three (QR / 2FA); the Douyin token can be supplied to CI.
-- Gates: `POLY_CONTRACT_REAL=1`, `POLYPACK_WECHAT_DEVTOOLS_CLI`, `POLYPACK_ALIPAY_DEVTOOLS_CLI`, `POLYPACK_DOUYIN_DEVTOOLS_CLI`, `POLYPACK_WECHAT_DEVTOOLS_LOGIN`, `POLYPACK_ALIPAY_DEVTOOLS_LOGIN`, `POLYPACK_DOUYIN_DEVTOOLS_LOGIN`, `POLYPACK_DEVTOOLS_LOGIN_FILE`.
+- Gates: `POLYPACK_CONTRACT_REAL=1`, `POLYPACK_WECHAT_DEVTOOLS_CLI`, `POLYPACK_ALIPAY_DEVTOOLS_CLI`, `POLYPACK_DOUYIN_DEVTOOLS_CLI`, `POLYPACK_WECHAT_DEVTOOLS_LOGIN`, `POLYPACK_ALIPAY_DEVTOOLS_LOGIN`, `POLYPACK_DOUYIN_DEVTOOLS_LOGIN`, `POLYPACK_DEVTOOLS_LOGIN_FILE`.
 - Commands:
 ```sh
-POLY_CONTRACT_REAL=1 POLYPACK_WECHAT_DEVTOOLS_CLI=/Applications/wechatwebdevtools.app/Contents/MacOS/cli \
+POLYPACK_CONTRACT_REAL=1 POLYPACK_WECHAT_DEVTOOLS_CLI=/Applications/wechatwebdevtools.app/Contents/MacOS/cli \
 POLYPACK_ALIPAY_DEVTOOLS_CLI=/Applications/minidev POLYPACK_DOUYIN_DEVTOOLS_CLI=/Applications/tma \
 POLYPACK_WECHAT_DEVTOOLS_LOGIN="$POLYPACK_WECHAT_DEVTOOLS_LOGIN" \
 POLYPACK_ALIPAY_DEVTOOLS_LOGIN="$POLYPACK_ALIPAY_DEVTOOLS_LOGIN" \
-cargo test -p poly-cli --test contract_m3_devtools contract_devtools_real_preview -- --nocapture
+cargo test -p polypack-cli --test contract_m3_devtools contract_devtools_real_preview -- --nocapture
 ```
 - Evidence: all three preview commands exit 0; WeChat / Alipay preview QR screenshot or URL; Douyin remote preview response; tool versions and logged-in account (redacted); full `contract_devtools_real_preview` output with no SKIP.
 - Status: `PARTIAL`. Mock and command assembly run; real preview depends on GUI login, and the miniprogram-contract `real` job only prints NOTE when vars / secrets are absent. Owner: core + release-sec.
@@ -157,13 +157,13 @@ cargo test -p poly-cli --test contract_m3_devtools contract_devtools_real_previe
 
 - User entry: device / LAN → [ENV-PROVIDE §ENV-05](ENV-PROVIDE.en.md#env-05) + [hardware request](https://github.com/erikwang2013/polypack/issues/new?template=env-hardware-request.yml); device password → [Secrets](https://github.com/erikwang2013/polypack/settings/secrets/actions) or `node tools/env-provide.mjs --set-secret ROKU_DEV_PASSWORD`.
 
-- Linked task: T-M4-15 (Roku channel packager and verifier). Gap: 19 structure checks run; the `POLY_ROKU_REAL=1` ECP probe and `plugin_install` have not executed against a real Roku.
+- Linked task: T-M4-15 (Roku channel packager and verifier). Gap: 19 structure checks run; the `POLYPACK_ROKU_REAL=1` ECP probe and `plugin_install` have not executed against a real Roku.
 - Environment / toolchain / credentials: Roku device (developer mode), a host on the same LAN, device IP, developer password, `curl`, `zip` / `unzip`.
-- Gates: `POLY_ROKU_REAL=1`, `ROKU_DEV_TARGET=<ip>`, `ROKU_DEV_PASSWORD=<pwd>`.
+- Gates: `POLYPACK_ROKU_REAL=1`, `ROKU_DEV_TARGET=<ip>`, `ROKU_DEV_PASSWORD=<pwd>`.
 - Commands:
 ```sh
 cd ui/adapters/roku
-POLY_ROKU_REAL=1 ROKU_DEV_TARGET=<ip> ROKU_DEV_PASSWORD=<pwd> node scripts/build-and-check.mjs
+POLYPACK_ROKU_REAL=1 ROKU_DEV_TARGET=<ip> ROKU_DEV_PASSWORD=<pwd> node scripts/build-and-check.mjs
 curl --connect-timeout 2 -s "http://<ip>:8060/"
 ```
 - Evidence: script prints `ECP 设备: <name>` and `plugin_install 侧载成功`; screenshot of the channel launching on the Roku; SHA-256 of `ui/adapters/roku/dist/polypack-spike-channel.zip`; device model / firmware.
@@ -183,9 +183,9 @@ curl --connect-timeout 2 -s "http://<ip>:8060/"
 - Commands:
 ```sh
 pkg_add rust
-cargo build -p poly-cli --ignore-rust-version
-./target/debug/poly init /tmp/poly-openbsd && cd /tmp/poly-openbsd
-./target/debug/poly build --target openbsd
+cargo build -p polypack-cli --ignore-rust-version
+./target/debug/polypack init /tmp/polypack-openbsd && cd /tmp/polypack-openbsd
+./target/debug/polypack build --target openbsd
 cd /usr/ports/x11/<port> && make package PACKAGES=/tmp/openbsd-packages
 pkg_add /tmp/openbsd-packages/<pkg>.tgz && pkg_info && pkg_check
 ```
@@ -196,20 +196,20 @@ pkg_add /tmp/openbsd-packages/<pkg>.tgz && pkg_info && pkg_check
 
 ### ENV-07 · NetBSD `bmake` / pkgsrc
 
-- Linked task: T-M5-08 (BSD-family pkgsrc target). Gap: `bmake package` and the NetBSD VM run have no first-run evidence; the `netbsd` TargetSpec declares `hosts = [Linux]` only, so `poly build --target netbsd` is unreachable inside NetBSD.
+- Linked task: T-M5-08 (BSD-family pkgsrc target). Gap: `bmake package` and the NetBSD VM run have no first-run evidence; the `netbsd` TargetSpec declares `hosts = [Linux]` only, so `polypack build --target netbsd` is unreachable inside NetBSD.
 - Environment / toolchain / credentials: NetBSD 11.0 VM (vmactions/netbsd-vm@v1), `pkgin install rust bmake`, pkgsrc-current tree, `pkg_add`; no signing credentials (a self-built repo needs separate config).
-- Gates: no dedicated gate; `poly build --target netbsd` is reachable only on a Linux host (emits the pkgsrc skeleton and runs the structure self-check).
+- Gates: no dedicated gate; `polypack build --target netbsd` is reachable only on a Linux host (emits the pkgsrc skeleton and runs the structure self-check).
 - Commands (CI shape: generate on Linux → run for real in the VM; a NetBSD host can replay the same steps):
 ```sh
 # Linux host (the target's host gate is Linux-only)
-cargo build -p poly-cli
-./target/debug/poly init /tmp/poly-netbsd && cd /tmp/poly-netbsd
-./target/debug/poly build --target netbsd          # emits .polypack/packages/netbsd/pkgsrc/<DISTNAME>/
+cargo build -p polypack-cli
+./target/debug/polypack init /tmp/polypack-netbsd && cd /tmp/polypack-netbsd
+./target/debug/polypack build --target netbsd          # emits .polypack/packages/netbsd/pkgsrc/<DISTNAME>/
 # NetBSD VM (11.0); base ships no root CAs, bootstrap mozilla-rootcerts-openssl over http
 export PKG_PATH="http://cdn.netbsd.org/pub/pkgsrc/packages/NetBSD/$(uname -p)/$(uname -r)/All"
 pkg_add mozilla-rootcerts-openssl pkgin   # writes /etc/openssl/certs/ca-certificates.crt
 pkgin -y install rust bmake
-cargo build -p poly-cli --ignore-rust-version
+cargo build -p polypack-cli --ignore-rust-version
 cd core && cargo build --release --ignore-rust-version   # native core replaces the Linux payload in the skeleton
 curl -fsSL -o /tmp/pkgsrc.tar.gz https://cdn.netbsd.org/pub/pkgsrc/current/pkgsrc.tar.gz && tar xzf /tmp/pkgsrc.tar.gz -C /usr
 cp -R <skeleton> /usr/pkgsrc/misc/<DISTNAME> && cd /usr/pkgsrc/misc/<DISTNAME>
@@ -218,7 +218,7 @@ pkg_add -v /tmp/pkgsrc-packages/<DISTNAME>.tgz
 pkg_info <DISTNAME> && pkg_info -L <DISTNAME> && /usr/pkg/bin/polypack-app
 ```
 - Evidence: `bmake package` exit 0; `pkg_add` / `pkg_info` output; the installed binary's output; `.tgz` SHA-256; NetBSD version and `bmake -V MAKE_VERSION`; CI first-run run ID + artifact.
-- Status: `CLOSED` (2026-10-21). Run 39489096346's `netbsd / 11.0 / qemu` generated the skeleton on Linux, built the app core natively in the NetBSD 11.0 VM, and passed `bmake package` → `pkg_add` / `pkg_info` → running the installed binary; the `.tgz` digest and logs are archived. The poly CLI is not built: pkgsrc rust 1.96 is below the repo MSRV 1.98, and this slot validates pkgsrc packaging. Owner: infra.
+- Status: `CLOSED` (2026-10-21). Run 39489096346's `netbsd / 11.0 / qemu` generated the skeleton on Linux, built the app core natively in the NetBSD 11.0 VM, and passed `bmake package` → `pkg_add` / `pkg_info` → running the installed binary; the `.tgz` digest and logs are archived. The polypack CLI is not built: pkgsrc rust 1.96 is below the repo MSRV 1.98, and this slot validates pkgsrc packaging. Owner: infra.
 - Next action: none (slot closed); rerun on major pkgsrc / NetBSD upgrades.
 - Blocker: none; production pkgsrc repository signing and publishing remain the deployer's responsibility.
 
@@ -235,10 +235,10 @@ pkg_info <DISTNAME> && pkg_info -L <DISTNAME> && /usr/pkg/bin/polypack-app
 ```sh
 export POLYPACK_QNX_SDP=/opt/qnx710
 source "$POLYPACK_QNX_SDP/qnxsdp-env.sh"
-poly doctor --json
-poly init /tmp/poly-qnx && cd /tmp/poly-qnx
-poly build --target qnx --json
-POLYPACK_QNX_QEMU=/usr/bin/qemu-system-x86_64 poly verify --target qnx --json
+polypack doctor --json
+polypack init /tmp/polypack-qnx && cd /tmp/polypack-qnx
+polypack build --target qnx --json
+POLYPACK_QNX_QEMU=/usr/bin/qemu-system-x86_64 polypack verify --target qnx --json
 ```
 - Evidence: `doctor` finds `qcc` / `nto*-gcc`; build JSONL contains a `verified` event for `qnx-image-structure`; QEMU serial log and `result.json`; `.ifs` / static library SHA-256.
 - Status: `PARTIAL`. SDP probing, structure verification, and the CI matrix are wired; SDP is absent, so real compile / QEMU smoke SKIP. Owner: infra.
@@ -258,9 +258,9 @@ POLYPACK_QNX_QEMU=/usr/bin/qemu-system-x86_64 poly verify --target qnx --json
 ```sh
 export WR_CC=/opt/windriver/wr-cc
 export POLYPACK_VXWORKS_TRIPLE=x86_64-wrs-vxworks
-poly doctor --json
-poly init /tmp/poly-vx && cd /tmp/poly-vx
-poly build --target vxworks --json
+polypack doctor --json
+polypack init /tmp/polypack-vx && cd /tmp/polypack-vx
+polypack build --target vxworks --json
 ```
 - Evidence: build JSONL contains a `verified` event for `vxworks-ld-check`; `check.sh` `wr-cc -c` and link commands exit 0; `nm` shows no unresolved symbols outside the allowlist; `.vxe` / library SHA-256; `wr-cc --version`.
 - Status: `PARTIAL`. Packager and structure assertions run; the `wr-cc` link leg SKIPs. Owner: infra.
@@ -297,14 +297,14 @@ node ui/smoke/wear/run.mjs --leg android --serial emulator-5554 \
 - Gates: no dedicated gate; the `watchos` job of `mobile-contract` runs nightly / manually only (Xcode build cost stays out of push / PR); the packager gates on host automatically.
 - Commands:
 ```sh
-poly init --target watchos /tmp/pax-watch && cd /tmp/pax-watch
+polypack init --target watchos /tmp/pax-watch && cd /tmp/pax-watch
 xcodebuild -project PolyPackWatch.xcodeproj -scheme PolyPackWatch \
   -sdk watchsimulator -destination 'generic/platform=watchOS Simulator' \
   build CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY=
-poly build --target watchos --json   # the package stage runs xcodebuild archive + ditto internally
+polypack build --target watchos --json   # the package stage runs xcodebuild archive + ditto internally
 ```
 - Evidence: `xcodebuild` `BUILD SUCCEEDED`; build JSONL `packaged` (format=watch) and no `目标 watchos 未打包`; `Info.plist` / `PkgInfo` / executable inside `.polypack/packages/watchos/export/Payload/polypack-watch.app` with SHA-256; Xcode version and SDK list; CI first-run run ID + artifact.
-- Status: `PARTIAL` (workflow wired, first-run evidence pending). The macos-14 `watchos` job runs a real simulator-SDK build and `poly build --target watchos`; without Apple credentials sign / `codesign-verify` honestly warn that the artifact is unsigned and are not counted as packaging evidence. Owner: core.
+- Status: `PARTIAL` (workflow wired, first-run evidence pending). The macos-14 `watchos` job runs a real simulator-SDK build and `polypack build --target watchos`; without Apple credentials sign / `codesign-verify` honestly warn that the artifact is unsigned and are not counted as packaging evidence. Owner: core.
 - Next action: dispatch the `watchos` job of `mobile-contract`, archive the run ID / xcodebuild log / `.app` digest, then write the evidence back to this card.
 - Blocker: first-run risks — the runner image's Xcode must provide both watchOS and watchOS Simulator SDKs; signing / notarization needs Apple credentials (kept external). Execution mode: CI (macos-14) can close the packaging leg; the signing leg needs credentials.
 
@@ -317,15 +317,15 @@ poly build --target watchos --json   # the package stage runs xcodebuild archive
 ```sh
 npm install -g @fitbit/sdk-cli@1.7.3 @fitbit/sdk@6.1.0
 fitbit-build --help
-poly init /tmp/poly-fitbit && cd /tmp/poly-fitbit
+polypack init /tmp/polypack-fitbit && cd /tmp/polypack-fitbit
 # add fitbit/package.json (config.fitbit.appUUID), fitbit/app/index.js, fitbit/resources/icon.png
-poly build --target fitbit --json
-poly verify --target fitbit --json
+polypack build --target fitbit --json
+polypack verify --target fitbit --json
 ```
 - Evidence: `fitbit-build --help` exit 0; verify JSONL contains `fitbit-build 自检真跑通过` and no `自检 SKIP-with-print` / `自检未通过`; a `verified` / `fitbit-structure-check` event; `.fba` SHA-256; CI first-run run ID + artifact.
 - Status: `PARTIAL` (workflow wired, first-run evidence pending). The `fitbit` job of `wear-js-contract` installs the official CLI and runs a real build / verify; a missing tool or failed self-check turns the job red. Owner: infra.
 - Next action: dispatch the `fitbit` job of `wear-js-contract`, archive the run ID / verify JSONL / `.fba` digest, then write the evidence back to this card.
-- Blocker: first-run risks — keytar on Node 22 needs system `libsecret-1-dev` (npm install fails without it); the old assertion in `contract_m7_wear_js` expects the CLI-absent SKIP text, so that test is not applicable once the CLI is installed (this job uses direct `poly build/verify` instead and does not edit the test); the `@fitbit/sdk-cli` `fitbit` entry point crashes on Node 22 with `MODULE_NOT_FOUND` because of the `@openid/appauth` 1.4 module layout (this chain uses only `fitbit-build`; the job asserts `fitbit` is installed but does not execute it); a cold first run also compiles wasmtime on the runner (60-minute job cap, debuginfo off / incremental off). Execution mode: CI (ubuntu) can close it.
+- Blocker: first-run risks — keytar on Node 22 needs system `libsecret-1-dev` (npm install fails without it); the old assertion in `contract_m7_wear_js` expects the CLI-absent SKIP text, so that test is not applicable once the CLI is installed (this job uses direct `polypack build/verify` instead and does not edit the test); the `@fitbit/sdk-cli` `fitbit` entry point crashes on Node 22 with `MODULE_NOT_FOUND` because of the `@openid/appauth` 1.4 module layout (this chain uses only `fitbit-build`; the job asserts `fitbit` is installed but does not execute it); a cold first run also compiles wasmtime on the runner (60-minute job cap, debuginfo off / incremental off). Execution mode: CI (ubuntu) can close it.
 
 <a id="slot-env-13"></a>
 
@@ -340,10 +340,10 @@ poly verify --target fitbit --json
 ```sh
 npm install -g @zeppos/zeus-cli@1.9.3
 zeus --version
-poly init /tmp/poly-zepp && cd /tmp/poly-zepp
+polypack init /tmp/polypack-zepp && cd /tmp/polypack-zepp
 # add zepp/app.json (app.appName / appId / version) and zepp/app.js
-poly build --target zepp --json
-poly verify --target zepp --json
+polypack build --target zepp --json
+polypack verify --target zepp --json
 # Simulator (external manual leg): install .polypack/packages/zepp/*.zab into the Zepp OS simulator and screenshot
 ```
 - Evidence: `zeus --version` output; verify JSONL contains `zeus 自检真跑通过` and no `zeus 自检 SKIP-with-print` / `自检未通过`; the `模拟器安装腿 SKIP-with-print` note is retained; a `verified` / `zepp-structure-check` event; `.zab` SHA-256; CI first-run run ID + artifact.
@@ -368,7 +368,7 @@ cd <generated dir>/round && monkeyc -e -w -r -o ../garmin-round.iq -y "$CIQ_DEVK
 cd <generated dir>/square && monkeyc -e -w -r -o ../garmin-square.iq -y "$CIQ_DEVKEY" -f monkey.jungle
 ```
 - Evidence: `npm run build` prints PASS 7 / FAIL 0 / SKIP 0; round / square `.iq` files and entry assertions; `monkeyc --version`; devkey fingerprint (no private key); compile log.
-- Status: `PARTIAL`. Transpile and structure checks run; `poly build --target garmin` now has a built-in iq packager (`crates/poly-bundle/src/packagers/garmin.rs`); the remaining monkeyc compile / devkey leg SKIPs. Owner: core.
+- Status: `PARTIAL`. Transpile and structure checks run; `polypack build --target garmin` now has a built-in iq packager (`crates/polypack-bundle/src/packagers/garmin.rs`); the remaining monkeyc compile / devkey leg SKIPs. Owner: core.
 - Next action: install the Connect IQ SDK in CI and put the devkey in a secret; close the compiler leg.
 - Blocker: SDK access may require a Garmin account; the devkey is developer-generated and must not enter the repo. Execution mode: CI (ubuntu / macOS + SDK) can close the compiler leg.
 
@@ -376,20 +376,20 @@ cd <generated dir>/square && monkeyc -e -w -r -o ../garmin-square.iq -y "$CIQ_DE
 
 - Linked task: T-M8-03 (plugin trust root). Gap: the env carrier is automated by `plugin_trust_root_env`; the keyring backend test (`keyring_real`) and the CLI E2E (`plugin_trust_root_keyring`, changing only to `source = "keyring"`) are wired into the rust-ci `keyring-real` job, and the first real Secret Service run still needs archived evidence.
 - Environment / toolchain / credentials: Linux Secret Service (dbus + gnome-keyring), macOS Keychain, or Windows Credential Manager; `secret-tool` or an equivalent writer; a GPG keypair (trust-root payload).
-- Gates: `POLY_KEYRING_REAL=1`, `DBUS_SESSION_BUS_ADDRESS`; CLI config `trust_root = { name = "plugin-trust-root", source = "keyring" }`.
+- Gates: `POLYPACK_KEYRING_REAL=1`, `DBUS_SESSION_BUS_ADDRESS`; CLI config `trust_root = { name = "plugin-trust-root", source = "keyring" }`.
 - Commands:
 ```sh
-mkdir -p -m 700 /tmp/poly-keyring-rt /tmp/poly-keyring-home/keyrings
+mkdir -p -m 700 /tmp/polypack-keyring-rt /tmp/polypack-keyring-home/keyrings
 dbus-run-session -- bash -c '
-  export HOME=/tmp/poly-keyring-home XDG_RUNTIME_DIR=/tmp/poly-keyring-rt \
-         XDG_DATA_HOME=/tmp/poly-keyring-home/.local/share \
-         GNOME_KEYRING_CUSTOM_LOCAL_PATH=/tmp/poly-keyring-home/keyrings
-  printf "poly-it-pass\n" | gnome-keyring-daemon --unlock --components=secrets --foreground &
+  export HOME=/tmp/polypack-keyring-home XDG_RUNTIME_DIR=/tmp/polypack-keyring-rt \
+         XDG_DATA_HOME=/tmp/polypack-keyring-home/.local/share \
+         GNOME_KEYRING_CUSTOM_LOCAL_PATH=/tmp/polypack-keyring-home/keyrings
+  printf "polypack-it-pass\n" | gnome-keyring-daemon --unlock --components=secrets --foreground &
   sleep 3
-  POLY_KEYRING_REAL=1 cargo test -p poly-sign --test keyring_real -- --nocapture
-  POLY_KEYRING_REAL=1 cargo test -p poly-cli --test plugin_trust_root_keyring -- --nocapture'
+  POLYPACK_KEYRING_REAL=1 cargo test -p polypack-sign --test keyring_real -- --nocapture
+  POLYPACK_KEYRING_REAL=1 cargo test -p polypack-cli --test plugin_trust_root_keyring -- --nocapture'
 ```
-- Evidence: `keyring_real` real write / read / delete output; `gdbus` cross-check that the entry exists; `plugin_trust_root_keyring` runs `poly build --target linux-reference --json` and emits `plugin_granted` / `packaged`, with `E_PLUGIN_0010` after the entry is deleted; no plaintext payload in logs.
+- Evidence: `keyring_real` real write / read / delete output; `gdbus` cross-check that the entry exists; `plugin_trust_root_keyring` runs `polypack build --target linux-reference --json` and emits `plugin_granted` / `packaged`, with `E_PLUGIN_0010` after the entry is deleted; no plaintext payload in logs.
 - Status: `CLOSED` (2026-10-20). rust-ci `keyring-real` (run 39409593528) really ran `keyring_real` and `plugin_trust_root_keyring` on an isolated Secret Service and passed; any SKIP fails the job. Owner: release-sec.
 - Next action: macOS / Windows real keychain hosts are separate slots; the Linux evidence must not be presented as theirs.
 - Blocker: headless Secret Service needs the isolation recipe in the file header; macOS / Windows need their own real keychain hosts, and Linux results must not be presented as theirs. Execution mode: CI (ubuntu + dbus / gnome-keyring) can close the Linux leg; macOS / Windows are separate.
@@ -398,15 +398,15 @@ dbus-run-session -- bash -c '
 
 - Linked task: T-M8-03 (plugin trust root). Gap: `vault_real` verifies `VaultBackend`'s own KV v2 read/write; `default_backends()` adds `VaultBackend<HttpVaultClient>` when `VAULT_ADDR` / `VAULT_TOKEN` are available (plugin trust roots, publishing, and signing share the same backend chain), so the code gap is closed. The CLI E2E `plugin_trust_root_vault` (only changing to `source = "vault"`) is wired into the rust-ci `vault-real` job, and its first real Vault service run (run 39414212765) passed.
 - Environment / toolchain / credentials: Vault service (dev or real cluster), `VAULT_ADDR`, `VAULT_TOKEN`, KV v2 path; plugin public-key payload `base64(JSON)`.
-- Gates: `POLY_VAULT_REAL=1`, `VAULT_ADDR`, `VAULT_TOKEN`; CLI config `trust_root = { name = "plugin-trust-root", source = "vault" }`.
+- Gates: `POLYPACK_VAULT_REAL=1`, `VAULT_ADDR`, `VAULT_TOKEN`; CLI config `trust_root = { name = "plugin-trust-root", source = "vault" }`.
 - Commands:
 ```sh
 vault server -dev -dev-root-token-id=root -dev-listen-address=127.0.0.1:8200 &
 export VAULT_ADDR=http://127.0.0.1:8200 VAULT_TOKEN=root
-POLY_VAULT_REAL=1 cargo test -p poly-sign --test vault_real -- --nocapture
-POLY_VAULT_REAL=1 cargo test -p poly-cli --test plugin_trust_root_vault -- --nocapture
+POLYPACK_VAULT_REAL=1 cargo test -p polypack-sign --test vault_real -- --nocapture
+POLYPACK_VAULT_REAL=1 cargo test -p polypack-cli --test plugin_trust_root_vault -- --nocapture
 ```
-- Evidence: `vault_real` real KV v2 round-trip / 404 / 403 redaction output; `plugin_trust_root_vault` runs `poly build --target linux-reference --json` and emits `plugin_granted` / `packaged`, with `E_PLUGIN_0010` after the KV entry is deleted; no token in logs. The rust-ci `vault-real` first run, 39414212765, passed.
+- Evidence: `vault_real` real KV v2 round-trip / 404 / 403 redaction output; `plugin_trust_root_vault` runs `polypack build --target linux-reference --json` and emits `plugin_granted` / `packaged`, with `E_PLUGIN_0010` after the KV entry is deleted; no token in logs. The rust-ci `vault-real` first run, 39414212765, passed.
 - Status: `CLOSED` (2026-10-20). The CI job and gated E2E passed on a real Vault dev service, and any SKIP fails the job. Owner: release-sec + core.
 - Next action: a real cluster / private-CA scenario is a separate slot; dev-server evidence must not be presented as production Vault.
 - Blocker: none (the CI dev server is provided); the code gap is closed.
@@ -422,12 +422,12 @@ POLY_VAULT_REAL=1 cargo test -p poly-cli --test plugin_trust_root_vault -- --noc
 POLYPACK_S3_REAL=1 POLYPACK_S3_TEST_URI=s3://polypack-ci/ci-prefix \
 POLYPACK_S3_ENDPOINT=http://127.0.0.1:9000 POLYPACK_S3_REGION=us-east-1 \
 POLYPACK_S3_ACCESS_KEY_ID=... POLYPACK_S3_SECRET_ACCESS_KEY=... \
-cargo test -p poly-cache --test s3_real -- --nocapture
+cargo test -p polypack-cache --test s3_real -- --nocapture
 # Two-worker second run: same bucket prefix as shared cache; the second run must hit 1/1
 POLYPACK_S3_REAL=1 POLYPACK_S3_TEST_URI=s3://polypack-ci/ci-prefix \
 POLYPACK_S3_ENDPOINT=http://127.0.0.1:9000 POLYPACK_S3_REGION=us-east-1 \
 POLYPACK_S3_ACCESS_KEY_ID=... POLYPACK_S3_SECRET_ACCESS_KEY=... \
-cargo test -p poly-cli --test farm_cache \
+cargo test -p polypack-cli --test farm_cache \
   shared_cache_hits_across_worker_processes_on_s3 -- --nocapture
 ```
 - Evidence: `s3_real` PUT / GET / LIST / DELETE all green; the `farm_cache` S3 leg reports `cache hits 0/1` on the first run and `1/1` on the second with identical cache keys on both sides; a SKIP fails the job, and both `... ok` lines are required; the object listing is captured with `mc ls`. The rust-ci `s3-real` first run, 39425835979, passed.
@@ -463,9 +463,9 @@ gh api repos/erikwang2013/polypack/branches/main/protection/required_status_chec
 - Commands:
 ```sh
 # Each tester starts from zero and follows only docs/GA.md §2; record commands, time, and blockers
-poly plugin new pocket-notes
-poly plugin check <dir>
-poly build --config <app>/polypack.toml --target pocket-notes
+polypack plugin new pocket-notes
+polypack plugin check <dir>
+polypack build --config <app>/polypack.toml --target pocket-notes
 ```
 - Evidence: a trial report per tester (environment, start / end time, commands completed, verbatim blockers, whether a package was produced within one day); a summary issue; links to documentation-fix PRs.
 - Status: `OPEN`. No external trial record yet. Owner: docs.
@@ -478,12 +478,12 @@ poly build --config <app>/polypack.toml --target pocket-notes
 
 - User entry: real devices / cloud farm → [ENV-PROVIDE §ENV-20](ENV-PROVIDE.en.md#env-20) + [hardware request](https://github.com/erikwang2013/polypack/issues/new?template=env-hardware-request.yml); cloud account → [authorization form](https://github.com/erikwang2013/polypack/issues/new?template=env-authorization.yml).
 
-- Linked task: T-M9-21 (device preview matrix). Gap: `poly preview --dry-run` is delivered (DevicePool / DeviceLease, deterministic plan, timeout / cleanup), but a real lease, install, launch, screenshot, logs, and cleanup have not run.
+- Linked task: T-M9-21 (device preview matrix). Gap: `polypack preview --dry-run` is delivered (DevicePool / DeviceLease, deterministic plan, timeout / cleanup), but a real lease, install, launch, screenshot, logs, and cleanup have not run.
 - Environment / toolchain / credentials: two real devices (Android phone + Android TV) or equivalent cloud devices; `adb`; fixture APK; evidence directory; cloud vendor account if using a farm.
-- Gates: none for `poly preview --dry-run`; real execution is wired by the provider adapter.
+- Gates: none for `polypack preview --dry-run`; real execution is wired by the provider adapter.
 - Commands:
 ```sh
-poly preview --dry-run --target android --device android-phone --device android-tv
+polypack preview --dry-run --target android --device android-phone --device android-tv
 # Real execution commands and provider adapter: docs/DEVICE-PREVIEW.en.md §8.1
 ```
 - Evidence: plan JSON, APK blake3, `adb devices -l` / API level, install / launch exit codes, two PNGs + SHA-256, logcat / crash, post-uninstall device list.
@@ -504,7 +504,7 @@ poly preview --dry-run --target android --device android-phone --device android-
 ### 4.2 Evidence capture steps
 
 1. Open an issue titled `[ENV-XX] <slot>` with the linked task, planned commands, expected evidence, and owner.
-2. Build the CLI from the target commit and record `git rev-parse HEAD`, `poly --version`, and host `uname -a` / `winver` / `sw_vers`.
+2. Build the CLI from the target commit and record `git rev-parse HEAD`, `polypack --version`, and host `uname -a` / `winver` / `sw_vers`.
 3. Set the environment per the run card; read credentials only from secrets / the local keychain, never from shell history or the repo.
 4. Capture stdout / stderr / exit code with `tee` or runner logs; record the command itself after redaction.
 5. Produce the evidence bundle and compute artifact SHA-256; screenshots cover only the necessary area and hide accounts / tokens / device passwords.
@@ -517,7 +517,7 @@ poly preview --dry-run --target android --device android-phone --device android-
 | File | Content |
 | --- | --- |
 | `cmd.txt` | Actual commands (tokens / passwords replaced with `<redacted>`) |
-| `versions.txt` | Host, OS, toolchain, SDK, `poly --version`, commit |
+| `versions.txt` | Host, OS, toolchain, SDK, `polypack --version`, commit |
 | `stdout.log` / `stderr.log` | Raw output and exit code; must show a real tool invocation, not only SKIP |
 | `result.json` | Machine-readable result (Wear / QEMU / farm slots with a schema) |
 | `sha256.txt` | SHA-256 of artifacts and evidence files |
@@ -542,11 +542,11 @@ Suggested evidence path: `env-slots/<ENV-XX>/<UTC timestamp>/`. The repository d
 | ENV-04 | `.github/workflows/miniprogram-contract.yml` | `real / macos-14` | CLI preview test wired; NOTE when vars / secrets absent |
 | ENV-05 | — | — | No Roku job |
 | ENV-06 | `.github/workflows/bsd-ci.yml` | `openbsd` | VM job exists, `continue-on-error`, TCG boot fails |
-| ENV-07 | `.github/workflows/bsd-ci.yml` | `netbsd` | Linux generates the pkgsrc skeleton → NetBSD 11.0 VM native app-core build + `bmake package` → `pkg_add` / `pkg_info` / run the installed binary (run 39489096346 passed; no poly CLI build) |
+| ENV-07 | `.github/workflows/bsd-ci.yml` | `netbsd` | Linux generates the pkgsrc skeleton → NetBSD 11.0 VM native app-core build + `bmake package` → `pkg_add` / `pkg_info` / run the installed binary (run 39489096346 passed; no polypack CLI build) |
 | ENV-08 | `.github/workflows/embedded-ci.yml` | `embedded` (matrix `qnx`) | Build / doctor / QEMU wired; SKIP when SDP absent |
 | ENV-09 | `.github/workflows/embedded-ci.yml` | `embedded` (matrix `vxworks`) | Build wired; SKIP when `wr-cc` absent |
 | ENV-10 | `.github/workflows/wear-release-smoke.yml` | `wear-device-smoke` | Hard release gate; blocks when KVM / APK absent |
-| ENV-11 | `.github/workflows/mobile-contract.yml` | `watchos / macos-14` | Real `xcodebuild` (watchsimulator) + `poly build --target watchos`, run 39455179337 passed; signing / notarization has no Apple credentials (external leg) |
+| ENV-11 | `.github/workflows/mobile-contract.yml` | `watchos / macos-14` | Real `xcodebuild` (watchsimulator) + `polypack build --target watchos`, run 39455179337 passed; signing / notarization has no Apple credentials (external leg) |
 | ENV-12 | `.github/workflows/wear-js-contract.yml` | `fitbit` | Installs `@fitbit/sdk-cli` + `@fitbit/sdk`; `fitbit-build` self-check + `.fba` build/verify, run 39455185737 passed; SKIP / failed self-check turns the job red |
 | ENV-13 | `.github/workflows/wear-js-contract.yml` | `zepp` | `zeus --version` + `.zab` build/verify, run 39455185737 passed; the GUI simulator install leg stays external/manual |
 | ENV-14 | — | — | No Connect IQ job |
@@ -555,7 +555,7 @@ Suggested evidence path: `env-slots/<ENV-XX>/<UTC timestamp>/`. The repository d
 | ENV-17 | `.github/workflows/rust-ci.yml` | `s3-real` | MinIO (127.0.0.1:9000, run 39425835979): `s3_real` PUT / GET / LIST / DELETE + `farm_cache` two-worker shared-bucket second run at 1/1; a SKIP fails the job |
 | ENV-18 | `.github/workflows/secret-scan.yml` | `scan` (3 hosts) | Supplies required checks; admin bypass was closed on 2026-10-20 and is not a workflow setting |
 | ENV-19 | — | — | Human trial, no workflow |
-| ENV-20 | — | — | No preview job; `poly preview --dry-run` is delivered |
+| ENV-20 | — | — | No preview job; `polypack preview --dry-run` is delivered |
 
 ## 6. Not closable in this repo
 
@@ -576,7 +576,7 @@ Suggested evidence path: `env-slots/<ENV-XX>/<UTC timestamp>/`. The repository d
 | Item | Type | Disposition |
 | --- | --- | --- |
 | Vault default backend chain | Closed (code) | `default_backends()` assembles Vault from the environment; ENV-16 is down to the real-service E2E |
-| Garmin built-in iq packager | Delivered | `poly build --target garmin` now has a built-in packager; ENV-14 closes only the compiler / device leg |
+| Garmin built-in iq packager | Delivered | `polypack build --target garmin` now has a built-in packager; ENV-14 closes only the compiler / device leg |
 | Missing CI jobs | Infrastructure | Garmin / Roku still have run cards only, no workflow |
 
 ## 8. References

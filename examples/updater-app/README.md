@@ -1,14 +1,14 @@
 # Updater drill sample (T-M9-12)
 
 A minimal Tauri v2 app used to prove a **real** self-hosted update and rollback
-cycle on Windows, driven by the repository's own `poly update manifest` output.
+cycle on Windows, driven by the repository's own `polypack update manifest` output.
 It is an example and a test harness, not a production app.
 
 The CI job `windows-updater-real` in `.github/workflows/rust-ci.yml` runs
 [`scripts/drill.ps1`](scripts/drill.ps1) on `windows-2022`. This directory was
 developed and statically checked on Linux; the first Windows run (run
 39395255929) passed and is the end-to-end evidence. The job fails unless the
-drill prints `POLY_UPDATER_DRILL_RESULT: PASS`, so a SKIP is never treated as
+drill prints `POLYPACK_UPDATER_DRILL_RESULT: PASS`, so a SKIP is never treated as
 success.
 
 ## What the drill proves
@@ -18,8 +18,8 @@ success.
 2. `0.1.0` and `0.1.1` NSIS installers are built twice with that key
    (`createUpdaterArtifacts`), so each installer has a real `.sig`; on Windows
    the signed installer itself is the updater artifact.
-3. `poly update manifest` turns each signed installer into a deterministic,
-   GPG-signed Tauri v2 `latest.json`; `poly update check` verifies the manifest
+3. `polypack update manifest` turns each signed installer into a deterministic,
+   GPG-signed Tauri v2 `latest.json`; `polypack update check` verifies the manifest
    signature.
 4. The installed `0.1.0` app reads a local HTTP `latest.json`, verifies the
    `0.1.1` installer's Tauri signature, installs it, and relaunches as `0.1.1`.
@@ -50,7 +50,7 @@ and Python 3 on `PATH`.
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File examples/updater-app/scripts/drill.ps1 `
-  -WorkDir "$env:RUNNER_TEMP\poly-updater-drill"
+  -WorkDir "$env:RUNNER_TEMP\polypack-updater-drill"
 ```
 
 `-WorkDir` must stay outside the repository. Generated keys, the GPG home, and
@@ -65,7 +65,7 @@ signed manifests, the Tauri public key, the GPG public key, and tool versions.
 Build and HTTP logs stay under `<WorkDir>`.
 
 Failure codes are stable and include the failing step:
-`POLY_UPDATER_DRILL_0001` prerequisites/keys, `0002` Tauri build, `0003`
+`POLYPACK_UPDATER_DRILL_0001` prerequisites/keys, `0002` Tauri build, `0003`
 artifact discovery, `0004` manifest generation, `0005` manifest verification,
 `0006` local HTTP server, `0007` initial NSIS install, `0008` update leg,
 `0009` rollback leg.

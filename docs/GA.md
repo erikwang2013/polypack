@@ -11,19 +11,19 @@ M8 生态 GA 交付四件事：WASM 插件 SDK（沙箱、SRI/签名、模板/�
 
 | M8 交付面 | 状态 | 证据 / 入口 |
 |---|---|---|
-| WASM 插件沙箱 | 已交付 | `poly-plugin`：默认零能力、显式授权、fuel/epoch/内存上限（T-M8-01） |
+| WASM 插件沙箱 | 已交付 | `polypack-plugin`：默认零能力、显式授权、fuel/epoch/内存上限（T-M8-01） |
 | 插件接口 `target-spec/v1` | 已交付 | WIT `polypack-target`；非 v1 → `E_PLUGIN_0005`（T-M8-02） |
 | SRI 与签名链 | 已交付 | `blake3-<hex>` 先于验签、验签先于实例化（T-M8-03） |
-| 模板与脚手架 | 已交付 | `poly plugin new` / `poly plugin check` / `poly plugin digest` + `templates/plugin-target`（T-M8-04） |
+| 模板与脚手架 | 已交付 | `polypack plugin new` / `polypack plugin check` / `polypack plugin digest` + `templates/plugin-target`（T-M8-04） |
 | 内建 / 插件统一接口 | 已交付 | `TargetProvider` + `ProviderRegistry`，无 builtin 特判（T-M8-05） |
 | 远程农场 v1 | 已交付 | 协议 v1、并发 / worker 池 / 超时重试、v0 worker 兼容（T-M8-06..09） |
-| 商店发布 GA | 已交付 | 指数退避、幂等键、SubmitJournal、回执 v2、`poly retry --from publish`（T-M8-10/11） |
+| 商店发布 GA | 已交付 | 指数退避、幂等键、SubmitJournal、回执 v2、`polypack retry --from publish`（T-M8-10/11） |
 | 49 目标现状表 | 已交付 | 生成式表格接入 docs-check（T-M8-12） |
 
 ### 1.2 版本策略与兼容承诺
 
 - `target-spec/v1` 是当前唯一接受的插件接口版本。破坏性变更（字段增删、语义变化、WIT world 变化）必须以新版本号（如 `target-spec/v2`）发布，不得就地修改 v1。
-- 宿主拒绝非 v1 插件并返回 `poly::E_PLUGIN_0005`，附迁移提示；当前宿主要求 `target-spec/v1`。
+- 宿主拒绝非 v1 插件并返回 `polypack::E_PLUGIN_0005`，附迁移提示；当前宿主要求 `target-spec/v1`。
 - `polypack.toml` 顶层为 `schema = 1`；`[[plugins]]` 等配置段 `deny_unknown_fields`，未知键直接拒绝，不静默丢弃。
 - 插件制品的内容摘要（SRI）是 `blake3-<hex>`；SRI 与签名必须随制品同时更新。篡改制品后即使同步更新 SRI，验签仍会失败。
 
@@ -44,22 +44,22 @@ M8 生态 GA 交付四件事：WASM 插件 SDK（沙箱、SRI/签名、模板/�
   rustup target add wasm32-unknown-unknown
   ```
 
-- 与本仓同一提交构建的 `poly`（`poly-cli` 的 `publish = false`，尚未发布到 crates.io）。
-- 构建农场 / 发布链路不是插件开发的必需项；本地 `poly build` 即可完成插件目标出包。
+- 与本仓同一提交构建的 `polypack`（`polypack-cli` 的 `publish = false`，尚未发布到 crates.io）。
+- 构建农场 / 发布链路不是插件开发的必需项；本地 `polypack build` 即可完成插件目标出包。
 
 ### 2.2 从脚手架到出包
 
 | 步骤 | 命令 | 预期 |
 |---|---|---|
-| 1. 生成工程 | `poly plugin new pocket-notes` | 生成 `plugin/`、`componentize/`、`contract/`、`build.sh` 等模板文件 |
+| 1. 生成工程 | `polypack plugin new pocket-notes` | 生成 `plugin/`、`componentize/`、`contract/`、`build.sh` 等模板文件 |
 | 2. 构建 wasm | `cd pocket-notes && ./build.sh` | 产物 `dist/plugin.wasm` |
-| 3. 工程检查 | `poly plugin check .` | 脚手架文件齐全、WIT 与宿主一致；`dist/plugin.wasm` 缺失只警告（提示先构建） |
+| 3. 工程检查 | `polypack plugin check .` | 脚手架文件齐全、WIT 与宿主一致；`dist/plugin.wasm` 缺失只警告（提示先构建） |
 | 4. 契约测试 | `cargo test -- --nocapture` | 加载组件并调用 `describe` / `package`；失败常见于契约断言未同步 |
-| 5. 计算 SRI | `poly plugin digest dist/plugin.wasm` | 输出 `blake3-<hex>`（与宿主加载同口径） |
+| 5. 计算 SRI | `polypack plugin digest dist/plugin.wasm` | 输出 `blake3-<hex>`（与宿主加载同口径） |
 | 6. 注册插件 | 编辑应用 `polypack.toml` 的 `[[plugins]]` | 见 §2.3 |
-| 7. 真实出包 | `poly build --config <app>/polypack.toml --target pocket-notes` | 由插件 provider 产出目标产物 |
+| 7. 真实出包 | `polypack build --config <app>/polypack.toml --target pocket-notes` | 由插件 provider 产出目标产物 |
 
-说明：`poly plugin new` 只生成插件工程，不写入应用目录。构建后把 `dist/plugin.wasm` 复制到应用的 `plugins/` 目录，再按 `polypack.toml` 的 `path` 引用。
+说明：`polypack plugin new` 只生成插件工程，不写入应用目录。构建后把 `dist/plugin.wasm` 复制到应用的 `plugins/` 目录，再按 `polypack.toml` 的 `path` 引用。
 
 ### 2.3 在应用中注册
 
@@ -77,9 +77,9 @@ sri = "blake3-<hex>"
 # net = ["api.example.com"]
 ```
 
-- `sri` 设置后，宿主在加载前强制校验；不匹配返回 `poly::E_PLUGIN_0006`。
-- `signature` 与 `trust_root` 必须成对配置；`trust_root` 只放公钥，载荷为 `base64(JSON) {"public_key":"<base64>"}`（keyring / Vault / env 均可承载）。验签失败返回 `poly::E_PLUGIN_0009`，信任根不可用返回 `poly::E_PLUGIN_0010`。
-- 能力默认空：无文件系统、无网络。`fs_read` / `fs_write` 的路径相对工程根；`net` 写 `host` 或 `host:port`。授权清单进入 `JobSpec`，并以 `plugin_granted` 事件出现在 `poly build --json` 输出中。
+- `sri` 设置后，宿主在加载前强制校验；不匹配返回 `polypack::E_PLUGIN_0006`。
+- `signature` 与 `trust_root` 必须成对配置；`trust_root` 只放公钥，载荷为 `base64(JSON) {"public_key":"<base64>"}`（keyring / Vault / env 均可承载）。验签失败返回 `polypack::E_PLUGIN_0009`，信任根不可用返回 `polypack::E_PLUGIN_0010`。
+- 能力默认空：无文件系统、无网络。`fs_read` / `fs_write` 的路径相对工程根；`net` 写 `host` 或 `host:port`。授权清单进入 `JobSpec`，并以 `plugin_granted` 事件出现在 `polypack build --json` 输出中。
 
 ### 2.4 最小宿主工程与产物复制
 
@@ -97,14 +97,14 @@ crate = "core"
 ```bash
 mkdir -p <app>/plugins
 cp dist/plugin.wasm <app>/plugins/pocket-notes.wasm
-poly build --config <app>/polypack.toml --target pocket-notes
+polypack build --config <app>/polypack.toml --target pocket-notes
 ```
 
-> 单机验证提示：`poly plugin digest` 只输出摘要；`poly build --json` 才会给出结构化事件。`poly build` 的人类可读输出当前不显示插件 `describe` 的完整目标声明，需以 `--json` 事件或产物结果核对（见 §7 已知缺口）。
+> 单机验证提示：`polypack plugin digest` 只输出摘要；`polypack build --json` 才会给出结构化事件。`polypack build` 的人类可读输出当前不显示插件 `describe` 的完整目标声明，需以 `--json` 事件或产物结果核对（见 §7 已知缺口）。
 
 ### 2.5 模板契约断言的单一来源
 
-模板的契约测试在 `contract/src/lib.rs` 顶部只保留两个断言常量：`EXPECTED_FORMAT` 与 `EXPECTED_PACKAGE`。修改插件 `describe` / `package` 后同步这两个常量即可；忘记同步会让 `cargo test` 以退出码 101 失败（本次演练的实际卡点，见 §6.4）。模板 WIT 是宿主 `crates/poly-plugin/wit/polypack-target.wit` 的副本：仓库侧由 `tools/check-docs.mjs` 逐字比对门禁兜底，工程侧可用 `poly plugin check` 校验同步状态。
+模板的契约测试在 `contract/src/lib.rs` 顶部只保留两个断言常量：`EXPECTED_FORMAT` 与 `EXPECTED_PACKAGE`。修改插件 `describe` / `package` 后同步这两个常量即可；忘记同步会让 `cargo test` 以退出码 101 失败（本次演练的实际卡点，见 §6.4）。模板 WIT 是宿主 `crates/polypack-plugin/wit/polypack-target.wit` 的副本：仓库侧由 `tools/check-docs.mjs` 逐字比对门禁兜底，工程侧可用 `polypack plugin check` 校验同步状态。
 
 ## 3. 安全模型
 
@@ -116,7 +116,7 @@ poly build --config <app>/polypack.toml --target pocket-notes
 | 文件系统写 | 拒绝 | `fs_write = ["<相对目录>"]` |
 | 出网 | 拒绝 | `net = ["<host 或 host:port>"]` |
 
-授权路径按工程根解析并规范化；越界、路径穿越、符号链接逃逸均返回 `poly::E_PLUGIN_0001`（写操作额外要求写权限）。出网只放行显式白名单；重定向一律不跟随（`max_redirects = 0`），非 2xx 响应返回 `E_PLUGIN_0007`。未授权调用不会获得宿主文件系统或网络句柄。
+授权路径按工程根解析并规范化；越界、路径穿越、符号链接逃逸均返回 `polypack::E_PLUGIN_0001`（写操作额外要求写权限）。出网只放行显式白名单；重定向一律不跟随（`max_redirects = 0`），非 2xx 响应返回 `E_PLUGIN_0007`。未授权调用不会获得宿主文件系统或网络句柄。
 
 ### 3.2 制品完整性与签名链
 
@@ -153,7 +153,7 @@ GPG 操作用一次性 0700 `GNUPGHOME`；信任根只接受公钥，绝不内�
 | `E_PLUGIN_0009` | 签名缺失或验签失败（签名与制品 / 信任根不匹配） |
 | `E_PLUGIN_0010` | 签名信任根不可用（CredentialRef 解析失败 / 公钥导入失败 / 缺验签工具） |
 
-`poly scan` 对 `.wasm` 制品额外施加宿主路径、环境变量痕迹与调试符号规则：`/home/`、`C:\Users\`、`C:/Users/`、`/var/folders/`、`/tmp/`（宿主路径）；`CARGO_MANIFEST_DIR`、`USERPROFILE=`、`TMPDIR=`、`$HOME`（环境痕迹）；`.debug_info`、`.debug_abbrev`（调试段）。命中只报告规则、位置与脱敏描述（偏移），不回显命中路径本身；修复提示为 release 构建并 strip 调试段。
+`polypack scan` 对 `.wasm` 制品额外施加宿主路径、环境变量痕迹与调试符号规则：`/home/`、`C:\Users\`、`C:/Users/`、`/var/folders/`、`/tmp/`（宿主路径）；`CARGO_MANIFEST_DIR`、`USERPROFILE=`、`TMPDIR=`、`$HOME`（环境痕迹）；`.debug_info`、`.debug_abbrev`（调试段）。命中只报告规则、位置与脱敏描述（偏移），不回显命中路径本身；修复提示为 release 构建并 strip 调试段。
 
 ## 4. 农场与发布 GA
 
@@ -184,7 +184,7 @@ GPG 操作用一次性 0700 `GNUPGHOME`；信任根只接受公钥，绝不内�
 | SubmitJournal | 发送前先落盘提交意图；受理后记 `Accepted`；崩溃续跑同键重发 |
 | 平台去重 | 微信 85009（已有审核中版本）等原生去重码视为已受理，不产生二次提交 |
 | 回执 | 回执 schema v2；含提交号与时间戳，可追溯 |
-| 续跑 | `poly retry --from publish` 复用同一回执与提审去重状态 |
+| 续跑 | `polypack retry --from publish` 复用同一回执与提审去重状态 |
 
 自动化止步于「提审」：不承诺自动过审，审核结果以轮询与回执归档为准。
 
@@ -194,35 +194,35 @@ GPG 操作用一次性 0700 `GNUPGHOME`；信任根只接受公钥，绝不内�
 
 | crate | 依赖的内部 crate |
 |---|---|
-| `poly-targets` | 无（依赖图叶层） |
-| `poly-cache` | 无 |
-| `poly-toolchain` | 无 |
-| `poly-core` | `poly-cache`、`poly-targets`（可选 `poly-toolchain`） |
-| `poly-sign` | `poly-core` |
-| `poly-publish` | `poly-core` |
-| `poly-bundle` | `poly-targets` |
-| `poly-plugin` | `poly-core`、`poly-sign`、`poly-targets` |
-| `poly-cli` | 上述全部 |
+| `polypack-targets` | 无（依赖图叶层） |
+| `polypack-cache` | 无 |
+| `polypack-toolchain` | 无 |
+| `polypack-core` | `polypack-cache`、`polypack-targets`（可选 `polypack-toolchain`） |
+| `polypack-sign` | `polypack-core` |
+| `polypack-publish` | `polypack-core` |
+| `polypack-bundle` | `polypack-targets` |
+| `polypack-plugin` | `polypack-core`、`polypack-sign`、`polypack-targets` |
+| `polypack-cli` | 上述全部 |
 
-依赖方向单向：`poly-plugin` 依赖 core / sign / targets，而 core、targets、sign 均不依赖 `poly-plugin`；没有环。Cargo 本身拒绝循环依赖，本表由各 crate 的 `Cargo.toml` 逐项核对。
+依赖方向单向：`polypack-plugin` 依赖 core / sign / targets，而 core、targets、sign 均不依赖 `polypack-plugin`；没有环。Cargo 本身拒绝循环依赖，本表由各 crate 的 `Cargo.toml` 逐项核对。
 
 ### 5.2 no_std 边界
 
-- `poly-targets` 默认 `std`；`--no-default-features` 时 `#![no_std] + alloc`，`TargetSpec` 解析 / 校验与 `TargetProvider` 契约仍可用（`PackageInput` / `PackageArtifact` 均为 alloc 面类型，无 std 专属类型）。
-- `poly-core` 同样在 `--no-default-features` 下保留引擎层与 `JobSpec`（`no_std + alloc`）；std 专属能力（工具链、缓存 std 面、桥、农场、流水线等）由 feature 隔离。
-- `poly-plugin` 依赖 wasmtime，恒为 std；它不进入裸机目标，只作为宿主侧 provider。
-- 内建 provider（`poly-bundle`）为 std；其委托的既有 packagers 源码未因 T-M8-05 改动。
+- `polypack-targets` 默认 `std`；`--no-default-features` 时 `#![no_std] + alloc`，`TargetSpec` 解析 / 校验与 `TargetProvider` 契约仍可用（`PackageInput` / `PackageArtifact` 均为 alloc 面类型，无 std 专属类型）。
+- `polypack-core` 同样在 `--no-default-features` 下保留引擎层与 `JobSpec`（`no_std + alloc`）；std 专属能力（工具链、缓存 std 面、桥、农场、流水线等）由 feature 隔离。
+- `polypack-plugin` 依赖 wasmtime，恒为 std；它不进入裸机目标，只作为宿主侧 provider。
+- 内建 provider（`polypack-bundle`）为 std；其委托的既有 packagers 源码未因 T-M8-05 改动。
 
 ### 5.3 wasmtime 版本与特性
 
 - 版本钉死为 `=49.0.3`；组件模型 / C API 随小版本演进，沙箱边界不接受漂移。
 - `default-features = false`，只启用 `component-model`、`cranelift`、`runtime`、`std`；关闭 async / GC / pooling / cache / profiling / WAT 等非必需特性，减少体积与编译面。
-- 出网能力复用 `ureq`（与 `poly-sign` / `poly-publish` 同版本同特性），关闭默认 rustls provider，使用系统信任库；重定向由调用侧禁用，避免绕过域名白名单。
+- 出网能力复用 `ureq`（与 `polypack-sign` / `polypack-publish` 同版本同特性），关闭默认 rustls provider，使用系统信任库；重定向由调用侧禁用，避免绕过域名白名单。
 
 ### 5.4 provider 统一
 
-- `TargetProvider` 契约位于 `poly-targets`（no_std），`describe` 返回 `TargetSpec`，`package` 接收通用 `PackageInput` 并返回 `PackageArtifact`。
-- 内建目标由 `poly-bundle::BuiltinProvider` 包装既有 packagers；第三方插件由 `poly-plugin::PluginProvider` 桥接 wasm，加载期固化 `describe`。
+- `TargetProvider` 契约位于 `polypack-targets`（no_std），`describe` 返回 `TargetSpec`，`package` 接收通用 `PackageInput` 并返回 `PackageArtifact`。
+- 内建目标由 `polypack-bundle::BuiltinProvider` 包装既有 packagers；第三方插件由 `polypack-plugin::PluginProvider` 桥接 wasm，加载期固化 `describe`。
 - `ProviderRegistry` 按（目标 id，产物格式）统一注册与查找；CLI 的 build / verify / package 走同一路径，无 `if builtin` 特判。
 - 同一套契约测试同时跑内建 Tizen `.wgt` 与 wasm 参考插件；Tizen 统一入口产物与直接打包器字节一致，sha256 基线 `626f4a5988183c434aeeb32b1e28cbb9a300d5fe49eccf0b4bae07c1a14f1532`。
 
@@ -259,12 +259,12 @@ GPG 操作用一次性 0700 `GNUPGHOME`；信任根只接受公钥，绝不内�
 
 | 命令 | 退出码 | 耗时 / 产物 |
 |---|---|---|
-| CLI 构建（cargo build -p poly-cli） | 0 | 1203s |
-| `poly plugin new pocket-notes` | 0 | — |
+| CLI 构建（cargo build -p polypack-cli） | 0 | 1203s |
+| `polypack plugin new pocket-notes` | 0 | — |
 | `./build.sh` | 0 | 197s |
 | `cargo test`（契约） | 0 | 379s |
-| `poly plugin digest` | 0 | — |
-| `poly build --target pocket-notes` | 0 | 3s，92B |
+| `polypack plugin digest` | 0 | — |
+| `polypack build --target pocket-notes` | 0 | 3s，92B |
 | SRI 负向（摘要不匹配） | 1 | `E_PLUGIN_0006` |
 
 ### 6.4 卡点与处置
@@ -272,10 +272,10 @@ GPG 操作用一次性 0700 `GNUPGHOME`；信任根只接受公钥，绝不内�
 | 卡点 | 处置 | 状态 |
 |---|---|---|
 | 模板契约硬编码 | 收敛为 `contract/src/lib.rs` 的 `EXPECTED_FORMAT` / `EXPECTED_PACKAGE` 单一常量来源，并写入模板 README 与本文档 | 本次已修 |
-| 无 `poly plugin check` 命令 | 新增 `poly plugin check <dir>`：校验脚手架文件、WIT 与宿主同步、产物摘要（产物缺失仅警告） | 已修（本次） |
-| 注册示例缺 `sri` | 已在模板 README 与 `poly plugin new` 输出补 SRI 示例 | 已修（`52968b4`） |
+| 无 `polypack plugin check` 命令 | 新增 `polypack plugin check <dir>`：校验脚手架文件、WIT 与宿主同步、产物摘要（产物缺失仅警告） | 已修（本次） |
+| 注册示例缺 `sri` | 已在模板 README 与 `polypack plugin new` 输出补 SRI 示例 | 已修（`52968b4`） |
 | 最小宿主工程未文档化 | 已写入模板 README 与本文档 §2.4 | 已修（`52968b4` / 本文） |
-| digest 横幅 / 产物复制 / build 输出不显露 describe | 记为已知缺口；用 `poly build --json` 事件或产物结果核对 | 已知缺口 |
+| digest 横幅 / 产物复制 / build 输出不显露 describe | 记为已知缺口；用 `polypack build --json` 事件或产物结果核对 | 已知缺口 |
 
 ### 6.5 结论
 
@@ -288,7 +288,7 @@ GPG 操作用一次性 0700 `GNUPGHOME`；信任根只接受公钥，绝不内�
 ```bash
 tools/plugin-signature-drill.sh
 # 等价直接命令：
-CARGO_TARGET_DIR=target cargo test -p poly-plugin --test signature
+CARGO_TARGET_DIR=target cargo test -p polypack-plugin --test signature
 ```
 
 用例使用测试进程内生成的真实 gpg 密钥对、一次性 `GNUPGHOME` 与内存凭据后端：
@@ -309,13 +309,13 @@ CARGO_TARGET_DIR=target cargo test -p poly-plugin --test signature
 CLI 端到端补充（env 凭据载体 + 真实组件制品，2026-10-19）：
 
 ```bash
-CARGO_TARGET_DIR=target cargo test -p poly-cli --test plugin_trust_root_env
+CARGO_TARGET_DIR=target cargo test -p polypack-cli --test plugin_trust_root_env
 # test result: ok. 1 passed; 0 failed
 ```
 
-`cli_resolves_trust_root_from_env_and_loads_signed_plugin` 建临时工程，`[[plugins]]` 指向仓库内真实组件夹具 `crates/poly-plugin/tests/fixtures/reference-plugin.wasm`（由 `guests/build.sh` 编译产出并提交入库），并用一次性 0700 GNUPGHOME 内的 gpg 密钥对写分离签名。配置只出现 `trust_root = { name = "plugin-trust-root", source = { env = { variable = "POLYPACK_PLUGIN_TRUST_ROOT" } } }`，公钥载荷 `base64(JSON) {"public_key":"<base64>"}` 经子进程环境注入。正向 `poly build --target linux-reference --json` 断言插件被接受（`plugin_granted`）、`describe` 声明的目标可用、`packaged`（`reference-bin`）事件与暂存产物落地；负向以另一把公钥与缺失环境变量分别断言 `E_PLUGIN_0009` / `E_PLUGIN_0010`。宿主无 gpg 时打印 SKIP；夹具缺失是编译期失败，不会静默跳过。
+`cli_resolves_trust_root_from_env_and_loads_signed_plugin` 建临时工程，`[[plugins]]` 指向仓库内真实组件夹具 `crates/polypack-plugin/tests/fixtures/reference-plugin.wasm`（由 `guests/build.sh` 编译产出并提交入库），并用一次性 0700 GNUPGHOME 内的 gpg 密钥对写分离签名。配置只出现 `trust_root = { name = "plugin-trust-root", source = { env = { variable = "POLYPACK_PLUGIN_TRUST_ROOT" } } }`，公钥载荷 `base64(JSON) {"public_key":"<base64>"}` 经子进程环境注入。正向 `polypack build --target linux-reference --json` 断言插件被接受（`plugin_granted`）、`describe` 声明的目标可用、`packaged`（`reference-bin`）事件与暂存产物落地；负向以另一把公钥与缺失环境变量分别断言 `E_PLUGIN_0009` / `E_PLUGIN_0010`。宿主无 gpg 时打印 SKIP；夹具缺失是编译期失败，不会静默跳过。
 
-边界：上表验证宿主加载链（SRI → 验签 → 组件解析 → 实例化）；CLI 经 env 载体解析信任根并加载真实组件制品的路径已由上述 `plugin_trust_root_env` 自动化。keyring（依赖宿主 Secret Service / Keychain / Credential Manager）与 Vault（依赖 Vault 服务与客户端接线）载体仍是环境槽，未纳入自动门禁；夹具在测试时不再重编译（模板 → `build.sh` 的真编译链路由 `poly-cli` 的 `POLY_CONTRACT_REAL=1` 用例另行覆盖）。
+边界：上表验证宿主加载链（SRI → 验签 → 组件解析 → 实例化）；CLI 经 env 载体解析信任根并加载真实组件制品的路径已由上述 `plugin_trust_root_env` 自动化。keyring（依赖宿主 Secret Service / Keychain / Credential Manager）与 Vault（依赖 Vault 服务与客户端接线）载体仍是环境槽，未纳入自动门禁；夹具在测试时不再重编译（模板 → `build.sh` 的真编译链路由 `polypack-cli` 的 `POLYPACK_CONTRACT_REAL=1` 用例另行覆盖）。
 
 ## 7. 已知缺口与后续
 
@@ -325,10 +325,10 @@ CARGO_TARGET_DIR=target cargo test -p poly-cli --test plugin_trust_root_env
 
 | 缺口 | 影响 | 处置 / 后续 |
 |---|---|---|
-| 无独立 `poly plugin check` | 作者需手工串 build / test / digest / build | 已修：`poly plugin check <dir>` 一条命令校验脚手架文件 / WIT 同步 / 产物摘要（产物缺失仅警告） |
-| 模板 WIT 与宿主 WIT 无自动比对 | 接口升级需手工同步模板副本 | 已修：`tools/check-docs.mjs` 新增模板 WIT ↔ 宿主 WIT 逐字比对门禁；`poly plugin check` 对工程 WIT 做同口径校验 |
-| 签名 / 信任根未在演练端到端走查 | 演练只覆盖 SRI 负向 | 已修（2026-10-19）：§6.6 `tools/plugin-signature-drill.sh` 真跑签名链 8/8（有效 / 篡改 / 缺签名 / 错公钥 / SRI 先行 / 信任根不可用 / 无泄漏 / 配置引用）；同节 `plugin_trust_root_env` 已自动化 CLI env 载体 + 真实组件制品的 `poly build` 通过 / 失败路径（有效签名出包、错公钥 `E_PLUGIN_0009`、缺 env `E_PLUGIN_0010`）。剩余：keyring / Vault 载体已关闭——ENV-15（run 39409593528）与 ENV-16（run 39414212765）已在隔离 Secret Service / Vault dev 服务上真跑通过；生产 Vault 集群 / 私有 CA 另行立槽 |
-| 单全局 `--credential` 无法满足异构多目标 | rpm/deb 与 pkg 需不同签名材料时只能分次发布 | 已修：`poly release` 支持重复 `--credential` 与 `TARGET=REF` 映射；裸 `REF` 仍为全局缺省；未知/重复映射报 `E_PLAN_0002`；异构真跑仍需真实 keyring / Vault 环境 |
+| 无独立 `polypack plugin check` | 作者需手工串 build / test / digest / build | 已修：`polypack plugin check <dir>` 一条命令校验脚手架文件 / WIT 同步 / 产物摘要（产物缺失仅警告） |
+| 模板 WIT 与宿主 WIT 无自动比对 | 接口升级需手工同步模板副本 | 已修：`tools/check-docs.mjs` 新增模板 WIT ↔ 宿主 WIT 逐字比对门禁；`polypack plugin check` 对工程 WIT 做同口径校验 |
+| 签名 / 信任根未在演练端到端走查 | 演练只覆盖 SRI 负向 | 已修（2026-10-19）：§6.6 `tools/plugin-signature-drill.sh` 真跑签名链 8/8（有效 / 篡改 / 缺签名 / 错公钥 / SRI 先行 / 信任根不可用 / 无泄漏 / 配置引用）；同节 `plugin_trust_root_env` 已自动化 CLI env 载体 + 真实组件制品的 `polypack build` 通过 / 失败路径（有效签名出包、错公钥 `E_PLUGIN_0009`、缺 env `E_PLUGIN_0010`）。剩余：keyring / Vault 载体已关闭——ENV-15（run 39409593528）与 ENV-16（run 39414212765）已在隔离 Secret Service / Vault dev 服务上真跑通过；生产 Vault 集群 / 私有 CA 另行立槽 |
+| 单全局 `--credential` 无法满足异构多目标 | rpm/deb 与 pkg 需不同签名材料时只能分次发布 | 已修：`polypack release` 支持重复 `--credential` 与 `TARGET=REF` 映射；裸 `REF` 仍为全局缺省；未知/重复映射报 `E_PLAN_0002`；异构真跑仍需真实 keyring / Vault 环境 |
 | keyring 3.6.3 拉入 zbus 4.x（unmaintained） | 供应链告警（非漏洞） | 已升级 keyring 4.2.0（`v1` 兼容层）→ zbus 5.19；zbus 5 仍以独立 crate 携带 `zvariant` / `zvariant_derive` / `zbus_names`，RUSTSEC-2026-0370/0371/0372 豁免保留（升级路径 zbus 6） |
 | macOS 农场 IPA R3 为环境槽 SKIP | Linux 环境无 Xcode / codesign | 按 FARM-DEPLOY §9 保持开放，macOS 主机执行后替换 |
 | 真实云对象存储（AWS S3 / 阿里云 OSS 原生）未跑通 | S3 兼容后端（SigV4 + OSS `x-oss-s3-compat`）已实现；MinIO CI 已覆盖兼容往返与两 worker 二跑 | ENV-17 已关闭（run 39425835979）：`s3_real` PUT / GET / LIST / DELETE + 共享桶 1/1 命中通过；AWS / 阿里云 OSS 原生证据另行提供，MinIO 结果不代表第三方云 |

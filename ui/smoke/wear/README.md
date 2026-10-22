@@ -13,7 +13,7 @@ APK `bytes` / `sha256`、node / platform），失败记录额外带自描述的 
 逐 step `uiautomator` dump `<case>-<step>.xml`。发版门见 `.github/workflows/wear-release-smoke.yml`。
 
 本套件只覆盖**真机/模拟器腿**；APK 产物与 `bundletool validate` 由 Rust 侧
-`crates/poly-bundle/tests/packagers_android_wear.rs` 真跑（本机无 bundletool 时该腿
+`crates/polypack-bundle/tests/packagers_android_wear.rs` 真跑（本机无 bundletool 时该腿
 SKIP-with-print）。
 
 ## 被测应用契约（表单锚点）

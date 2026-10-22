@@ -15,14 +15,14 @@ categories = ["development-tools::build-utils", "command-line-utilities"]
 
 [workspace.dependencies]
 # version 是 crates.io 发布所需（path 依赖在打包时被替换为 registry 版本）。
-poly-bundle = { version = "1.16.0", path = "crates/poly-bundle" }
-poly-cache = { version = "1.16.0", path = "crates/poly-cache" }
-poly-core = { version = "1.16.0", path = "crates/poly-core" }
-poly-plugin = { version = "1.16.0", path = "crates/poly-plugin" }
-poly-publish = { version = "1.16.0", path = "crates/poly-publish" }
-poly-sign = { version = "1.16.0", path = "crates/poly-sign" }
-poly-targets = { version = "1.16.0", path = "crates/poly-targets" }
-poly-toolchain = { version = "1.16.0", path = "crates/poly-toolchain" }
+polypack-bundle = { version = "1.16.0", path = "crates/polypack-bundle" }
+polypack-cache = { version = "1.16.0", path = "crates/polypack-cache" }
+polypack-core = { version = "1.16.0", path = "crates/polypack-core" }
+polypack-plugin = { version = "1.16.0", path = "crates/polypack-plugin" }
+polypack-publish = { version = "1.16.0", path = "crates/polypack-publish" }
+polypack-sign = { version = "1.16.0", path = "crates/polypack-sign" }
+polypack-targets = { version = "1.16.0", path = "crates/polypack-targets" }
+polypack-toolchain = { version = "1.16.0", path = "crates/polypack-toolchain" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 toml = "0.8"

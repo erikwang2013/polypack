@@ -1,10 +1,10 @@
 # Wear JS 目标真实工具链契约（ENV-12 / ENV-13，T-M7-07 / T-M7-08）。
 #
 # - fitbit 腿：安装官方 `@fitbit/sdk-cli`（`fitbit` 命令）与 `@fitbit/sdk`
-#   （`fitbit-build` 由 sdk 包提供，sdk-cli 本身不带该 bin），再跑 `poly build/verify
+#   （`fitbit-build` 由 sdk 包提供，sdk-cli 本身不带该 bin），再跑 `polypack build/verify
 #   --target fitbit`。`fitbit-build` 缺席、自检未通过或出现 SKIP-with-print = 本作业失败，
 #   绝不把 SKIP 当绿。keytar 原生依赖需要 libsecret-1-dev。
-# - zepp 腿：安装 `@zeppos/zeus-cli`，跑 `zeus --version` 与 `poly build/verify
+# - zepp 腿：安装 `@zeppos/zeus-cli`，跑 `zeus --version` 与 `polypack build/verify
 #   --target zepp`。zeus 自检必须真跑；GUI 模拟器安装腿不在本作业（GL runner 无 GUI），
 #   verify 的 `模拟器安装腿 SKIP-with-print` 注记必须保留，属 ENV-13 外部人工腿。
 #
@@ -64,13 +64,13 @@ jobs:
       - name: Fitbit 真跑（官方 CLI 自检 + .fba 打包 / 结构校验）
         run: |
           set -euo pipefail
-          LOGS="$RUNNER_TEMP/poly-wear-js-logs/fitbit"
-          APP="$RUNNER_TEMP/poly-fitbit"
+          LOGS="$RUNNER_TEMP/polypack-wear-js-logs/fitbit"
+          APP="$RUNNER_TEMP/polypack-fitbit"
           mkdir -p "$LOGS"
-          POLY="$GITHUB_WORKSPACE/target/debug/poly"
-          cargo build -p poly-cli
+          POLYPACK="$GITHUB_WORKSPACE/target/debug/polypack"
+          cargo build -p polypack-cli
 
-          "$POLY" init "$APP" >/dev/null
+          "$POLYPACK" init "$APP" >/dev/null
           # 最小 Fitbit SDK 工程（官方 config.fitbit 面；app/index.js 原样入包）。
           mkdir -p "$APP/fitbit/app" "$APP/fitbit/resources"
           cat > "$APP/fitbit/package.json" <<'EOF'
@@ -93,8 +93,8 @@ jobs:
           printf '\n[targets.fitbit]\nformat = "fba"\n' >> "$APP/polypack.toml"
 
           cd "$APP"
-          "$POLY" build --target fitbit --json | tee "$LOGS/build.jsonl"
-          "$POLY" verify --target fitbit --json | tee "$LOGS/verify.jsonl"
+          "$POLYPACK" build --target fitbit --json | tee "$LOGS/build.jsonl"
+          "$POLYPACK" verify --target fitbit --json | tee "$LOGS/verify.jsonl"
 
           # 真实门：产物 + 结构校验器必须真发事件；官方 CLI 自检必须真跑。
           grep -q '"event":"packaged"' "$LOGS/build.jsonl"
@@ -122,7 +122,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: wear-js-fitbit-evidence
-          path: ${{ runner.temp }}/poly-wear-js-logs/fitbit/**
+          path: ${{ runner.temp }}/polypack-wear-js-logs/fitbit/**
           include-hidden-files: true
           if-no-files-found: error
           retention-days: 14
@@ -159,13 +159,13 @@ jobs:
       - name: Zepp 真跑（zeus 自检 + .zab 打包 / 结构校验；模拟器腿保持外部）
         run: |
           set -euo pipefail
-          LOGS="$RUNNER_TEMP/poly-wear-js-logs/zepp"
-          APP="$RUNNER_TEMP/poly-zepp"
+          LOGS="$RUNNER_TEMP/polypack-wear-js-logs/zepp"
+          APP="$RUNNER_TEMP/polypack-zepp"
           mkdir -p "$LOGS"
-          POLY="$GITHUB_WORKSPACE/target/debug/poly"
-          cargo build -p poly-cli
+          POLYPACK="$GITHUB_WORKSPACE/target/debug/polypack"
+          cargo build -p polypack-cli
 
-          "$POLY" init "$APP" >/dev/null
+          "$POLYPACK" init "$APP" >/dev/null
           # 最小 Zepp OS 工程（官方 app.json + app.js；打包器按原样入包）。
           mkdir -p "$APP/zepp"
           cat > "$APP/zepp/app.json" <<'EOF'
@@ -184,8 +184,8 @@ jobs:
           printf '\n[targets.zepp]\nformat = "zab"\n' >> "$APP/polypack.toml"
 
           cd "$APP"
-          "$POLY" build --target zepp --json | tee "$LOGS/build.jsonl"
-          "$POLY" verify --target zepp --json | tee "$LOGS/verify.jsonl"
+          "$POLYPACK" build --target zepp --json | tee "$LOGS/build.jsonl"
+          "$POLYPACK" verify --target zepp --json | tee "$LOGS/verify.jsonl"
 
           grep -q '"event":"packaged"' "$LOGS/build.jsonl"
           grep -q '"format":"zab"' "$LOGS/build.jsonl"
@@ -213,7 +213,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: wear-js-zepp-evidence
-          path: ${{ runner.temp }}/poly-wear-js-logs/zepp/**
+          path: ${{ runner.temp }}/polypack-wear-js-logs/zepp/**
           include-hidden-files: true
           if-no-files-found: error
           retention-days: 14

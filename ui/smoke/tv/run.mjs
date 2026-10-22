@@ -6,7 +6,7 @@
 //   node run.mjs --leg android [--serial <adb serial>] [--apk <宿主 apk>] [--logs <dir>]
 //   node run.mjs --leg web [--targets tizen-tv,webos-tv] [--dist <ui dist>] [--chrome <路径>] [--logs <dir>]
 //   node run.mjs --leg all          # 缺省：android + web + tizen/webOS 模拟器探测（缺席 SKIP）
-// 缺省：dist = host/dist（vite build 产物）；logs = POLY_TV_SMOKE_LOGS 或 target/tv-smoke-logs。
+// 缺省：dist = host/dist（vite build 产物）；logs = POLYPACK_TV_SMOKE_LOGS 或 target/tv-smoke-logs。
 // 退出码：任一目标 fail → 1；全 pass / skip（SKIP-with-print 注记）→ 0。
 
 import { mkdirSync, writeFileSync } from "node:fs";
@@ -26,7 +26,7 @@ const opt = (name) => {
 };
 
 const leg = opt("leg") ?? "all";
-const logs = resolve(opt("logs") ?? process.env.POLY_TV_SMOKE_LOGS ?? resolve(HERE, "../../../target/tv-smoke-logs"));
+const logs = resolve(opt("logs") ?? process.env.POLYPACK_TV_SMOKE_LOGS ?? resolve(HERE, "../../../target/tv-smoke-logs"));
 const dist = resolve(opt("dist") ?? resolve(HERE, "host/dist"));
 const webTargets = (opt("targets") ?? "tizen-tv,webos-tv").split(",").map((t) => t.trim()).filter((t) => t.length > 0);
 

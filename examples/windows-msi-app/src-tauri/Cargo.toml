@@ -1,5 +1,5 @@
 [package]
-name = "poly-msi-sample"
+name = "polypack-msi-sample"
 version = "0.1.0"
 description = "Minimal Tauri v2 sample used by the PolyPack real-MSI test (T-M9-53/54)"
 edition = "2021"

@@ -1,3 +1,0 @@
-name: poly_engine
-build:
-  cmake: .

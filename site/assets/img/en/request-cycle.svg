@@ -749,7 +749,7 @@ svg[data-preset="editorial"][data-animation="trace"] [data-animate="node"] {
 svg { --bg: #f8fafc; --grid: #e2e8f0; --text: #0f172a; --text-muted: #64748b; --text-dim: #94a3b8; --text-faint: #64748b; --panel: #ffffff; --panel-border: #e2e8f0; --lane-fill: rgba(248, 250, 252, 0.65); --lane-stroke: #cbd5e1; --arrow: #94a3b8; --arrow-emphasis: #059669; --mask: #ffffff; --frontend-fill: rgba(34, 211, 238, 0.15); --frontend-stroke: #0891b2; --backend-fill: rgba(52, 211, 153, 0.18); --backend-stroke: #059669; --database-fill: rgba(167, 139, 250, 0.2); --database-stroke: #7c3aed; --cloud-fill: rgba(251, 191, 36, 0.18); --cloud-stroke: #d97706; --security-fill: rgba(251, 113, 133, 0.15); --security-stroke: #e11d48; --messagebus-fill: rgba(251, 146, 60, 0.15); --messagebus-stroke: #ea580c; --external-fill: rgba(148, 163, 184, 0.18); --external-stroke: #64748b; --toolbar-bg: rgba(255, 255, 255, 0.92); --toolbar-border: #cbd5e1; --toolbar-text: #334155; --toolbar-hover: #ffffff; --toolbar-menu-bg: #ffffff; }
 rect.c-bg-rect { fill: var(--bg); }</style><rect class="c-bg-rect" width="100%" height="100%"/>
         <title id="archify-diagram-title">Build Request Cycle</title>
-        <desc id="archify-diagram-description">The full journey of one poly release — from a single command to multi-platform artifacts and publishing</desc>
+        <desc id="archify-diagram-description">The full journey of one polypack release — from a single command to multi-platform artifacts and publishing</desc>
         <!-- Definitions -->
         <defs>
           <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
@@ -799,11 +799,11 @@ rect.c-bg-rect { fill: var(--bg); }</style><rect class="c-bg-rect" width="100%" 
         <path d="M 818 142 L 818 775" class="a-default" stroke-width="0.8" stroke-dasharray="3,7"/>
 
         <!-- Messages -->
-        <g data-edge-from="dev" data-edge-to="cli" data-edge-label="poly release --target …" data-edge-key="0" data-edge-id="release-cmd">
+        <g data-edge-from="dev" data-edge-to="cli" data-edge-label="polypack release --target …" data-edge-key="0" data-edge-id="release-cmd">
           <path data-composition-edge-from="dev" data-composition-edge-to="cli" data-composition-edge-id="release-cmd" data-composition-points="69,185;163,185" d="M 69 185 L 163 185" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
         <g data-detail="context">
           <rect x="50.19999999999999" y="165" width="131.60000000000002" height="16" rx="3" class="c-mask"/>
-          <text x="116" y="175" class="t-backend" font-size="9" text-anchor="middle">poly release --target …</text>
+          <text x="116" y="175" class="t-backend" font-size="9" text-anchor="middle">polypack release --target …</text>
         </g>
         </g>
 
@@ -932,8 +932,8 @@ rect.c-bg-rect { fill: var(--bg); }</style><rect class="c-bg-rect" width="100%" 
           <text data-detail="context" x="62" y="111" class="t-muted" font-size="7" text-anchor="middle">trigger build</text>
         </g>
 
-        <g id="node-cli" data-node-id="cli" data-node-label="poly CLI" tabindex="0" role="button" aria-label="Focus poly CLI, args · manifest, Sequence participant" aria-pressed="false" data-node-kind="frontend" data-node-sublabel="args · manifest" data-node-context="Sequence participant">
-          <title>poly CLI · args · manifest · Sequence participant</title>
+        <g id="node-cli" data-node-id="cli" data-node-label="polypack CLI" tabindex="0" role="button" aria-label="Focus polypack CLI, args · manifest, Sequence participant" aria-pressed="false" data-node-kind="frontend" data-node-sublabel="args · manifest" data-node-context="Sequence participant">
+          <title>polypack CLI · args · manifest · Sequence participant</title>
           <rect x="127" y="72" width="86" height="54" rx="6" class="c-mask"/>
           <rect x="127" y="72" width="86" height="54" rx="6" class="c-frontend" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="frontend" class="semantic-sigil s-frontend" transform="translate(133 78) scale(0.6875)">
@@ -942,18 +942,18 @@ rect.c-bg-rect { fill: var(--bg); }</style><rect class="c-bg-rect" width="100%" 
             <circle cx="4.1" cy="4.8" r=".7" class="sigil-fill"/>
             <circle cx="6.3" cy="4.8" r=".7" class="sigil-fill"/>
           </g>
-          <text data-detail-anchor="" x="170" y="94" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">poly CLI</text>
+          <text data-detail-anchor="" x="170" y="94" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">polypack CLI</text>
           <text data-detail="context" x="170" y="111" class="t-muted" font-size="7" text-anchor="middle">args · manifest</text>
         </g>
 
-        <g id="node-core" data-node-id="core" data-node-label="poly-core" tabindex="0" role="button" aria-label="Focus poly-core, orchestration · scheduling, Sequence participant" aria-pressed="false" data-node-kind="backend" data-node-sublabel="orchestration · scheduling" data-node-context="Sequence participant">
-          <title>poly-core · orchestration · scheduling · Sequence participant</title>
+        <g id="node-core" data-node-id="core" data-node-label="polypack-core" tabindex="0" role="button" aria-label="Focus polypack-core, orchestration · scheduling, Sequence participant" aria-pressed="false" data-node-kind="backend" data-node-sublabel="orchestration · scheduling" data-node-context="Sequence participant">
+          <title>polypack-core · orchestration · scheduling · Sequence participant</title>
           <rect x="235" y="72" width="86" height="54" rx="6" class="c-mask"/>
           <rect x="235" y="72" width="86" height="54" rx="6" class="c-backend" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(241 78) scale(0.6875)">
             <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
           </g>
-          <text data-detail-anchor="" x="278" y="94" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">poly-core</text>
+          <text data-detail-anchor="" x="278" y="94" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">polypack-core</text>
           <text data-detail="context" x="278" y="111" class="t-muted" font-size="7" text-anchor="middle">orchestration · scheduling</text>
         </g>
 

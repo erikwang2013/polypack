@@ -9,7 +9,7 @@ mod bindings {
 
 use bindings::{BuildInputs, CoreLib, PolypackTarget, PolypackTargetImports, UiBundle};
 
-/// 与 `plugin/src/lib.rs` 的 `PLUGIN_ID` 保持一致（`poly plugin new` 同步替换）。
+/// 与 `plugin/src/lib.rs` 的 `PLUGIN_ID` 保持一致（`polypack plugin new` 同步替换）。
 pub const PLUGIN_ID: &str = "__polypack_plugin_id__";
 
 /// 模板默认产物格式；自定义 `describe` / `package` 后同步本常量。

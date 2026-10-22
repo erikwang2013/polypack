@@ -24,7 +24,7 @@ ignore = [
 [bans]
 # 禁通配版本依赖（"*"）
 wildcards = "deny"
-# 工作区内部 path 依赖天然写作 "*"（poly-cli -> poly-core 等），放行这类非 registry 依赖
+# 工作区内部 path 依赖天然写作 "*"（polypack-cli -> polypack-core 等），放行这类非 registry 依赖
 allow-wildcard-paths = true
 
 [sources]

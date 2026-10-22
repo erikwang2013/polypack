@@ -3,7 +3,7 @@
 # - **mock 模式（默认，每提交 / PR）**：不依赖任何开发者工具——断言注册表 verify 声明 ↔ CLI 表
 #   一致、调用面组装（程序 / 参数 / 环境）、登录态注入与脱敏（0600 临时文件、值不进 line() /
 #   日志）、Taro 代码包结构与金样逐条比对；缺工具处按测试内 SKIP-with-print 纪律打印后通过。
-# - **真实模式（每夜 18:47 UTC + 手动触发）**：`POLY_CONTRACT_REAL=1`。Taro 工具链真装
+# - **真实模式（每夜 18:47 UTC + 手动触发）**：`POLYPACK_CONTRACT_REAL=1`。Taro 工具链真装
 #   （宿主工程 npm install）后真编译三端代码包；devtools CLI 在场且登录态已注入时才真调起预览
 #   （有界 180s），**输出做脱敏断言**（登录态值绝不入日志）；三端 CLI 全缺席 = 逐端
 #   SKIP-with-print 注记（GitHub 托管 runner 装不了微信开发者工具 GUI 版），绝不静默降级。
@@ -48,7 +48,7 @@ jobs:
         env:
           TMPDIR: ${{ runner.temp }}
         run: |
-          cargo test -p poly-cli --test contract_m3_miniapp --test contract_m3_devtools \
+          cargo test -p polypack-cli --test contract_m3_miniapp --test contract_m3_devtools \
             --no-fail-fast -- --nocapture
 
   real:
@@ -57,7 +57,7 @@ jobs:
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     runs-on: macos-14
     env:
-      POLY_CONTRACT_REAL: "1"
+      POLYPACK_CONTRACT_REAL: "1"
       # 自装 devtools 的宿主由仓库变量指路（未设置 = 空串 → 测试探测链兜底）
       POLYPACK_WECHAT_DEVTOOLS_CLI: ${{ vars.POLYPACK_WECHAT_DEVTOOLS_CLI }}
       POLYPACK_ALIPAY_DEVTOOLS_CLI: ${{ vars.POLYPACK_ALIPAY_DEVTOOLS_CLI }}
@@ -117,7 +117,7 @@ jobs:
           POLYPACK_ALIPAY_DEVTOOLS_LOGIN: ${{ secrets.POLYPACK_ALIPAY_DEVTOOLS_LOGIN }}
           POLYPACK_DOUYIN_DEVTOOLS_LOGIN: ${{ secrets.POLYPACK_DOUYIN_DEVTOOLS_LOGIN }}
         run: |
-          cargo test -p poly-cli --test contract_m3_miniapp --test contract_m3_devtools \
+          cargo test -p polypack-cli --test contract_m3_miniapp --test contract_m3_devtools \
             --no-fail-fast -- --nocapture
 
       - name: 留产物（真跑；测试失败也留，便于定位）
@@ -128,7 +128,7 @@ jobs:
           # `.polypack` 是隐藏目录：v4 默认跳过隐藏文件，须显式打开
           include-hidden-files: true
           path: |
-            ${{ runner.temp }}/poly-contract-m3-*/.polypack/packages/**
+            ${{ runner.temp }}/polypack-contract-m3-*/.polypack/packages/**
           # 首夜先 warn：devtools 腿无工具时会 SKIP（不建临时工程），glob 可能部分空转；
           # 实证非空后翻 error（M2 教训：先证明再收紧，勿把首夜空转误判为异常）
           if-no-files-found: warn

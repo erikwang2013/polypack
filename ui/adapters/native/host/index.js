@@ -62,7 +62,7 @@ RN.BackHandler.addEventListener("hardwareBackPress", () => {
   return true;
 });
 
-// 原生模块注册位（T-M2-02 口径）：AAR 由 `poly bridge aar` 产出到 <工程根>/bridge/android/，
+// 原生模块注册位（T-M2-02 口径）：AAR 由 `polypack bridge aar` 产出到 <工程根>/bridge/android/，
 // entryClass = uniffi.<UDL namespace>.<Ns>Kt，libraryName = .so 基名（System.loadLibrary 入参）。
 // 示例取 T-M2-01/02 真跑夹具（pax.udl + pax_core）：
 // adapter.native.register({

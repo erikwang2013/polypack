@@ -15,8 +15,8 @@
     { "id": "terminal", "label": "Terminal" }
   ],
   "states": [
-    { "id": "init", "type": "start", "label": "Bootstrap", "sublabel": "poly init · manifest generated", "lane": "main", "col": 0, "step": "01", "tag": "entry" },
-    { "id": "dev", "type": "active", "label": "Dev iteration", "sublabel": "poly dev · hot preview", "lane": "main", "col": 1, "step": "02" },
+    { "id": "init", "type": "start", "label": "Bootstrap", "sublabel": "polypack init · manifest generated", "lane": "main", "col": 0, "step": "01", "tag": "entry" },
+    { "id": "dev", "type": "active", "label": "Dev iteration", "sublabel": "polypack dev · hot preview", "lane": "main", "col": 1, "step": "02" },
     { "id": "build", "type": "active", "label": "Build", "sublabel": "cross-compile + UI bundle", "lane": "main", "col": 2, "step": "03" },
     { "id": "verify", "type": "decision", "label": "Sign & verify", "sublabel": "notarization · integrity", "lane": "main", "col": 3, "step": "04" },
     { "id": "release", "type": "success", "label": "Release", "sublabel": "stores / self-hosted", "lane": "main", "col": 4, "step": "05" },
@@ -28,7 +28,7 @@
   ],
   "transitions": [
     { "id": "init-dev", "from": "init", "to": "dev", "variant": "default" },
-    { "id": "dev-build", "from": "dev", "to": "build", "label": "poly build", "variant": "emphasis", "labelAt": [325, 202] },
+    { "id": "dev-build", "from": "dev", "to": "build", "label": "polypack build", "variant": "emphasis", "labelAt": [325, 202] },
     { "id": "build-verify", "from": "build", "to": "verify", "label": "artifacts ready", "variant": "default", "labelAt": [479, 202] },
     { "id": "verify-release", "from": "verify", "to": "release", "label": "verified", "variant": "emphasis", "labelAt": [633, 202] },
     { "id": "verify-keys", "from": "verify", "to": "keys", "label": "missing creds", "variant": "security", "fromSide": "bottom", "toSide": "top", "route": "straight", "labelAt": [498, 233] },

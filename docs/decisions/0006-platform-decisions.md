@@ -4,9 +4,9 @@
 - 日期（Date）：2026-10-20
 - 决策者（Deciders）：项目维护者
 
-> **后续更新（2026-10-20）**：P3 已按本决策落地为部署模式，实际命令是 `poly deploy line-liff`（不是 `poly deploy --target line-liff`）；P1 retired 与 P2 季度复审（2027-01-20）已写入 README / TASKS。正文保留决策时的表述。
+> **后续更新（2026-10-20）**：P3 已按本决策落地为部署模式，实际命令是 `polypack deploy line-liff`（不是 `polypack deploy --target line-liff`）；P1 retired 与 P2 季度复审（2027-01-20）已写入 README / TASKS。正文保留决策时的表述。
 >
-> **Follow-up (2026-10-20)**: P3 landed as a deploy mode per this decision; the actual command is `poly deploy line-liff` (not `poly deploy --target line-liff`). P1's retired status and P2's quarterly review (2027-01-20) are recorded in README / TASKS. The body preserves the wording from decision time.
+> **Follow-up (2026-10-20)**: P3 landed as a deploy mode per this decision; the actual command is `polypack deploy line-liff` (not `polypack deploy --target line-liff`). P1's retired status and P2's quarterly review (2027-01-20) are recorded in README / TASKS. The body preserves the wording from decision time.
 
 > **English abstract**: This record closes the decision phase for the eight planned platforms (M9-P1–M9-P8). Google Play Instant is closed and kept as a retired row; Snapchat Mini is closed with a quarterly review; LINE Mini App is a conditional deploy mode without a TargetSpec; Sailfish OS and Ubuntu Touch are conditional on a sponsor or committed user providing devices and accounts; PlayStation, Xbox, and Nintendo Switch stay NDA-gated with no SDK or platform code in the public repository. Evidence was reviewed on 2026-10-20. No TargetSpec, packager, SDK, generator, or README count change is made here.
 
@@ -55,7 +55,7 @@
 
 ### M9-P3 · LINE Mini App — 条件支持（仅部署模式）
 
-- **结论**：条件支持 `poly deploy --target line-liff` 一类的**部署模式**：校验配置、输出 Console 人工步骤、复用 Web 构建；**不声明 TargetSpec，不生成平台包**。
+- **结论**：条件支持 `polypack deploy --target line-liff` 一类的**部署模式**：校验配置、输出 Console 人工步骤、复用 Web 构建；**不声明 TargetSpec，不生成平台包**。
 - **理由**：LIFF 应用由 LINE Developers Console 以托管 URL 注册（LINE Login 渠道 → LIFF；Endpoint URL 必须 HTTPS 且不得含 fragment）；官方没有本地上传包格式或 LIFF 配置文件，也没有 CI 上传 API。把它做成 TargetSpec 会伪造不存在的平台产物。
 - **证据日期与依据**：2026-10-20 复核；记录见 [INITIATIVES](../INITIATIVES.md) §3 M9-P3。
 - **重开 / 启动条件**：出现明确使用 LINE 渠道的用户，且接受「只托管 URL、无本地上传包」。启动后只做 T-M9-26 / T-M9-27。
@@ -103,7 +103,7 @@
 
 ## 全局边界（Scope）
 
-- 本 ADR **不新增或修改任何 TargetSpec、packager、SDK、CLI 代码**；不新增 `crates/poly-targets/src/builtin.rs` 条目。
+- 本 ADR **不新增或修改任何 TargetSpec、packager、SDK、CLI 代码**；不新增 `crates/polypack-targets/src/builtin.rs` 条目。
 - 本 ADR **不修改** `tools/gen-status-table.mjs` 的 `PLATFORMS` / `TOTAL` / `TIER_COUNTS`，也不修改 README 49 目标表与分级计数。P1 的 retired 行落地、P2 的复审标注与相关计数由 T-M9-22 与集成 owner 在后续提交执行，并统一跑 `node tools/check-docs.mjs`。
 - 条件与 NDA 门控平台在触发前保持 `planned` / 候选状态，不进入 M0–M8 排期，不产生版本承诺。
 - 所有平台结论不改变支持矩阵中已声明目标的任何字段；已声明目标仍以 TargetSpec 为单一事实源。

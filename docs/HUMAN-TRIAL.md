@@ -40,18 +40,18 @@
 | 阶段 | 分钟 | 任务 | 观察点 |
 | --- | --- | --- | --- |
 | 准备 | 10 | 检查环境、签署同意书、说明 think-aloud | 是否理解目标与记录方式 |
-| 脚手架 | 20 | `poly init` 或 `poly plugin new pocket-notes`，再跑 `poly plugin check` | 文档入口、首次报错、等待时间 |
+| 脚手架 | 20 | `polypack init` 或 `polypack plugin new pocket-notes`，再跑 `polypack plugin check` | 文档入口、首次报错、等待时间 |
 | 自定义目标 | 35 | 按 GA §2 实现 describe / package 并声明自定义目标 | 规格理解、插件模板、调试循环 |
-| 出包 | 15 | `poly build --config <app>/polypack.toml --target pocket-notes`，再跑 `poly verify` | 命令可发现性、产物位置、失败信息 |
+| 出包 | 15 | `polypack build --config <app>/polypack.toml --target pocket-notes`，再跑 `polypack verify` | 命令可发现性、产物位置、失败信息 |
 | 复盘 | 10 | 按 §6 分级、补充匿名报告、开放提问 | 真实卡点与改进建议 |
 
 主流程命令示例（以 GA §2 与试用工程为准）：
 
 ```bash
-poly plugin new pocket-notes
-poly plugin check pocket-notes
-poly build --config <app>/polypack.toml --target pocket-notes
-poly verify --target pocket-notes
+polypack plugin new pocket-notes
+polypack plugin check pocket-notes
+polypack build --config <app>/polypack.toml --target pocket-notes
+polypack verify --target pocket-notes
 ```
 
 ## 5. 观察与 think-aloud
@@ -81,7 +81,7 @@ date: YYYY-MM-DD
 environment:
   os: "Linux / macOS / Windows + version"
   rust: "rustc --version"
-  poly: "poly --version"
+  polypack: "polypack --version"
 timeline:
   start: "HH:MM"
   package_built: "HH:MM"

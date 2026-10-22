@@ -115,7 +115,7 @@ fn main() {
             Ok(())
         })
         .run(tauri::generate_context!())
-        .expect("poly-updater-sample: Tauri runtime failed");
+        .expect("polypack-updater-sample: Tauri runtime failed");
 }
 
 #[cfg(test)]
@@ -125,7 +125,7 @@ mod tests {
     #[test]
     fn parses_flag_value_and_rejects_missing_values() {
         let args = [
-            "poly-updater-sample.exe",
+            "polypack-updater-sample.exe",
             "--smoke-update",
             "--marker",
             "C:\\evidence\\update.marker",

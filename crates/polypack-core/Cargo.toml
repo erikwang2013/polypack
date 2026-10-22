@@ -1,0 +1,46 @@
+[package]
+name = "polypack-core"
+description = "PolyPack 流水线核心：JobSpec、Stage/Plan、诊断与事件"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+readme.workspace = true
+keywords.workspace = true
+categories.workspace = true
+publish = false
+
+[features]
+default = ["std"]
+# T-M6-01：`--no-default-features` = 引擎层（no_std + alloc）。JobSpec 校验、TargetSpec
+# 解析与缓存键计算只依赖 polypack-targets / polypack-cache 的无宿主面；std feature 才引入
+# 工具链探测、TOML/JSON 宿主侧序列化、zip 与桥/流水线等宿主模块。
+std = [
+    "dep:polypack-toolchain",
+    "dep:schemars",
+    "dep:toml",
+    "dep:zip",
+    "polypack-cache/std",
+    "polypack-targets/std",
+    "serde/std",
+    "serde_json/std",
+    "thiserror/std",
+]
+
+[dependencies]
+polypack-cache = { workspace = true, default-features = false }
+polypack-targets = { workspace = true, default-features = false }
+polypack-toolchain = { workspace = true, optional = true }
+serde = { workspace = true, default-features = false, features = ["alloc"] }
+# 引擎层解析 JobSpec / TargetSpec 的 JSON 面：alloc 即可，不需要 std。
+serde_json = { workspace = true, default-features = false, features = ["alloc"] }
+toml = { workspace = true, optional = true }
+thiserror = { workspace = true, default-features = false }
+schemars = { workspace = true, optional = true }
+# T-M2-02 AAR（zip 归档）与 T-M2-12/13 无关；与 polypack-bundle 的 T-M2-06 用同一版本与特性，
+# 不引入新的供应链表面（同一 crate 同一锁条目）。
+zip = { workspace = true, optional = true }
+
+[lints]
+workspace = true

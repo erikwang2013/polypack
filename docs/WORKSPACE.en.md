@@ -1,6 +1,6 @@
 # Multi-app workspace (M9-E2)
 
-> Status: code and tests delivered (T-M9-04/05/06); single-app behavior and cache keys are unchanged. `poly build`, `poly verify`, and `poly retry` all accept `--workspace` / `--app`.
+> Status: code and tests delivered (T-M9-04/05/06); single-app behavior and cache keys are unchanged. `polypack build`, `polypack verify`, and `polypack retry` all accept `--workspace` / `--app`.
 
 ## 1. Layout
 
@@ -57,17 +57,17 @@ format = "deb"
 
 ```bash
 # Build every member in declaration order
-poly build --workspace
+polypack build --workspace
 
 # Build one member
-poly build --app notes
+polypack build --app notes
 
 # Combine with a target
-poly build --workspace --target linux
+polypack build --workspace --target linux
 
 # Verify / retry also accept the workspace selectors
-poly verify --workspace
-poly retry --from verify --app notes
+polypack verify --workspace
+polypack retry --from verify --app notes
 ```
 
 `--workspace` and `--app` are mutually exclusive; neither flag keeps the single-app behavior. Outputs and snapshots are isolated per app:
@@ -80,7 +80,7 @@ poly retry --from verify --app notes
 
 The shared core compile cache key excludes the app id (reused across apps); the UI bundle key includes it (no cross-app collisions).
 
-> Run `scripts/demo-workspace.sh` to generate two apps with `poly init` and demonstrate a second-run cache hit; use `POLY_BIN` to point at the `poly` binary and `POLY_DEMO_TARGET` to override the target.
+> Run `scripts/demo-workspace.sh` to generate two apps with `polypack init` and demonstrate a second-run cache hit; use `POLYPACK_BIN` to point at the `polypack` binary and `POLYPACK_DEMO_TARGET` to override the target.
 
 ## 5. Diagnostics
 

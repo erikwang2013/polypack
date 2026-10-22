@@ -114,7 +114,7 @@ adb -s emulator-5554 shell input keyevent KEYCODE_DPAD_DOWN
 
 同一份对拍数据在 HarmonyOS 宿主的等价执行：键名与期望值全同，`hdc` 替代 `adb`，观测走 hilog。
 TV HAP 前置 `app.json` 的 `polypack.tv=true`（宿主 TV 形态：pointer none + gestures false；
-`module.json5` 的 `deviceTypes` 已含 `tv`），打包/签名复用 M3 链（`poly build --target harmonyos`）。
+`module.json5` 的 `deviceTypes` 已含 `tv`），打包/签名复用 M3 链（`polypack build --target harmonyos`）。
 
 ```sh
 hdc shell aa force-stop com.polypack.host

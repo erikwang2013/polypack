@@ -2,12 +2,12 @@
 # 编译 arm64-v8a / x86_64 的 .so、真组装 AAR、真用 kotlinc 编 classes.jar。
 #
 # 为什么单独一个 workflow：主闸 `rust-ci.yml` 的三宿主 `cargo test --workspace` 只跑无工具面
-# （UDL / 摘要 / AAR 布局 / 缓存命中，见 `poly-core/tests/bridge.rs`）；真跑要装 Android SDK +
+# （UDL / 摘要 / AAR 布局 / 缓存命中，见 `polypack-core/tests/bridge.rs`）；真跑要装 Android SDK +
 # NDK（约 1 GB）并真编译 uniffi 夹具（分钟级），只在每夜与手动触发时付这个代价。
 #
 # 不覆盖 Swift 编译：`swiftc` 不在 ubuntu 上（Linux 宿主无从编译 Swift 绑定）——绑定生成本身
 # 已在本作业真跑并做结构断言，Swift 侧编译留待 macOS 作业（T-M2-03 的 XCFramework 腿）接入。
-# iOS 侧绑定的消费契约见 `crates/poly-bundle/src/packagers/ios/swift.rs`。
+# iOS 侧绑定的消费契约见 `crates/polypack-bundle/src/packagers/ios/swift.rs`。
 
 name: bridge-real
 
@@ -25,7 +25,7 @@ jobs:
     name: bridge / ubuntu-latest
     runs-on: ubuntu-latest
     env:
-      POLY_CONTRACT_REAL: "1"
+      POLYPACK_CONTRACT_REAL: "1"
     steps:
       - uses: actions/checkout@v4
 
@@ -60,7 +60,7 @@ jobs:
           exit 1
 
       # Kotlin 绑定要真编译成 classes.jar：kotlinc + JNA 落工具缓存即被自动发现
-      # （crates/poly-core/src/bridge/kotlinc.rs 的定位顺序；缺则按 skip-if-missing 跳过该步）。
+      # （crates/polypack-core/src/bridge/kotlinc.rs 的定位顺序；缺则按 skip-if-missing 跳过该步）。
       # 用官方发行包（自带 stdlib/reflect/coroutines）而非 kotlin-compiler-embeddable-*.jar：
       # 后者只保证被 Gradle 之类备齐依赖的宿主使用，直接 `java -cp` 起会一路 NoClassDefFoundError。
       - name: kotlinc + JNA（真跑：classes.jar）
@@ -77,16 +77,16 @@ jobs:
 
       - name: 桥真跑（生成 + 交叉编译 + AAR + classes.jar）
         # 单线程：真跑会各自建 uniffi 夹具的 target 目录，串行更省磁盘与网络
-        # POLY_KEEP_TEMP=1：测试临时工程默认 RAII 即删，而「留产物」步在其后运行——此前空转
+        # POLYPACK_KEEP_TEMP=1：测试临时工程默认 RAII 即删，而「留产物」步在其后运行——此前空转
         # （日志实证产物确在 /tmp/polypack-bridge-real-*，上传时已被删）。置位后目录留给上传步。
         env:
-          POLY_KEEP_TEMP: "1"
-        run: cargo test -p poly-core --test bridge_real --no-fail-fast -- --nocapture --test-threads=1
+          POLYPACK_KEEP_TEMP: "1"
+        run: cargo test -p polypack-core --test bridge_real --no-fail-fast -- --nocapture --test-threads=1
 
       - name: 无工具面回归（判据不因真跑而漂）
         run: |
-          cargo test -p poly-core --test bridge --no-fail-fast -- --nocapture
-          cargo test -p poly-cli --test bridge --no-fail-fast -- --nocapture
+          cargo test -p polypack-core --test bridge --no-fail-fast -- --nocapture
+          cargo test -p polypack-cli --test bridge --no-fail-fast -- --nocapture
 
       - name: 留产物
         if: always()
