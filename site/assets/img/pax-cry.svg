@@ -1,0 +1,62 @@
+<svg width="640" height="384" viewBox="0 0 720 432" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="pax-t pax-d">
+  <title id="pax-t">Pax · 打包机器人 — 哭表情（动态）</title>
+  <desc id="pax-d">PolyPack 项目宠物 Pax 的哭表情（crying），带该表情专属的 CSS 动效；减弱动态效果时定格为静态形态。</desc>
+  <style>@media (prefers-reduced-motion: no-preference) {
+    .pax-bot { animation: pax-bob 4s ease-in-out infinite; }
+    .pax-tear-a { animation: pax-tear 1.15s ease-in infinite; }
+    .pax-tear-b { animation: pax-tear 1.15s ease-in 0.2s infinite; }
+  }
+  @keyframes pax-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+  @keyframes pax-tear { 0% { transform: translateY(0); opacity: 0; } 15% { opacity: 1; } 100% { transform: translateY(12px); opacity: 0; } }
+  </style>
+
+  <defs>
+    <marker id="pax-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#94a3b8"/>
+    </marker>
+    <clipPath id="pax-screen-clip"><rect x="248" y="144" width="104" height="76" rx="12"/></clipPath>
+  </defs>
+  <path d="M400,210 C 450,140 500,90 548,76" fill="none" stroke="#94a3b8" stroke-width="2" stroke-dasharray="5 6" marker-end="url(#pax-arrow)"/>
+  <path d="M392,226 C 480,190 560,160 622,144" fill="none" stroke="#94a3b8" stroke-width="2" stroke-dasharray="5 6" marker-end="url(#pax-arrow)"/>
+  <path d="M372,292 C 440,318 520,315 586,300" fill="none" stroke="#94a3b8" stroke-width="2" stroke-dasharray="5 6" marker-end="url(#pax-arrow)"/>
+  <g stroke="#64748b" stroke-width="3" fill="#ffffff" stroke-linejoin="round">
+    <rect x="552" y="50" width="28" height="48" rx="7"/>
+    <rect x="626" y="126" width="26" height="32" rx="7"/>
+    <path d="M630,126 v-10 h18 v10 M630,158 v10 h18 v-10" fill="none"/>
+    <rect x="588" y="276" width="66" height="42" rx="7"/>
+    <path d="M621,318 v9 M607,327 h28" fill="none"/>
+  </g>
+  <circle cx="566" cy="88" r="2.6" fill="#64748b" stroke="none"/>
+  <ellipse cx="300" cy="352" rx="88" ry="9" fill="#0f172a" opacity="0.07"/>
+  <g class="pax-bot">
+    <g stroke="#9a3412" stroke-width="7" stroke-linecap="round" fill="none">
+      <path d="M282,318 L278,338"/>
+      <path d="M318,318 L322,338"/>
+    </g>
+    <rect x="262" y="336" width="34" height="13" rx="6.5" fill="#ea580c" stroke="#9a3412" stroke-width="2.5"/>
+    <rect x="304" y="336" width="34" height="13" rx="6.5" fill="#ea580c" stroke="#9a3412" stroke-width="2.5"/>
+    <rect x="252" y="244" width="96" height="76" rx="14" fill="#d4a373" stroke="#9a3412" stroke-width="3"/>
+    <rect x="292" y="244" width="16" height="76" fill="#b08968" opacity="0.85"/>
+    <rect x="262" y="256" width="44" height="30" rx="4" fill="#fffdf7" stroke="#b08968" stroke-width="1.5"/>
+    <text x="284" y="270" text-anchor="middle" font-size="8.5" font-weight="700" font-family="'JetBrains Mono', ui-monospace, 'PingFang SC', 'Microsoft YaHei', monospace" fill="#7c4a2a">POLY</text>
+    <path d="M266,276 h36 M268,280 h32 M272,284 h24" stroke="#7c4a2a" stroke-width="1.5"/>
+    <circle cx="330" cy="272" r="12" fill="#ffffff" stroke="#0891b2" stroke-width="2" stroke-dasharray="2.5 2"/>
+    <ellipse cx="330" cy="272" rx="8" ry="3.2" fill="none" stroke="#0891b2" stroke-width="1.5" transform="rotate(-30 330 272)"/>
+    <circle cx="330" cy="272" r="1.8" fill="#0891b2"/>
+    <circle cx="330" cy="300" r="3" fill="#22c55e"/><rect x="286" y="232" width="28" height="14" rx="4" fill="#94a3b8" stroke="#475569" stroke-width="2"/>
+    <rect x="232" y="128" width="136" height="108" rx="22" fill="#f8fafc" stroke="#7c2d12" stroke-width="3"/>
+    <rect x="248" y="144" width="104" height="76" rx="12" fill="#0f172a" stroke="#0e7490" stroke-width="2.5"/>
+<g class="pax-face pax-face-cry"><g clip-path="url(#pax-screen-clip)"><path d="M290,206 Q300,195 310,206" fill="none" stroke="#e0f2fe" stroke-width="3" stroke-linecap="round"/><circle cx="279" cy="171" r="8.5" fill="#f8fafc"/><circle cx="321" cy="171" r="8.5" fill="#f8fafc"/><circle cx="281" cy="173" r="4" fill="#0f172a"/><circle cx="319" cy="173" r="4" fill="#0f172a"/><g class="pax-tear pax-tear-a"><path d="M267,181 C270,185 270,189 267,191 C264,189 264,185 267,181 Z" fill="#7dd3fc"/></g><g class="pax-tear pax-tear-b"><path d="M333,181 C336,185 336,189 333,191 C330,189 330,185 333,181 Z" fill="#7dd3fc"/></g></g></g><circle cx="232" cy="170" r="9" fill="#ea580c" stroke="#9a3412" stroke-width="2.5"/><circle cx="368" cy="170" r="9" fill="#ea580c" stroke="#9a3412" stroke-width="2.5"/>
+    <path d="M300,128 L300,106" stroke="#9a3412" stroke-width="4" stroke-linecap="round"/>
+    <circle cx="300" cy="103" r="6" fill="#ea580c" stroke="#9a3412" stroke-width="2"/>
+    <path d="M305,100 L322,105 L305,111 Z" fill="#0891b2" stroke="#0e7490" stroke-width="1.5" stroke-linejoin="round"/>
+    <path d="M252,262 L224,286" stroke="#ea580c" stroke-width="9" stroke-linecap="round"/>
+    <circle cx="218" cy="292" r="11" fill="#ea580c" stroke="#9a3412" stroke-width="2.5"/>
+    <circle cx="204" cy="300" r="10" fill="#f8fafc" stroke="#9a3412" stroke-width="2.5"/>
+    <circle cx="204" cy="300" r="4" fill="#b08968"/>
+    <path d="M348,262 L378,238" stroke="#ea580c" stroke-width="9" stroke-linecap="round"/>
+    <rect x="374" y="202" width="28" height="26" rx="3" fill="#d4a373" stroke="#9a3412" stroke-width="2"/>
+    <path d="M388,202 v26 M374,212 h28" stroke="#b08968" stroke-width="3"/>
+    <circle cx="384" cy="232" r="11" fill="#ea580c" stroke="#9a3412" stroke-width="2.5"/>
+  </g>
+</svg>

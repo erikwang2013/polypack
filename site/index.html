@@ -1,0 +1,339 @@
+<!doctype html>
+<html lang="zh-CN" data-lang="zh">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>PolyPack — 多端打包，一次送达</title>
+  <meta name="description" content="PolyPack：Rust 核心 × React UI 适配层 × 49 个目标平台的跨端打包流水线。支持 Android、iOS、鸿蒙、小程序、TV、穿戴与自托管发布。">
+  <meta name="keywords" content="PolyPack, 多端打包, Rust, React, Android, iOS, HarmonyOS, mini program, release, SBOM, OTA">
+  <meta name="author" content="Erik">
+  <meta name="theme-color" content="#07111f">
+  <meta name="color-scheme" content="light dark">
+  <link rel="canonical" href="https://erik.xyz/polypack/">
+  <link rel="alternate" hreflang="zh-CN" href="https://erik.xyz/polypack/">
+  <link rel="alternate" hreflang="en" href="https://erik.xyz/polypack/?lang=en">
+  <link rel="icon" type="image/svg+xml" href="assets/img/pax-mark.svg">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="assets/img/pax-cute.svg">
+  <link rel="preload" as="image" href="assets/img/pax.svg">
+  <link rel="preload" as="image" href="assets/img/pax-cute.svg">
+  <link rel="stylesheet" href="css/site.css">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="PolyPack">
+  <meta property="og:title" content="PolyPack — 多端打包，一次送达">
+  <meta property="og:description" content="Rust 核心 × React UI 适配层 × 49 个目标平台。可验证、可签名、可自托管的跨端打包流水线。">
+  <meta property="og:url" content="https://erik.xyz/polypack/">
+  <meta property="og:image" content="https://erik.xyz/polypack/assets/og/cover.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:locale" content="zh_CN">
+  <meta property="og:locale:alternate" content="en_US">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="PolyPack — 多端打包，一次送达">
+  <meta name="twitter:description" content="Rust core × React adapters × 49 targets. A verifiable, signable, self-hostable packaging pipeline.">
+  <meta name="twitter:image" content="https://erik.xyz/polypack/assets/og/cover.png">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "PolyPack",
+    "applicationCategory": "DeveloperApplication",
+    "operatingSystem": "Linux, macOS, Windows",
+    "softwareVersion": "1.15.0",
+    "license": "https://www.apache.org/licenses/LICENSE-2.0",
+    "downloadUrl": "https://github.com/erikwang2013/polypack/releases/tag/v1.15.0",
+    "codeRepository": "https://github.com/erikwang2013/polypack",
+    "author": { "@type": "Person", "name": "Erik", "url": "https://erik.xyz" },
+    "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+    "description": "Rust core × React UI adapters × 49 target platforms. A verifiable, signable, self-hostable cross-platform packaging pipeline."
+  }
+  </script>
+</head>
+<body data-title-zh="PolyPack — 多端打包，一次送达" data-title-en="PolyPack — Package once, deliver everywhere" data-desc-zh="PolyPack：Rust 核心 × React UI 适配层 × 49 个目标平台的跨端打包流水线。支持 Android、iOS、鸿蒙、小程序、TV、穿戴与自托管发布。" data-desc-en="PolyPack: a Rust core × React UI adapters × 49 target platforms. Cross-platform packaging with SBOM, signed releases, OTA and self-hosted distribution.">
+  <a class="skip-link" href="#main" data-zh="跳到主要内容" data-en="Skip to content">跳到主要内容</a>
+
+  <header class="site-header">
+    <div class="wrap header-inner">
+      <a class="brand" href="#top" aria-label="PolyPack home">
+        <img src="assets/img/pax-cute.svg" alt="" width="34" height="34">
+        <span>PolyPack</span>
+      </a>
+      <button class="nav-toggle" id="navToggle" aria-expanded="false" aria-controls="nav" aria-label="Menu">☰</button>
+      <nav class="nav" id="nav" aria-label="Main">
+        <a href="#about" data-zh="项目介绍" data-en="About">项目介绍</a>
+        <a href="#features" data-zh="功能" data-en="Features">功能</a>
+        <a href="#iterations" data-zh="功能迭代" data-en="Iterations">功能迭代</a>
+        <a href="#changelog" data-zh="版本日志" data-en="Changelog">版本日志</a>
+        <a href="#install" data-zh="安装" data-en="Install">安装</a>
+        <a href="#usage" data-zh="使用说明" data-en="Usage">使用说明</a>
+        <a href="#download" data-zh="下载" data-en="Download">下载</a>
+        <a href="#donate" data-zh="打赏" data-en="Donate">打赏</a>
+        <button class="lang-toggle" id="langToggle" type="button" aria-label="Switch language">EN</button>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main">
+    <section class="hero" id="top">
+      <canvas id="bg-canvas" aria-hidden="true"></canvas>
+      <div class="wrap hero-inner">
+        <div>
+          <p class="eyebrow" data-zh="RUST × REACT · 49 个目标" data-en="RUST × REACT · 49 TARGETS">RUST × REACT · 49 个目标</p>
+          <h1><span data-zh="多端打包，" data-en="Package once,">多端打包，</span><span class="grad" data-zh="一次送达。" data-en="deliver everywhere.">一次送达。</span></h1>
+          <p class="hero-lead" data-zh="把 Rust 核心、React UI 适配层与 49 个目标平台串成一条可验证、可签名、可自托管的构建流水线。" data-en="One verifiable, signable, self-hostable pipeline for a Rust core, React UI adapters, and 49 target platforms.">把 Rust 核心、React UI 适配层与 49 个目标平台串成一条可验证、可签名、可自托管的构建流水线。</p>
+          <div class="hero-actions">
+            <a class="btn btn-primary" href="#download" data-zh="下载 v1.15.0" data-en="Download v1.15.0">下载 v1.15.0</a>
+            <a class="btn btn-ghost" href="#install" data-zh="快速开始" data-en="Get started">快速开始</a>
+            <a class="btn btn-ghost" href="https://github.com/erikwang2013/polypack" target="_blank" rel="noopener">GitHub ↗</a>
+          </div>
+        </div>
+        <div class="hero-pet">
+          <img src="assets/img/pax.svg" alt="PolyPack 宠物 Pax 的动态表情" width="640" height="384">
+        </div>
+      </div>
+      <div class="wrap hero-stats">
+        <div class="hero-stat"><b>49</b><span data-zh="目标平台" data-en="target platforms">目标平台</span></div>
+        <div class="hero-stat"><b>9</b><span data-zh="Rust crates" data-en="Rust crates">Rust crates</span></div>
+        <div class="hero-stat"><b>10</b><span data-zh="里程碑 M0–M9" data-en="milestones M0–M9">里程碑 M0–M9</span></div>
+        <div class="hero-stat"><b>Apache-2.0</b><span data-zh="开源许可" data-en="open-source license">开源许可</span></div>
+      </div>
+    </section>
+
+    <section class="section" id="about">
+      <div class="wrap">
+        <p class="eyebrow" data-zh="项目介绍" data-en="ABOUT">项目介绍</p>
+        <h2 data-zh="一个核心，交付所有端" data-en="One core. Every screensize.">一个核心，交付所有端</h2>
+        <p class="lead" data-zh="PolyPack 用一条声明式流水线把 Rust 业务核心与 React UI 适配层带到桌面、移动端、小程序、TV、穿戴和嵌入式平台。每个产物都有可复现构建、结构校验、签名与可选的 SBOM。" data-en="PolyPack takes a Rust business core and React UI adapters through one declarative pipeline to desktop, mobile, mini-programs, TV, wearables and embedded targets. Every artifact gets reproducible builds, structure checks, signing and optional SBOMs.">PolyPack 用一条声明式流水线把 Rust 业务核心与 React UI 适配层带到桌面、移动端、小程序、TV、穿戴和嵌入式平台。每个产物都有可复现构建、结构校验、签名与可选的 SBOM。</p>
+        <div class="split">
+          <div>
+            <h3 data-zh="为什么是 PolyPack" data-en="Why PolyPack">为什么是 PolyPack</h3>
+            <p data-zh="一套配置、一条 DAG、一个回执格式。目标由 TargetSpec 描述，打包器通过 ProviderRegistry 统一装配；内建目标与第三方插件走同一条沙箱与签名链。" data-en="One config, one DAG, one receipt format. Targets are described by TargetSpec; packagers assemble through ProviderRegistry. Built-ins and third-party plugins share the same sandbox and signature chain.">一套配置、一条 DAG、一个回执格式。目标由 TargetSpec 描述，打包器通过 ProviderRegistry 统一装配；内建目标与第三方插件走同一条沙箱与签名链。</p>
+            <div class="pet-strip" aria-label="Pax moods">
+              <img src="assets/img/pax-smile.svg" alt="" loading="lazy" width="56" height="56">
+              <img src="assets/img/pax-joy.svg" alt="" loading="lazy" width="56" height="56">
+              <img src="assets/img/pax-cute.svg" alt="" loading="lazy" width="56" height="56">
+              <img src="assets/img/pax-coquettish.svg" alt="" loading="lazy" width="56" height="56">
+            </div>
+          </div>
+          <div>
+            <div class="note" data-zh="从 v1.0 到 v1.15：49 个目标、插件沙箱、农场 v1、签名发布、SBOM、OTA、设备预览与签名插件索引都已落地。" data-en="From v1.0 to v1.15: 49 targets, the plugin sandbox, farm v1, signed releases, SBOM, OTA, device preview and a signed plugin index have all landed.">从 v1.0 到 v1.15：49 个目标、插件沙箱、农场 v1、签名发布、SBOM、OTA、设备预览与签名插件索引都已落地。</div>
+          </div>
+        </div>
+        <figure class="figure reveal">
+          <img src="assets/img/architecture.svg" data-en-src="assets/img/en/architecture.svg" alt="PolyPack 架构总览：配置、计划、构建、校验、打包与发布" loading="lazy" width="1380" height="628">
+          <figcaption data-zh="架构总览：一份配置驱动可验证的构建 DAG。" data-en="Architecture: one config drives a verifiable build DAG.">架构总览：一份配置驱动可验证的构建 DAG。</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <section class="section alt" id="features">
+      <div class="wrap">
+        <p class="eyebrow" data-zh="能力" data-en="FEATURES">能力</p>
+        <h2 data-zh="为真实发布而设计" data-en="Built for real releases">为真实发布而设计</h2>
+        <p class="lead" data-zh="不是又一个脚手架，而是从构建、校验、签名、发布到热更的完整链路。" data-en="Not another scaffold: the full path from build, verify and sign to publish and update.">不是又一个脚手架，而是从构建、校验、签名、发布到热更的完整链路。</p>
+        <div class="grid grid-3">
+          <article class="card reveal"><h3><span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></span><span data-zh="49 个目标" data-en="49 targets">49 个目标</span></h3><p data-zh="桌面、移动端、鸿蒙、小程序、TV、穿戴与嵌入式目标共享同一套 TargetSpec 与打包器契约。" data-en="Desktop, mobile, HarmonyOS, mini-programs, TV, wearables and embedded targets share one TargetSpec and packager contract.">桌面、移动端、鸿蒙、小程序、TV、穿戴与嵌入式目标共享同一套 TargetSpec 与打包器契约。</p></article>
+          <article class="card reveal"><h3><span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3l8 4v5c0 5-3.4 8-8 9-4.6-1-8-4-8-9V7l8-4z"/><path d="M9 12l2 2 4-4"/></svg></span><span data-zh="可验证流水线" data-en="Verifiable pipeline">可验证流水线</span></h3><p data-zh="结构校验、可复现构建、产物摘要、SBOM 与签名回执在同一条 DAG 内完成。" data-en="Structure checks, reproducible builds, artifact digests, SBOMs and signed receipts in one DAG.">结构校验、可复现构建、产物摘要、SBOM 与签名回执在同一条 DAG 内完成。</p></article>
+          <article class="card reveal"><h3><span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M13 2L4 14h7l-1 8 9-12h-7l1-8z"/></svg></span><span data-zh="增量发布" data-en="Incremental releases">增量发布</span></h3><p data-zh="poly release --changed 用内容摘要跳过未变化目标；五目标实测后端调用 5→1。" data-en="poly release --changed skips unchanged targets by digest; a five-target test cut backend calls 5→1.">poly release --changed 用内容摘要跳过未变化目标；五目标实测后端调用 5→1。</p></article>
+          <article class="card reveal"><h3><span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2l8 4v6c0 5-3.5 8-8 10-4.5-2-8-5-8-10V6l8-4z"/><path d="M8 12h8"/></svg></span><span data-zh="插件沙箱" data-en="Plugin sandbox">插件沙箱</span></h3><p data-zh="Wasmtime 默认零能力，目录与出网显式授权，fuel / epoch / 内存三道上限，SRI 与 GPG 信任根。" data-en="Wasmtime deny-by-default, explicit directory/network grants, fuel/epoch/memory limits, SRI and GPG trust roots.">Wasmtime 默认零能力，目录与出网显式授权，fuel / epoch / 内存三道上限，SRI 与 GPG 信任根。</p></article>
+          <article class="card reveal"><h3><span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 17l6-6-6-6"/><path d="M12 19h8"/></svg></span><span data-zh="自托管发布与 OTA" data-en="Self-hosted release & OTA">自托管发布与 OTA</span></h3><p data-zh="deb / rpm / pkg / pkgsrc 仓库签名，Tauri v2 更新清单、回滚与真实演练。" data-en="Signed deb / rpm / pkg / pkgsrc repositories, Tauri v2 update manifests, rollback and a real drill.">deb / rpm / pkg / pkgsrc 仓库签名，Tauri v2 更新清单、回滚与真实演练。</p></article>
+          <article class="card reveal"><h3><span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 12h4l2-6 4 12 2-6h6"/></svg></span><span data-zh="农场与可观测性" data-en="Farm & observability">农场与可观测性</span></h3><p data-zh="多 worker 并发、共享 CAS、构建历史 JSONL、GUI 矩阵与设备预览协议。" data-en="Multi-worker concurrency, shared CAS, JSONL build history, a GUI matrix and a device-preview protocol.">多 worker 并发、共享 CAS、构建历史 JSONL、GUI 矩阵与设备预览协议。</p></article>
+        </div>
+        <figure class="figure reveal">
+          <img src="assets/img/features.svg" data-en-src="assets/img/en/features.svg" alt="PolyPack 功能地图" loading="lazy" width="1380" height="628">
+          <figcaption data-zh="功能地图：从核心到目标、插件、农场与发布。" data-en="Capability map: from the core to targets, plugins, farm and publishing.">功能地图：从核心到目标、插件、农场与发布。</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <section class="section" id="iterations">
+      <div class="wrap">
+        <p class="eyebrow" data-zh="功能迭代" data-en="ITERATIONS">功能迭代</p>
+        <h2 data-zh="十个里程碑，一条主线" data-en="Ten milestones, one thread">十个里程碑，一条主线</h2>
+        <p class="lead" data-zh="从最小构建 DAG 到 49 目标、插件生态、农场与 M9 收尾，每一步都留下可复跑的测试与文档。" data-en="From the first build DAG to 49 targets, the plugin ecosystem, the farm and the M9 close-out — every step leaves rerunnable tests and docs.">从最小构建 DAG 到 49 目标、插件生态、农场与 M9 收尾，每一步都留下可复跑的测试与文档。</p>
+        <div class="timeline">
+          <article class="milestone" data-step="M0"><h3 data-zh="核心构建 DAG" data-en="Core build DAG">核心构建 DAG</h3><p data-zh="配置、计划、构建、缓存与事件流。" data-en="Config, planning, build, cache and event stream.">配置、计划、构建、缓存与事件流。</p></article>
+          <article class="milestone" data-step="M1"><h3 data-zh="Windows 与 Tauri" data-en="Windows & Tauri">Windows 与 Tauri</h3><p data-zh="MSI / NSIS、Tauri 布局与桌面产物。" data-en="MSI / NSIS, Tauri layout and desktop artifacts.">MSI / NSIS、Tauri 布局与桌面产物。</p></article>
+          <article class="milestone" data-step="M2"><h3 data-zh="移动端与桥接" data-en="Mobile & bridge">移动端与桥接</h3><p data-zh="Android AAB/APK、iOS IPA、uniffi / wasm 桥。" data-en="Android AAB/APK, iOS IPA, uniffi / wasm bridges.">Android AAB/APK、iOS IPA、uniffi / wasm 桥。</p></article>
+          <article class="milestone" data-step="M3"><h3 data-zh="小程序矩阵" data-en="Mini-program matrix">小程序矩阵</h3><p data-zh="微信 / 支付宝 / 抖音 / 快应用代码包与预览。" data-en="WeChat / Alipay / Douyin / Quick App bundles and preview.">微信 / 支付宝 / 抖音 / 快应用代码包与预览。</p></article>
+          <article class="milestone" data-step="M4"><h3 data-zh="TV 家族" data-en="TV family">TV 家族</h3><p data-zh="android-tv、Fire TV、tvOS、Tizen、webOS 等。" data-en="android-tv, Fire TV, tvOS, Tizen, webOS and more.">android-tv、Fire TV、tvOS、Tizen、webOS 等。</p></article>
+          <article class="milestone" data-step="M5"><h3 data-zh="包管理与发布" data-en="Packaging & release">包管理与发布</h3><p data-zh="deb / rpm / pkg / pkgsrc 仓库、签名与回执。" data-en="deb / rpm / pkg / pkgsrc repositories, signing and receipts.">deb / rpm / pkg / pkgsrc 仓库、签名与回执。</p></article>
+          <article class="milestone" data-step="M6"><h3 data-zh="嵌入式与 RTOS" data-en="Embedded & RTOS">嵌入式与 RTOS</h3><p data-zh="QNX、VxWorks、Zephyr、FreeRTOS、AUTOSAR。" data-en="QNX, VxWorks, Zephyr, FreeRTOS, AUTOSAR.">QNX、VxWorks、Zephyr、FreeRTOS、AUTOSAR。</p></article>
+          <article class="milestone" data-step="M7"><h3 data-zh="穿戴设备" data-en="Wearables">穿戴设备</h3><p data-zh="Wear OS、watchOS、Fitbit、Zepp、Garmin。" data-en="Wear OS, watchOS, Fitbit, Zepp, Garmin.">Wear OS、watchOS、Fitbit、Zepp、Garmin。</p></article>
+          <article class="milestone" data-step="M8"><h3 data-zh="生态 GA" data-en="Ecosystem GA">生态 GA</h3><p data-zh="插件沙箱、WIT v1、模板、统一 Provider、农场 v1。" data-en="Plugin sandbox, WIT v1, templates, unified providers, farm v1.">插件沙箱、WIT v1、模板、统一 Provider、农场 v1。</p></article>
+          <article class="milestone" data-step="M9"><h3 data-zh="生产收尾" data-en="Production close-out">生产收尾</h3><p data-zh="SBOM、工作区、增量发布、OTA、GUI、设备预览、签名插件索引。" data-en="SBOM, workspaces, incremental releases, OTA, GUI, device preview, signed plugin index.">SBOM、工作区、增量发布、OTA、GUI、设备预览、签名插件索引。</p></article>
+        </div>
+        <figure class="figure reveal">
+          <img src="assets/img/lifecycle.svg" data-en-src="assets/img/en/lifecycle.svg" alt="项目与产物生命周期" loading="lazy" width="1380" height="628">
+          <figcaption data-zh="生命周期：从工程到产物、回执与更新。" data-en="Lifecycle: from project to artifact, receipt and update.">生命周期：从工程到产物、回执与更新。</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <section class="section alt" id="changelog">
+      <div class="wrap">
+        <p class="eyebrow" data-zh="版本日志" data-en="CHANGELOG">版本日志</p>
+        <h2 data-zh="最近发布了什么" data-en="What shipped recently">最近发布了什么</h2>
+        <div class="grid grid-2">
+          <article class="card release reveal"><span class="tag">v1.15.0 · 2026-10-21</span><h3 data-zh="环境槽用户入口" data-en="Environment-slot entry points">环境槽用户入口</h3><ul><li data-zh="poly env-provide 工具：凭据隐藏上传、授权门户、硬件与试用表单。" data-en="An env-provide helper: hidden credential upload, authorization portals, hardware and trial forms.">poly env-provide 工具：凭据隐藏上传、授权门户、硬件与试用表单。</li><li data-zh="文档 / 图片全量同步，20 对文档门禁。" data-en="Full docs/image sync with a 20-pair docs gate.">文档 / 图片全量同步，20 对文档门禁。</li><li data-zh="安装示例与版本引用更新到 v1.15.0。" data-en="Install examples and version references updated to v1.15.0.">安装示例与版本引用更新到 v1.15.0。</li></ul></article>
+          <article class="card release reveal"><span class="tag">v1.14.0 · 2026-10-21</span><h3 data-zh="签名插件索引 + 农场加固" data-en="Signed plugin index + farm hardening">签名插件索引 + 农场加固</h3><ul><li data-zh="poly plugin add/search 离线验签，覆盖吊销、回滚、分叉与 SRI。" data-en="poly plugin add/search verifies offline, covering revocation, rollback, forks and SRI.">poly plugin add/search 离线验签，覆盖吊销、回滚、分叉与 SRI。</li><li data-zh="10 项自托管农场加固清单与预检脚本。" data-en="A 10-item self-hosted farm hardening checklist and preflight.">10 项自托管农场加固清单与预检脚本。</li><li data-zh="wasmtime 49.0.4 / rustls-webpki 0.103.16 安全修复。" data-en="wasmtime 49.0.4 / rustls-webpki 0.103.16 security fixes.">wasmtime 49.0.4 / rustls-webpki 0.103.16 安全修复。</li></ul></article>
+          <article class="card release reveal"><span class="tag">v1.13.1 · 2026-10-20</span><h3 data-zh="环境槽关闭 + 安全补丁" data-en="Env-slot closures + security patch">环境槽关闭 + 安全补丁</h3><ul><li data-zh="ENV-15 keyring、ENV-16 Vault、ENV-17 S3 真跑通过。" data-en="ENV-15 keyring, ENV-16 Vault and ENV-17 S3 real runs passed.">ENV-15 keyring、ENV-16 Vault、ENV-17 S3 真跑通过。</li><li data-zh="wasmtime 49.0.4 修复 RUSTSEC-2026-0378/0379。" data-en="wasmtime 49.0.4 fixes RUSTSEC-2026-0378/0379.">wasmtime 49.0.4 修复 RUSTSEC-2026-0378/0379。</li></ul></article>
+          <article class="card release reveal"><span class="tag">v1.13.0 · 2026-10-20</span><h3 data-zh="M9 收尾" data-en="M9 close-out">M9 收尾</h3><ul><li data-zh="增量发布、真实 OTA 演练、GUI、设备预览协议。" data-en="Incremental releases, a real OTA drill, GUI and device-preview protocol.">增量发布、真实 OTA 演练、GUI、设备预览协议。</li><li data-zh="Windows MSYS gpg 兼容与 crates.io 审计。" data-en="Windows MSYS gpg compatibility and the crates.io audit.">Windows MSYS gpg 兼容与 crates.io 审计。</li></ul></article>
+        </div>
+        <p class="small"><a href="https://github.com/erikwang2013/polypack/blob/main/CHANGELOG.md" target="_blank" rel="noopener" data-zh="查看完整 CHANGELOG →" data-en="Read the full CHANGELOG →">查看完整 CHANGELOG →</a></p>
+      </div>
+    </section>
+
+    <section class="section" id="install">
+      <div class="wrap">
+        <p class="eyebrow" data-zh="安装" data-en="INSTALL">安装</p>
+        <h2 data-zh="三条路径，选一条" data-en="Three paths. Pick one.">三条路径，选一条</h2>
+        <p class="lead" data-zh="预编译二进制适合大多数用户；需要参与开发或自定义目标时从源码构建。" data-en="Prebuilt binaries suit most users; build from source for development or custom targets.">预编译二进制适合大多数用户；需要参与开发或自定义目标时从源码构建。</p>
+        <div class="tabs" role="tablist" aria-label="Install options">
+          <button class="tab" id="tab-linux" role="tab" aria-selected="true" aria-controls="panel-linux" data-zh="Linux / macOS" data-en="Linux / macOS">Linux / macOS</button>
+          <button class="tab" id="tab-windows" role="tab" aria-selected="false" aria-controls="panel-windows" data-zh="Windows" data-en="Windows">Windows</button>
+          <button class="tab" id="tab-source" role="tab" aria-selected="false" aria-controls="panel-source" data-zh="源码" data-en="Source">源码</button>
+        </div>
+        <div class="install-panel" id="panel-linux" role="tabpanel" aria-labelledby="tab-linux">
+          <div class="code-card"><div class="code-head"><span>bash · release v1.15.0</span><button class="copy" type="button">Copy</button></div><pre><code>curl -fsSL https://raw.githubusercontent.com/erikwang2013/polypack/v1.15.0/scripts/install.sh | bash
+poly --version</code></pre></div>
+          <p class="small" data-zh="强制 SHA-256 校验；配置 MINISIGN 公钥后可启用严格签名验证。" data-en="Mandatory SHA-256 verification; strict minisign verification is available with a configured public key.">强制 SHA-256 校验；配置 MINISIGN 公钥后可启用严格签名验证。</p>
+        </div>
+        <div class="install-panel" id="panel-windows" role="tabpanel" aria-labelledby="tab-windows" hidden>
+          <div class="code-card"><div class="code-head"><span>PowerShell</span><button class="copy" type="button">Copy</button></div><pre><code># Download poly-x86_64-pc-windows-msvc.zip from the release page,
+# verify SHA256SUMS.txt, then add poly.exe to PATH.
+poly --version</code></pre></div>
+        </div>
+        <div class="install-panel" id="panel-source" role="tabpanel" aria-labelledby="tab-source" hidden>
+          <div class="code-card"><div class="code-head"><span>bash</span><button class="copy" type="button">Copy</button></div><pre><code>git clone https://github.com/erikwang2013/polypack
+cd polypack
+cargo install --path crates/poly-cli
+poly doctor</code></pre></div>
+        </div>
+        <p class="small" data-zh-html="需要一个可用的 Rust 工具链（MSRV 1.98）。完整说明见 <a href=&quot;https://github.com/erikwang2013/polypack/blob/v1.15.0/docs/INSTALL.md&quot; target=&quot;_blank&quot; rel=&quot;noopener&quot;>docs/INSTALL</a>。" data-en-html="A Rust toolchain (MSRV 1.98) is required for source builds. See <a href=&quot;https://github.com/erikwang2013/polypack/blob/v1.15.0/docs/INSTALL.en.md&quot; target=&quot;_blank&quot; rel=&quot;noopener&quot;>docs/INSTALL</a> for the full guide.">需要一个可用的 Rust 工具链（MSRV 1.98）。完整说明见 <a href="https://github.com/erikwang2013/polypack/blob/v1.15.0/docs/INSTALL.md" target="_blank" rel="noopener">docs/INSTALL</a>。</p>
+      </div>
+    </section>
+
+    <section class="section alt" id="usage">
+      <div class="wrap">
+        <p class="eyebrow" data-zh="使用说明" data-en="USAGE">使用说明</p>
+        <h2 data-zh="从初始化到发布" data-en="From init to release">从初始化到发布</h2>
+        <div class="grid grid-2">
+          <div class="code-card"><div class="code-head"><span>poly init / build</span><button class="copy" type="button">Copy</button></div><pre><code>poly init my-app
+cd my-app
+poly doctor
+poly build --target web</code></pre></div>
+          <div class="code-card"><div class="code-head"><span>poly verify / release</span><button class="copy" type="button">Copy</button></div><pre><code>poly verify --reproducible
+poly verify --sbom --target web
+poly release --changed --target linux,web \
+  --repo .polypack/repo --credential env:RELEASE_GPG_KEY</code></pre></div>
+          <div class="code-card"><div class="code-head"><span>poly plugin</span><button class="copy" type="button">Copy</button></div><pre><code>poly plugin new my-target
+poly plugin check my-target
+poly plugin add my-plugin --index ./index.json \
+  --trust-root env:INDEX_KEY --publisher-key env:PUBLISHER_KEY
+poly plugin search my-plugin --index ./index.json \
+  --trust-root env:INDEX_KEY --revocations-trust-root env:REVOCATION_KEY</code></pre></div>
+          <div class="code-card"><div class="code-head"><span>history / update / preview</span><button class="copy" type="button">Copy</button></div><pre><code>poly history --target web --limit 10
+poly update manifest --channel stable --version 1.2.3 \
+  --platform windows-x86_64 --artifact app.nsis.zip --base-url https://updates.example.com
+poly preview --dry-run --target android --device android-phone</code></pre></div>
+        </div>
+        <figure class="figure reveal">
+          <img src="assets/img/request-cycle.svg" data-en-src="assets/img/en/request-cycle.svg" alt="一次 poly release 的请求周期" loading="lazy" width="1380" height="628">
+          <figcaption data-zh="一次 poly release 的请求周期：计划、构建、校验、签名与回执。" data-en="The request cycle of one poly release: plan, build, verify, sign and receipt.">一次 poly release 的请求周期：计划、构建、校验、签名与回执。</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <section class="section" id="download">
+      <div class="wrap">
+        <p class="eyebrow" data-zh="下载" data-en="DOWNLOAD">下载</p>
+        <h2 data-zh="拿到你的 poly" data-en="Get your poly">拿到你的 poly</h2>
+        <p class="lead" data-zh="所有二进制由 GitHub Actions 在 Linux、macOS 与 Windows 上构建，并附 SHA-256 校验和。" data-en="Every binary is built by GitHub Actions on Linux, macOS and Windows, with SHA-256 checksums.">所有二进制由 GitHub Actions 在 Linux、macOS 与 Windows 上构建，并附 SHA-256 校验和。</p>
+        <div class="grid grid-4 download-grid">
+          <article class="card"><h3 data-zh="Linux x86_64" data-en="Linux x86_64">Linux x86_64</h3><p class="small">tar.gz</p><a class="btn btn-light" href="https://github.com/erikwang2013/polypack/releases/download/v1.15.0/poly-x86_64-unknown-linux-gnu.tar.gz" rel="noopener">Download ↓</a></article>
+          <article class="card"><h3 data-zh="macOS arm64" data-en="macOS arm64">macOS arm64</h3><p class="small">tar.gz</p><a class="btn btn-light" href="https://github.com/erikwang2013/polypack/releases/download/v1.15.0/poly-aarch64-apple-darwin.tar.gz" rel="noopener">Download ↓</a></article>
+          <article class="card"><h3 data-zh="Windows x86_64" data-en="Windows x86_64">Windows x86_64</h3><p class="small">zip</p><a class="btn btn-light" href="https://github.com/erikwang2013/polypack/releases/download/v1.15.0/poly-x86_64-pc-windows-msvc.zip" rel="noopener">Download ↓</a></article>
+          <article class="card"><h3 data-zh="校验和" data-en="Checksums">校验和</h3><p class="small">SHA256SUMS.txt</p><a class="btn btn-light" href="https://github.com/erikwang2013/polypack/releases/download/v1.15.0/SHA256SUMS.txt" rel="noopener">Download ↓</a></article>
+        </div>
+        <p class="small"><a href="https://github.com/erikwang2013/polypack/releases/tag/v1.15.0" target="_blank" rel="noopener" data-zh="查看 Release 页面与更新说明 →" data-en="Open the release page and notes →">查看 Release 页面与更新说明 →</a></p>
+        <img src="assets/img/pax-knock.svg" alt="" width="96" height="96" loading="lazy" class="reveal">
+      </div>
+    </section>
+
+    <section class="section alt" id="donate">
+      <div class="wrap">
+        <p class="eyebrow" data-zh="打赏" data-en="DONATE">打赏</p>
+        <h2 data-zh="请 Pax 吃个苹果" data-en="Buy Pax an apple">请 Pax 吃个苹果</h2>
+        <p class="lead" data-zh="如果 PolyPack 帮你省下了时间，欢迎微信或支付宝支持项目继续维护。点击二维码可放大。" data-en="If PolyPack saved you time, WeChat Pay or Alipay support keeps the project maintained. Click a QR code to zoom.">如果 PolyPack 帮你省下了时间，欢迎微信或支付宝支持项目继续维护。点击二维码可放大。</p>
+        <div class="donate-grid">
+          <button class="qr-card" type="button" data-qr="assets/donate/wechat.svg" data-title-zh="微信赞赏" data-title-en="WeChat Pay">
+            <img src="assets/donate/wechat.svg" alt="微信赞赏二维码" loading="lazy" width="210" height="210">
+            <strong data-zh="微信支付" data-en="WeChat Pay">微信支付</strong>
+            <span data-zh="点击放大" data-en="Click to zoom">点击放大</span>
+          </button>
+          <button class="qr-card" type="button" data-qr="assets/donate/alipay.svg" data-title-zh="支付宝赞赏" data-title-en="Alipay">
+            <img src="assets/donate/alipay.svg" alt="支付宝赞赏二维码" loading="lazy" width="210" height="210">
+            <strong data-zh="支付宝" data-en="Alipay">支付宝</strong>
+            <span data-zh="点击放大" data-en="Click to zoom">点击放大</span>
+          </button>
+        </div>
+        <p class="small muted" data-zh="当前为占位收款码：请把你的微信 / 支付宝收款码替换到 site/assets/donate/wechat.svg 与 alipay.svg。" data-en="Placeholder QR codes: replace site/assets/donate/wechat.svg and alipay.svg with your own WeChat / Alipay payment codes.">当前为占位收款码：请把你的微信 / 支付宝收款码替换到 site/assets/donate/wechat.svg 与 alipay.svg。</p>
+        <img src="assets/img/pax-coquettish.svg" alt="" width="84" height="84" loading="lazy">
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer" id="footer">
+    <div class="wrap">
+      <div class="footer-grid">
+        <div>
+          <div class="footer-brand"><img src="assets/img/pax-cute.svg" alt="" width="44" height="44"><span>PolyPack</span></div>
+          <p data-zh="多端打包，一次送达。Rust 核心 × React UI × 49 个目标。" data-en="Package once, deliver everywhere. Rust core × React UI × 49 targets.">多端打包，一次送达。Rust 核心 × React UI × 49 个目标。</p>
+          <p><a href="https://erik.xyz" target="_blank" rel="noopener">艾瑞可 erik ↗</a></p>
+        </div>
+        <div>
+          <h3 data-zh="项目" data-en="Project">项目</h3>
+          <a href="https://github.com/erikwang2013/polypack" target="_blank" rel="noopener">GitHub</a><br>
+          <a href="https://github.com/erikwang2013/polypack/blob/main/CHANGELOG.md" target="_blank" rel="noopener" data-zh="版本日志" data-en="Changelog">版本日志</a><br>
+          <a href="https://github.com/erikwang2013/polypack/blob/main/LICENSE" target="_blank" rel="noopener">Apache-2.0</a>
+        </div>
+        <div>
+          <h3 data-zh="文档" data-en="Docs">文档</h3>
+          <a href="https://github.com/erikwang2013/polypack/blob/main/README.md" target="_blank" rel="noopener">README</a><br>
+          <a href="https://github.com/erikwang2013/polypack/blob/main/docs/INSTALL.md" target="_blank" rel="noopener" data-zh="安装文档" data-en="Install">安装文档</a><br>
+          <a href="https://github.com/erikwang2013/polypack/blob/main/docs/ENV-PROVIDE.md" target="_blank" rel="noopener" data-zh="环境槽入口" data-en="Env entry points">环境槽入口</a>
+        </div>
+        <div>
+          <h3 data-zh="支持" data-en="Support">支持</h3>
+          <a href="https://github.com/erikwang2013/polypack/issues" target="_blank" rel="noopener" data-zh="问题与建议" data-en="Issues">问题与建议</a><br>
+          <a href="#donate" data-zh="微信 / 支付宝打赏" data-en="WeChat / Alipay">微信 / 支付宝打赏</a>
+          <div class="footer-info" id="busuanzi" data-busuanzi-src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js">
+            <span id="busuanzi_container_page_pv"><span data-i18n="post.readA">阅读</span> <b id="busuanzi_value_page_pv">0</b> <span data-i18n="post.readB">次 👀</span></span>
+          </div>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <span>© 2026 Erik · PolyPack</span>
+        <span data-zh="用 Rust、React 与一点点 Pax 的魔法构建。" data-en="Built with Rust, React and a little Pax magic.">用 Rust、React 与一点点 Pax 的魔法构建。</span>
+      </div>
+    </div>
+  </footer>
+
+  <button class="pet-top" id="toTop" type="button" aria-label="Back to top" data-zh-aria="返回顶部" data-en-aria="Back to top">
+    <img src="assets/img/pax-cute.svg" alt="" width="54" height="54">
+  </button>
+
+  <div class="modal" id="qrModal" role="dialog" aria-modal="true" aria-labelledby="qrTitle" hidden>
+    <div class="modal-card">
+      <button class="modal-close" id="qrClose" type="button" aria-label="Close">×</button>
+      <img id="qrImage" src="assets/donate/wechat.svg" alt="Donation QR code" width="430" height="430">
+      <h3 id="qrTitle">微信赞赏</h3>
+      <p class="modal-note" data-zh="扫码支持 PolyPack 继续维护。" data-en="Scan to support PolyPack maintenance.">扫码支持 PolyPack 继续维护。</p>
+    </div>
+  </div>
+
+  <noscript><p style="padding:16px;background:#fff7ed;color:#9a3412">请启用 JavaScript 以切换中英文与使用交互功能。PolyPack 的核心内容仍可直接阅读。</p></noscript>
+  <script src="js/site.js" defer></script>
+</body>
+</html>
