@@ -979,11 +979,11 @@ rect.c-bg-rect { fill: var(--bg); }</style><rect class="c-bg-rect" width="100%" 
 
         <!-- Connection labels -->
         <g data-detail="context" data-edge-from="dev" data-edge-to="cli" data-edge-label="polypack release" data-edge-key="0" data-edge-id="dev-to-cli">
-          <rect x="136.2" y="366" width="67.6" height="14" rx="3" class="c-mask"/>
+          <rect x="126.6" y="366" width="86.8" height="14" rx="3" class="c-mask"/>
           <text x="170" y="376" class="t-backend" font-size="8" text-anchor="middle">polypack release</text>
         </g>
         <g data-detail="context" data-edge-from="guishell" data-edge-to="cli" data-edge-label="polypack gui" data-edge-key="1" data-edge-id="gui-to-cli">
-          <rect x="230.8" y="420" width="48.4" height="14" rx="3" class="c-mask"/>
+          <rect x="221.2" y="420" width="67.6" height="14" rx="3" class="c-mask"/>
           <text x="255" y="430" class="t-muted" font-size="8" text-anchor="middle">polypack gui</text>
         </g>
         <g data-detail="context" data-edge-from="cli" data-edge-to="core" data-edge-label="polypack.toml" data-edge-key="2" data-edge-id="cli-to-core">

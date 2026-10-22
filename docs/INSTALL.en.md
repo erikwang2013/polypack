@@ -32,7 +32,7 @@ polypack --version
 Download the matching asset from the GitHub Release and extract it:
 
 ```bash
-TAG=v1.16.0
+TAG=v2.0.0
 TARGET=x86_64-unknown-linux-gnu
 curl -fsSLO "https://github.com/erikwang2013/polypack/releases/download/$TAG/polypack-$TARGET.tar.gz"
 tar -xzf "polypack-$TARGET.tar.gz"
@@ -78,7 +78,7 @@ Environment variables:
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
-| `POLYPACK_VERSION` | latest Release | Pin a tag (`v1.16.0` or `1.16.0`) |
+| `POLYPACK_VERSION` | latest Release | Pin a tag (`v2.0.0` or `2.0.0`) |
 | `POLYPACK_INSTALL_DIR` | `~/.local/polypack/bin` | Install directory |
 | `POLYPACK_REPO` | `erikwang2013/polypack` | GitHub repository |
 | `POLYPACK_RELEASE_BASE_URL` | GitHub Release URL | Mirror / offline-test base URL |
@@ -94,7 +94,7 @@ Signing is an optional release step: the Release workflow signs and uploads `SHA
 | Check | Current state | Consequence |
 | --- | --- | --- |
 | workspace crate `publish` | `false` for every crate | `cargo install polypack-cli` does not work |
-| root manifest version | `1.16.0` | aligned with the latest tag |
+| root manifest version | `2.0.0` | aligned with the latest tag |
 | release audit | `cargo package --list` 9/9 passed; `cargo publish --dry-run` refused by `publish = false` | audit complete, actual publishing closed |
 | name availability | `polypack-cli` and `polypack-core` are taken by others | rename or obtain ownership before publishing |
 | crates.io token | none in the repository or CI | no publishing secret configured |

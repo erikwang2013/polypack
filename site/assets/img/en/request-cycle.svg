@@ -802,7 +802,7 @@ rect.c-bg-rect { fill: var(--bg); }</style><rect class="c-bg-rect" width="100%" 
         <g data-edge-from="dev" data-edge-to="cli" data-edge-label="polypack release --target …" data-edge-key="0" data-edge-id="release-cmd">
           <path data-composition-edge-from="dev" data-composition-edge-to="cli" data-composition-edge-id="release-cmd" data-composition-points="69,185;163,185" d="M 69 185 L 163 185" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
         <g data-detail="context">
-          <rect x="50.19999999999999" y="165" width="131.60000000000002" height="16" rx="3" class="c-mask"/>
+          <rect x="39.8" y="165" width="152.4" height="16" rx="3" class="c-mask"/>
           <text x="116" y="175" class="t-backend" font-size="9" text-anchor="middle">polypack release --target …</text>
         </g>
         </g>
