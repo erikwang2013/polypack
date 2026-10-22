@@ -64,12 +64,13 @@ for (const file of ['js/site.js', 'js/three-effects.js']) {
 }
 ok('site JavaScript parses');
 
-// 6) Donation placeholders must be explicit, not a fake payment code.
-for (const file of ['assets/donate/wechat.svg', 'assets/donate/alipay.svg']) {
-  if (!fs.existsSync(path.join(SITE, file))) bad(`missing donation asset ${file}`);
-  else if (!read(file).includes('placeholder')) bad(`${file} must remain an explicit placeholder until replaced`);
+// 6) Donation QR images are real local PNGs provided by the maintainer.
+for (const file of ['assets/img/weixinpay.png', 'assets/img/alipay.png']) {
+  const full = path.join(SITE, file);
+  if (!fs.existsSync(full)) bad(`missing donation QR ${file}`);
+  else if (fs.statSync(full).size < 10_000) bad(`${file} looks like a placeholder (too small)`);
 }
-ok('donation QR placeholders are explicit');
+ok('donation QR images present');
 
 // 7) Size budget (local assets only; keeps first paint predictable).
 const budget = 4 * 1024 * 1024;

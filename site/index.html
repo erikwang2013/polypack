@@ -9,9 +9,9 @@
   <meta name="author" content="Erik">
   <meta name="theme-color" content="#07111f">
   <meta name="color-scheme" content="light dark">
-  <link rel="canonical" href="https://erik.xyz/polypack/">
-  <link rel="alternate" hreflang="zh-CN" href="https://erik.xyz/polypack/">
-  <link rel="alternate" hreflang="en" href="https://erik.xyz/polypack/?lang=en">
+  <link rel="canonical" href="https://package.erik.xyz/polypack/">
+  <link rel="alternate" hreflang="zh-CN" href="https://package.erik.xyz/polypack/">
+  <link rel="alternate" hreflang="en" href="https://package.erik.xyz/polypack/?lang=en">
   <link rel="icon" type="image/svg+xml" href="assets/img/pax-mark.svg">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="apple-touch-icon" href="assets/img/pax-cute.svg">
@@ -22,8 +22,8 @@
   <meta property="og:site_name" content="PolyPack">
   <meta property="og:title" content="PolyPack — 多端打包，一次送达">
   <meta property="og:description" content="Rust 核心 × React UI 适配层 × 49 个目标平台。可验证、可签名、可自托管的跨端打包流水线。">
-  <meta property="og:url" content="https://erik.xyz/polypack/">
-  <meta property="og:image" content="https://erik.xyz/polypack/assets/og/cover.png">
+  <meta property="og:url" content="https://package.erik.xyz/polypack/">
+  <meta property="og:image" content="https://package.erik.xyz/polypack/assets/og/cover.png">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
   <meta property="og:locale" content="zh_CN">
@@ -31,7 +31,7 @@
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="PolyPack — 多端打包，一次送达">
   <meta name="twitter:description" content="Rust core × React adapters × 49 targets. A verifiable, signable, self-hostable packaging pipeline.">
-  <meta name="twitter:image" content="https://erik.xyz/polypack/assets/og/cover.png">
+  <meta name="twitter:image" content="https://package.erik.xyz/polypack/assets/og/cover.png">
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
@@ -267,18 +267,18 @@ poly preview --dry-run --target android --device android-phone</code></pre></div
         <h2 data-zh="请 Pax 吃个苹果" data-en="Buy Pax an apple">请 Pax 吃个苹果</h2>
         <p class="lead" data-zh="如果 PolyPack 帮你省下了时间，欢迎微信或支付宝支持项目继续维护。点击二维码可放大。" data-en="If PolyPack saved you time, WeChat Pay or Alipay support keeps the project maintained. Click a QR code to zoom.">如果 PolyPack 帮你省下了时间，欢迎微信或支付宝支持项目继续维护。点击二维码可放大。</p>
         <div class="donate-grid">
-          <button class="qr-card" type="button" data-qr="assets/donate/wechat.svg" data-title-zh="微信赞赏" data-title-en="WeChat Pay">
-            <img src="assets/donate/wechat.svg" alt="微信赞赏二维码" loading="lazy" width="210" height="210">
+          <button class="qr-card" type="button" data-qr="assets/img/weixinpay.png" data-title-zh="微信赞赏" data-title-en="WeChat Pay">
+            <img src="assets/img/weixinpay.png" alt="微信赞赏二维码" loading="lazy" width="210" height="248">
             <strong data-zh="微信支付" data-en="WeChat Pay">微信支付</strong>
             <span data-zh="点击放大" data-en="Click to zoom">点击放大</span>
           </button>
-          <button class="qr-card" type="button" data-qr="assets/donate/alipay.svg" data-title-zh="支付宝赞赏" data-title-en="Alipay">
-            <img src="assets/donate/alipay.svg" alt="支付宝赞赏二维码" loading="lazy" width="210" height="210">
+          <button class="qr-card" type="button" data-qr="assets/img/alipay.png" data-title-zh="支付宝赞赏" data-title-en="Alipay">
+            <img src="assets/img/alipay.png" alt="支付宝赞赏二维码" loading="lazy" width="210" height="248">
             <strong data-zh="支付宝" data-en="Alipay">支付宝</strong>
             <span data-zh="点击放大" data-en="Click to zoom">点击放大</span>
           </button>
         </div>
-        <p class="small muted" data-zh="当前为占位收款码：请把你的微信 / 支付宝收款码替换到 site/assets/donate/wechat.svg 与 alipay.svg。" data-en="Placeholder QR codes: replace site/assets/donate/wechat.svg and alipay.svg with your own WeChat / Alipay payment codes.">当前为占位收款码：请把你的微信 / 支付宝收款码替换到 site/assets/donate/wechat.svg 与 alipay.svg。</p>
+        <p class="small muted" data-zh="扫码支持 PolyPack 持续维护，感谢你请 Pax 吃苹果。" data-en="Scan to support PolyPack maintenance — thanks for buying Pax an apple.">扫码支持 PolyPack 持续维护，感谢你请 Pax 吃苹果。</p>
         <img src="assets/img/pax-coquettish.svg" alt="" width="84" height="84" loading="lazy">
       </div>
     </section>
@@ -327,7 +327,7 @@ poly preview --dry-run --target android --device android-phone</code></pre></div
   <div class="modal" id="qrModal" role="dialog" aria-modal="true" aria-labelledby="qrTitle" hidden>
     <div class="modal-card">
       <button class="modal-close" id="qrClose" type="button" aria-label="Close">×</button>
-      <img id="qrImage" src="assets/donate/wechat.svg" alt="Donation QR code" width="430" height="430">
+      <img id="qrImage" src="assets/img/weixinpay.png" alt="WeChat Pay donation QR code" width="430" height="430">
       <h3 id="qrTitle">微信赞赏</h3>
       <p class="modal-note" data-zh="扫码支持 PolyPack 继续维护。" data-en="Scan to support PolyPack maintenance.">扫码支持 PolyPack 继续维护。</p>
     </div>

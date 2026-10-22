@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://erik.xyz/polypack/sitemap.xml
+Sitemap: https://package.erik.xyz/polypack/sitemap.xml
