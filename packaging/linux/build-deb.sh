@@ -8,8 +8,12 @@ output=${3:?output required}
 arch=${4:-amd64}
 stage=$(mktemp -d)
 trap 'rm -rf "$stage"' EXIT
-mkdir -p "$stage/DEBIAN" "$stage/usr/bin"
+mkdir -p "$stage/DEBIAN" "$stage/usr/bin" "$stage/usr/share/applications" \
+  "$stage/usr/share/icons/hicolor/scalable/apps"
 install -m 0755 "$binary" "$stage/usr/bin/poly"
+install -m 0644 "$(dirname "$0")/poly.desktop" "$stage/usr/share/applications/polypack.desktop"
+install -m 0644 "$(dirname "$0")/../../site/assets/img/pax-mark.svg" \
+  "$stage/usr/share/icons/hicolor/scalable/apps/poly.svg"
 cat > "$stage/DEBIAN/control" <<EOF
 Package: polypack-cli
 Version: $version

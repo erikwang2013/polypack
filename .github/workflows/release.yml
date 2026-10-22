@@ -184,7 +184,7 @@ jobs:
             throw 'WiX v3 (candle.exe / light.exe) not found'
           }
           & (Join-Path $wix 'candle.exe') -arch x64 "-dVersion=$base" "-dSourceDir=$PWD\target\release" \
-            packaging\windows\poly.wxs -out dist\poly.wixobj
+            "-dIconDir=$PWD\packaging\icons" packaging\windows\poly.wxs -out dist\poly.wixobj
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & (Join-Path $wix 'light.exe') dist\poly.wixobj -out "dist\poly-$version-x86_64.msi"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
