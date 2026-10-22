@@ -26,7 +26,7 @@
   <text x="74" y="390" font-family="Inter, PingFang SC, sans-serif" font-size="24" fill="#cbd5e1">Rust core × React UI adapters × 49 target platforms</text>
   <g font-family="Inter, sans-serif" font-size="18" fill="#94a3b8">
     <text x="74" y="500">SBOM · signed releases · OTA · plugin sandbox · self-hosted farm</text>
-    <text x="74" y="536">v1.15.0 · Apache-2.0 · https://package.erik.xyz/polypack/</text>
+    <text x="74" y="536">v1.16.0 · Apache-2.0 · https://package.erik.xyz/polypack/</text>
   </g>
   <g transform="translate(74 560)">
     <rect width="196" height="38" rx="19" fill="#22d3ee"/>

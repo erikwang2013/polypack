@@ -4,7 +4,7 @@
 版本号自 v1.0.0 起按语义化版本递增（tag 与 GitHub Release 名称一致，见 [README](README.md#路线图)）。
 Notable changes are recorded here; since v1.0.0, tags and releases follow `vX.Y.Z` semantic increments.
 
-## [Unreleased]
+## [1.16.0] — 2026-10-22
 
 ### Added
 - **CLI 桌面安装器**：Release 工作流新增 Linux `.deb` / `.AppImage`、Windows `.msi`、macOS arm64 `.pkg` 原生构建，并在安装后执行 `poly --version` 冒烟；安装器随 `SHA256SUMS.txt` 一并发布，当前未做商业签名（SmartScreen / Gatekeeper 会提示）。`packaging/` 提供可复用的 deb / AppImage / pkg 脚本与 WiX 源。

@@ -41,9 +41,9 @@
     "name": "PolyPack",
     "applicationCategory": "DeveloperApplication",
     "operatingSystem": "Linux, macOS, Windows",
-    "softwareVersion": "1.15.0",
+    "softwareVersion": "1.16.0",
     "license": "https://www.apache.org/licenses/LICENSE-2.0",
-    "downloadUrl": "https://github.com/erikwang2013/polypack/releases/tag/v1.15.0",
+    "downloadUrl": "https://github.com/erikwang2013/polypack/releases/tag/v1.16.0",
     "codeRepository": "https://github.com/erikwang2013/polypack",
     "author": { "@type": "Person", "name": "Erik", "url": "https://erik.xyz" },
     "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
@@ -85,7 +85,7 @@
           <h1><span data-zh="多端打包，" data-en="Package once,">多端打包，</span><span class="grad" data-zh="一次送达。" data-en="deliver everywhere.">一次送达。</span></h1>
           <p class="hero-lead" data-zh="把 Rust 核心、React UI 适配层与 49 个目标平台串成一条可验证、可签名、可自托管的构建流水线。" data-en="One verifiable, signable, self-hostable pipeline for a Rust core, React UI adapters, and 49 target platforms.">把 Rust 核心、React UI 适配层与 49 个目标平台串成一条可验证、可签名、可自托管的构建流水线。</p>
           <div class="hero-actions">
-            <a class="btn btn-primary" href="#download" data-zh="下载 v1.15.0" data-en="Download v1.15.0">下载 v1.15.0</a>
+            <a class="btn btn-primary" href="#download" data-zh="下载 v1.16.0" data-en="Download v1.16.0">下载 v1.16.0</a>
             <a class="btn btn-ghost" href="#install" data-zh="快速开始" data-en="Get started">快速开始</a>
             <a class="btn btn-ghost" href="https://github.com/erikwang2013/polypack" target="_blank" rel="noopener">GitHub ↗</a>
           </div>
@@ -178,6 +178,7 @@
         <p class="eyebrow" data-zh="版本日志" data-en="CHANGELOG">版本日志</p>
         <h2 data-zh="最近发布了什么" data-en="What shipped recently">最近发布了什么</h2>
         <div class="grid grid-2">
+          <article class="card release reveal"><span class="tag">v1.16.0 · 2026-10-22</span><h3 data-zh="原生桌面安装器" data-en="Native desktop installers">原生桌面安装器</h3><ul><li data-zh="Linux .deb / .AppImage、Windows .msi、macOS .pkg，由 GitHub Actions 三宿主构建。" data-en="Linux .deb / .AppImage, Windows .msi and macOS .pkg built natively by GitHub Actions.">Linux .deb / .AppImage、Windows .msi、macOS .pkg，由 GitHub Actions 三宿主构建。</li><li data-zh="安装后自动执行 poly --version 冒烟；Pax 作为安装器预览图标。" data-en="Post-install poly --version smoke; Pax is the installer preview icon.">安装后自动执行 poly --version 冒烟；Pax 作为安装器预览图标。</li><li data-zh="安装器未做商业签名，SmartScreen / Gatekeeper 可能提示。" data-en="Installers are unsigned; SmartScreen / Gatekeeper may warn.">安装器未做商业签名，SmartScreen / Gatekeeper 可能提示。</li></ul></article>
           <article class="card release reveal"><span class="tag">v1.15.0 · 2026-10-21</span><h3 data-zh="环境槽用户入口" data-en="Environment-slot entry points">环境槽用户入口</h3><ul><li data-zh="poly env-provide 工具：凭据隐藏上传、授权门户、硬件与试用表单。" data-en="An env-provide helper: hidden credential upload, authorization portals, hardware and trial forms.">poly env-provide 工具：凭据隐藏上传、授权门户、硬件与试用表单。</li><li data-zh="文档 / 图片全量同步，20 对文档门禁。" data-en="Full docs/image sync with a 20-pair docs gate.">文档 / 图片全量同步，20 对文档门禁。</li><li data-zh="安装示例与版本引用更新到 v1.15.0。" data-en="Install examples and version references updated to v1.15.0.">安装示例与版本引用更新到 v1.15.0。</li></ul></article>
           <article class="card release reveal"><span class="tag">v1.14.0 · 2026-10-21</span><h3 data-zh="签名插件索引 + 农场加固" data-en="Signed plugin index + farm hardening">签名插件索引 + 农场加固</h3><ul><li data-zh="poly plugin add/search 离线验签，覆盖吊销、回滚、分叉与 SRI。" data-en="poly plugin add/search verifies offline, covering revocation, rollback, forks and SRI.">poly plugin add/search 离线验签，覆盖吊销、回滚、分叉与 SRI。</li><li data-zh="10 项自托管农场加固清单与预检脚本。" data-en="A 10-item self-hosted farm hardening checklist and preflight.">10 项自托管农场加固清单与预检脚本。</li><li data-zh="wasmtime 49.0.4 / rustls-webpki 0.103.16 安全修复。" data-en="wasmtime 49.0.4 / rustls-webpki 0.103.16 security fixes.">wasmtime 49.0.4 / rustls-webpki 0.103.16 安全修复。</li></ul></article>
           <article class="card release reveal"><span class="tag">v1.13.1 · 2026-10-20</span><h3 data-zh="环境槽关闭 + 安全补丁" data-en="Env-slot closures + security patch">环境槽关闭 + 安全补丁</h3><ul><li data-zh="ENV-15 keyring、ENV-16 Vault、ENV-17 S3 真跑通过。" data-en="ENV-15 keyring, ENV-16 Vault and ENV-17 S3 real runs passed.">ENV-15 keyring、ENV-16 Vault、ENV-17 S3 真跑通过。</li><li data-zh="wasmtime 49.0.4 修复 RUSTSEC-2026-0378/0379。" data-en="wasmtime 49.0.4 fixes RUSTSEC-2026-0378/0379.">wasmtime 49.0.4 修复 RUSTSEC-2026-0378/0379。</li></ul></article>
@@ -198,7 +199,7 @@
           <button class="tab" id="tab-source" role="tab" aria-selected="false" aria-controls="panel-source" data-zh="源码" data-en="Source">源码</button>
         </div>
         <div class="install-panel" id="panel-linux" role="tabpanel" aria-labelledby="tab-linux">
-          <div class="code-card"><div class="code-head"><span>bash · release v1.15.0</span><button class="copy" type="button">Copy</button></div><pre><code>curl -fsSL https://raw.githubusercontent.com/erikwang2013/polypack/v1.15.0/scripts/install.sh | bash
+          <div class="code-card"><div class="code-head"><span>bash · release v1.16.0</span><button class="copy" type="button">Copy</button></div><pre><code>curl -fsSL https://raw.githubusercontent.com/erikwang2013/polypack/v1.16.0/scripts/install.sh | bash
 poly --version</code></pre></div>
           <p class="small" data-zh="强制 SHA-256 校验；配置 MINISIGN 公钥后可启用严格签名验证。" data-en="Mandatory SHA-256 verification; strict minisign verification is available with a configured public key.">强制 SHA-256 校验；配置 MINISIGN 公钥后可启用严格签名验证。</p>
         </div>
@@ -213,7 +214,7 @@ cd polypack
 cargo install --path crates/poly-cli
 poly doctor</code></pre></div>
         </div>
-        <p class="small" data-zh-html="需要一个可用的 Rust 工具链（MSRV 1.98）。完整说明见 <a href=&quot;https://github.com/erikwang2013/polypack/blob/v1.15.0/docs/INSTALL.md&quot; target=&quot;_blank&quot; rel=&quot;noopener&quot;>docs/INSTALL</a>。" data-en-html="A Rust toolchain (MSRV 1.98) is required for source builds. See <a href=&quot;https://github.com/erikwang2013/polypack/blob/v1.15.0/docs/INSTALL.en.md&quot; target=&quot;_blank&quot; rel=&quot;noopener&quot;>docs/INSTALL</a> for the full guide.">需要一个可用的 Rust 工具链（MSRV 1.98）。完整说明见 <a href="https://github.com/erikwang2013/polypack/blob/v1.15.0/docs/INSTALL.md" target="_blank" rel="noopener">docs/INSTALL</a>。</p>
+        <p class="small" data-zh-html="需要一个可用的 Rust 工具链（MSRV 1.98）。完整说明见 <a href=&quot;https://github.com/erikwang2013/polypack/blob/v1.16.0/docs/INSTALL.md&quot; target=&quot;_blank&quot; rel=&quot;noopener&quot;>docs/INSTALL</a>。" data-en-html="A Rust toolchain (MSRV 1.98) is required for source builds. See <a href=&quot;https://github.com/erikwang2013/polypack/blob/v1.16.0/docs/INSTALL.en.md&quot; target=&quot;_blank&quot; rel=&quot;noopener&quot;>docs/INSTALL</a> for the full guide.">需要一个可用的 Rust 工具链（MSRV 1.98）。完整说明见 <a href="https://github.com/erikwang2013/polypack/blob/v1.16.0/docs/INSTALL.md" target="_blank" rel="noopener">docs/INSTALL</a>。</p>
       </div>
     </section>
 
@@ -254,12 +255,20 @@ poly preview --dry-run --target android --device android-phone</code></pre></div
         <h2 data-zh="拿到你的 poly" data-en="Get your poly">拿到你的 poly</h2>
         <p class="lead" data-zh="所有二进制由 GitHub Actions 在 Linux、macOS 与 Windows 上构建，并附 SHA-256 校验和。" data-en="Every binary is built by GitHub Actions on Linux, macOS and Windows, with SHA-256 checksums.">所有二进制由 GitHub Actions 在 Linux、macOS 与 Windows 上构建，并附 SHA-256 校验和。</p>
         <div class="grid grid-4 download-grid">
-          <article class="card"><h3 data-zh="Linux x86_64" data-en="Linux x86_64">Linux x86_64</h3><p class="small">tar.gz</p><a class="btn btn-light" href="https://github.com/erikwang2013/polypack/releases/download/v1.15.0/poly-x86_64-unknown-linux-gnu.tar.gz" rel="noopener">Download ↓</a></article>
-          <article class="card"><h3 data-zh="macOS arm64" data-en="macOS arm64">macOS arm64</h3><p class="small">tar.gz</p><a class="btn btn-light" href="https://github.com/erikwang2013/polypack/releases/download/v1.15.0/poly-aarch64-apple-darwin.tar.gz" rel="noopener">Download ↓</a></article>
-          <article class="card"><h3 data-zh="Windows x86_64" data-en="Windows x86_64">Windows x86_64</h3><p class="small">zip</p><a class="btn btn-light" href="https://github.com/erikwang2013/polypack/releases/download/v1.15.0/poly-x86_64-pc-windows-msvc.zip" rel="noopener">Download ↓</a></article>
-          <article class="card"><h3 data-zh="校验和" data-en="Checksums">校验和</h3><p class="small">SHA256SUMS.txt</p><a class="btn btn-light" href="https://github.com/erikwang2013/polypack/releases/download/v1.15.0/SHA256SUMS.txt" rel="noopener">Download ↓</a></article>
+          <article class="card"><h3 data-zh="Linux x86_64" data-en="Linux x86_64">Linux x86_64</h3><p class="small">tar.gz</p><a class="btn btn-light" href="https://github.com/erikwang2013/polypack/releases/download/v1.16.0/poly-x86_64-unknown-linux-gnu.tar.gz" rel="noopener">Download ↓</a></article>
+          <article class="card"><h3 data-zh="macOS arm64" data-en="macOS arm64">macOS arm64</h3><p class="small">tar.gz</p><a class="btn btn-light" href="https://github.com/erikwang2013/polypack/releases/download/v1.16.0/poly-aarch64-apple-darwin.tar.gz" rel="noopener">Download ↓</a></article>
+          <article class="card"><h3 data-zh="Windows x86_64" data-en="Windows x86_64">Windows x86_64</h3><p class="small">zip</p><a class="btn btn-light" href="https://github.com/erikwang2013/polypack/releases/download/v1.16.0/poly-x86_64-pc-windows-msvc.zip" rel="noopener">Download ↓</a></article>
+          <article class="card"><h3 data-zh="校验和" data-en="Checksums">校验和</h3><p class="small">SHA256SUMS.txt</p><a class="btn btn-light" href="https://github.com/erikwang2013/polypack/releases/download/v1.16.0/SHA256SUMS.txt" rel="noopener">Download ↓</a></article>
         </div>
-        <p class="small"><a href="https://github.com/erikwang2013/polypack/releases/tag/v1.15.0" target="_blank" rel="noopener" data-zh="查看 Release 页面与更新说明 →" data-en="Open the release page and notes →">查看 Release 页面与更新说明 →</a></p>
+        <p class="small"><a href="https://github.com/erikwang2013/polypack/releases/tag/v1.16.0" target="_blank" rel="noopener" data-zh="查看 Release 页面与更新说明 →" data-en="Open the release page and notes →">查看 Release 页面与更新说明 →</a></p>
+        <h3 data-zh="桌面安装器" data-en="Desktop installers" style="margin-top:34px">桌面安装器</h3>
+        <div class="grid grid-4 download-grid">
+          <article class="card"><h3>Debian / Ubuntu</h3><p class="small">.deb</p><a class="btn btn-light" href="https://github.com/erikwang2013/polypack/releases/download/v1.16.0/polypack-cli_1.16.0_amd64.deb" rel="noopener">Download ↓</a></article>
+          <article class="card"><h3>AppImage</h3><p class="small">x86_64</p><a class="btn btn-light" href="https://github.com/erikwang2013/polypack/releases/download/v1.16.0/poly-1.16.0-x86_64.AppImage" rel="noopener">Download ↓</a></article>
+          <article class="card"><h3>Windows</h3><p class="small">.msi</p><a class="btn btn-light" href="https://github.com/erikwang2013/polypack/releases/download/v1.16.0/poly-1.16.0-x86_64.msi" rel="noopener">Download ↓</a></article>
+          <article class="card"><h3>macOS arm64</h3><p class="small">.pkg</p><a class="btn btn-light" href="https://github.com/erikwang2013/polypack/releases/download/v1.16.0/poly-1.16.0-aarch64.pkg" rel="noopener">Download ↓</a></article>
+        </div>
+
         <img src="assets/img/pax-knock.svg" alt="" width="96" height="96" loading="lazy" class="reveal">
       </div>
     </section>
