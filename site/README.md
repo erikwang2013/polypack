@@ -13,23 +13,24 @@ Use `?lang=en` for English and `?perf=1` for the built-in interaction probe.
 
 ## Performance budget
 
-- No framework, web fonts, or remote CSS/JS; three.js is vendored and loaded after `load` + idle.
+- No framework, web fonts, or remote CSS/JS; three.js is vendored and runs in a worker with OffscreenCanvas after idle, keeping parsing and WebGL setup off the main thread.
 - Images are local SVGs/PNG with lazy loading below the fold, explicit dimensions and `content-visibility` on sections.
 - Event handlers are synchronous, CSS-driven, and passive where applicable. `?perf=1` writes a hidden JSON block with language-toggle, QR-modal and scroll-toggle timings plus navigation/FCP marks. Target: **each UI response < 50 ms** on a local static server.
-- The hero canvas pauses when off-screen or the tab is hidden, caps DPR at 1.75, and uses fewer particles on mobile.
+- The hero canvas pauses when off-screen or the tab is hidden, caps DPR at 1.75, and uses fewer particles on mobile; the worker is optional and the CSS grid/glow is the fallback.
 
 Measured on 2026-10-22 with Python 3.12 `http.server`, headless Chrome 151, localhost:
 
 | Metric | Value |
 | --- | --- |
 | TTFB (curl) | ~10 ms |
-| Nav TTFB (Chrome) | 4.0 ms |
-| DOMContentLoaded | 80.2 ms |
-| Load | 100.2 ms |
-| First Contentful Paint | 168 ms |
-| Language toggle | 4.4 ms |
-| QR modal open + close | 7.5 ms |
-| Back-to-top show/hide | 0.0 ms |
+| Nav TTFB (Chrome) | 7–29 ms |
+| DOMContentLoaded | 249.0 ms |
+| Load | 254.0 ms |
+| First Contentful Paint | 400 ms |
+| Language toggle | 10.0 ms |
+| QR modal open + close | 11.2 ms |
+| Nav / tab / back-to-top | 0.0–3.2 ms |
+| Main-thread long tasks | 0 in the measured run |
 
 The interaction budget is < 50 ms; the paint/load numbers are reported for context, not claimed as interaction latency.
 

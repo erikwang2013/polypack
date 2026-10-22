@@ -18,6 +18,14 @@
   const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   let lastFocus = null;
   let lang = 'zh';
+  const longTasks = [];
+  if ('PerformanceObserver' in window) {
+    try {
+      new PerformanceObserver((list) => {
+        for (const entry of list.getEntries()) longTasks.push({ duration: entry.duration, start: entry.startTime });
+      }).observe({ type: 'longtask', buffered: true });
+    } catch (_) { /* longtask unsupported */ }
+  }
 
   const dict = {
     'post.readA': { zh: '阅读', en: 'Read' },
@@ -42,26 +50,32 @@
     html.lang = next === 'en' ? 'en' : 'zh-CN';
     html.dataset.lang = next;
 
-    for (const node of $$('[data-zh]')) {
-      const value = node.dataset[next];
-      if (value !== undefined) node.textContent = value;
+    // The document ships in Chinese; on the first zh application the DOM already
+    // matches, so skip 120+ text writes. Switching languages always updates.
+    const firstZh = next === 'zh' && html.dataset.langApplied !== '1';
+    if (!firstZh) {
+      for (const node of $$('[data-zh]')) {
+        const value = node.dataset[next];
+        if (value !== undefined) node.textContent = value;
+      }
+      for (const node of $$('[data-zh-html]')) {
+        const value = node.dataset[next + 'Html'];
+        if (value !== undefined) node.innerHTML = value;
+      }
+      for (const node of $$('[data-zh-aria]')) {
+        const value = node.dataset[next + 'Aria'];
+        if (value !== undefined) node.setAttribute('aria-label', value);
+      }
+      for (const node of $$('img[data-en-src]')) {
+        if (!node.dataset.zhSrc) node.dataset.zhSrc = node.getAttribute('src');
+        node.src = next === 'en' ? node.dataset.enSrc : node.dataset.zhSrc;
+      }
+      for (const node of $$('[data-i18n]')) {
+        const entry = dict[node.dataset.i18n];
+        if (entry) node.textContent = entry[next];
+      }
     }
-    for (const node of $$('[data-zh-html]')) {
-      const value = node.dataset[next + 'Html'];
-      if (value !== undefined) node.innerHTML = value;
-    }
-    for (const node of $$('[data-zh-aria]')) {
-      const value = node.dataset[next + 'Aria'];
-      if (value !== undefined) node.setAttribute('aria-label', value);
-    }
-    for (const node of $$('img[data-en-src]')) {
-      if (!node.dataset.zhSrc) node.dataset.zhSrc = node.getAttribute('src');
-      node.src = next === 'en' ? node.dataset.enSrc : node.dataset.zhSrc;
-    }
-    for (const node of $$('[data-i18n]')) {
-      const entry = dict[node.dataset.i18n];
-      if (entry) node.textContent = entry[next];
-    }
+    html.dataset.langApplied = '1';
 
     const title = next === 'en' ? body.dataset.titleEn : body.dataset.titleZh;
     const desc = next === 'en' ? body.dataset.descEn : body.dataset.descZh;
@@ -202,23 +216,74 @@
     for (const node of $$('.reveal')) node.classList.add('in');
   }
 
-  /* ---- three.js: deferred, idle, optional ----------------------------- */
-  function loadScript(src) {
-    return new Promise((resolve, reject) => {
-      const script = document.createElement('script');
-      script.src = src;
-      script.async = true;
-      script.onload = resolve;
-      script.onerror = reject;
-      document.head.appendChild(script);
-    });
-  }
+  /* ---- three.js: worker + OffscreenCanvas, deferred and optional ------- */
   function bootThree() {
-    if (reduceMotion || !navigator.onLine && location.protocol === 'file:') return;
-    loadScript('vendor/three.min.js')
-      .then(() => loadScript('js/three-effects.js'))
-      .then(() => window.initPolyPackThree?.($('#bg-canvas')))
-      .catch(() => { /* CSS gradient remains the fallback */ });
+    const canvas = $('#bg-canvas');
+    if (reduceMotion || !canvas) return;
+    if (typeof canvas.transferControlToOffscreen !== 'function') return;
+    let worker;
+    let offscreen;
+    try {
+      offscreen = canvas.transferControlToOffscreen();
+      worker = new Worker('js/three-worker.js');
+    } catch (_) {
+      return;
+    }
+    const host = canvas.parentElement;
+    const postSize = () => worker.postMessage({
+      type: 'resize',
+      width: host.clientWidth,
+      height: host.clientHeight,
+      dpr: window.devicePixelRatio || 1,
+    });
+    worker.onerror = () => { canvas.dataset.three = 'error'; worker.terminate(); };
+    worker.onmessage = (event) => {
+      if (event.data?.type === 'ready' && !canvas.dataset.three) canvas.dataset.three = 'ready';
+      if (event.data?.type === 'rendered') {
+        canvas.dataset.three = 'rendered';
+        canvas.dataset.threeSize = `${event.data.width}x${event.data.height}/${event.data.count}`;
+      }
+      if (event.data?.type === 'unsupported') { canvas.dataset.three = 'fallback'; worker.terminate(); }
+    };
+    worker.postMessage({
+      type: 'init',
+      canvas: offscreen,
+      width: host.clientWidth,
+      height: host.clientHeight,
+      dpr: window.devicePixelRatio || 1,
+    }, [offscreen]);
+
+    if ('ResizeObserver' in window) new ResizeObserver(postSize).observe(host);
+    else window.addEventListener('resize', postSize, { passive: true });
+
+    let pointerTick = false;
+    window.addEventListener('pointermove', (event) => {
+      if (pointerTick) return;
+      pointerTick = true;
+      requestAnimationFrame(() => {
+        worker.postMessage({
+          type: 'pointer',
+          x: (event.clientX / window.innerWidth - 0.5) * 2,
+          y: (event.clientY / window.innerHeight - 0.5) * 2,
+        });
+        pointerTick = false;
+      });
+    }, { passive: true });
+
+    const setVisible = () => worker.postMessage({
+      type: 'visible',
+      visible: !document.hidden,
+    });
+    document.addEventListener('visibilitychange', setVisible);
+    if ('IntersectionObserver' in window) {
+      new IntersectionObserver((entries) => {
+        worker.postMessage({ type: 'visible', visible: entries.some((entry) => entry.isIntersecting) && !document.hidden });
+      }, { threshold: 0 }).observe(host);
+    }
+    window.addEventListener('pagehide', () => {
+      worker.postMessage({ type: 'stop' });
+      worker.terminate();
+    }, { once: true });
   }
   const idle = window.requestIdleCallback || ((fn) => setTimeout(fn, 800));
   document.addEventListener('DOMContentLoaded', () => idle(bootThree, { timeout: 2000 }), { once: true });
@@ -258,6 +323,25 @@
       toTop.classList.toggle('show', true);
       toTop.classList.toggle('show', false);
     });
+    const navMs = measure(() => {
+      nav.classList.add('open');
+      nav.classList.remove('open');
+    });
+    const tabMs = measure(() => {
+      const windows = document.getElementById('tab-windows');
+      const linux = document.getElementById('tab-linux');
+      windows.click();
+      linux.click();
+    });
+    const homeMs = measure(() => {
+      const home = document.querySelector('#nav a[href="#top"]');
+      const previous = html.style.scrollBehavior;
+      html.style.scrollBehavior = 'auto';
+      if (home) home.click();
+      window.scrollTo(0, 0);
+      html.style.scrollBehavior = previous;
+    });
+    const maxLong = longTasks.length ? Math.max(...longTasks.map((entry) => entry.duration)) : 0;
     const payload = {
       ttfb_ms: navEntry ? Math.round(navEntry.responseStart * 10) / 10 : null,
       dom_content_loaded_ms: navEntry ? Math.round(navEntry.domContentLoadedEventEnd * 10) / 10 : null,
@@ -266,7 +350,12 @@
       lang_toggle_ms: langMs,
       qr_modal_open_close_ms: modalMs,
       scroll_toggle_ms: scrollMs,
-      budget_50ms: [langMs, modalMs, scrollMs].every((value) => value < 50),
+      nav_toggle_ms: navMs,
+      tab_switch_ms: tabMs,
+      home_nav_ms: homeMs,
+      long_task_max_ms: maxLong === 0 ? null : Math.round(maxLong * 10) / 10,
+      long_tasks: longTasks.map((entry) => ({ start_ms: Math.round(entry.start * 10) / 10, duration_ms: Math.round(entry.duration * 10) / 10 })),
+      budget_50ms: [langMs, modalMs, scrollMs, navMs, tabMs, homeMs].every((value) => value < 50),
     };
     const out = document.createElement('pre');
     out.id = 'perf-output';
