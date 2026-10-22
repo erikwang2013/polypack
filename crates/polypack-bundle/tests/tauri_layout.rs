@@ -236,7 +236,8 @@ fn macos_layout_requires_icns_icon() {
         tauri::bare_product(&inputs, polypack_targets::Host::Win).is_ok(),
         "Windows 布局不应要求 icns"
     );
-    let err = tauri::bare_product(&inputs, polypack_targets::Host::Macos).expect_err("缺 icns 须报错");
+    let err =
+        tauri::bare_product(&inputs, polypack_targets::Host::Macos).expect_err("缺 icns 须报错");
     assert!(matches!(
         err,
         BundleError::MissingInput {
@@ -257,7 +258,8 @@ fn missing_core_binary_is_reported() {
     let base = scratch("missing-core");
     let mut inputs = BundleInputs::new(product(), base.join("out"));
     inputs.ui_dist = Some(base.join("nope"));
-    let err = tauri::bare_product(&inputs, polypack_targets::Host::Linux).expect_err("缺核心须报错");
+    let err =
+        tauri::bare_product(&inputs, polypack_targets::Host::Linux).expect_err("缺核心须报错");
     assert!(matches!(
         err,
         BundleError::MissingInput {
@@ -273,7 +275,8 @@ fn injected_dist_must_exist() {
     let base = scratch("no-dist");
     let mut inputs = inputs(&base);
     inputs.ui_dist = Some(base.join("absent"));
-    let err = tauri::bare_product(&inputs, polypack_targets::Host::Linux).expect_err("缺 dist 须报错");
+    let err =
+        tauri::bare_product(&inputs, polypack_targets::Host::Linux).expect_err("缺 dist 须报错");
     assert!(matches!(
         err,
         BundleError::MissingInput {

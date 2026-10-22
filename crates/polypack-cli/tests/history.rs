@@ -85,7 +85,11 @@ fn host_target() -> &'static str {
 fn init_project(tag: &str) -> TempDir {
     let project = TempDir::new(tag);
     let init = polypack(&["init"], project.path());
-    assert!(init.status.success(), "polypack init 失败：{}", combined(&init));
+    assert!(
+        init.status.success(),
+        "polypack init 失败：{}",
+        combined(&init)
+    );
     // Windows 主 rust 作业只预装 NSIS（WiX 在 windows-msi-real 作业），
     // 这里把模板已有的 windows 格式从 msi 换成 nsis，避免真实构建测试因缺
     // candle/light 而误红。不能追加新的 [targets.windows] 表（重复键）。

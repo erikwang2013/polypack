@@ -132,7 +132,12 @@ fn xcode_probe_missing_with_note_off_macos() {
 #[test]
 fn run_capture_reports_missing_command_as_none() {
     assert!(
-        run_capture("polypack-nonexistent-command-xyz", &[], Duration::from_secs(1)).is_none(),
+        run_capture(
+            "polypack-nonexistent-command-xyz",
+            &[],
+            Duration::from_secs(1)
+        )
+        .is_none(),
         "命令不存在必须返回 None"
     );
 }

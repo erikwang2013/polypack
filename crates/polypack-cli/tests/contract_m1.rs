@@ -823,7 +823,9 @@ fn real_artifact_check(platform: &str, golden: &serde_json::Value) {
         return;
     }
     if !cli_has_verb("init") || !cli_has_verb("build") {
-        eprintln!("SKIP {platform}：`polypack init` / `polypack build` 未落盘（等待 T-M1-11 / T-M1-01）");
+        eprintln!(
+            "SKIP {platform}：`polypack init` / `polypack build` 未落盘（等待 T-M1-11 / T-M1-01）"
+        );
         return;
     }
     if !cargo_available() {
@@ -887,7 +889,9 @@ fn linux_deb_end_to_end() {
         return;
     }
     if !cli_has_verb("init") || !cli_has_verb("build") {
-        eprintln!("SKIP linux：`polypack init` / `polypack build` 未落盘（等待 T-M1-11 / T-M1-01）");
+        eprintln!(
+            "SKIP linux：`polypack init` / `polypack build` 未落盘（等待 T-M1-11 / T-M1-01）"
+        );
         return;
     }
     if !cargo_available() {

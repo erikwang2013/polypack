@@ -244,9 +244,12 @@ pub fn check_zephyr_structure(root: &Path) -> Result<ZephyrStructure, BundleErro
         .map_err(io_err(&root.join(TEMPLATE_MANIFEST)))?;
     let manifest: serde_json::Value = serde_json::from_str(&manifest_text)
         .map_err(|err| bad(root, format!("polypack-template.json 非法：{err}")))?;
-    let version = manifest["template_version"]
-        .as_str()
-        .ok_or_else(|| bad(root, "polypack-template.json 缺 template_version".to_string()))?;
+    let version = manifest["template_version"].as_str().ok_or_else(|| {
+        bad(
+            root,
+            "polypack-template.json 缺 template_version".to_string(),
+        )
+    })?;
     if version != TEMPLATE_VERSION {
         return Err(bad(
             root,

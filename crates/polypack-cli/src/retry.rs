@@ -273,7 +273,9 @@ fn missing_apk(project: &Project, spec: &TargetSpec) -> Diagnostic {
         codes::E_RETRY_0001,
         format!("{} 下没有未签名 APK（目标 {}）", staged.display(), spec.id),
     )
-    .with_hint("先跑 polypack build --target android 产出未签名 APK，或用 --input 指定未签名 APK 路径")
+    .with_hint(
+        "先跑 polypack build --target android 产出未签名 APK，或用 --input 指定未签名 APK 路径",
+    )
 }
 
 /// 解析 `--credential` 引用（`env:变量名` / `keyring[:条目名]` / `vault[:条目名]`）。

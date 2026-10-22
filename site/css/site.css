@@ -276,9 +276,9 @@ h3 { margin: 0 0 8px; font-size: 20px; }
 .download-card-head { display: flex; align-items: center; gap: 12px; }
 .download-icon { width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center; background: #ecfeff; font-size: 23px; }
 .download-list { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-.download-list .code-card pre { font-size: 12px; }
+.download-list .code-card pre { font-size: 11px; white-space: pre-wrap; overflow-wrap: anywhere; }
 .download-card.detected { border-color: var(--brand); box-shadow: 0 0 0 2px rgba(8,145,178,.14), var(--shadow); }
-.download-detected { display: none; margin-left: auto; padding: 2px 8px; border-radius: 999px; background: #ecfeff; color: #0e7490; font: 600 11px var(--mono); }
+.download-detected { display: none; flex-shrink: 0; margin-left: auto; padding: 2px 8px; border-radius: 999px; background: #ecfeff; color: #0e7490; font: 600 11px var(--mono); white-space: nowrap; }
 .download-card.detected .download-detected { display: inline-block; }
 .platform-hint { margin: 10px 0 0; color: #94a3b8; font-size: 13px; }
 .platform-hint[hidden] { display: none; }

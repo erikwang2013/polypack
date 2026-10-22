@@ -300,7 +300,8 @@ mod tests {
 
     #[test]
     fn project_root_prefers_nested_garmin_dir() {
-        let base = std::env::temp_dir().join(format!("polypack-garmin-root-{}", std::process::id()));
+        let base =
+            std::env::temp_dir().join(format!("polypack-garmin-root-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&base);
         let host = base.join("host");
         let nested = host.join("garmin");

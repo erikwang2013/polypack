@@ -234,7 +234,10 @@ fn real_tauri_msi_install_launch_uninstall() {
             if !path.is_file() {
                 fail(
                     E_INPUT,
-                    format!("POLYPACK_TAURI_CORE_BIN 指向的文件不存在：{}", path.display()),
+                    format!(
+                        "POLYPACK_TAURI_CORE_BIN 指向的文件不存在：{}",
+                        path.display()
+                    ),
                 );
             }
             path

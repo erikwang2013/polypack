@@ -146,7 +146,8 @@ pub(crate) fn run_project(
         request = request.with_materials(materials);
     }
     let outcome =
-        match polypack_publish::publish_checked(publisher.as_ref(), &request, &providers, &archive) {
+        match polypack_publish::publish_checked(publisher.as_ref(), &request, &providers, &archive)
+        {
             Ok(outcome) => outcome,
             Err(failure) => {
                 // 机器可读：`{"event":"failed", stage, code, hint}`（T-M8-10 验收口径）。
@@ -241,7 +242,7 @@ fn find_publisher(
     };
     let Some(wanted) = polypack_publish::Channel::from_id(channel) else {
         return Err(gap(
-            "polypack-publish 无该渠道备位（Channel::from_id 未识别）".to_string()
+            "polypack-publish 无该渠道备位（Channel::from_id 未识别）".to_string(),
         ));
     };
     polypack_publish::builtin(transport)

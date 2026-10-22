@@ -19,7 +19,8 @@ use polypack_targets::{Host, TargetSpec};
 
 /// 每个测试独占的临时目录。
 fn temp_dir(tag: &str) -> PathBuf {
-    let dir = std::env::temp_dir().join(format!("polypack-bundle-dmg-{tag}-{}", std::process::id()));
+    let dir =
+        std::env::temp_dir().join(format!("polypack-bundle-dmg-{tag}-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
     dir

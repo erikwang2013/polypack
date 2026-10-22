@@ -450,7 +450,8 @@ mod tests {
 
     /// 单测用的临时目录（drop 靠测试自己清）。
     fn scratch(tag: &str) -> PathBuf {
-        let dir = std::env::temp_dir().join(format!("polypack-wasm-opt-{tag}-{}", std::process::id()));
+        let dir =
+            std::env::temp_dir().join(format!("polypack-wasm-opt-{tag}-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).expect("建临时目录");
         dir

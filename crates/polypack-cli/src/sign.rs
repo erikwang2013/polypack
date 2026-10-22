@@ -30,7 +30,9 @@ use polypack_core::events::{BuildEvent, EventSink};
 use polypack_core::job::JobSpec;
 use polypack_core::plan::{Stage, StageContext, StageError, StageOutcome};
 use polypack_core::{CredentialRef, codes};
-use polypack_sign::{AndroidSigner, HarmonySignRequest, HarmonySigner, SignError, SignRequest, ios};
+use polypack_sign::{
+    AndroidSigner, HarmonySignRequest, HarmonySigner, SignError, SignRequest, ios,
+};
 use polypack_targets::{TargetSpec, current_host};
 
 use crate::project;
@@ -396,7 +398,11 @@ pub(crate) fn unsigned_hap(project: &polypack_core::Project, spec: &TargetSpec) 
 }
 
 /// 打包暂存目录里的未签名产物：命名约定优先，缺失时退化为 `*-unsigned.<ext>` 扫描。
-fn find_unsigned(project: &polypack_core::Project, spec: &TargetSpec, ext: &str) -> Option<PathBuf> {
+fn find_unsigned(
+    project: &polypack_core::Project,
+    spec: &TargetSpec,
+    ext: &str,
+) -> Option<PathBuf> {
     let staged = project::app_packages_root(project).join(&spec.id);
     let preferred = staged.join(unsigned_name_for(project, ext));
     if preferred.is_file() {

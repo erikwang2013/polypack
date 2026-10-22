@@ -236,8 +236,8 @@ pub(crate) fn verify_qnx_qemu(
         );
         return Ok(true);
     };
-    let qcc =
-        tool_in(&sdp.host.join("usr/bin"), "qcc").or_else(|| polypack_bundle::exec::tool_path("qcc"));
+    let qcc = tool_in(&sdp.host.join("usr/bin"), "qcc")
+        .or_else(|| polypack_bundle::exec::tool_path("qcc"));
     let mkifs = tool_in(&sdp.host.join("usr/bin"), "mkifs")
         .or_else(|| polypack_bundle::exec::tool_path("mkifs"));
     let qemu = std::env::var_os("POLYPACK_QNX_QEMU")

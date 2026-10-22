@@ -138,7 +138,8 @@ fn fitbit_contract() {
 /// 确定性：同输入二跑字节一致（buildId / bundleDate 固定，金样可复现）。
 #[test]
 fn fitbit_packaging_is_deterministic() {
-    let root = std::env::temp_dir().join(format!("polypack-wear-fitbit-det-{}", std::process::id()));
+    let root =
+        std::env::temp_dir().join(format!("polypack-wear-fitbit-det-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&root);
     std::fs::create_dir_all(&root).expect("临时目录可建");
     let inputs = prepare(&root).expect("Fitbit 夹具无外部依赖");
@@ -161,8 +162,10 @@ fn fitbit_packaging_is_deterministic() {
 /// 可选伴生组件腿：`companion/index.js` 存在时入包并出现在结构检查里。
 #[test]
 fn fitbit_companion_leg_is_optional() {
-    let root =
-        std::env::temp_dir().join(format!("polypack-wear-fitbit-companion-{}", std::process::id()));
+    let root = std::env::temp_dir().join(format!(
+        "polypack-wear-fitbit-companion-{}",
+        std::process::id()
+    ));
     let _ = std::fs::remove_dir_all(&root);
     std::fs::create_dir_all(&root).expect("临时目录可建");
     let inputs = prepare(&root).expect("Fitbit 夹具无外部依赖");

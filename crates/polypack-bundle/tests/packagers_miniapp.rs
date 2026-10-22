@@ -210,7 +210,12 @@ fn real_compile_one(
     );
     let page_js =
         std::fs::read_to_string(dist.join("pages/index/index.js")).expect("读页面 bundle");
-    for marker in ["PolyPack App", "counter", "reset", "polypack build --target"] {
+    for marker in [
+        "PolyPack App",
+        "counter",
+        "reset",
+        "polypack build --target",
+    ] {
         assert!(page_js.contains(marker), "{id} 页面 bundle 缺标记 {marker}");
     }
     let page_markup = std::fs::read_to_string(dist.join(format!("pages/index/index.{markup}")))

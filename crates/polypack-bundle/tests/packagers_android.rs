@@ -14,7 +14,9 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use polypack_bundle::error::{BundleError, codes};
-use polypack_bundle::inputs::{AndroidInputs, BundleInputs, Icon, IconKind, NativeLib, ProductInfo};
+use polypack_bundle::inputs::{
+    AndroidInputs, BundleInputs, Icon, IconKind, NativeLib, ProductInfo,
+};
 use polypack_bundle::packager::{Packager, builtin, find};
 use polypack_bundle::packagers::android::{AndroidAab, derive_version_code};
 use polypack_bundle::tools::{self, AndroidTools};

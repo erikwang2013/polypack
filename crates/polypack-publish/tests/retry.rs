@@ -135,7 +135,9 @@ fn idempotency_key(request: &HttpRequest) -> String {
     request
         .headers
         .iter()
-        .find(|(name, _)| name.eq_ignore_ascii_case(polypack_publish::transport::IDEMPOTENCY_HEADER))
+        .find(|(name, _)| {
+            name.eq_ignore_ascii_case(polypack_publish::transport::IDEMPOTENCY_HEADER)
+        })
         .map(|(_, value)| value.clone())
         .expect("提审请求必须带 Idempotency-Key")
 }

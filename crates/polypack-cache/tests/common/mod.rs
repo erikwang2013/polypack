@@ -18,8 +18,10 @@ impl TempDir {
             .duration_since(UNIX_EPOCH)
             .expect("系统时钟应晚于 UNIX 纪元")
             .as_nanos();
-        let path =
-            std::env::temp_dir().join(format!("polypack-cache-{tag}-{}-{nanos}", std::process::id()));
+        let path = std::env::temp_dir().join(format!(
+            "polypack-cache-{tag}-{}-{nanos}",
+            std::process::id()
+        ));
         fs::create_dir_all(&path).expect("创建临时目录");
         Self { path }
     }

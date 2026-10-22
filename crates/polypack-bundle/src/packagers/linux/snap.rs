@@ -351,7 +351,8 @@ mod tests {
     /// 结构检查拒绝多余接口（与 TargetSpec notes 同源的最小集）。
     #[test]
     fn structure_check_rejects_extra_plug() {
-        let base = std::env::temp_dir().join(format!("polypack-snap-struct-{}", std::process::id()));
+        let base =
+            std::env::temp_dir().join(format!("polypack-snap-struct-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&base);
         let payload = base.join("files");
         fsutil::write_text(&payload.join("bin/pax-notes"), "#!/bin/sh\n").unwrap();

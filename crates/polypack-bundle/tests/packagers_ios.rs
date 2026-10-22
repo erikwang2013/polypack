@@ -21,7 +21,8 @@ use polypack_targets::{Host, TargetSpec};
 
 /// 每个测试独占的临时目录。
 fn temp_dir(tag: &str) -> PathBuf {
-    let dir = std::env::temp_dir().join(format!("polypack-bundle-ios-{tag}-{}", std::process::id()));
+    let dir =
+        std::env::temp_dir().join(format!("polypack-bundle-ios-{tag}-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
     dir
@@ -858,7 +859,8 @@ fn tvos_registry_serves_the_shared_apple_chain() {
         "格式不同不得串到 Apple 打包器"
     );
     assert!(
-        polypack_bundle::find("tvos", "xa").is_none() && polypack_bundle::find("watchos", "ipa").is_none(),
+        polypack_bundle::find("tvos", "xa").is_none()
+            && polypack_bundle::find("watchos", "ipa").is_none(),
         "未声明目标 / 未声明格式不得命中"
     );
 

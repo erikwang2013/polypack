@@ -59,7 +59,12 @@ const HOST_CANDIDATES: [&str; 3] = ["ui", "", "ui/adapters/taro/host"];
 /// 只取 ASCII 标记：Taro / terser 把非 ASCII 字面量转义成 `\uXXXX` 序列
 /// （真跑实证：示例页的中文按钮文案在产物里只剩转义序列，原文匹配为零），中文标记不可断言。
 /// `polypack build --target` 是示例页版本行的前缀（目标名在运行时拼接）。
-const PAGE_MARKERS: [&str; 4] = ["PolyPack App", "counter", "reset", "polypack build --target"];
+const PAGE_MARKERS: [&str; 4] = [
+    "PolyPack App",
+    "counter",
+    "reset",
+    "polypack build --target",
+];
 
 /// 应用 bundle 里必须出现的装配自检标记（host/src/app.js）。
 const APP_MARKER: &str = "POLYPACK_TARO";
@@ -836,7 +841,8 @@ mod tests {
 
     #[test]
     fn host_and_toolchain_gaps_are_environment_slots() {
-        let dir = std::env::temp_dir().join(format!("polypack-miniapp-host-{}", std::process::id()));
+        let dir =
+            std::env::temp_dir().join(format!("polypack-miniapp-host-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).expect("临时目录可建");
 
@@ -874,7 +880,8 @@ mod tests {
 
     #[test]
     fn quickapp_plan_records_the_skipped_taro_leg() {
-        let dir = std::env::temp_dir().join(format!("polypack-quickapp-plan-{}", std::process::id()));
+        let dir =
+            std::env::temp_dir().join(format!("polypack-quickapp-plan-{}", std::process::id()));
         let bundle = inputs(&dir);
         let plan = QuickApp
             .plan(&bundle, &spec("quickapp", "rpk"))
@@ -890,7 +897,8 @@ mod tests {
 
     #[test]
     fn quickapp_package_builds_the_engineering_project() {
-        let dir = std::env::temp_dir().join(format!("polypack-quickapp-pkg-{}", std::process::id()));
+        let dir =
+            std::env::temp_dir().join(format!("polypack-quickapp-pkg-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         let artifact = QuickApp
             .package(&inputs(&dir), &spec("quickapp", "rpk"))
@@ -953,7 +961,8 @@ mod tests {
 
     #[test]
     fn wasm_bridge_is_carried_into_the_code_package() {
-        let dir = std::env::temp_dir().join(format!("polypack-quickapp-bridge-{}", std::process::id()));
+        let dir =
+            std::env::temp_dir().join(format!("polypack-quickapp-bridge-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         let bridge = dir.join(BRIDGE_REL);
         seed_bridge(&bridge);
@@ -991,8 +1000,10 @@ mod tests {
 
     #[test]
     fn half_written_bridge_dir_is_rejected() {
-        let dir =
-            std::env::temp_dir().join(format!("polypack-quickapp-bridge-half-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!(
+            "polypack-quickapp-bridge-half-{}",
+            std::process::id()
+        ));
         let _ = std::fs::remove_dir_all(&dir);
         let bridge = dir.join(BRIDGE_REL);
         std::fs::create_dir_all(&bridge).expect("建 wasm 出口目录");
@@ -1037,8 +1048,10 @@ mod tests {
     #[test]
     fn quickapp_hap_build_leg_runs_the_located_toolkit() {
         if std::env::var_os(HAP_CHILD).is_some() {
-            let dir = std::env::temp_dir()
-                .join(format!("polypack-quickapp-hap-child-{}", std::process::id()));
+            let dir = std::env::temp_dir().join(format!(
+                "polypack-quickapp-hap-child-{}",
+                std::process::id()
+            ));
             let _ = std::fs::remove_dir_all(&dir);
             let artifact = QuickApp
                 .package(&inputs(&dir), &spec("quickapp", "rpk"))
@@ -1096,8 +1109,10 @@ mod tests {
     #[test]
     fn quickapp_hap_absent_is_a_skip_note_not_a_failure() {
         if std::env::var_os(HAP_CHILD).is_some() {
-            let dir = std::env::temp_dir()
-                .join(format!("polypack-quickapp-hap-absent-{}", std::process::id()));
+            let dir = std::env::temp_dir().join(format!(
+                "polypack-quickapp-hap-absent-{}",
+                std::process::id()
+            ));
             let _ = std::fs::remove_dir_all(&dir);
             let artifact = QuickApp
                 .package(&inputs(&dir), &spec("quickapp", "rpk"))

@@ -23,7 +23,9 @@ mod common;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use polypack_bundle::inputs::{AndroidInputs, BundleInputs, Icon, IconKind, NativeLib, ProductInfo};
+use polypack_bundle::inputs::{
+    AndroidInputs, BundleInputs, Icon, IconKind, NativeLib, ProductInfo,
+};
 use polypack_bundle::packager::Artifact;
 use polypack_bundle::{tools, zipwrite};
 use polypack_targets::TargetSpec;

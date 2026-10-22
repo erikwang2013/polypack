@@ -216,7 +216,9 @@ fn render_table(groups: &[(String, Vec<HistoryRecord>)], target: Option<&str>) -
         return match target {
             Some(id) => format!("目标 {id} 暂无构建历史\n"),
             None => {
-                format!("暂无构建历史（先运行 polypack build；历史文件：{HISTORY_RELATIVE_PATH}）\n")
+                format!(
+                    "暂无构建历史（先运行 polypack build；历史文件：{HISTORY_RELATIVE_PATH}）\n"
+                )
             }
         };
     }

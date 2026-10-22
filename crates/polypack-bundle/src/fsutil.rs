@@ -220,7 +220,8 @@ mod tests {
     /// 构建树的 umask 002 权限（664 / 775）不得带进产物。
     #[test]
     fn copy_normalizes_group_writable_modes() {
-        let base = std::env::temp_dir().join(format!("polypack-bundle-mode-{}", std::process::id()));
+        let base =
+            std::env::temp_dir().join(format!("polypack-bundle-mode-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&base);
         let src = base.join("src");
         write_text(&src.join("data.txt"), "x").unwrap();

@@ -78,7 +78,8 @@ fn artifact_snapshots_are_pruned_by_retention_policy() {
 
     let mut warnings = Vec::new();
     for run in 1..=3 {
-        let (code, stdout, stderr) = polypack(tree.path(), &["build", "--target", "linux", "--json"]);
+        let (code, stdout, stderr) =
+            polypack(tree.path(), &["build", "--target", "linux", "--json"]);
         assert_eq!(code, 0, "第 {run} 次构建失败：{stderr}");
         let events = events(&stdout);
         // 第 1 跑未命中并真编译；其后应 100% 命中（缓存键稳定）

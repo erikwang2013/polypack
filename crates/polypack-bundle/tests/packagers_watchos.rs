@@ -15,8 +15,10 @@ use polypack_targets::{Host, Registry, TargetSpec};
 
 /// 每个测试独占的临时目录。
 fn temp_dir(tag: &str) -> PathBuf {
-    let dir =
-        std::env::temp_dir().join(format!("polypack-bundle-watchos-{tag}-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!(
+        "polypack-bundle-watchos-{tag}-{}",
+        std::process::id()
+    ));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
     dir
@@ -68,7 +70,8 @@ fn app(inputs: &BundleInputs) -> PathBuf {
 /// 打包器注册：`watchos` + `watch` 由本打包器服务，且不挤占 ios / ipa 链。
 #[test]
 fn watchos_packager_is_registered_for_watch_format() {
-    let packager = polypack_bundle::find("watchos", "watch").expect("watchos/watch 应命中内建打包器");
+    let packager =
+        polypack_bundle::find("watchos", "watch").expect("watchos/watch 应命中内建打包器");
     assert_eq!(packager.id(), "watchos");
     assert_eq!(packager.format(), "watch");
 

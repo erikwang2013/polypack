@@ -364,7 +364,9 @@ fn sbom_failure(target: &str, message: String) -> StageError {
         codes::E_VERIFY_0003,
         format!("目标 {target} 生成 SBOM 失败：{message}"),
     )
-    .with_hint("SBOM 依赖 Cargo.lock 与 cargo metadata --locked（离线）；先跑 polypack build 再重试")
+    .with_hint(
+        "SBOM 依赖 Cargo.lock 与 cargo metadata --locked（离线）；先跑 polypack build 再重试",
+    )
     .into()
 }
 
@@ -1327,8 +1329,10 @@ fn verify_wgt_lint(
     );
     match polypack_bundle::wgt_lint_tool() {
         Ok(tool) => {
-            let command =
-                polypack_bundle::Command::new(tool.display().to_string(), [wgt.display().to_string()]);
+            let command = polypack_bundle::Command::new(
+                tool.display().to_string(),
+                [wgt.display().to_string()],
+            );
             match polypack_bundle::exec::run(&command) {
                 Ok(_) => warning(
                     events,
@@ -3474,7 +3478,8 @@ mod tests {
             std::env::temp_dir().join(format!("polypack-verify-reg-{tag}-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&root);
         std::fs::create_dir_all(root.join("core")).expect("工程目录可建");
-        let config = polypack_core::config::PolypackConfig::parse(toml).expect("fixture 配置应合法");
+        let config =
+            polypack_core::config::PolypackConfig::parse(toml).expect("fixture 配置应合法");
         let project = Project::new(root.clone(), config);
         (root, project)
     }
@@ -4652,8 +4657,11 @@ mod tests {
         // 三态 ③：坏件（缺 source/focusgraph.brs）→ E_BND_0006 硬失败，不降级成跳过
         std::fs::remove_file(&good).expect("清掉合格件");
         let bad = staged.join("broken-0.0.1.zip");
-        polypack_bundle::zipwrite::write_zip(&[("manifest".to_string(), files.join("manifest"))], &bad)
-            .expect("合成坏频道包");
+        polypack_bundle::zipwrite::write_zip(
+            &[("manifest".to_string(), files.join("manifest"))],
+            &bad,
+        )
+        .expect("合成坏频道包");
         let err = verify_target(&project, &spec, &mut sink).expect_err("缺必需条目必须硬失败");
         assert_eq!(err.diagnostic.code.to_string(), "polypack::E_BND_0006");
         let _ = std::fs::remove_dir_all(&root);

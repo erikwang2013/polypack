@@ -233,7 +233,8 @@ mod tests {
 
     #[test]
     fn count_entries_walks_tree() {
-        let base = std::env::temp_dir().join(format!("polypack-appdir-count-{}", std::process::id()));
+        let base =
+            std::env::temp_dir().join(format!("polypack-appdir-count-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&base);
         fsutil::write_text(&base.join("a"), "1").unwrap();
         fsutil::write_text(&base.join("nested/b"), "2").unwrap();

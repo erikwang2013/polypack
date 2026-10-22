@@ -1,6 +1,8 @@
 //! T-M0-07 验收：诊断框架（错误码 / 退出码 / 修复提示）与事件渲染。
 
-use polypack_core::{BuildEvent, Code, Diagnostic, EventSink, HumanSink, JsonSink, Severity, codes};
+use polypack_core::{
+    BuildEvent, Code, Diagnostic, EventSink, HumanSink, JsonSink, Severity, codes,
+};
 
 /// 全部已登记错误码：新增码时同步登记，使格式与唯一性校验保持全覆盖。
 const ALL_CODES: [Code; 16] = [
@@ -86,7 +88,10 @@ fn with_hint_chains_and_renders() {
         Some("运行 sdkmanager \"platform-tools\"")
     );
     let text = diag.to_string();
-    assert!(text.contains("[polypack::E_PROBE_0001]"), "含错误码：{text}");
+    assert!(
+        text.contains("[polypack::E_PROBE_0001]"),
+        "含错误码：{text}"
+    );
     assert!(text.contains("缺少 android-sdk"), "含描述：{text}");
     assert!(text.contains("运行 sdkmanager"), "含提示：{text}");
 }

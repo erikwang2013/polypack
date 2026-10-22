@@ -295,8 +295,10 @@ fn resolve_login(
             }
         })
         .collect();
-    let path =
-        std::env::temp_dir().join(format!("polypack-devtools-login-{name}-{}", std::process::id()));
+    let path = std::env::temp_dir().join(format!(
+        "polypack-devtools-login-{name}-{}",
+        std::process::id()
+    ));
     std::fs::write(&path, &value).ok()?;
     #[cfg(unix)]
     {
@@ -347,7 +349,8 @@ fn devtools_table_covers_declared_verifiers() {
 /// 未注入登录态时环境为空、`line()` 无秘密。
 #[test]
 fn invocation_is_assembled_from_the_table() {
-    let pack = std::env::temp_dir().join(format!("polypack-devtools-assemble-{}", std::process::id()));
+    let pack =
+        std::env::temp_dir().join(format!("polypack-devtools-assemble-{}", std::process::id()));
     std::fs::create_dir_all(&pack).expect("代码包目录可建");
     let program = Path::new("/opt/polypack-test/devtools-cli");
     for target in TARGETS {
@@ -409,7 +412,8 @@ fn login_state_injection_materializes_and_never_leaks() {
         assert_eq!(mode, 0o600, "登录态临时文件须 0600");
     }
 
-    let pack = std::env::temp_dir().join(format!("polypack-devtools-inject-{}", std::process::id()));
+    let pack =
+        std::env::temp_dir().join(format!("polypack-devtools-inject-{}", std::process::id()));
     std::fs::create_dir_all(&pack).expect("代码包目录可建");
     let cli = cli_for("wechat");
     let command = assemble(
@@ -566,8 +570,10 @@ fn contract_devtools_real_preview() {
         return;
     }
 
-    let workdir =
-        std::env::temp_dir().join(format!("polypack-contract-m3-devtools-{}", std::process::id()));
+    let workdir = std::env::temp_dir().join(format!(
+        "polypack-contract-m3-devtools-{}",
+        std::process::id()
+    ));
     let _ = std::fs::remove_dir_all(&workdir);
     std::fs::create_dir_all(&workdir).expect("临时工程目录可建");
     let init = polypack(&["init"], &workdir);

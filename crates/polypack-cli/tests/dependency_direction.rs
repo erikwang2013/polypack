@@ -33,7 +33,10 @@ const ALLOWED: &[(&str, &[&str])] = &[
     // T-M8-05：插件实现统一 `TargetProvider`（polypack-targets）。
     // T-M8-03：验签复用 polypack-sign（GpgSigner / ArtifactVerifier / CredentialRef 解析），
     // 不重造密码学。方向仍是 core ← sign ← plugin，无环；仍不得依赖 polypack-bundle。
-    ("polypack-plugin", &["polypack-core", "polypack-sign", "polypack-targets"]),
+    (
+        "polypack-plugin",
+        &["polypack-core", "polypack-sign", "polypack-targets"],
+    ),
     ("polypack-targets", &[]),
     ("polypack-toolchain", &[]),
     ("polypack-cache", &[]),

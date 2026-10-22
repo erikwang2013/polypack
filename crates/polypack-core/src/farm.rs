@@ -122,7 +122,9 @@ impl FarmFrame {
                 codes::E_FARM_0001,
                 format!("协议版本不受支持: {version}（本端支持 farm/v0 / farm/v1）"),
             )
-            .with_hint("把主端与 worker 升级到同一 polypack 版本后重试（v1 主端仍接受 v0 worker）"));
+            .with_hint(
+                "把主端与 worker 升级到同一 polypack 版本后重试（v1 主端仍接受 v0 worker）",
+            ));
         }
         Ok(frame)
     }

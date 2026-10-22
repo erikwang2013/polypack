@@ -35,7 +35,9 @@ fn judge_maps_failed_step_to_stage() {
     assert_eq!(failure.stage, "validate-target");
     assert_eq!(failure.code, codes::E_SMOKE_0002);
     let rendered = failure.to_string();
-    assert!(rendered.starts_with("Failed{stage=validate-target, code=polypack::E_SMOKE_0002, hint="));
+    assert!(
+        rendered.starts_with("Failed{stage=validate-target, code=polypack::E_SMOKE_0002, hint=")
+    );
     assert!(rendered.ends_with('}'));
 }
 

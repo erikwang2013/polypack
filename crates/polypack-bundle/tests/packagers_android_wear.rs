@@ -16,7 +16,9 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use polypack_bundle::error::codes;
-use polypack_bundle::inputs::{AndroidInputs, BundleInputs, Icon, IconKind, NativeLib, ProductInfo};
+use polypack_bundle::inputs::{
+    AndroidInputs, BundleInputs, Icon, IconKind, NativeLib, ProductInfo,
+};
 use polypack_bundle::packager::{Packager, builtin, find};
 use polypack_bundle::packagers::android::{AndroidWear, WEAR_MIN_API, validate_wear_manifest};
 use polypack_bundle::tools::{self, AndroidTools};

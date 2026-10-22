@@ -125,7 +125,10 @@ fn structure_check_accepts_fixture_and_rejects_port_drift() {
 
     std::fs::write(
         parent.join("pax-notes.arxml"),
-        xml.replace("polypack_engine_cache_keyPort", "polypack_engine_cache_key_out"),
+        xml.replace(
+            "polypack_engine_cache_keyPort",
+            "polypack_engine_cache_key_out",
+        ),
     )
     .unwrap();
     assert!(check_arxml(&inputs.out_dir).is_err(), "端口漂移必须失败");

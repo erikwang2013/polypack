@@ -78,7 +78,10 @@ fn injected_stages_keep_the_dag_shape_and_run_in_dependency_order() {
         fn plan(&self, _job: &JobSpec) -> Result<(), polypack_core::StageError> {
             Ok(())
         }
-        fn run(&self, _ctx: &mut StageContext<'_>) -> Result<StageOutcome, polypack_core::StageError> {
+        fn run(
+            &self,
+            _ctx: &mut StageContext<'_>,
+        ) -> Result<StageOutcome, polypack_core::StageError> {
             LOG.lock().expect("锁可用").push(self.0);
             Ok(StageOutcome::Done)
         }

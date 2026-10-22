@@ -39,8 +39,11 @@ const SIGNING_TYPES: [&str; 3] = ["rsa", "ecdsa", "eddsa"];
 pub(super) fn generate(request: &RepoRequest<'_>) -> Result<(), Diagnostic> {
     ensure_pkg()?;
     // 先解析凭据再碰仓库：缺密钥材料时不留下半成品目录。
-    let material = polypack_sign::resolve(&credential_ref(request)?, &polypack_sign::default_backends())
-        .map_err(sign_error)?;
+    let material = polypack_sign::resolve(
+        &credential_ref(request)?,
+        &polypack_sign::default_backends(),
+    )
+    .map_err(sign_error)?;
     check_unencrypted(&material)?;
     let repo = request.repo;
     std::fs::create_dir_all(repo)
@@ -62,7 +65,8 @@ pub(super) fn generate(request: &RepoRequest<'_>) -> Result<(), Diagnostic> {
             format!("{kind}:{}", key.display()),
         ],
     );
-    polypack_bundle::exec::run(&command).map_err(|err| repo_error(format!("pkg repo 失败：{err}")))?;
+    polypack_bundle::exec::run(&command)
+        .map_err(|err| repo_error(format!("pkg repo 失败：{err}")))?;
     // 公钥供客户端 PUBKEY 校验（从同一私钥导出；pkg repo 本身不导出公钥）。
     export_public_key(&key, &repo.join("polypack-repo.pub"))?;
 

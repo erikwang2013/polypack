@@ -176,7 +176,11 @@ fn kaios_structure_check_reports_every_bad_package() {
         let path = temp.join(name);
         polypack_bundle::zipwrite::write_zip(entries, &path).expect("合成包");
         let err = check_kaios_structure(&path).expect_err("坏包必须硬失败");
-        assert_eq!(err.code(), polypack_bundle::codes::E_BND_0006, "{name}: {err}");
+        assert_eq!(
+            err.code(),
+            polypack_bundle::codes::E_BND_0006,
+            "{name}: {err}"
+        );
         err.to_string()
     };
 

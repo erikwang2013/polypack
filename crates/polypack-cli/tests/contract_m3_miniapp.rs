@@ -281,7 +281,8 @@ fn miniapp_contract_mock_covers_all_targets() {
 /// 格式不符硬失败。计划层不碰外部命令，任意宿主可跑。
 #[test]
 fn taro_targets_plan_needs_host_and_toolchain() {
-    let dir = std::env::temp_dir().join(format!("polypack-contract-m3-plan-{}", std::process::id()));
+    let dir =
+        std::env::temp_dir().join(format!("polypack-contract-m3-plan-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).expect("临时目录可建");
     let product = polypack_bundle::ProductInfo {
@@ -340,8 +341,10 @@ fn taro_targets_plan_needs_host_and_toolchain() {
 /// 逐条比对。金样的 real 侧在任意宿主都可跑同一断言。
 #[test]
 fn quickapp_artifact_matches_golden_without_tools() {
-    let dir =
-        std::env::temp_dir().join(format!("polypack-contract-m3-quickapp-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!(
+        "polypack-contract-m3-quickapp-{}",
+        std::process::id()
+    ));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).expect("临时目录可建");
 
@@ -484,8 +487,10 @@ fn real_artifact_check(target: &str) {
         );
         return;
     }
-    let workdir =
-        std::env::temp_dir().join(format!("polypack-contract-m3-{target}-{}", std::process::id()));
+    let workdir = std::env::temp_dir().join(format!(
+        "polypack-contract-m3-{target}-{}",
+        std::process::id()
+    ));
     let _ = std::fs::remove_dir_all(&workdir);
     std::fs::create_dir_all(&workdir).expect("临时工程目录可建");
 

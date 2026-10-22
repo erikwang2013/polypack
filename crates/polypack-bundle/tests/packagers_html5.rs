@@ -234,7 +234,11 @@ fn html5_packagers_require_ui_dist_and_entry() {
         let err = packager
             .package(&inputs, &spec)
             .expect_err("缺 ui_dist 必须报错");
-        assert_eq!(err.code(), polypack_bundle::codes::E_BND_0002, "{id}: {err}");
+        assert_eq!(
+            err.code(),
+            polypack_bundle::codes::E_BND_0002,
+            "{id}: {err}"
+        );
         assert!(err.to_string().contains("ui_dist"), "{id}: {err}");
 
         let dist = temp.join("dist-empty");
@@ -244,7 +248,11 @@ fn html5_packagers_require_ui_dist_and_entry() {
         let err = packager
             .package(&inputs, &spec)
             .expect_err("缺入口必须报错");
-        assert_eq!(err.code(), polypack_bundle::codes::E_BND_0003, "{id}: {err}");
+        assert_eq!(
+            err.code(),
+            polypack_bundle::codes::E_BND_0003,
+            "{id}: {err}"
+        );
         assert!(err.to_string().contains("index.html"), "{id}: {err}");
     }
 }
@@ -274,7 +282,11 @@ fn tiktok_structure_check_reports_every_bad_package() {
         let path = temp.join(name);
         polypack_bundle::zipwrite::write_zip(entries, &path).expect("合成包");
         let err = check_tiktok_minis_structure(&path).expect_err("坏包必须硬失败");
-        assert_eq!(err.code(), polypack_bundle::codes::E_BND_0006, "{name}: {err}");
+        assert_eq!(
+            err.code(),
+            polypack_bundle::codes::E_BND_0006,
+            "{name}: {err}"
+        );
         err.to_string()
     };
 
@@ -339,7 +351,11 @@ fn facebook_structure_check_reports_every_bad_package() {
         let path = temp.join(name);
         polypack_bundle::zipwrite::write_zip(entries, &path).expect("合成包");
         let err = check_facebook_instant_games_structure(&path).expect_err("坏包必须硬失败");
-        assert_eq!(err.code(), polypack_bundle::codes::E_BND_0006, "{name}: {err}");
+        assert_eq!(
+            err.code(),
+            polypack_bundle::codes::E_BND_0006,
+            "{name}: {err}"
+        );
         err.to_string()
     };
 

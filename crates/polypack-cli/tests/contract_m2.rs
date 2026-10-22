@@ -198,8 +198,10 @@ fn assert_packager_registered(target: &str) {
 fn ios_plan_chain_matches_golden_contract() {
     // 目录名必须与 real 用例（`polypack-contract-m2-{target}-{pid}`）区分：同进程并行跑，
     // 这里收尾的 remove_dir_all 会把 real 用例刚建好的工作目录删掉，害它 spawn 时 ENOENT
-    let dir =
-        std::env::temp_dir().join(format!("polypack-contract-m2-ios-plan-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!(
+        "polypack-contract-m2-ios-plan-{}",
+        std::process::id()
+    ));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(dir.join("Pax Notes.xcframework")).expect("输出目录可建");
     let mut inputs = polypack_bundle::BundleInputs::new(
@@ -593,8 +595,10 @@ fn real_artifact_check(target: &str) {
         .expect("声明格式须有扩展名")
         .to_string();
 
-    let workdir =
-        std::env::temp_dir().join(format!("polypack-contract-m2-{target}-{}", std::process::id()));
+    let workdir = std::env::temp_dir().join(format!(
+        "polypack-contract-m2-{target}-{}",
+        std::process::id()
+    ));
     let _ = std::fs::remove_dir_all(&workdir);
     std::fs::create_dir_all(&workdir).expect("临时工程目录可建");
     for verb in ["init", "build"] {
@@ -766,7 +770,10 @@ fn module_zip_lookup_is_anchored_by_name() {
         .as_str()
         .expect("module-zip 声明了按名锚定（与 android.rs 的 `base.zip` 同源）");
 
-    let root = std::env::temp_dir().join(format!("polypack-contract-m2-anchor-{}", std::process::id()));
+    let root = std::env::temp_dir().join(format!(
+        "polypack-contract-m2-anchor-{}",
+        std::process::id()
+    ));
     let _ = std::fs::remove_dir_all(&root);
     let stage = root.join("polypack-app-android.stage");
     std::fs::create_dir_all(&stage).expect("暂存目录可建");

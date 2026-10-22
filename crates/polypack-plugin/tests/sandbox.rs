@@ -217,11 +217,17 @@ fn empty_grant_denies_filesystem_and_network_by_default() {
     let write = sandbox
         .probe(&plugin, "write", "out/new.txt")
         .expect("探针可跑");
-    assert!(write.starts_with("polypack::E_PLUGIN_0001|"), "写入: {write}");
+    assert!(
+        write.starts_with("polypack::E_PLUGIN_0001|"),
+        "写入: {write}"
+    );
     let fetch = sandbox
         .probe(&plugin, "fetch", "http://example.com/")
         .expect("探针可跑");
-    assert!(fetch.starts_with("polypack::E_PLUGIN_0002|"), "出网: {fetch}");
+    assert!(
+        fetch.starts_with("polypack::E_PLUGIN_0002|"),
+        "出网: {fetch}"
+    );
 }
 
 #[test]
@@ -315,7 +321,10 @@ fn unauthorized_domain_is_denied_before_network_access() {
     let out = sandbox
         .probe(&plugin, "fetch", "http://127.0.0.1:9/")
         .expect("探针可跑");
-    assert!(out.starts_with("polypack::E_PLUGIN_0002|"), "未授权域名: {out}");
+    assert!(
+        out.starts_with("polypack::E_PLUGIN_0002|"),
+        "未授权域名: {out}"
+    );
 }
 
 #[test]

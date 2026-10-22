@@ -14,7 +14,8 @@ use polypack_plugin::{PluginProvider, ResourceLimits, Sandbox};
 use polypack_targets::provider::{PackageInput, ProviderRegistry, TargetProvider};
 use polypack_targets::{Host, TargetSpec};
 
-const REFERENCE: &[u8] = include_bytes!("../../polypack-plugin/tests/fixtures/reference-plugin.wasm");
+const REFERENCE: &[u8] =
+    include_bytes!("../../polypack-plugin/tests/fixtures/reference-plugin.wasm");
 
 struct Scratch(PathBuf);
 

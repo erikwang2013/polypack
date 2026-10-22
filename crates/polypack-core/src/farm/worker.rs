@@ -181,7 +181,9 @@ fn register(
     let Some(frame) = transport.recv(idle)? else {
         return Err(
             Diagnostic::error(codes::E_FARM_0002, "等待注册结果超时（未收到 hello_ack）")
-                .with_hint("确认主端 polypack farm submit 已启动，且与 worker 指向同一 --dir 农场目录"),
+                .with_hint(
+                    "确认主端 polypack farm submit 已启动，且与 worker 指向同一 --dir 农场目录",
+                ),
         );
     };
     match frame {

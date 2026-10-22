@@ -12,7 +12,9 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU32, Ordering};
 
 use polypack_bundle::packagers::garmin::GarminIq;
-use polypack_bundle::{BundleError, BundleInputs, Packager, ProductInfo, check_garmin_iq_structure};
+use polypack_bundle::{
+    BundleError, BundleInputs, Packager, ProductInfo, check_garmin_iq_structure,
+};
 use polypack_targets::{Registry, TargetSpec};
 
 /// 结构检查要求的最小清单面（`version="3"` + `<iq:application`）。

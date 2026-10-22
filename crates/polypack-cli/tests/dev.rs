@@ -190,7 +190,8 @@ fn dev_serves_injected_index_and_reloads_on_ui_change() {
     );
 
     // 状态端点：build / ui.engine / core.state 三键是状态条的数据契约
-    let (code, status) = http_get(port, "/__polypack_status").expect("GET /__polypack_status 有响应");
+    let (code, status) =
+        http_get(port, "/__polypack_status").expect("GET /__polypack_status 有响应");
     assert_eq!(code, 200);
     let status: serde_json::Value = serde_json::from_str(&status).expect("状态端点为 JSON");
     assert!(status["build"].is_u64(), "status.build：{status}");
@@ -212,7 +213,8 @@ fn dev_serves_injected_index_and_reloads_on_ui_change() {
     let second = wait_version_above(&dev, port, first);
     assert!(second > first, "版本号应严格递增：{first} → {second}");
     // 注入脚本读的是状态载荷的 version（缺了它浏览器永整页不重载——回归点）
-    let (code, status) = http_get(port, "/__polypack_status").expect("GET /__polypack_status 有响应");
+    let (code, status) =
+        http_get(port, "/__polypack_status").expect("GET /__polypack_status 有响应");
     assert_eq!(code, 200);
     let status: serde_json::Value = serde_json::from_str(&status).expect("状态端点为 JSON");
     assert_eq!(

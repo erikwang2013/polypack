@@ -428,7 +428,8 @@ mod tests {
 
     #[test]
     fn structure_check_rejects_empty_dir() {
-        let dir = std::env::temp_dir().join(format!("polypack-freertos-empty-{}", std::process::id()));
+        let dir =
+            std::env::temp_dir().join(format!("polypack-freertos-empty-{}", std::process::id()));
         std::fs::create_dir_all(&dir).expect("tmp");
         let err = check_freertos_structure(&dir).expect_err("空目录必须报错");
         assert!(matches!(err, BundleError::InvalidInput { .. }), "{err:?}");

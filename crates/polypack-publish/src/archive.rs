@@ -465,7 +465,8 @@ mod tests {
 
     #[test]
     fn save_load_roundtrip_and_atomic_path() {
-        let root = std::env::temp_dir().join(format!("polypack-pub-archive-{}", std::process::id()));
+        let root =
+            std::env::temp_dir().join(format!("polypack-pub-archive-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&root);
         let archive = Archive::new(&root);
         let mut receipt =

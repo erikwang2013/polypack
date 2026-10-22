@@ -306,8 +306,11 @@ fn check(args: &CheckArgs, json: bool) -> Result<i32, Diagnostic> {
     if !json {
         println!("错误：插件工程检查未通过");
     }
-    Err(Diagnostic::error(codes::E_INIT_0001, problems.join("；"))
-        .with_hint("用 polypack plugin new <id> 重新生成，或从宿主 crates/polypack-plugin/wit 同步 WIT"))
+    Err(
+        Diagnostic::error(codes::E_INIT_0001, problems.join("；")).with_hint(
+            "用 polypack plugin new <id> 重新生成，或从宿主 crates/polypack-plugin/wit 同步 WIT",
+        ),
+    )
 }
 
 /// 输出制品摘要（宿主 `content_digest` 同口径）。

@@ -410,7 +410,8 @@ mod tests {
     /// 权限多一条或少一条都必须被结构检查拒绝（与 notes 同源的硬约束）。
     #[test]
     fn structure_check_rejects_extra_permissions() {
-        let base = std::env::temp_dir().join(format!("polypack-flatpak-perm-{}", std::process::id()));
+        let base =
+            std::env::temp_dir().join(format!("polypack-flatpak-perm-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&base);
         let payload = base.join("files");
         fsutil::write_text(&payload.join("bin/pax-notes"), "#!/bin/sh\n").unwrap();

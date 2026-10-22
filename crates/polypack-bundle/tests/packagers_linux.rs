@@ -544,7 +544,8 @@ fn rpm_plan_declares_requires_and_package_builds_or_degrades_honestly() {
                 .join("out")
                 .join(format!("pax-notes-1.2.3-1.{}.rpm", rpm_arch()));
             assert_eq!(artifact.path, expected, "产物名须与打包器同口径推导");
-            let structure = polypack_bundle::check_rpm_structure(&artifact.path).expect("rpm 头部解析");
+            let structure =
+                polypack_bundle::check_rpm_structure(&artifact.path).expect("rpm 头部解析");
             assert_eq!(structure.name, "pax-notes");
             assert_eq!(structure.version, "1.2.3");
             assert_eq!(structure.release, "1");
@@ -722,7 +723,8 @@ fn snap_declares_strict_confinement_and_stage_structure_holds() {
                 .iter()
                 .any(|n| n.contains("未打包") && n.contains("snapcraft"))
         );
-        let structure = polypack_bundle::check_snap_structure(&artifact.path).expect("Snap 结构检查");
+        let structure =
+            polypack_bundle::check_snap_structure(&artifact.path).expect("Snap 结构检查");
         assert_eq!(structure.name, "pax-notes");
         assert_eq!(structure.base, "core24");
         assert_eq!(structure.confinement, "strict");

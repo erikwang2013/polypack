@@ -36,8 +36,11 @@ use crate::sign::sign_error;
 pub(super) fn generate(request: &RepoRequest<'_>) -> Result<(), Diagnostic> {
     ensure_tools()?;
     // 先解析凭据再碰仓库：缺密钥材料时不留下半成品目录。
-    let material = polypack_sign::resolve(&credential_ref(request)?, &polypack_sign::default_backends())
-        .map_err(sign_error)?;
+    let material = polypack_sign::resolve(
+        &credential_ref(request)?,
+        &polypack_sign::default_backends(),
+    )
+    .map_err(sign_error)?;
     let repo = request.repo;
     std::fs::create_dir_all(repo)
         .map_err(|err| repo_error(format!("仓库目录 {} 不可建：{err}", repo.display())))?;
@@ -248,8 +251,10 @@ fn write_summary(repo: &Path, artifacts: &[super::Artifact]) -> Result<(), Diagn
     for artifact in artifacts {
         let name = artifact_basename(&artifact.name)?;
         let path = repo.join(&name);
-        let command =
-            polypack_bundle::Command::new("pkg_info", ["-X".to_string(), path.display().to_string()]);
+        let command = polypack_bundle::Command::new(
+            "pkg_info",
+            ["-X".to_string(), path.display().to_string()],
+        );
         let output = polypack_bundle::exec::run(&command)
             .map_err(|err| repo_error(format!("pkg_info -X {name} 失败：{err}")))?;
         let text = String::from_utf8_lossy(&output.stdout);

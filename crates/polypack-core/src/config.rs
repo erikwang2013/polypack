@@ -320,7 +320,9 @@ impl PolypackConfig {
                         value.type_str()
                     ),
                 )
-                .with_hint("写成 format = \"deb\" 这样的字面量；可选值见 polypack doctor 的目标矩阵")
+                .with_hint(
+                    "写成 format = \"deb\" 这样的字面量；可选值见 polypack doctor 的目标矩阵",
+                )
                 .into());
             };
             spec.package.format = format.to_string();

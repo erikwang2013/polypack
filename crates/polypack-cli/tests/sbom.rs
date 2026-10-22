@@ -286,7 +286,10 @@ fn missing_artifact_is_an_explicit_skip() {
         stderr(&out)
     );
     let diagnostics = stderr(&out);
-    assert!(diagnostics.contains("polypack::E_VERIFY_0002"), "{diagnostics}");
+    assert!(
+        diagnostics.contains("polypack::E_VERIFY_0002"),
+        "{diagnostics}"
+    );
     let lines = json_lines(&out);
     assert!(
         lines.iter().any(|line| {

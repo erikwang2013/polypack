@@ -339,7 +339,11 @@ fn execution_is_gated_to_macos_hosts() {
     }
     let creds = keychain_credentials();
     let app = Path::new("/out/Pax Notes.app");
-    let receipt = ios::receipt_path(Path::new("/tmp/polypack-sign-ios-gate"), "Pax Notes", "1.2.3");
+    let receipt = ios::receipt_path(
+        Path::new("/tmp/polypack-sign-ios-gate"),
+        "Pax Notes",
+        "1.2.3",
+    );
     let _ = std::fs::remove_dir_all("/tmp/polypack-sign-ios-gate");
 
     for err in [

@@ -187,7 +187,10 @@ fn ios_target_routes_to_macos_worker_via_mock_contract() {
         spec.secrets[0].name, "apple-codesign",
         "凭据 = 引用名（凭据在构建地拉取）"
     );
-    assert_eq!(spec.secrets[0].source, polypack_core::CredentialSource::Keyring);
+    assert_eq!(
+        spec.secrets[0].source,
+        polypack_core::CredentialSource::Keyring
+    );
 
     const MOCK_IPA: &[u8] = b"MOCK CONTRACT - NOT A REAL IPA\n";
     let worker_farm = farm.clone();

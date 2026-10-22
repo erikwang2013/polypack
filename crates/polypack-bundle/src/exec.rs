@@ -147,8 +147,11 @@ mod tests {
 
     #[test]
     fn missing_tool_is_reported_not_ignored() {
-        let err = run(&Command::new("polypack-definitely-missing-tool", ["--version"]))
-            .expect_err("缺失工具必须报错");
+        let err = run(&Command::new(
+            "polypack-definitely-missing-tool",
+            ["--version"],
+        ))
+        .expect_err("缺失工具必须报错");
         assert_eq!(err.code(), crate::error::codes::E_BND_0001);
         assert!(matches!(err, BundleError::ToolMissing { .. }));
     }

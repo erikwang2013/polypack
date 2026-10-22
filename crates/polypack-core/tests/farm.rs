@@ -329,7 +329,9 @@ fn task_failure_returns_remote_code_and_hint() {
         1
     );
     assert!(
-        events.iter().any(|event| event.contains("polypack::E_IO_0001")),
+        events
+            .iter()
+            .any(|event| event.contains("polypack::E_IO_0001")),
         "失败事件须带远端错误码: {events:?}"
     );
 

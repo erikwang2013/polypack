@@ -54,6 +54,7 @@ for (const needle of ['<link rel="canonical"', 'application/ld+json', 'og:image'
 }
 if (!read('js/site.js').includes('perf-output')) bad('missing perf marker: perf-output');
 if (!read('downloads/index.html').includes('canonical')) bad('downloads page missing canonical');
+if (!read('downloads/index.html').includes('pan.baidu.com/s/1Jgi5Z-sgoAIkHqGbSekePw?pwd=3128')) bad('downloads page missing Baidu mirror');
 ok('SEO, sitemap, OG and perf markers present');
 
 // 4) No remote runtime assets except the requested Busuanzi stats script.

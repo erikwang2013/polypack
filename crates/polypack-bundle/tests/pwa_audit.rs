@@ -95,7 +95,11 @@ fn index_html() -> String {
 }
 
 /// 断言错误是 PWA 审计的 `InvalidInput`，字段与原因包含给定片段。
-fn assert_defect(result: Result<polypack_bundle::PwaAudit, BundleError>, field: &str, needle: &str) {
+fn assert_defect(
+    result: Result<polypack_bundle::PwaAudit, BundleError>,
+    field: &str,
+    needle: &str,
+) {
     match result {
         Err(BundleError::InvalidInput {
             packager,

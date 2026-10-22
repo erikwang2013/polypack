@@ -153,7 +153,8 @@ fn package_target(
             });
             // 体积预算门禁（T-M3-08，§2 原则 4）：逐产物判定，`fail` 策略下 package 节点
             // 即失败（DAG 语义：sign / verify / publish 不再执行）。
-            if let Some(verdict) = polypack_core::budget::size_verdict(artifact.bytes, &ctx.job.budget)
+            if let Some(verdict) =
+                polypack_core::budget::size_verdict(artifact.bytes, &ctx.job.budget)
             {
                 ctx.events.emit(&verdict.event(&spec.id, &artifact.format));
                 if verdict.exceeded && ctx.job.budget.policy == SizePolicy::Fail {
@@ -178,7 +179,9 @@ fn package_target(
 
 /// provider 失败 → 稳定诊断（`Unavailable` 已在调用处按跳过处理）。
 pub(crate) fn provider_diagnostic(spec: &TargetSpec, err: ProviderError) -> Diagnostic {
-    let code = err.code().unwrap_or(polypack_core::codes::E_TGT_0003.as_str());
+    let code = err
+        .code()
+        .unwrap_or(polypack_core::codes::E_TGT_0003.as_str());
     let mut diagnostic =
         Diagnostic::error(Code::new(code), format!("目标 {} 打包失败：{err}", spec.id));
     if let Some(hint) = err.hint() {

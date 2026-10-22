@@ -15,8 +15,10 @@ fn spec(id: &str, format: &str) -> TargetSpec {
 }
 
 fn inputs(tag: &str) -> (PathBuf, BundleInputs) {
-    let root =
-        std::env::temp_dir().join(format!("polypack-bundle-pkgsrc-{tag}-{}", std::process::id()));
+    let root = std::env::temp_dir().join(format!(
+        "polypack-bundle-pkgsrc-{tag}-{}",
+        std::process::id()
+    ));
     let _ = std::fs::remove_dir_all(&root);
     let bare = root.join("bare");
     fsutil::write_text(&bare.join("usr/bin/pax-notes"), "#!/bin/sh\nexit 0\n").unwrap();

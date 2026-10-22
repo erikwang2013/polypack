@@ -502,7 +502,8 @@ mod tests {
     #[test]
     fn c_abi_parser_reads_the_generated_header() {
         let header = std::fs::read_to_string(
-            Path::new(env!("CARGO_MANIFEST_DIR")).join("../polypack-core/include/polypack_engine.h"),
+            Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../polypack-core/include/polypack_engine.h"),
         )
         .expect("T-M6-02 生成头文件");
         let symbols = parse_c_abi(&header);

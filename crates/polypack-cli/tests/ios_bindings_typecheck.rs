@@ -47,7 +47,9 @@ fn real_mode() -> bool {
 #[test]
 fn generated_swift_bindings_typecheck_with_apple_toolchain() {
     if !real_mode() {
-        eprintln!("SKIP：mock 模式（默认）；真跑设 POLYPACK_CONTRACT_REAL=1（真生成器 × Apple 编译）");
+        eprintln!(
+            "SKIP：mock 模式（默认）；真跑设 POLYPACK_CONTRACT_REAL=1（真生成器 × Apple 编译）"
+        );
         return;
     }
     if !cfg!(target_os = "macos") {

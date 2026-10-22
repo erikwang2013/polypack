@@ -68,8 +68,8 @@ fn both_tracks_reuse_matured_packagers() {
         "与 linux 目标解析到同一实现"
     );
 
-    let site =
-        polypack_bundle::find("chromeos-pwa", "static-site").expect("chromeos-pwa 应有静态站打包器");
+    let site = polypack_bundle::find("chromeos-pwa", "static-site")
+        .expect("chromeos-pwa 应有静态站打包器");
     assert_eq!(site.id(), "web", "chromeos-pwa 必须复用 Web 静态站打包器");
     assert_eq!(site.format(), "static-site");
     assert_eq!(
