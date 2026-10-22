@@ -7,6 +7,10 @@ Notable changes are recorded here; since v1.0.0, tags and releases follow `vX.Y.
 ## [Unreleased]
 
 ### Added
+- **CLI 桌面安装器**：Release 工作流新增 Linux `.deb` / `.AppImage`、Windows `.msi`、macOS arm64 `.pkg` 原生构建，并在安装后执行 `poly --version` 冒烟；安装器随 `SHA256SUMS.txt` 一并发布，当前未做商业签名（SmartScreen / Gatekeeper 会提示）。`packaging/` 提供可复用的 deb / AppImage / pkg 脚本与 WiX 源。
+
+*CLI desktop installers: the release workflow now builds Linux `.deb` / `.AppImage`, Windows `.msi`, and macOS arm64 `.pkg` natively, with a post-install `poly --version` smoke; installers ship with `SHA256SUMS.txt` and are currently unsigned (SmartScreen / Gatekeeper warnings). `packaging/` holds reusable deb / AppImage / pkg scripts and the WiX source.*
+
 - **静态项目站点 `site/`**：响应式双语介绍页（项目介绍、功能、M0–M9 迭代、版本日志、安装 / 使用、下载、环境槽入口与打赏），本地化全部图片、Pax 多形态与返回顶部宠物按钮；three.js 英雄区粒子 / 包装盒动效按空闲延迟加载，Busuanzi 统计延迟注入；SEO（canonical / hreflang / OG / JSON-LD / sitemap / robots）与 `tools/check-site.mjs` 静态门禁。交互实测 4.4–7.5 ms，TTFB 4–10 ms。
 
 *Static project site in `site/`: responsive bilingual intro page (about, features, M0–M9 iterations, changelog, install / usage, downloads, env entry points and donation), with all images localized, multiple Pax forms, and a pet back-to-top button; three.js hero particles / package boxes load after idle, Busuanzi is injected late; SEO (canonical / hreflang / OG / JSON-LD / sitemap / robots) and a `tools/check-site.mjs` gate. Measured interactions 4.4–7.5 ms, TTFB 4–10 ms.*

@@ -11,9 +11,17 @@ on:
   push:
     tags: ["v*"]
   workflow_dispatch:
+    inputs:
+      version:
+        description: "Version without leading v (workflow_dispatch builds only)"
+        required: false
+        default: "0.0.0-dev"
 
 permissions:
   contents: write
+
+env:
+  RELEASE_VERSION: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.version || github.ref_name }}
 
 jobs:
   build:
@@ -39,6 +47,7 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
 
       - name: 校验 tag 与 Cargo 版本一致
+        if: startsWith(github.ref, 'refs/tags/')
         shell: bash
         run: |
           set -euo pipefail
@@ -82,9 +91,178 @@ jobs:
           path: dist/*
           if-no-files-found: error
 
+  linux-packages:
+    name: packages / linux
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: 构建缓存
+        uses: Swatinem/rust-cache@v2
+
+      - name: 安装打包工具
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq squashfs-tools
+
+      - name: 构建 poly（release）
+        run: cargo build --release -p poly-cli --bin poly
+
+      - name: 构建 .deb
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="${RELEASE_VERSION#v}"
+          mkdir -p dist
+          packaging/linux/build-deb.sh target/release/poly "$version" \
+            "dist/polypack-cli_${version}_amd64.deb" amd64
+
+      - name: 下载 appimagetool
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsSL --retry 5 --retry-all-errors -o /tmp/appimagetool \
+            https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage
+          chmod +x /tmp/appimagetool
+
+      - name: 构建 AppImage
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="${RELEASE_VERSION#v}"
+          packaging/linux/build-appimage.sh target/release/poly "$version" \
+            /tmp/appimagetool "dist/poly-${version}-x86_64.AppImage"
+
+      - name: 验证 Linux 包
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="${RELEASE_VERSION#v}"
+          dpkg-deb -I "dist/polypack-cli_${version}_amd64.deb"
+          chmod +x dist/*.AppImage
+          (cd /tmp && rm -rf squashfs-root && \
+            "$GITHUB_WORKSPACE/dist/poly-${version}-x86_64.AppImage" --appimage-extract >/dev/null && \
+            ./squashfs-root/AppRun --version)
+
+      - name: 上传 Linux 安装包
+        uses: actions/upload-artifact@v4
+        with:
+          name: poly-linux-packages
+          path: dist/*
+          if-no-files-found: error
+
+  windows-installer:
+    name: package / windows MSI
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: 构建缓存
+        uses: Swatinem/rust-cache@v2
+
+      - name: 构建 poly（release）
+        run: cargo build --release -p poly-cli --bin poly
+
+      - name: 定位 WiX v3
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $candidates = @(
+            (Join-Path ${env:ProgramFiles(x86)} 'WiX Toolset v3.14\bin'),
+            (Join-Path ${env:ProgramFiles(x86)} 'WiX Toolset v3.11\bin'),
+            (Join-Path $env:ProgramFiles 'WiX Toolset v3.14\bin')
+          )
+          $wix = $candidates | Where-Object { Test-Path (Join-Path $_ 'candle.exe') } | Select-Object -First 1
+          if (-not $wix -or -not (Test-Path (Join-Path $wix 'light.exe'))) {
+            throw 'WiX v3 (candle.exe / light.exe) not found'
+          }
+          $wix | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+      - name: 构建 MSI
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $version = $env:RELEASE_VERSION.TrimStart('v')
+          $base = ($version -split '-')[0]
+          New-Item -ItemType Directory -Force dist | Out-Null
+          $wix = (Get-Content $env:GITHUB_PATH | Where-Object { $_ -match 'WiX Toolset' } |
+            Select-Object -Last 1).Trim()
+          & (Join-Path $wix 'candle.exe') -arch x64 "-dVersion=$base" "-dSourceDir=$PWD\target\release" \
+            packaging\windows\poly.wxs -out dist\poly.wixobj
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & (Join-Path $wix 'light.exe') dist\poly.wixobj -out "dist\poly-$version-x86_64.msi"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: 安装 / 运行 / 卸载冒烟
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $msi = Get-ChildItem dist\*.msi | Select-Object -First 1
+          if (-not $msi) { throw 'MSI not built' }
+          Start-Process msiexec.exe -ArgumentList @('/i', $msi.FullName, '/qn', '/norestart') -Wait
+          $exe = Join-Path $env:ProgramFiles 'PolyPack\poly.exe'
+          if (-not (Test-Path $exe)) { throw "installed poly.exe not found: $exe" }
+          & $exe --version
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Start-Process msiexec.exe -ArgumentList @('/x', $msi.FullName, '/qn', '/norestart') -Wait
+          Start-Sleep -Seconds 2
+          if (Test-Path (Join-Path $env:ProgramFiles 'PolyPack')) { throw 'uninstall residue' }
+
+      - name: 上传 Windows 安装包
+        uses: actions/upload-artifact@v4
+        with:
+          name: poly-windows-installer
+          path: dist/*.msi
+          if-no-files-found: error
+
+  macos-pkg:
+    name: package / macOS pkg
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: 构建缓存
+        uses: Swatinem/rust-cache@v2
+
+      - name: 构建 poly（release）
+        run: cargo build --release -p poly-cli --bin poly
+
+      - name: 构建 .pkg
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="${RELEASE_VERSION#v}"
+          base="${version%%-*}"
+          mkdir -p dist
+          packaging/macos/build-pkg.sh target/release/poly "$base" \
+            "dist/poly-${version}-aarch64.pkg"
+
+      - name: 安装并运行冒烟
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo installer -pkg dist/*.pkg -target /
+          /usr/local/bin/poly --version
+          sudo rm -f /usr/local/bin/poly
+          sudo pkgutil --forget dev.polypack.cli || true
+
+      - name: 上传 macOS 安装包
+        uses: actions/upload-artifact@v4
+        with:
+          name: poly-macos-pkg
+          path: dist/*.pkg
+          if-no-files-found: error
+
   publish:
     name: publish / GitHub Release
-    needs: build
+    needs: [build, linux-packages, windows-installer, macos-pkg]
     if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
     env:
