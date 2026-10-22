@@ -9,6 +9,6 @@
 /.clang-format
 /.clang-tidy
 
-# 桥产物注入点（T-M3-01：`poly bridge ohos` 的库注入到这里，不入库）：
+# 桥产物注入点（T-M3-01：`polypack bridge ohos` 的库注入到这里，不入库）：
 # <工程根>/bridge/harmonyos/<abi>/libpax.so → entry/libs/<abi>/
 /entry/libs/*/*.so

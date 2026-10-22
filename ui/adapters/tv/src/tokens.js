@@ -1,4 +1,4 @@
-// 10-foot 皮肤 tokens（T-M4-01）：基值 = poly init 模板 tokens.css 的值域——与 adapter-native /
+// 10-foot 皮肤 tokens（T-M4-01）：基值 = polypack init 模板 tokens.css 的值域——与 adapter-native /
 // adapter-taro 同一事实源（@polypack/ui 包落地前，模板文件是唯一源，ROADMAP §6）。
 // TV 值 = 基值 × TV_SCALE（远距可读：字号 / 间距 / 圆角各 ×2），颜色直通；
 // 安全区按视口百分比（5% = 1080p 的 96/54px 边距，防过扫描遮挡）。

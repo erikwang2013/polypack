@@ -19,7 +19,7 @@ RNOH 工程结构约定：**DevEco 工程在 JS 工程根下一层**（CMake 的
 ├── harmony/                    ← DevEco 工程（本目录的 harmony/ 子目录）
 │   ├── AppScope/ entry/ build-profile.json5 hvigorfile.ts hvigor/ oh-package.json5
 │   └── entry/libs/<abi>/       ← NAPI 模块注入点（libpax.so）
-├── bridge/harmonyos/<abi>/     ← `poly bridge ohos` 的产物（repository 内本目录解析不到属正常）
+├── bridge/harmonyos/<abi>/     ← `polypack bridge ohos` 的产物（repository 内本目录解析不到属正常）
 └── polypack.toml
 ```
 
@@ -82,17 +82,17 @@ EntryAbility(RNAbility, PaxApp) → pages/Index(RNApp appKey=PaxApp) → AppRegi
 
 ## 桥产物挂载点（T-M3-01 口径）
 
-- `poly bridge generate --lang napi` 产出 `<工程根>/bridge/napi/<UDL namespace>.c` 胶水
+- `polypack bridge generate --lang napi` 产出 `<工程根>/bridge/napi/<UDL namespace>.c` 胶水
   （装载入口 `napi_register_module_v1` + OHOS 构造注册 `napi_module_register`）；
-  `poly bridge ohos [--abi arm64-v8a|x86_64|armeabi-v7a]` 交叉编译出
+  `polypack bridge ohos [--abi arm64-v8a|x86_64|armeabi-v7a]` 交叉编译出
   `<工程根>/bridge/harmonyos/<abi>/lib<namespace>.so`（**单文件自包含**：核心 staticlib
-  已静态入，NEEDED 里不出现第二个核心 .so）。缺 OHOS SDK 时 `poly::E_BRIDGE_0003` +
+  已静态入，NEEDED 里不出现第二个核心 .so）。缺 OHOS SDK 时 `polypack::E_BRIDGE_0003` +
   环境变量修复提示（`$HARMONYOS_TOOLS` / `$DEVECO_SDK_HOME` / `$POLYPACK_OHOS_SDK`）。
 - **注入**：`bridge/harmonyos/<abi>/lib<ns>.so` → `harmony/entry/libs/<abi>/`（目录已备
   `.gitkeep`；`.so` 入库禁止，见 `.gitignore`），随 HAP 进 `libs/<abi>/`；ArkTS 侧
   `import { greet } from 'lib<ns>.so'`（**模块名 = UDL namespace**，示例 `pax`）。
-- 装载语义实证（T-M3-01 真跑，`crates/poly-core/tests/napi_real.rs`，
-  `POLY_CONTRACT_REAL=1`）：同域 NAPI ABI 下 node 真装载真调用 → `greet('world')="hello, world"`、
+- 装载语义实证（T-M3-01 真跑，`crates/polypack-core/tests/napi_real.rs`，
+  `POLYPACK_CONTRACT_REAL=1`）：同域 NAPI ABI 下 node 真装载真调用 → `greet('world')="hello, world"`、
   `add(2,3)=5`，与 Rust 单元测试同字面量对拍；OHOS aarch64 侧到 ELF 符号契约
   （`napi_register_module_v1` 导出 / `napi_*` 未定义由宿主运行时提供 / 自包含）。
 
@@ -100,7 +100,7 @@ EntryAbility(RNAbility, PaxApp) → pages/Index(RNApp appKey=PaxApp) → AppRegi
 
 - **HarmonyOS command-line-tools**（`ohpm` + `hvigorw` + SDK 5.1.1(19)）：
   `$HARMONYOS_TOOLS`（本机 `/home/component/command-line-tools`）。
-  `poly doctor` 探测该项，缺时给修法。
+  `polypack doctor` 探测该项，缺时给修法。
 - **Node.js ≥ 22.11**：RN 0.84 的 CLI 依赖 `node:util.styleText`（Node 20.12+/22 才有）；
   command-line-tools 自带 Node 18 会在 rnohModulePlugin 处报
   `TypeError: styleText is not a function`（T-M3-01 实测）。跑 hvigorw 时用
@@ -132,7 +132,7 @@ TV HAP 构建前置 `polypack.tv=true`；`harmony/entry/src/main/module.json5` �
   `KEYCODE_TO_KERNEL`（2012–2016 / 2054 / 2050，只消费 Down），走查口径同 `device-walks/`
   （见其 README「鸿蒙 TV」节）。
 - **打包链复用**：TV HAP 与手机 HAP 共用 M3 的打包/签名链（`hvigorw assembleHap` +
-  hap-sign-tool；`crates/poly-bundle/src/packagers/harmony.rs` / `crates/poly-sign/src/harmony.rs`），
+  hap-sign-tool；`crates/polypack-bundle/src/packagers/harmony.rs` / `crates/polypack-sign/src/harmony.rs`），
   TV 侧无第二实现；本机 SDK 5.1.1(19) 的构建止步点（RNOH har 需 API ≥ 21）见下节，与 TV 无关。
 - **新增依赖**：`@polypack/adapter-tv`（`file:../../../tv`）——`metro.config.js` 的
   `watchFolders` 已把它纳入 watch 树（链接包真实路径在工程根之外，与 adapter-native 同因）。

@@ -1,5 +1,5 @@
-// 示例页面（T-M2-04 验收的「同一示例页面组件树」）：与 poly init 模板页
-// （crates/poly-cli/templates/app/ui/main.jsx）语义同形——图标 / 标题 / 版本行 /
+// 示例页面（T-M2-04 验收的「同一示例页面组件树」）：与 polypack init 模板页
+// （crates/polypack-cli/templates/app/ui/main.jsx）语义同形——图标 / 标题 / 版本行 /
 // 计数按钮 / 提示行；差异仅在渲染原语（RN View/Text/Pressable vs DOM）。
 // 原语由宿主注入：宿主传 react-native；测试传 DOM 标签做代理渲染（test/helpers/dom-primitives.js）。
 
@@ -82,7 +82,7 @@ export function createExampleApp(primitives, adapter) {
         ? h(Image, { source: iconSource, accessibilityLabel: "Pax", style: { width: 64, height: 64 } })
         : null,
       h(Text, { style: styles.title }, "PolyPack App"),
-      h(Text, { style: styles.muted }, "版本 0.1.0 · 由 PolyPack 构建（poly build --target android）"),
+      h(Text, { style: styles.muted }, "版本 0.1.0 · 由 PolyPack 构建（polypack build --target android）"),
       // testID = 焦点节点 id：真机 uiautomator 的 resource-id，走查据此定位节点取 bounds
       // 做焦点环像素采样（比匹配中文文本稳）
       h(

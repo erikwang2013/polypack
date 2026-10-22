@@ -12,14 +12,14 @@ Apple-family targets (iOS / macOS / tvOS) can only produce real artifacts on a m
 
 | Role | Responsibility | What it needs |
 |---|---|---|
-| **Origin** | Declares what to build (`polypack.toml` + `--target`), submits the job, collects the artifact list | The `poly` binary, project source, a farm directory shared with the build site; **no** target-platform toolchain |
-| **Build site** | Runs the job: compile, package, pull signing material on demand | The `poly` binary, platform toolchains (Xcode / Android SDK, …), credential backends; **no** developer-local repo state |
+| **Origin** | Declares what to build (`polypack.toml` + `--target`), submits the job, collects the artifact list | The `polypack` binary, project source, a farm directory shared with the build site; **no** target-platform toolchain |
+| **Build site** | Runs the job: compile, package, pull signing material on demand | The `polypack` binary, platform toolchains (Xcode / Android SDK, …), credential backends; **no** developer-local repo state |
 
 In one sentence: the **origin** decides *what* to build, the **build site** decides *how* and owns the credentials exclusively. Credentials never cross that boundary (see "Credential model" below).
 
 ## Protocol v0
 
-The wire format is JSON Lines (one UTF-8 JSON object per line), version string `farm/v0`; a version mismatch fails with `poly::E_FARM_0001`.
+The wire format is JSON Lines (one UTF-8 JSON object per line), version string `farm/v0`; a version mismatch fails with `polypack::E_FARM_0001`.
 
 | Frame | Direction | Payload |
 |---|---|---|
@@ -40,7 +40,7 @@ Transport in v0 is a **shared-directory double mailbox** (`DirTransport`): the m
 3. **Start the build site**: on the macOS machine, install Xcode and the cross-compilation targets (`rustup target add aarch64-apple-ios aarch64-apple-ios-sim x86_64-apple-ios`), then register and serve:
 
 ```bash
-poly farm worker --dir /srv/polypack-farm --id mac-mini-1 --target ios --jobs 1 --idle 60
+polypack farm worker --dir /srv/polypack-farm --id mac-mini-1 --target ios --jobs 1 --idle 60
 ```
 
 `--target` declares the targets this worker can build (repeatable; omitted = every declared target reachable from this host); `--jobs` is how many jobs to handle before exiting, `--idle` the idle wait limit (timing out is a normal exit — having nothing to do is not a failure).
@@ -48,10 +48,10 @@ poly farm worker --dir /srv/polypack-farm --id mac-mini-1 --target ios --jobs 1 
 4. **Submit from the origin**: on Linux, point at the same directory:
 
 ```bash
-poly farm submit --dir /srv/polypack-farm --config /srv/proj/polypack.toml --target ios --wait 600
+polypack farm submit --dir /srv/polypack-farm --config /srv/proj/polypack.toml --target ios --wait 600
 ```
 
-An explicit `--target <id>` is never filtered by origin-side reachability — it is resolved against the hosts each target declares in the registry, so Linux can submit `ios` and wait for a macOS worker; the default `--target all` matches `poly build` and takes the origin-reachable subset only (list target ids explicitly to submit across hosts). The master waits for `hello` and admits the worker against the **declared hosts** of the job's targets (a host outside the declared hosts, or a worker that cannot build every target of the job → `hello_ack accepted=false` plus `poly::E_FARM_0002`); once admitted it sends `job` and waits for `result` (timeout → `poly::E_FARM_0003`). Worker-side failures are never swallowed: the remote code and fix hint come back through `RemoteDiagnostic`, and the master re-raises them wrapped in `poly::E_FARM_0003` with exit code 1.
+An explicit `--target <id>` is never filtered by origin-side reachability — it is resolved against the hosts each target declares in the registry, so Linux can submit `ios` and wait for a macOS worker; the default `--target all` matches `polypack build` and takes the origin-reachable subset only (list target ids explicitly to submit across hosts). The master waits for `hello` and admits the worker against the **declared hosts** of the job's targets (a host outside the declared hosts, or a worker that cannot build every target of the job → `hello_ack accepted=false` plus `polypack::E_FARM_0002`); once admitted it sends `job` and waits for `result` (timeout → `polypack::E_FARM_0003`). Worker-side failures are never swallowed: the remote code and fix hint come back through `RemoteDiagnostic`, and the master re-raises them wrapped in `polypack::E_FARM_0003` with exit code 1.
 
 5. **Cross-machine cache**: `--cache local` uses the project-local CAS (`<project root>/.polypack/cache`, the default); `--cache <shared dir>` switches to the shared object-store backend. The cache-key formula excludes absolute paths (ROADMAP §5.2), so the same project hits the cache across build sites; hit counts are reported truthfully on job completion (`cache hits N/M`).
 
@@ -59,7 +59,7 @@ An explicit `--target <id>` is never filtered by origin-side reachability — it
 
 - `JobSpec.secrets` contains only `CredentialRef { name, source }`: `name` is the target's declared signing profile (`apple-codesign` / `android-keystore`), and `source` is one of `keyring` (system keystore) / `vault` / `env { variable }` (the name of a CI-injected environment variable).
 - **Plaintext never enters a protocol frame, a command line, a plan or a log**: the worker resolves the reference against its own backends at execution time. Android keystore passwords are referenced only as `env:POLYPACK_KS_PASS` / `env:POLYPACK_KEY_PASS`; the iOS notarization password only as `env:POLYPACK_APPLE_APP_PASSWORD`, with the signing identity left in the build site's login keychain (Apple's recommended `xcrun notarytool store-credentials <profile>` profile form).
-- Plaintext credentials in the repository make `poly scan` (secret-scan, run both on commit and during builds) fail; CI additionally has a dedicated secret-scan job.
+- Plaintext credentials in the repository make `polypack scan` (secret-scan, run both on commit and during builds) fail; CI additionally has a dedicated secret-scan job.
 
 ## End-to-end example: Linux origin → macOS worker produces an IPA
 
@@ -67,10 +67,10 @@ Prerequisites: the macOS worker has Xcode and the three Apple triples; the proje
 
 ```bash
 # Build site (macOS): register as a worker, handle one job, then exit
-poly farm worker --dir /srv/polypack-farm --id mac-mini-1 --target ios --jobs 1 --idle 60
+polypack farm worker --dir /srv/polypack-farm --id mac-mini-1 --target ios --jobs 1 --idle 60
 
 # Origin (Linux): submit the ios target and wait for the result
-poly farm submit --dir /srv/polypack-farm --config /srv/proj/polypack.toml --target ios --wait 600
+polypack farm submit --dir /srv/polypack-farm --config /srv/proj/polypack.toml --target ios --wait 600
 ```
 
 Expected output (origin side; with `--json`, stdout is a single JSON line):
@@ -81,7 +81,7 @@ worker 已注册：mac-mini-1（aarch64-apple-darwin，宿主 Macos）
   .polypack/packages/ios/Pax Notes.ipa（1234567 字节，<blake3>）
 ```
 
-Artifacts land in the build site's project directory (`.polypack/packages/ios/`); once moved back to the origin over the shared directory, verify them with the next section. If the worker fails, the origin prints something like `[poly::E_FARM_0003] worker 执行失败：[<remote code>] <message>` together with the fix hint — reproduce on the build site to see the same code.
+Artifacts land in the build site's project directory (`.polypack/packages/ios/`); once moved back to the origin over the shared directory, verify them with the next section. If the worker fails, the origin prints something like `[polypack::E_FARM_0003] worker 执行失败：[<remote code>] <message>` together with the fix hint — reproduce on the build site to see the same code.
 
 ## Signature verification guide
 
@@ -91,13 +91,13 @@ Artifacts land in the build site's project directory (`.polypack/packages/ios/`)
 | iOS (distribution assessment) | `spctl --assess --type execute --verbose=4 "Payload/Pax Notes.app"` (`.pkg` / `.dmg` use `--type install`) | `accepted` (unsigned or unnotarized gives `rejected`; `source=` names the origin) |
 | iOS (notarization ticket) | `xcrun stapler validate <artifact>` | On success `The validate action worked!`; an unstappled artifact is reported as such |
 | iOS (IPA) | `unzip -o app.ipa -d /tmp/ipa`, then run the two commands above against `Payload/*.app` | The IPA is a zip container; the `.app` inside is what gets verified |
-| Android (APK) | `apksigner verify --print-certs --verbose app-release.apk` | `Verifies` plus `Signer #1 certificate DN:` (these are exactly the lines poly-sign keeps as verification evidence) |
+| Android (APK) | `apksigner verify --print-certs --verbose app-release.apk` | `Verifies` plus `Signer #1 certificate DN:` (these are exactly the lines polypack-sign keeps as verification evidence) |
 | Android (AAB) | `jarsigner -verify -verbose -certs app-release.aab` + `bundletool validate --bundle=app-release.aab` | The AAB is a signed JAR (jarsigner verifies the signature) and bundletool checks the bundle structure |
 
-These commands correspond one-to-one with the verifiers declared in the target registry: iOS uses `codesign-verify` / `spctl`, Android uses `apksigner-verify` / `bundletool-validate` (goldens in `crates/poly-cli/tests/fixtures/m2/*.artifact.json`). Contract tests for the mobile targets live in [`.github/workflows/mobile-contract.yml`](../.github/workflows/mobile-contract.yml): mock mode on every commit, real mode nightly with `POLY_CONTRACT_REAL=1` and artifact retention (the two tiers of ROADMAP §8).
+These commands correspond one-to-one with the verifiers declared in the target registry: iOS uses `codesign-verify` / `spctl`, Android uses `apksigner-verify` / `bundletool-validate` (goldens in `crates/polypack-cli/tests/fixtures/m2/*.artifact.json`). Contract tests for the mobile targets live in [`.github/workflows/mobile-contract.yml`](../.github/workflows/mobile-contract.yml): mock mode on every commit, real mode nightly with `POLYPACK_CONTRACT_REAL=1` and artifact retention (the two tiers of ROADMAP §8).
 
 ## Known limits and schedule
 
 - Transport is the shared-directory double mailbox only (HTTP / SSH land in M3+ behind the same trait); protocol v0 assumes the project is visible at the same path on the build site.
-- The signing chain (`poly-sign`: codesign / notarytool / stapler, apksigner) is not wired into the package stage yet — the farm path currently produces **unsigned** artifacts (the iOS archive step uses `CODE_SIGNING_ALLOWED=NO`); signing and notarization follow with T-M2-10. Until then, treat the table above as the artifact acceptance checklist.
+- The signing chain (`polypack-sign`: codesign / notarytool / stapler, apksigner) is not wired into the package stage yet — the farm path currently produces **unsigned** artifacts (the iOS archive step uses `CODE_SIGNING_ALLOWED=NO`); signing and notarization follow with T-M2-10. Until then, treat the table above as the artifact acceptance checklist.
 - Farm v1 (deployment guide + concurrency / isolation / shared cache) is scheduled for M8 (ROADMAP §9).

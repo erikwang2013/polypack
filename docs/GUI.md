@@ -1,7 +1,7 @@
 # GUI 构建历史矩阵（M9-E6 · T-M9-18）
 
 > 状态：T-M9-18 已交付（Tauri v2 + 静态前端）；真实 Tauri 窗口启动未在本环境执行，按环境门控披露。
-> 数据源：`.polypack/history/events.jsonl`（与 `poly history` 共用 `HistoryRecord` schema）。
+> 数据源：`.polypack/history/events.jsonl`（与 `polypack history` 共用 `HistoryRecord` schema）。
 
 ## 1. 是什么 / 不是什么
 
@@ -13,9 +13,9 @@
 
 ## 2. 数据来源与隐私
 
-`poly build` 在工程根写入 `.polypack/history/events.jsonl`，一行一条 `HistoryRecord`（`schema_version`、`build_id`、`ts`、`target`、`event`、`status`、`duration_ms`、可选 `artifact` / `artifact_digest` / `error_code`）。GUI 通过 `poly_core::events::HistoryRecord` 反序列化，字段定义与 CLI 同源，不复制 schema。
+`polypack build` 在工程根写入 `.polypack/history/events.jsonl`，一行一条 `HistoryRecord`（`schema_version`、`build_id`、`ts`、`target`、`event`、`status`、`duration_ms`、可选 `artifact` / `artifact_digest` / `error_code`）。GUI 通过 `polypack_core::events::HistoryRecord` 反序列化，字段定义与 CLI 同源，不复制 schema。
 
-路径处理有两道：CLI 落盘前把工程内路径转为相对路径、工程外绝对路径与 `..` 越界路径写 `<redacted>`；GUI 读取时对每条 `artifact` 再调用一次 `poly_core::events::redact_path`，防止手工编辑或旧版本记录绕过。
+路径处理有两道：CLI 落盘前把工程内路径转为相对路径、工程外绝对路径与 `..` 越界路径写 `<redacted>`；GUI 读取时对每条 `artifact` 再调用一次 `polypack_core::events::redact_path`，防止手工编辑或旧版本记录绕过。
 
 历史文件缺失视为空历史并显示引导；无法解析的行被跳过，界面显示跳过条数。
 
@@ -29,17 +29,17 @@ Linux 需要 GTK3 与 WebKitGTK 4.1 开发包（Debian/Ubuntu：`libwebkit2gtk-4
 
 ```bash
 # 1) 在任意含 polypack.toml 的工程根目录生成历史
-poly build
+polypack build
 
 # 2) 从该工程根目录启动 GUI（保持当前目录 = 工程根）
 cargo run --manifest-path /path/to/polypack/app/src-tauri/Cargo.toml
 ```
 
-界面中的 `Project root` 留空即使用进程当前目录，也可以填绝对路径；`Target` 留空显示全部目标；`Per target` 控制每个目标返回的最近记录数（1–200，默认 20）。点击矩阵行或目标名进入详情，`Back to matrix` 返回。CLI 等价查询：`poly history [--target ID] [--limit N] [--json]`。
+界面中的 `Project root` 留空即使用进程当前目录，也可以填绝对路径；`Target` 留空显示全部目标；`Per target` 控制每个目标返回的最近记录数（1–200，默认 20）。点击矩阵行或目标名进入详情，`Back to matrix` 返回。CLI 等价查询：`polypack history [--target ID] [--limit N] [--json]`。
 
 ### 3.3 无 Tauri 环境时
 
-若缺少 WebKitGTK / GTK 开发包，`cargo check` 会失败。此时可只读查看 `app/web/index.html` 的结构，但页面不会加载数据；本交付不提供 `history.json` 静态回退面板，因为 Tauri 构建在本仓库目标环境可用。需要纯静态面板时，可执行 `poly history --json > history.json` 并自行托管，字段与本 GUI 一致。
+若缺少 WebKitGTK / GTK 开发包，`cargo check` 会失败。此时可只读查看 `app/web/index.html` 的结构，但页面不会加载数据；本交付不提供 `history.json` 静态回退面板，因为 Tauri 构建在本仓库目标环境可用。需要纯静态面板时，可执行 `polypack history --json > history.json` 并自行托管，字段与本 GUI 一致。
 
 ## 4. 视图快照
 
@@ -51,7 +51,7 @@ cargo run --manifest-path /path/to/polypack/app/src-tauri/Cargo.toml
 TARGET   LATEST STATUS   TIME (UTC)             DURATION   ARTIFACT                                   ERROR CODE
 linux    success         2026-10-20T10:42:11Z   1.25s      .polypack/packages/linux/app.AppImage       -
 web      warning         2026-10-20T10:41:03Z   842ms      .polypack/packages/web/app.zip             -
-tizen    failed          2026-10-20T10:39:55Z   2.10s      <redacted>                                 poly::E_COMPILE_0001
+tizen    failed          2026-10-20T10:39:55Z   2.10s      <redacted>                                 polypack::E_COMPILE_0001
 ```
 
 ### 4.2 详情
@@ -60,7 +60,7 @@ tizen    failed          2026-10-20T10:39:55Z   2.10s      <redacted>           
 ← Back to matrix     linux · 2 most recent record(s) · latest 2026-10-20T10:42:11Z
 BUILD                  STATUS    TIME (UTC)             DURATION   ARTIFACT                              DIGEST        ERROR CODE
 build-1750416131000    success   2026-10-20T10:42:11Z   1.25s      .polypack/packages/linux/app.AppImage  sha256:abc    -
-build-1750416073000    failed    2026-10-20T10:41:13Z   980ms      <redacted>                             -             poly::E_COMPILE_0001
+build-1750416073000    failed    2026-10-20T10:41:13Z   980ms      <redacted>                             -             polypack::E_COMPILE_0001
 ```
 
 ### 4.3 空状态
@@ -68,10 +68,10 @@ build-1750416073000    failed    2026-10-20T10:41:13Z   980ms      <redacted>   
 ```text
 No build history yet
 Run a build in the project root, then refresh this view.
-1. Run poly build in the project root.
+1. Run polypack build in the project root.
 2. History is appended to .polypack/history/events.jsonl.
 3. Click Refresh; clear the target filter if one is set.
-CLI equivalent: poly history --json
+CLI equivalent: polypack history --json
 ```
 
 ## 5. 测试与验证

@@ -1,4 +1,4 @@
-// T-M4-15：Roku 频道发射入口——poly-bundle 打包器经
+// T-M4-15：Roku 频道发射入口——polypack-bundle 打包器经
 // `node scripts/emit.mjs <staging>` 调用；复用 spike 的
 // `emitChannelFiles(createExampleSubset())`（不重写发射器），把两件生成件写进暂存树。
 // 退出码：0 = 生成件已落盘；1 = 参数 / 发射失败（stderr 带原因，打包器按 ToolFailed 归因）。

@@ -1,5 +1,5 @@
 [package]
-name = "poly-gui"
+name = "polypack-gui"
 version = "0.1.0"
 description = "PolyPack build-history matrix and detail view (T-M9-18)"
 edition = "2021"
@@ -14,7 +14,7 @@ publish = false
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-poly-core = { path = "../../crates/poly-core" }
+polypack-core = { path = "../../crates/polypack-core" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tauri = { version = "2", features = [] }

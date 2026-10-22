@@ -92,7 +92,7 @@ spike 包：`src/page.js`（wear tokens / 安全区 / 能力面 / 焦点序的�
 | G7 | 资产 / 图标 / 启动图缺位 | manifest 省略图标字段（开发侧载可运行形态） | 资产管线后续接入；本 spike 只发射 `AppName` 字符串资源 | 实证 |
 | G8 | 每形态只声明参考设备（`venu2` / `venusq`） | 未做多设备产品矩阵；其他尺寸靠线性缩放，未登记 | `iq:products` 可按需扩展；缩放公式按 `dc.getWidth()/getHeight()` 已通用 | 实证 |
 | G9 | 生命周期最小：无 `onStart/onStop` 状态持久化 | 退出 / 重启后计数归零 | 示例页明确为瞬时状态；持久化需 `Application.Storage`（不在当前白名单），列为后续扩展 | 实证 |
-| G10 | 构建依赖 Node ≥20.11 + `unzip`（列 `.iq` 条目）；Rust 打包器未实现 | 不能由核心 `poly-bundle` 直接出包 | 本 spike 为 Node 独立模块（与 M4 Roku 同形态）；Rust 打包器列为 T-M7-10 条件任务 | 本仓实证 |
+| G10 | 构建依赖 Node ≥20.11 + `unzip`（列 `.iq` 条目）；Rust 打包器未实现 | 不能由核心 `polypack-bundle` 直接出包 | 本 spike 为 Node 独立模块（与 M4 Roku 同形态）；Rust 打包器列为 T-M7-10 条件任务 | 本仓实证 |
 
 无「无替代」硬项。G1 / G3 为影响最大两项：G1 收窄功能面（设计使然），G3 是唯一未闭环验证（前置条件已写明）。
 

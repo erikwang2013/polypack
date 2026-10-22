@@ -1,10 +1,10 @@
 //! Read-only build-history aggregation for the GUI (T-M9-18).
 //!
-//! The GUI reuses [`poly_core::events::HistoryRecord`] and
-//! [`poly_core::events::redact_path`], so the JSONL contract and privacy rules
-//! stay identical to `poly history`. Nothing is written back to disk.
+//! The GUI reuses [`polypack_core::events::HistoryRecord`] and
+//! [`polypack_core::events::redact_path`], so the JSONL contract and privacy rules
+//! stay identical to `polypack history`. Nothing is written back to disk.
 //!
-//! Aggregation is intentionally the same shape as `poly history`: group by
+//! Aggregation is intentionally the same shape as `polypack history`: group by
 //! target, sort newest first (timestamp, then build id), keep `limit` records
 //! per target. The matrix row is the first record of each group.
 
@@ -12,7 +12,7 @@ use std::collections::BTreeMap;
 use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
 
-use poly_core::events::{redact_path, HistoryRecord, REDACTED_PATH};
+use polypack_core::events::{redact_path, HistoryRecord, REDACTED_PATH};
 use serde::Serialize;
 
 /// History file location relative to the project root (shared with the CLI).
@@ -138,7 +138,7 @@ pub fn read_view(root: &Path, target: Option<&str>, limit: usize) -> Result<Hist
 /// Tauri command: read, redact, and aggregate history for the matrix/detail UI.
 ///
 /// An empty `root` means the process working directory. Missing history is an
-/// empty view (not an error), matching `poly history`.
+/// empty view (not an error), matching `polypack history`.
 #[tauri::command]
 pub fn history_records(
     root: Option<String>,
@@ -162,7 +162,7 @@ pub fn history_records(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use poly_core::events::HistoryStatus;
+    use polypack_core::events::HistoryStatus;
     use std::sync::atomic::{AtomicUsize, Ordering};
 
     static COUNTER: AtomicUsize = AtomicUsize::new(0);
@@ -214,7 +214,7 @@ mod tests {
         serde_json::to_string(record).expect("record serializes")
     }
 
-    /// Missing file = empty view (not an error), same as `poly history`.
+    /// Missing file = empty view (not an error), same as `polypack history`.
     #[test]
     fn empty_history_yields_empty_view() {
         let temp = TempRoot::new("empty");
@@ -273,7 +273,7 @@ mod tests {
         let mut absolute_inside = record("b1", "linux", HistoryStatus::Success, 100, 10);
         absolute_inside.artifact = Some(inside.to_string_lossy().into_owned());
         absolute_inside.artifact_digest = Some("sha256:abc".to_string());
-        absolute_inside.error_code = Some("poly::E_COMPILE_0001".to_string());
+        absolute_inside.error_code = Some("polypack::E_COMPILE_0001".to_string());
 
         let mut absolute_outside = record("b2", "web", HistoryStatus::Failed, 200, 20);
         absolute_outside.artifact = Some(outside.to_string_lossy().into_owned());
@@ -313,7 +313,7 @@ mod tests {
         assert_eq!(linux.latest.artifact_digest.as_deref(), Some("sha256:abc"));
         assert_eq!(
             linux.latest.error_code.as_deref(),
-            Some("poly::E_COMPILE_0001")
+            Some("polypack::E_COMPILE_0001")
         );
 
         let json = serde_json::to_string(&view).expect("view serializes");

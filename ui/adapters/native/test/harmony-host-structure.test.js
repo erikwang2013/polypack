@@ -162,7 +162,7 @@ test("NAPI 桥产物口径哨兵：宿主示例描述符与真跑夹具一致（
   assert.ok(sample, "index.js 须保留 register 示例（口径随真跑产物）");
   const [, artifact, moduleName] = sample;
 
-  const fixture = path.resolve(HERE, "../../../../crates/poly-core/tests/fixtures/bridge_core");
+  const fixture = path.resolve(HERE, "../../../../crates/polypack-core/tests/fixtures/bridge_core");
   const udl = path.join(fixture, "src/pax.udl");
   if (!fs.existsSync(udl)) {
     t.skip("真跑夹具未入库（T-M3-01 在途）");
@@ -193,7 +193,7 @@ test("二进制与凭据资产不入库：无 .so/.har/.hbc/证书，libs/ 仅 .
     assert.deepEqual(
       fs.readdirSync(path.join(HOST, "harmony/entry/libs", abi)),
       [".gitkeep"],
-      `libs/${abi}/ 只留占位（.so 由 poly bridge ohos 注入）`,
+      `libs/${abi}/ 只留占位（.so 由 polypack bridge ohos 注入）`,
     );
   }
   assert.match(read(".gitignore"), /^node_modules\/$/m);

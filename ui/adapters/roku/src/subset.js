@@ -161,7 +161,7 @@ export function createExampleSubset() {
                 translation: [border, border],
                 children: [
                   { type: "label", id: "title", translation: [0, stackY.title], width: inner, height: titleH, text: "PolyPack App", font: FONT_ROLES.title, color: tokens.color.text, horizAlign: "center" },
-                  { type: "label", id: "version", translation: [0, stackY.version], width: inner, height: lineH, text: "版本 0.1.0 · 由 PolyPack 构建（poly build --target roku）", font: FONT_ROLES.small, color: tokens.color.muted, horizAlign: "center" },
+                  { type: "label", id: "version", translation: [0, stackY.version], width: inner, height: lineH, text: "版本 0.1.0 · 由 PolyPack 构建（polypack build --target roku）", font: FONT_ROLES.small, color: tokens.color.muted, horizAlign: "center" },
                   buttonBlock("counter", "点击计数：0", stackY.counter),
                   buttonBlock("reset", "重置", stackY.reset),
                   { type: "label", id: "hint", translation: [0, stackY.hint], width: inner, height: lineH, text: "遥控器：方向键移动焦点；OK 激活；Back 返回上一焦点。", font: FONT_ROLES.small, color: tokens.color.muted, horizAlign: "center" },

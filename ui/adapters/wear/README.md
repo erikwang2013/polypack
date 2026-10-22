@@ -33,7 +33,7 @@ adapter.degradations();           // focus-ring / safe-area-padding / back-affor
 adapter.safeArea();               // 圆表 454：{ top: 67, right: 67, bottom: 67, left: 67 }
 ```
 
-- **紧凑 tokens**：基值 = poly init 模板 `tokens.css`（与 native / taro / tv 同一事实源）；
+- **紧凑 tokens**：基值 = polypack init 模板 `tokens.css`（与 native / taro / tv 同一事实源）；
   穿戴派生 = 间距 / 圆角 ×0.75，字号直通（可读性底线 14px），颜色直通。
 - **两种形态**：`WEAR_FORMS` = 圆形 454×454 / 方形 320×320（Wear OS 模拟器参考视口）。
 - **安全区**：圆形 = 内接正方形（每边内缩 `(1 - 1/√2)/2 ≈ 14.6447%`，入库上取整 14.65%）；

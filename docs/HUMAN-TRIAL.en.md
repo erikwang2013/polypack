@@ -40,18 +40,18 @@ Confirm and record each item before the trial starts (electronic or paper):
 | Phase | Minutes | Task | Observation focus |
 | --- | --- | --- | --- |
 | Preparation | 10 | Check the environment, sign consent, explain think-aloud | Whether the goal and recording are understood |
-| Scaffold | 20 | `poly init` or `poly plugin new pocket-notes`, then `poly plugin check` | Docs entry points, first errors, wait time |
+| Scaffold | 20 | `polypack init` or `polypack plugin new pocket-notes`, then `polypack plugin check` | Docs entry points, first errors, wait time |
 | Custom target | 35 | Implement describe / package per GA §2 and declare the custom target | Spec comprehension, plugin template, debug loop |
-| Packaging | 15 | `poly build --config <app>/polypack.toml --target pocket-notes`, then `poly verify` | Command discoverability, artifact location, failure messages |
+| Packaging | 15 | `polypack build --config <app>/polypack.toml --target pocket-notes`, then `polypack verify` | Command discoverability, artifact location, failure messages |
 | Debrief | 10 | Classify per §6, finish the anonymized report, open questions | Real blockers and improvement suggestions |
 
 Reference command flow (GA §2 and the trial project are authoritative):
 
 ```bash
-poly plugin new pocket-notes
-poly plugin check pocket-notes
-poly build --config <app>/polypack.toml --target pocket-notes
-poly verify --target pocket-notes
+polypack plugin new pocket-notes
+polypack plugin check pocket-notes
+polypack build --config <app>/polypack.toml --target pocket-notes
+polypack verify --target pocket-notes
 ```
 
 ## 5. Observation and think-aloud
@@ -81,7 +81,7 @@ date: YYYY-MM-DD
 environment:
   os: "Linux / macOS / Windows + version"
   rust: "rustc --version"
-  poly: "poly --version"
+  polypack: "polypack --version"
 timeline:
   start: "HH:MM"
   package_built: "HH:MM"

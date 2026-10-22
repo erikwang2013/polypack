@@ -9,11 +9,11 @@
 
 | Role | Responsibility |
 |---|---|
-| `core` | core and pipeline: poly-core / poly-targets / poly-toolchain / poly-cache |
-| `packagers` | the packager matrix: poly-bundle formats (apk / ipa / hap / msi / dmg / wgt / ipk / deb / rpm / …) |
+| `core` | core and pipeline: polypack-core / polypack-targets / polypack-toolchain / polypack-cache |
+| `packagers` | the packager matrix: polypack-bundle formats (apk / ipa / hap / msi / dmg / wgt / ipk / deb / rpm / …) |
 | `ui-adapters` | UI adapter layer: design system, platform render adapters, TV focus system |
 | `platforms` | platform ports: SDK / toolchain integration, cross-compilation, native builds |
-| `release-sec` | signing, publishing, and security: poly-sign / poly-publish / vault / plugin signing |
+| `release-sec` | signing, publishing, and security: polypack-sign / polypack-publish / vault / plugin signing |
 | `infra` | CI and infrastructure: host matrix, smoke tests, remote build farm |
 | `docs` | documentation and diagrams: bilingual sync, diagram pipeline, usage docs |
 
@@ -48,15 +48,15 @@
 - **Changes**: task additions/removals and estimate adjustments must sync [TASKS.md](TASKS.md), per the ROADMAP §11 documentation sync convention.
 ## M0 Foundation (2 weeks)
 
-> Prerequisite: none｜Exit criteria: `poly doctor` correctly reports missing local toolchains; the schema covers every L1 field; CI is green on all three hosts (ubuntu-latest / macos-14 / windows-2022); the doc-sync validator (diagrams / Pax / bilingual structural check) is enforced in CI.
+> Prerequisite: none｜Exit criteria: `polypack doctor` correctly reports missing local toolchains; the schema covers every L1 field; CI is green on all three hosts (ubuntu-latest / macos-14 / windows-2022); the doc-sync validator (diagrams / Pax / bilingual structural check) is enforced in CI.
 
 ### T-M0-01 · ✅ Cargo workspace skeleton and dependency-direction constraints
 
 - Role: core
 - Deps: —
 - Estimate: 2d
-- Deliverable: A Cargo workspace with 9 crate stubs (poly-cli / poly-core / poly-targets / poly-toolchain / poly-bundle / poly-sign / poly-publish / poly-cache / poly-plugin) plus a dependency-direction constraint check script.
-- Acceptance: `cargo check --workspace` is green; introducing a reverse dependency by hand (e.g. poly-core depending on poly-bundle) makes the check fail and names the offending direction.
+- Deliverable: A Cargo workspace with 9 crate stubs (polypack-cli / polypack-core / polypack-targets / polypack-toolchain / polypack-bundle / polypack-sign / polypack-publish / polypack-cache / polypack-plugin) plus a dependency-direction constraint check script.
+- Acceptance: `cargo check --workspace` is green; introducing a reverse dependency by hand (e.g. polypack-core depending on polypack-bundle) makes the check fail and names the offending direction.
 
 ### T-M0-02 · ✅ Three-host CI with Rust build caching (three-host rust-ci green: recent ubuntu / macos / windows runs all pass (2026-10-18); the "remote billing recovery" caveat is stale)
 
@@ -103,15 +103,15 @@
 - Role: core
 - Deps: T-M0-06
 - Estimate: 2d
-- Deliverable: The `poly::E_<module>_<number>` error-code scheme (code + cause + fix hint), the §4.2 BuildEvent bus and its serialization, and the full `poly build --json` event-stream output.
+- Deliverable: The `polypack::E_<module>_<number>` error-code scheme (code + cause + fix hint), the §4.2 BuildEvent bus and its serialization, and the full `polypack build --json` event-stream output.
 - Acceptance: every failure path emits a stable error code and hint; `--json` output is consumable line by line by a JSON parser; event variant definitions cover the full §4.2 enum (M0 can at least emit Planned / Failed); error codes are locked by snapshot tests.
 
-### T-M0-08 · ✅ poly doctor (probe report skeleton)
+### T-M0-08 · ✅ polypack doctor (probe report skeleton)
 
 - Role: core
 - Deps: T-M0-01
 - Estimate: 1.5d
-- Deliverable: The `poly doctor` command, the Probe trait (locate / install), and probe-report rendering (human-readable terminal + machine-readable).
+- Deliverable: The `polypack doctor` command, the Probe trait (locate / install), and probe-report rendering (human-readable terminal + machine-readable).
 - Acceptance: an environment item with no registered probe reports "not probed" instead of crashing; the report gives a ready / missing / version tri-state per toolchain; the exit code distinguishes "all ready" from "something missing".
 
 ### T-M0-09 · ✅ L1 host toolchain probes
@@ -120,7 +120,7 @@
 - Deps: T-M0-08
 - Estimate: 2d
 - Deliverable: Probe implementations for L1-related tools: Android SDK/NDK, Xcode, HarmonyOS SDK, emsdk, WiX/NSIS, WebView2 runtime, Linux packaging toolchain (annotated by host applicability).
-- Acceptance: `poly doctor` correctly reports missing/installed toolchains and versions on all three hosts (against a manual checklist); one failing probe does not abort the others; the all-missing scenario prints actionable suggestions.
+- Acceptance: `polypack doctor` correctly reports missing/installed toolchains and versions on all three hosts (against a manual checklist); one failing probe does not abort the others; the all-missing scenario prints actionable suggestions.
 
 ### T-M0-10 · ✅ Doc-sync validator wired into CI (delivered)
 
@@ -139,7 +139,7 @@
 
 ## M1 Desktop & Web (4 weeks)
 
-> Prerequisite: M0 (T-M0-03, T-M0-04, T-M0-05, T-M0-06, T-M0-07, T-M0-08, T-M0-09, T-M0-10)｜Exit criteria: the sample app packages for Windows / macOS / Linux / Web; second-run cache hit ≥ 90% on identical inputs; English-labeled diagrams merged and checked in CI (`poly dev` hot update is demo-only — the exit criteria do not depend on the advanced core hot-update injection form).
+> Prerequisite: M0 (T-M0-03, T-M0-04, T-M0-05, T-M0-06, T-M0-07, T-M0-08, T-M0-09, T-M0-10)｜Exit criteria: the sample app packages for Windows / macOS / Linux / Web; second-run cache hit ≥ 90% on identical inputs; English-labeled diagrams merged and checked in CI (`polypack dev` hot update is demo-only — the exit criteria do not depend on the advanced core hot-update injection form).
 
 ### T-M1-01 · ✅ Pipeline skeleton: Stage trait and DAG scheduling
 
@@ -173,7 +173,7 @@
 - Deliverable: vite frontend build integration (invoke the build, produce dist), react-dom rendering baseline wiring, and PWA manifest generation (name / icons / theme color from polypack.toml; icons derived from Pax brand assets).
 - Acceptance: the sample UI builds to dist; manifest structure and icon-size assertions pass; html-validate passes on the emitted HTML; build failures carry an error code and location info.
 
-### T-M1-05 · ✅ poly-bundle: Packager trait and Windows packagers (MSI / NSIS) (MSI real execution proven — windows-2022 CI really runs candle+light+msiexec with payload byte checks (after the first-run LGHT0311 code-page fix); NSIS real compile plus a silent install → launch → uninstall smoke now runs on the rust-ci Windows leg — makensis produces a non-empty PE installer, a host-compiled rustc fixture PE is installed via `/S` into a test temp dir (`/D=`) and launches with its marker output, and the install directory is removed after `uninstall.exe /S`; launching the real sample Tauri binary from the default Program Files path remains a gap, and non-Windows hosts skip explicitly)
+### T-M1-05 · ✅ polypack-bundle: Packager trait and Windows packagers (MSI / NSIS) (MSI real execution proven — windows-2022 CI really runs candle+light+msiexec with payload byte checks (after the first-run LGHT0311 code-page fix); NSIS real compile plus a silent install → launch → uninstall smoke now runs on the rust-ci Windows leg — makensis produces a non-empty PE installer, a host-compiled rustc fixture PE is installed via `/S` into a test temp dir (`/D=`) and launches with its marker output, and the install directory is removed after `uninstall.exe /S`; launching the real sample Tauri binary from the default Program Files path remains a gap, and non-Windows hosts skip explicitly)
 
 - Role: packagers
 - Deps: T-M1-03
@@ -205,7 +205,7 @@
 - Deliverable: The static-site packager (dist + manifest → a hostable static package including PWA assets), using the same Packager interface as built-in targets.
 - Acceptance: serving the artifact from a plain static server makes it reachable; html-validate and manifest assertions pass; it matches the §3.2 Web row (static site + PWA manifest).
 
-### T-M1-09 · ✅ poly-cache (blake3 CAS + local backend + object-storage trait)
+### T-M1-09 · ✅ polypack-cache (blake3 CAS + local backend + object-storage trait)
 
 - Role: core
 - Deps: T-M1-01, T-M1-02
@@ -213,21 +213,21 @@
 - Deliverable: The §5.2 cache key (source-tree digest ‖ dependency lockfile ‖ TargetSpec version ‖ toolchain version ‖ build parameters), content-addressed storage (blake3 + CAS), a local filesystem backend, an object-storage backend trait, and cache-hit statistics events.
 - Acceptance: the cache key is sensitive to each of the five input classes (verified one by one in unit tests); a second run hits the cache (a Cached event with hit=true, build wall time clearly lower); an entry whose content does not match its digest is detected and treated as a miss.
 
-### T-M1-10 · ✅ poly dev hot preview v0 (web host)
+### T-M1-10 · ✅ polypack dev hot preview v0 (web host)
 
 - Role: ui-adapters
 - Deps: T-M1-01, T-M1-04
 - Estimate: 2.5d
-- Deliverable: The `poly dev` command: launch the web-host dev server; hot-update on UI changes; trigger recompilation and refresh injection on core (Rust) changes. Fallback plan: if the injection approach overruns, degrade to full-page reload and defer hot update (injection form) to M2+.
+- Deliverable: The `polypack dev` command: launch the web-host dev server; hot-update on UI changes; trigger recompilation and refresh injection on core (Rust) changes. Fallback plan: if the injection approach overruns, degrade to full-page reload and defer hot update (injection form) to M2+.
 - Acceptance: editing a UI source file updates the browser without a manual refresh; editing core source recompiles automatically with the effect visible in the page (full-page reload is an acceptable degraded form); exiting leaves no orphaned child processes.
 
-### T-M1-11 · ✅ poly init sample-app template
+### T-M1-11 · ✅ polypack init sample-app template
 
 - Role: core
 - Deps: T-M0-03
 - Estimate: 2d
-- Deliverable: `poly init` generating a minimal sample app: a Rust core crate + a React UI skeleton (using minimal @polypack/ui tokens) + polypack.toml (windows / macos / linux / web L1 target declarations) + an app icon asset based on Pax.
-- Acceptance: right after `poly init` in an empty directory the config passes schema validation and `poly doctor` produces a toolchain report; signing is all references with no plaintext credentials; the README quick-start steps match what is generated.
+- Deliverable: `polypack init` generating a minimal sample app: a Rust core crate + a React UI skeleton (using minimal @polypack/ui tokens) + polypack.toml (windows / macos / linux / web L1 target declarations) + an app icon asset based on Pax.
+- Acceptance: right after `polypack init` in an empty directory the config passes schema validation and `polypack doctor` produces a toolchain report; signing is all references with no plaintext credentials; the README quick-start steps match what is generated.
 
 ### T-M1-12 · ✅ English-labeled diagrams (English-label JSON → docs/assets/en/*.svg)
 
@@ -249,20 +249,20 @@
 - Role: ui-adapters
 - Deps: T-M1-05, T-M1-11
 - Estimate: 1.5d
-- Deliverable: (1) CLI banner and build-state expression mapping (success = joy / failure = crying / exception = shocked / needs-confirmation = coy / idle = smile; text-and-color fallback on terminals without graphics); (2) icon derivation pipeline: `pax-mark.svg` → PNG / ICNS / ICO generated at build time, never committed; (3) poly-gui application and window icons.
+- Deliverable: (1) CLI banner and build-state expression mapping (success = joy / failure = crying / exception = shocked / needs-confirmation = coy / idle = smile; text-and-color fallback on terminals without graphics); (2) icon derivation pipeline: `pax-mark.svg` → PNG / ICNS / ICO generated at build time, never committed; (3) polypack-gui application and window icons.
 - Acceptance: MSI / DMG / deb artifact icons are Pax-derived with size assertions passing; the CLI prints the matching expression on success and failure paths (text in fallback mode); every brand asset traces to the single source `tools/build-pax.mjs`.
 
-### T-M1-15 · ✅ `poly clean` and retention policy
+### T-M1-15 · ✅ `polypack clean` and retention policy
 - Role: core
 - Deps: T-M1-09
 - Estimate: 1d
-- Deliverable: `poly clean` (`--cache` / `--artifacts` / `--all`; dry-run by default listing reclaimable entries and space, `--yes` executes); `[retention]` config in `polypack.toml` (cache age/capacity caps, artifact build history); LRU auto-eviction on breach; a cleanup report (reclaimed-space stats).
-- Acceptance: LRU eviction keeps builds reusing the remaining cache; `poly doctor` passes after `poly clean --all --yes`; dry-run performs no writes.
+- Deliverable: `polypack clean` (`--cache` / `--artifacts` / `--all`; dry-run by default listing reclaimable entries and space, `--yes` executes); `[retention]` config in `polypack.toml` (cache age/capacity caps, artifact build history); LRU auto-eviction on breach; a cleanup report (reclaimed-space stats).
+- Acceptance: LRU eviction keeps builds reusing the remaining cache; `polypack doctor` passes after `polypack clean --all --yes`; dry-run performs no writes.
 
 <!-- 统计: M0=11任务/18d, M1=15任务/31.5d -->
 ## M2 Mobile (5 weeks)
 
-> Prerequisites: T-M0-01 (workspace), T-M0-02 (three-host CI), T-M0-04/T-M0-05 (TargetSpec DSL and L1 declarations), T-M0-06/T-M0-07 (JobSpec and diagnostics framework), T-M0-09 (toolchain probes), T-M1-05 (Packager trait), T-M1-09 (poly-cache), T-M1-11 (sample-app template) | Exit criteria: sample APK/IPA installs and signatures verify; zero keys in-repo (secret-scan green); a Linux host produces an IPA through the remote farm
+> Prerequisites: T-M0-01 (workspace), T-M0-02 (three-host CI), T-M0-04/T-M0-05 (TargetSpec DSL and L1 declarations), T-M0-06/T-M0-07 (JobSpec and diagnostics framework), T-M0-09 (toolchain probes), T-M1-05 (Packager trait), T-M1-09 (polypack-cache), T-M1-11 (sample-app template) | Exit criteria: sample APK/IPA installs and signatures verify; zero keys in-repo (secret-scan green); a Linux host produces an IPA through the remote farm
 
 ### T-M2-01 · ✅ uniffi bridge generator (UDL single source → Kotlin/Swift bindings; digest in the cache key, four exits registered; Kotlin really compiled + dual-ABI .so real runs — Swift compile proven: real generator output + real calling surface pass swiftc -typecheck (macos-14 real-mode evidence))
 
@@ -309,8 +309,8 @@
 - Role: packagers
 - Deps: T-M2-02, T-M0-09, T-M1-05
 - Estimate: 3d
-- Deliverable: `poly-bundle` Android packager: AAPT2 compile/link for resources and manifest (ABI and locale trimming, reproducible flags) producing unsigned AAB/APK intermediates (the signing slot is wired by T-M2-09); no Gradle anywhere.
-- Acceptance: `poly build --target android` emits both AAB and APK; AAPT2 link is warning-free; with `SOURCE_DATE_EPOCH` injected, a second run is byte-identical apart from signatures and timestamps (`poly verify --reproducible`).
+- Deliverable: `polypack-bundle` Android packager: AAPT2 compile/link for resources and manifest (ABI and locale trimming, reproducible flags) producing unsigned AAB/APK intermediates (the signing slot is wired by T-M2-09); no Gradle anywhere.
+- Acceptance: `polypack build --target android` emits both AAB and APK; AAPT2 link is warning-free; with `SOURCE_DATE_EPOCH` injected, a second run is byte-identical apart from signatures and timestamps (`polypack verify --reproducible`).
 
 ### T-M2-07 · ✅ Android artifact assembly and verification (bundletool) (validate real run; emulator-5554 install + cold start "Status: ok"; structure asserts in the event stream)
 
@@ -325,7 +325,7 @@
 - Role: packagers
 - Deps: T-M2-03, T-M2-04, T-M0-09, T-M1-05
 - Estimate: 3d
-- Deliverable: `poly-bundle` iOS packager: generates/reuses the Xcode project skeleton and produces an unsigned IPA via `xcodebuild archive` + `exportArchive` (export method configurable); macOS hosts only, host eligibility decided at the probe stage.
+- Deliverable: `polypack-bundle` iOS packager: generates/reuses the Xcode project skeleton and produces an unsigned IPA via `xcodebuild archive` + `exportArchive` (export method configurable); macOS hosts only, host eligibility decided at the probe stage.
 - Acceptance: the sample app emits an IPA on a macOS host; `plutil`/`xcrun` checks confirm Info.plist and architectures; provisioning profiles and certificates appear only as credential references (no plaintext).
 
 ### T-M2-09 · ✅ Android signing (apksigner + keystore reference) (real signing v2+v3 schemes + DN asserts; plan fail-fast; zero temp-key residue, zero secret leakage)
@@ -333,15 +333,15 @@
 - Role: release-sec
 - Deps: T-M2-07, T-M2-11
 - Estimate: 2d
-- Deliverable: `poly-sign` Android signer: `CredentialRef` → keystore resolution → apksigner signing, with key material only in memory/temp dirs; `apksigner verify` runs automatically after signing.
+- Deliverable: `polypack-sign` Android signer: `CredentialRef` → keystore resolution → apksigner signing, with key material only in memory/temp dirs; `apksigner verify` runs automatically after signing.
 - Acceptance: the sample APK passes `apksigner verify --print-certs`; a missing/wrong reference fails fast at the plan stage (stable error code + fix hint); a post-sign assertion shows no leftover key material.
 
-### T-M2-10 · ✅ iOS signing and notarization (codesign + notarytool) (library chain/credential refs/receipt slot ready; sign/verify now in the DAG — `poly build` inlines sign with three-tier credential gating, real apksigner v2+v3 independently re-checked; codesign real execution and real notarization pending the Apple gate)
+### T-M2-10 · ✅ iOS signing and notarization (codesign + notarytool) (library chain/credential refs/receipt slot ready; sign/verify now in the DAG — `polypack build` inlines sign with three-tier credential gating, real apksigner v2+v3 independently re-checked; codesign real execution and real notarization pending the Apple gate)
 
 - Role: release-sec
 - Deps: T-M2-08, T-M2-11
 - Estimate: 2d
-- Deliverable: `poly-sign` iOS chain: codesign (certificate/profile via credential references) + `notarytool submit --wait` + stapler; `codesign --verify` and `spctl` checks wired into the verify stage.
+- Deliverable: `polypack-sign` iOS chain: codesign (certificate/profile via credential references) + `notarytool submit --wait` + stapler; `codesign --verify` and `spctl` checks wired into the verify stage.
 - Acceptance: the sample IPA notarizes and staples successfully; `codesign --verify --deep` and `spctl -a -vv` pass; the notarization receipt is archived into the submission-level cache record.
 
 ### T-M2-11 · ✅ Vault integration (keyring + Vault backend trait) (backend chain + redaction asserts; retry --from sign re-fetches credentials across two real signing rounds; real Vault dev KV v2 round-trip (audit log shows the token only as hmac) + real keyring isolated-bus loop closed — Deepin-patched root cause evidenced)
@@ -350,7 +350,7 @@
 - Deps: T-M0-06
 - Estimate: 3d
 - Deliverable: credential resolution layer: `CredentialRef` → backend chain (local keyring + Vault backend trait + CI memory injection); the sign stage pulls on demand and discards immediately; plaintext credentials in the repo fail the build.
-- Acceptance: the same JobSpec resolves against both the keyring and Vault backends; credential values never appear in the event stream/logs (redaction assertion); `poly retry --from sign` reruns independently and re-pulls credentials.
+- Acceptance: the same JobSpec resolves against both the keyring and Vault backends; credential values never appear in the event stream/logs (redaction assertion); `polypack retry --from sign` reruns independently and re-pulls credentials.
 
 ### T-M2-12 · ✅ secret-scan (commit and build double-check) (constructed samples all hit + full-history real scan of 823 files clean + three-host CI workflow; required-check branch protection is set — the three-host secret-scan jobs are the required checks (verified 2026-10-16); enforce_admins=true (verified 2026-10-20) with 9 required contexts, so admin direct pushes are subject to the same checks)
 
@@ -388,13 +388,13 @@
 
 > Prerequisites: T-M0-09 (HarmonyOS SDK probe), T-M1-05 (Packager trait), T-M2-01 (bridge generator), T-M2-04/T-M2-05 (adapter-native and focus baseline), T-M2-11 (vault), T-M2-14 (contract-test golden infrastructure) | Exit criteria: all three mini programs preview in devtools; HarmonyOS HAP signs and installs; submission scripting is re-runnable
 
-### T-M3-01 · ✅ RNOH host and NAPI bridge integration (host template ui/adapters/native/host/harmony, 42 files + `poly bridge ohos`: truly cross-compiled self-contained OHOS aarch64 libpax.so 6,241,136 B + real node load-and-call parity greet/add same literals; poly doctor HarmonyOS dual scenarios; workspace 426 tests green; template HAP build stops at CompileArkTS — RNOH 0.84.3 har needs SDK ≥21 vs local 19, environment-side blocker, fix path documented in README)
+### T-M3-01 · ✅ RNOH host and NAPI bridge integration (host template ui/adapters/native/host/harmony, 42 files + `polypack bridge ohos`: truly cross-compiled self-contained OHOS aarch64 libpax.so 6,241,136 B + real node load-and-call parity greet/add same literals; polypack doctor HarmonyOS dual scenarios; workspace 426 tests green; template HAP build stops at CompileArkTS — RNOH 0.84.3 har needs SDK ≥21 vs local 19, environment-side blocker, fix path documented in README)
 
 - Role: platforms
 - Deps: T-M2-01, T-M0-09
 - Estimate: 3d
 - Deliverable: HarmonyOS host project template (RNOH) + NAPI (C ABI) bridge integration: `.so` build chain (HarmonyOS triple) and napi binding registration, with bridge artifacts emitted by the T-M2-01 generator.
-- Acceptance: the sample core loads as an NAPI module in the RNOH host; sample-interface calls match the Rust unit tests; `poly doctor` recognizes the HarmonyOS SDK and hints how to fix a missing one.
+- Acceptance: the sample core loads as an NAPI module in the RNOH host; sample-interface calls match the Rust unit tests; `polypack doctor` recognizes the HarmonyOS SDK and hints how to fix a missing one.
 
 ### T-M3-02 · ✅ adapter-native on the RNOH host (capability mapping) (component-map strips host-specific props per target — harmonyos drops hasTVPreferredFocus, page tree untouched; native-registry family split + dual-host structure snapshots byte-identical; 63 tests, 62 green, 1 skipped (device leg SKIP with walkthrough manual); also fixes the real defect target "harmony"→"harmonyos" + sentinel test)
 
@@ -409,18 +409,18 @@
 - Role: packagers
 - Deps: T-M3-01, T-M1-05
 - Estimate: 2.5d
-- Deliverable: `poly-bundle` HAP packager: project-config generation + hvigor build invocation + artifact collection, producing an unsigned HAP; build logs wired into the event stream.
-- Acceptance: `poly build --target harmonyos` emits the HAP; the HAP structure check (manifest/module/resource-index entries) passes; the second run hits the cache.
+- Deliverable: `polypack-bundle` HAP packager: project-config generation + hvigor build invocation + artifact collection, producing an unsigned HAP; build logs wired into the event stream.
+- Acceptance: `polypack build --target harmonyos` emits the HAP; the HAP structure check (manifest/module/resource-index entries) passes; the second run hits the cache.
 
 ### T-M3-04 · ✅ HAP signing and verification (hap-sign-tool) (sign-app/verify-app phases; credentials all by reference — isolated keyring real run; really signed 48,063 B (Signing Block v3 / debug profile / Digest true / Verify success); verify leg hap-sign-verify + hap-structure-check both true; passwords only via argv → plan/diagnostics/event stream uniformly redacted; device leg with no hdc target = SKIP note; retry --from sign not wired for harmony, noted)
 
 - Role: release-sec
 - Deps: T-M3-03, T-M2-11
 - Estimate: 2.5d
-- Deliverable: `poly-sign` HarmonyOS chain: hap-sign-tool signing (certificate/profile via credential references) + signature verification + HAP structure check wired into the verify stage.
+- Deliverable: `polypack-sign` HarmonyOS chain: hap-sign-tool signing (certificate/profile via credential references) + signature verification + HAP structure check wired into the verify stage.
 - Acceptance: the sample HAP signs, installs and launches on a DevEco emulator/device; the verification command is green; credentials stay references end to end (no plaintext in-repo).
 
-### T-M3-05 · ✅ @polypack/adapter-taro v0 (mount route binding + capability-matrix degradation + build-time API-whitelist rejection; poly-targets gains the four L2 mini-program targets; host project at ui/adapters/taro/host with structure tests; node --test 36 + poly-targets 11 green; devtools preview leg SKIP-with-print — no toolchain)
+### T-M3-05 · ✅ @polypack/adapter-taro v0 (mount route binding + capability-matrix degradation + build-time API-whitelist rejection; polypack-targets gains the four L2 mini-program targets; host project at ui/adapters/taro/host with structure tests; node --test 36 + polypack-targets 11 green; devtools preview leg SKIP-with-print — no toolchain)
 
 - Role: ui-adapters
 - Deps: T-M2-04 (capabilities contract and degradation pattern)
@@ -428,15 +428,15 @@
 - Deliverable: `@polypack/adapter-taro` v0: the `mount` contract for React-syntax pages on the Taro renderer, mini-program-family capability degradation (no direct DOM access, lifecycle and routing mapping) and token skinning.
 - Acceptance: the same page component tree renders in the Taro (WeChat target) devtools preview; degradation paths carry assertion tests; calls outside the host API allowlist are rejected at build time.
 
-### T-M3-06 · ✅ Taro build pipeline integration (WeChat/Alipay/Douyin/Quick App targets) (poly-bundle mini-program family: four packagers + poly-cli package arm; real runs weapp 301,644 B / alipay 250,110 B / tt 244,864 B; Quick App project really built by hap-toolkit 2.1.1 into .rpk; descriptor normalized miniprogramRoot=./dist/ and tt source project.tt.json→product project.config.json; the four wasm-outlet files ship inside the bundle (wechat 22 / alipay 19 / douyin 19 / quickapp 10 entries); second-run cache hit 2/2; contract_m3 mock 5 + real four ends 146.33 s; node 41/41 incl. host structure tests; devtools preview leg SKIP-with-print — no toolchain)
+### T-M3-06 · ✅ Taro build pipeline integration (WeChat/Alipay/Douyin/Quick App targets) (polypack-bundle mini-program family: four packagers + polypack-cli package arm; real runs weapp 301,644 B / alipay 250,110 B / tt 244,864 B; Quick App project really built by hap-toolkit 2.1.1 into .rpk; descriptor normalized miniprogramRoot=./dist/ and tt source project.tt.json→product project.config.json; the four wasm-outlet files ship inside the bundle (wechat 22 / alipay 19 / douyin 19 / quickapp 10 entries); second-run cache hit 2/2; contract_m3 mock 5 + real four ends 146.33 s; node 41/41 incl. host structure tests; devtools preview leg SKIP-with-print — no toolchain)
 
 - Role: packagers
 - Deps: T-M3-05, T-M1-05
 - Estimate: 2.5d
-- Deliverable: `poly-bundle` mini-program packager: Taro compile configs for the four targets + bundle assembly, leaving the size/API-allowlist pre-check hook for T-M3-08.
+- Deliverable: `polypack-bundle` mini-program packager: Taro compile configs for the four targets + bundle assembly, leaving the size/API-allowlist pre-check hook for T-M3-08.
 - Acceptance: compile output exists for all four Taro targets (Quick App stops at the compile project; the `.rpk` is handled by the platform toolchain step); WeChat/Alipay/Douyin bundles open in their devtools; the second run hits the cache.
 
-### T-M3-07 · ✅ wasm core into the mini-program sandbox (wasm-bindgen + API allowlist) (`poly bridge wasm`: UDL → two-gate whitelist (generation-time E_BRIDGE_0004 / load-time loader checks function surface and import modules) → shim → cargo wasm32; real run 56,445 B wasm inside a Node sandbox, greet→"hello, world", imports only the glue's own module, negatives ×3, byte-identical second-run cache; wasm-bindgen 0.2.129 under ~/.cache/polypack/tools; the four-file product at <root>/bridge/wasm-bindgen/ ships with the code package)
+### T-M3-07 · ✅ wasm core into the mini-program sandbox (wasm-bindgen + API allowlist) (`polypack bridge wasm`: UDL → two-gate whitelist (generation-time E_BRIDGE_0004 / load-time loader checks function surface and import modules) → shim → cargo wasm32; real run 56,445 B wasm inside a Node sandbox, greet→"hello, world", imports only the glue's own module, negatives ×3, byte-identical second-run cache; wasm-bindgen 0.2.129 under ~/.cache/polypack/tools; the four-file product at <root>/bridge/wasm-bindgen/ ships with the code package)
 
 - Role: core
 - Deps: T-M2-01
@@ -452,12 +452,12 @@
 - Deliverable: the `budget.size` check wired into the DAG (configurable warn/fail policy) + wasm-opt optimization and per-target trimming (the R10 countermeasure).
 - Acceptance: the sample app reports wasm and bundle sizes (event stream + terminal report); an artificial over-budget run warns with a locatable error code; before/after wasm-opt sizes are recorded in artifact metadata.
 
-### T-M3-09 · ✅ WeChat mini-program publish client (upload + submit + status polling) (B-protocol container (miniprogram-ci 2.1.31 semantics) + raw PKCS#1 v1.5 signing + gzip upload / submit_audit / get_latest_auditstatus polling (85009 recovery path); four-step zero-fork driver — container-agnostic blake3 digest + resume-from-archive + at-least-once submit boundary; canonical-JSON receipts atomically persisted, kept forever; 28 contract tests green; real account leg without credentials = SKIP as-is; poly-core scan gains the appsecret-hex32 gated rule (32-hex falls in the high-entropy blind spot))
+### T-M3-09 · ✅ WeChat mini-program publish client (upload + submit + status polling) (B-protocol container (miniprogram-ci 2.1.31 semantics) + raw PKCS#1 v1.5 signing + gzip upload / submit_audit / get_latest_auditstatus polling (85009 recovery path); four-step zero-fork driver — container-agnostic blake3 digest + resume-from-archive + at-least-once submit boundary; canonical-JSON receipts atomically persisted, kept forever; 28 contract tests green; real account leg without credentials = SKIP as-is; polypack-core scan gains the appsecret-hex32 gated rule (32-hex falls in the high-entropy blind spot))
 
 - Role: release-sec
 - Deps: T-M3-06, T-M2-11
 - Estimate: 3d
-- Deliverable: the `poly-publish` WeChat Open Platform client: bundle upload → submit for review → review-status polling + receipt archiving (automation stops at submission, per R4).
+- Deliverable: the `polypack-publish` WeChat Open Platform client: bundle upload → submit for review → review-status polling + receipt archiving (automation stops at submission, per R4).
 - Acceptance: one full upload+submit cycle runs on a test account and the script is re-runnable (idempotent/deduplicated); polling states and receipt-archive format are fixed; credentials are injected via the reference model.
 
 ### T-M3-10 · ✅ Alipay / Douyin publish clients (shared-skeleton reuse) (Alipay gateway v1: RSA2 signature independently recomputed in tests, version.upload → build.query wait → audit.apply flat submit → detail.query polling, idempotent resume; Douyin: err_no envelope + access-token header, version create → get_audit_hosts → audit v2 → version polling, 11303 idempotent; single-file carrier Package::load_file (domain-separated digest, rename doesn't change the receipt key, directory digest byte-identical) → Channel::QuickApp; three channels, zero-fork, same four-step driver; boundary notes: Alipay file materials loudly refused with E_PUB_0004 / response signature unverified (credential contract has no public key) / minidev fallback intentionally not built / Douyin token minting external; real platform legs SKIP×3 as-is)
@@ -476,7 +476,7 @@
 - Deliverable: one contract test per target: WeChat/Alipay/Douyin devtools CLI checks + bundle structure assertions + golden comparison, reusing the M2 contract-test and golden infrastructure; devtools login state is injected via credential references (same model as T-M2-11).
 - Acceptance: all three contract tests are green; golden drift fails; CI runs the two §8 tiers (mock every commit, real CLI nightly); login state never reaches the logs (redaction assertion).
 
-### T-M3-12 · ✅ Quick App packaging and store verification (hap-toolkit 2.1.1 really builds the .rpk (9 entries, manifest cross-checked against source) + lint wired into verify (hap-toolkit-lint→QuickAppLint); format/builder flipped to rpk/hap-toolkit (§3.3 alignment across five consumers); poly publish submission thin layer: dry-run real run on a real 11,740 B rpk (carrier digest/receipt key character-identical to the four-step driver, byte-identical reruns, zero credential leakage); missing endpoint/client → precise E_PUBLISH_0001/0002 diagnostics; the union store has no public CI endpoint (verified against 2026-10 docs) and no real account → the submission leg is SKIP-noted; four-target contract real run 649.91 s all green (quickapp 11 entries))
+### T-M3-12 · ✅ Quick App packaging and store verification (hap-toolkit 2.1.1 really builds the .rpk (9 entries, manifest cross-checked against source) + lint wired into verify (hap-toolkit-lint→QuickAppLint); format/builder flipped to rpk/hap-toolkit (§3.3 alignment across five consumers); polypack publish submission thin layer: dry-run real run on a real 11,740 B rpk (carrier digest/receipt key character-identical to the four-step driver, byte-identical reruns, zero credential leakage); missing endpoint/client → precise E_PUBLISH_0001/0002 diagnostics; the union store has no public CI endpoint (verified against 2026-10 docs) and no real account → the submission leg is SKIP-noted; four-target contract real run 649.91 s all green (quickapp 11 entries))
 
 - Role: packagers
 - Deps: T-M3-06, T-M3-09
@@ -518,7 +518,7 @@
 - Role: packagers
 - Deps: T-M2-07, T-M2-09 (Android AAPT2 + bundletool + apksigner chain), T-M4-01
 - Estimate: 3d
-- Deliverable: New TV-variant Packager in `poly-bundle`: Leanback manifest (`android.software.leanback`, `android.hardware.touchscreen=false`, TV banner/icon) plus Android TV and Fire TV target declarations (Fire TV reuses the same APK chain with the Amazon Appstore channel).
+- Deliverable: New TV-variant Packager in `polypack-bundle`: Leanback manifest (`android.software.leanback`, `android.hardware.touchscreen=false`, TV banner/icon) plus Android TV and Fire TV target declarations (Fire TV reuses the same APK chain with the Amazon Appstore channel).
 - Acceptance: APK passes bundletool validate and apksigner verify; Leanback/TV-track manifest assertions pass in contract tests; size stays within `budget.size`.
 
 ### T-M4-05 · ✅ Android TV / Fire TV contract tests and focus-navigation smoke (mock 6/6 + real exit 0; device smoke 6/6 walk + "core task with no pointer" PASS + focus-ring pixel evidence (#0e7490 exactly one, moves on DPAD_DOWN); x86 AVD (no x86_64 TV image upstream — ABI derived from the device abilist))
@@ -543,7 +543,7 @@
 - Deps: T-M4-06, T-M2-08, T-M2-10 (iOS xcodebuild archive + exportArchive chain), T-M2-13 (remote-farm protocol v0)
 - Estimate: 2.5d
 - Deliverable: tvOS target declaration and packager: reuse the M2 Xcode packaging chain (tvOS SDK slice), merge the uniffi native staticlib with the RN-tvOS bundle, codesign via credential reference; Linux/Windows hosts package through the M2 remote farm.
-- Acceptance: `poly build --target tvos` produces a TV package on a macOS host and `codesign --verify` passes; the same JobSpec initiated from a Linux host via the remote farm also packages successfully.
+- Acceptance: `polypack build --target tvos` produces a TV package on a macOS host and `codesign --verify` passes; the same JobSpec initiated from a Linux host via the remote farm also packages successfully.
 
 ### T-M4-08 · ✅ Tizen wgt packager and wgt-lint verification (config.xml + zip really built and verified, 6,565 B, independent python-zipfile witness; wgt-lint absent → SKIP-with-print with built-in structural assertions as the floor (hard fail E_BND_0006 on broken artifacts))
 
@@ -601,7 +601,7 @@
 - Deliverable: HarmonyOS TV target adaptation check: the packaging chain reuses the M3 RNOH host and HAP packaging/signing (hap-sign-tool); this task only adds the TV side — TV resolution and safe-area verification plus wiring into the adapter-tv focus system.
 - Acceptance: The HAP installs and launches on a HarmonyOS emulator or in the developer tools; directional focus traversal and the focus ring pass the smoke per adapter-tv behaviour; the TV safe area is unobstructed at the target resolutions.
 
-### T-M4-15 · ✅ Roku channel package packager and verifier (conditional task delivered: packager crates/poly-bundle/src/packagers/roku/ + contract test crates/poly-bundle/tests/packagers_roku.rs + adapter output ui/adapters/roku; structure self-check / zip / golden / determinism covered; on-device sideload records SKIP-with-print per the environment slot)
+### T-M4-15 · ✅ Roku channel package packager and verifier (conditional task delivered: packager crates/polypack-bundle/src/packagers/roku/ + contract test crates/polypack-bundle/tests/packagers_roku.rs + adapter output ui/adapters/roku; structure self-check / zip / golden / determinism covered; on-device sideload records SKIP-with-print per the environment slot)
 
 - Role: packagers
 - Deps: T-M4-12
@@ -613,7 +613,7 @@
 
 ## M5 Desktop Distributions and BSD (3 weeks)
 
-> Prerequisite: M1 (first Linux desktop packagers, Web pipeline and PWA manifest), M2 (poly-sign and the credential-reference model) | Exit criteria: every format installs successfully on its host/container; BSD targets enter CI; `poly release --target fedora,freebsd` runs end to end and is re-runnable
+> Prerequisite: M1 (first Linux desktop packagers, Web pipeline and PWA manifest), M2 (polypack-sign and the credential-reference model) | Exit criteria: every format installs successfully on its host/container; BSD targets enter CI; `polypack release --target fedora,freebsd` runs end to end and is re-runnable
 
 ### T-M5-01 · ✅ deb / rpm packager maturation (deb control + maintainer scripts + AppStream, rpm spec + Requires + %files; L5 ubuntu/fedora/mint + lintian/rpmlint verify legs; real apt/dnf install+remove 0; byte-identical reruns)
 
@@ -645,7 +645,7 @@
 - Deps: T-M1-07 (Linux packager: AppImage/deb)
 - Estimate: 2d
 - Deliverable: AppImage packager maturation: AppStream metadata, desktop entry and icon, reproducible builds via `SOURCE_DATE_EPOCH`.
-- Acceptance: The artifact runs directly inside a container; AppStream metadata passes `appstreamcli validate`; `poly verify --reproducible` passes for the AppImage artifact (signature and timestamps excepted).
+- Acceptance: The artifact runs directly inside a container; AppStream metadata passes `appstreamcli validate`; `polypack verify --reproducible` passes for the AppImage artifact (signature and timestamps excepted).
 
 ### T-M5-05 · ✅ Repository metadata generation and GPG signing (deb Packages/Release/InRelease, rpm repodata/repomd.xml.asc; CredentialRef/secret::resolve with an isolated GNUPGHOME; real apt run + tamper rejection, real dnf in a container, byte-idempotent reruns; zero keys in the repo)
 
@@ -695,7 +695,7 @@
 - Deliverable: ChromeOS dual-track delivery: Crostini side reuses the deb packager (install smoke), PWA side reuses the Web pipeline + manifest (PWA audit rules wired into verify).
 - Acceptance: The deb installs and launches inside a Crostini container; the PWA passes offline capability, manifest and installability audits; both tracks derive from the same JobSpec.
 
-### T-M5-11 · ✅ `poly release --target fedora,freebsd` end to end (fedora rpm + freebsd pkg each: Published/receipt/signed-repo install + idempotent rerun; multi-target dry-run emits both events; one global `--credential` cannot satisfy GPG/PEM — fixed with per-target refs (repeatable `--credential TARGET=REF`; a bare `REF` stays the global default; unknown/duplicate mappings fail with `E_PLAN_0002`); a true heterogeneous multi-target run still needs real keyring / Vault environments)
+### T-M5-11 · ✅ `polypack release --target fedora,freebsd` end to end (fedora rpm + freebsd pkg each: Published/receipt/signed-repo install + idempotent rerun; multi-target dry-run emits both events; one global `--credential` cannot satisfy GPG/PEM — fixed with per-target refs (repeatable `--credential TARGET=REF`; a bare `REF` stays the global default; unknown/duplicate mappings fail with `E_PLAN_0002`); a true heterogeneous multi-target run still needs real keyring / Vault environments)
 
 - Role: core
 - Deps: T-M5-05, T-M5-06, T-M5-09
@@ -707,28 +707,28 @@
 ## M6 embedded & automotive (5 weeks)
 > Prerequisites: M0 (TargetSpec DSL and crate dependency-direction constraints), M2 (Android packaging chain, reused by Automotive) | Exit criteria: every headless target (QNX / AUTOSAR / VxWorks / Zephyr / FreeRTOS) is in the CI compile matrix; QNX smoke passes
 
-### T-M6-01 · ✅ Core layering: extract the no_std engine layer (poly-core feature split, no new crate; thumbv7em-none-eabihf build passes + dependency tree free of tokio/petgraph/reqwest; std/no_std share the same golden cache key)
+### T-M6-01 · ✅ Core layering: extract the no_std engine layer (polypack-core feature split, no new crate; thumbv7em-none-eabihf build passes + dependency tree free of tokio/petgraph/reqwest; std/no_std share the same golden cache key)
 - Role: core
 - Deps: —
 - Estimate: 3d
-- Deliverable: a feature split inside `poly-core`, moving JobSpec validation, TargetSpec parsing and cache-key computation into an engine layer that compiles with std disabled (`no_std + alloc`) while host dependencies (tokio / petgraph / reqwest) stay behind the std feature; **no new crate is added**, and the shape decision is written back into ROADMAP §4.1 so the 9-crate table stays valid.
-- Acceptance: `cargo build -p poly-core --no-default-features --target thumbv7em-none-eabihf` passes; in that build `cargo tree -p poly-core --no-default-features` shows no tokio / petgraph / reqwest; the M0 dependency-direction check stays green with the workspace still at nine crates; the cache key for one input is identical under std and no_std builds.
+- Deliverable: a feature split inside `polypack-core`, moving JobSpec validation, TargetSpec parsing and cache-key computation into an engine layer that compiles with std disabled (`no_std + alloc`) while host dependencies (tokio / petgraph / reqwest) stay behind the std feature; **no new crate is added**, and the shape decision is written back into ROADMAP §4.1 so the 9-crate table stays valid.
+- Acceptance: `cargo build -p polypack-core --no-default-features --target thumbv7em-none-eabihf` passes; in that build `cargo tree -p polypack-core --no-default-features` shows no tokio / petgraph / reqwest; the M0 dependency-direction check stays green with the workspace still at nine crates; the cache key for one input is identical under std and no_std builds.
 
-### T-M6-02 · ✅ Engine-layer C ABI and generated cffi headers (six poly_engine_* exports + single-source header; gcc/clang -std=c11 -Wall -Werror real compiles, nm shows no mangling, header-uniqueness test)
+### T-M6-02 · ✅ Engine-layer C ABI and generated cffi headers (six polypack_engine_* exports + single-source header; gcc/clang -std=c11 -Wall -Werror real compiles, nm shows no mangling, header-uniqueness test)
 - Role: core
 - Deps: T-M6-01
 - Estimate: 2.5d
-- Deliverable: a stable engine-layer C ABI (`poly_engine_*` prefix) plus C headers and static-library artifacts generated from a single interface definition (the §4.4 cffi bridge).
+- Deliverable: a stable engine-layer C ABI (`polypack_engine_*` prefix) plus C headers and static-library artifacts generated from a single interface definition (the §4.4 cffi bridge).
 - Acceptance: headers compile under both `gcc -std=c11 -Wall -Werror` and `clang -std=c11`; `nm` shows no Rust-mangled symbols leaking from the exported surface; no second hand-written header exists in the repo (the generator is the only source).
 
-### T-M6-03 · ✅ QNX cross-compile target and artifacts (staticlib/cffi image|library + SDP probing in poly-toolchain + doctor hint; without SDP the host records SKIP-with-print; the app-side staticlib wrapper never fakes artifacts)
+### T-M6-03 · ✅ QNX cross-compile target and artifacts (staticlib/cffi image|library + SDP probing in polypack-toolchain + doctor hint; without SDP the host records SKIP-with-print; the app-side staticlib wrapper never fakes artifacts)
 - Role: platforms
 - Deps: T-M6-02
 - Estimate: 3d
-- Deliverable: QNX TargetSpec (`runtime = "staticlib"`, `bridge = "cffi"`, `package = { format = "image" | "library" }`) with QNX SDP probing wired into `poly-toolchain`.
-- Acceptance: `poly build --target qnx` produces both the static library and the image; `poly doctor` reports a missing local QNX SDP with an install hint; cross-compile smoke (via the T-M6-09 QEMU path) passes.
+- Deliverable: QNX TargetSpec (`runtime = "staticlib"`, `bridge = "cffi"`, `package = { format = "image" | "library" }`) with QNX SDP probing wired into `polypack-toolchain`.
+- Acceptance: `polypack build --target qnx` produces both the static library and the image; `polypack doctor` reports a missing local QNX SDP with an install hint; cross-compile smoke (via the T-M6-09 QEMU path) passes.
 
-### T-M6-04 · ✅ AUTOSAR Adaptive target (ARXML + static library) (no-UI/self-deployed TargetSpec + ARXML one-to-one with poly_engine_*; real xmllint validation, real host staticlib build, nm cross-check)
+### T-M6-04 · ✅ AUTOSAR Adaptive target (ARXML + static library) (no-UI/self-deployed TargetSpec + ARXML one-to-one with polypack_engine_*; real xmllint validation, real host staticlib build, nm cross-check)
 - Role: platforms
 - Deps: T-M6-02
 - Estimate: 3d
@@ -749,14 +749,14 @@
 - Deliverable: Zephyr TargetSpec (`runtime = "staticlib"`, `no_std`) plus a west project template (zephyr module with the engine-layer static library linked in).
 - Acceptance: `west build` succeeds for both `qemu_x86` and `qemu_cortex_m3`; the engine layer links as a module and pulls in no std; the template's minimal `CONFIG_*` set is recorded by CI and versioned with the template.
 
-### T-M6-07 · ✅ FreeRTOS target (static library + QEMU board) (mps2-an385 real run: poly_engine version printed + SYS_EXIT_EXTENDED exit 0; kernel V11.1.0 fetched by tag+sha256, never vendored; missing toolchain/network SKIP-with-print)
+### T-M6-07 · ✅ FreeRTOS target (static library + QEMU board) (mps2-an385 real run: polypack_engine version printed + SYS_EXIT_EXTENDED exit 0; kernel V11.1.0 fetched by tag+sha256, never vendored; missing toolchain/network SKIP-with-print)
 - Role: platforms
 - Deps: T-M6-06
 - Estimate: 2.5d
 - Deliverable: FreeRTOS TargetSpec and static-library packager plus a sample board project that runs in QEMU (reusing the T-M6-06 no_std integration).
 - Acceptance: the FreeRTOS target is green in the CI compile matrix; the sample board boots in QEMU, successfully calls one engine-layer API (printing the version) and exits with code 0.
 
-### T-M6-08 · ✅ CI compile matrix for headless targets (`poly targets --tier 6 --headless --json` derives the matrix; new declarations join automatically; embedded-ci pinned caches + REAL/SKIP job summary; SDP/wr-cc absence SKIP-with-print)
+### T-M6-08 · ✅ CI compile matrix for headless targets (`polypack targets --tier 6 --headless --json` derives the matrix; new declarations join automatically; embedded-ci pinned caches + REAL/SKIP job summary; SDP/wr-cc absence SKIP-with-print)
 - Role: infra
 - Deps: T-M6-03, T-M6-04, T-M6-05, T-M6-06, T-M6-07
 - Estimate: 3d
@@ -768,7 +768,7 @@
 - Deps: T-M6-03, T-M6-08
 - Estimate: 3d
 - Deliverable: a QEMU smoke script for the QNX image (boot → engine-layer self-check → exit-code assertion → serial log archival), wired into the nightly pipeline.
-- Acceptance: the smoke passes in nightly CI; on failure it emits `Failed{stage, code, hint}` and the serial log pinpoints the failing self-check; `poly retry --from verify` re-runs that stage standalone.
+- Acceptance: the smoke passes in nightly CI; on failure it emits `Failed{stage, code, hint}` and the serial log pinpoints the failing self-check; `polypack retry --from verify` re-runs that stage standalone.
 
 ### T-M6-10 · ✅ QEMU smoke: Zephyr (`west build -t run` + exit-code/named-step assertions; shares the same parser and archive format as T-M6-09; both ARM and CI x86 containers run for real — after moving the x86 engine to i586 and disabling blake3 SIMD, all three steps plus SMOKE PASS; the local QEMU ROM limitation is recorded)
 - Role: infra
@@ -829,11 +829,11 @@
 - Deliverable: an on-device smoke pipeline (install → launch → form cases → uninstall) with screenshot/log archival, required before releases.
 - Acceptance: the smoke passes on a real Wear device or the official emulator; archived artifacts carry a timestamp and build digest for traceability; a failing smoke blocks the release (the release pipeline depends on this job).
 
-### T-M7-05 · ✅ watchOS companion template generator (SwiftUI, experimental) (`poly init --target watchos` 10-file template + structural assertions, zero plaintext credentials; xcodebuild absent locally → SKIP-with-print)
+### T-M7-05 · ✅ watchOS companion template generator (SwiftUI, experimental) (`polypack init --target watchos` 10-file template + structural assertions, zero plaintext credentials; xcodebuild absent locally → SKIP-with-print)
 - Role: platforms
 - Deps: —
 - Estimate: 3d
-- Deliverable: `poly init --target watchos` generating a SwiftUI companion template (core-API call stubs and WatchConnectivity notes), marked experimental per §3.7.
+- Deliverable: `polypack init --target watchos` generating a SwiftUI companion template (core-API call stubs and WatchConnectivity notes), marked experimental per §3.7.
 - Acceptance: the template builds via `xcodebuild` on a macOS host; it contains no plaintext credentials (secret-scan green); `experimental = true` reaches the generated docs table.
 
 ### T-M7-06 · ✅ watchOS packaging and signing chain (Watchos packager archive→Payload .app + plutil; non-macOS hosts get ToolMissing naming the R3 farm; signing/verification reuse the Apple chain, codesign SKIP locally)
@@ -857,7 +857,7 @@
 - Deliverable: Zepp OS TargetSpec with a Zepp mini-app packager (Zepp JS API).
 - Acceptance: Zepp devtools validation passes; the artifact installs on the emulator; its contract test (package + verify + structure assertions) runs in CI.
 
-### T-M7-09 · ✅ Garmin Monkey C transpile spike (experimental) (subset/API allowlist + deterministic round/square emit, 29/29 node; decision = continue in constrained mode, experimental=true; the built-in Rust `iq` packager is wired (`crates/poly-bundle/src/packagers/garmin.rs`, monkeyc environment slot + `check_garmin_iq_structure`), with Connect IQ SDK / devkey absence → SKIP-with-print)
+### T-M7-09 · ✅ Garmin Monkey C transpile spike (experimental) (subset/API allowlist + deterministic round/square emit, 29/29 node; decision = continue in constrained mode, experimental=true; the built-in Rust `iq` packager is wired (`crates/polypack-bundle/src/packagers/garmin.rs`, monkeyc environment slot + `check_garmin_iq_structure`), with Connect IQ SDK / devkey absence → SKIP-with-print)
 - Role: platforms
 - Deps: T-M7-01
 - Estimate: 3d
@@ -881,12 +881,12 @@
 ## M8 ecosystem GA (6 weeks)
 > Prerequisites: M0 (TargetSpec schema), M2 (remote-farm protocol v0, Apple signing chain), M6 / M7 (all L6 target declarations in place) | Exit criteria: a third-party developer adds a custom target and ships a package in under a day, following the docs
 
-### T-M8-01 · ✅ `poly-plugin` sandbox capability model (wasmtime; default-deny fs/net, explicit directory/domain grants + O_NOFOLLOW; fuel/epoch/memory limits; JobSpec.plugins + `plugin_granted` events; 5 unit + 16 integration and escape-negative tests green; 3 wasm fixtures free of host paths/env/debug symbols)
+### T-M8-01 · ✅ `polypack-plugin` sandbox capability model (wasmtime; default-deny fs/net, explicit directory/domain grants + O_NOFOLLOW; fuel/epoch/memory limits; JobSpec.plugins + `plugin_granted` events; 5 unit + 16 integration and escape-negative tests green; 3 wasm fixtures free of host paths/env/debug symbols)
 - Role: core
 - Deps: —
 - Estimate: 3d
 - Deliverable: the wasmtime-host capability model in place: no network and no filesystem by default, with read/write directories and outbound domains granted explicitly per need (the §4.5 capability model).
-- Acceptance: unauthorized network / filesystem access is denied with a stable error code; the grant list travels in the JobSpec and appears in the `poly build --json` event stream; the sandbox-escape negative test suite is green.
+- Acceptance: unauthorized network / filesystem access is denied with a stable error code; the grant list travels in the JobSpec and appears in the `polypack build --json` event stream; the sandbox-escape negative test suite is green.
 
 ### T-M8-02 · ✅ Finalize the `polypack-target` WIT world and `target-spec/v1` (import inputs / export describe / export %package + sandboxed world; non-v1 → E_PLUGIN_0005 with migration hint; check-roadmap.sh matches §4.5 line by line; reference plugin describe/package runs for real)
 - Role: core
@@ -895,19 +895,19 @@
 - Deliverable: the finalized `world polypack-target` (`import inputs`, `export describe`, `export package`) plus the `target-spec/v1` versioning scheme (breaking changes go to a new version number) and the wit-bindgen-generated Rust skeleton.
 - Acceptance: a reference plugin compiles against that world, instantiates and completes `describe` + `package`; non-v1 versions are rejected with a migration hint; the world definition matches §4.5 line by line (script-compared).
 
-### T-M8-03 · ✅ Plugin SRI verification and signed artifacts (SRI first + GPG detached signature in a one-shot 0700 GNUPGHOME + CredentialRef trust root, verification before instantiation; E_PLUGIN_0009/0010; poly scan covers wasm host paths/env/debug sections with redaction; 8 signature + 11 scan tests green; host providers consume sri/signature/trust_root)
+### T-M8-03 · ✅ Plugin SRI verification and signed artifacts (SRI first + GPG detached signature in a one-shot 0700 GNUPGHOME + CredentialRef trust root, verification before instantiation; E_PLUGIN_0009/0010; polypack scan covers wasm host paths/env/debug sections with redaction; 8 signature + 11 scan tests green; host providers consume sri/signature/trust_root)
 - Role: release-sec
 - Deps: T-M8-02
 - Estimate: 3d
 - Deliverable: content-digest (SRI) verification for plugin artifacts plus a plugin release signing chain (keys as references), with secret-scan rules covering plugin artifacts.
 - Acceptance: a digest mismatch refuses to load the plugin; a failed signature refuses instantiation; plugin artifacts carry no absolute paths, environment variables or debug symbols (§7 sanitization passes).
 
-### T-M8-04 · ✅ Plugin template repo and scaffolding (standalone templates/plugin-target [workspace] + WIT/componentize/contract test/own CI; poly plugin new/digest; generate→build.sh→sandbox SRI load→describe/package real run in 14.4 min ≤ 30 min; template contract green in 272 s; actionlint green; remote template CI SKIP-with-print)
+### T-M8-04 · ✅ Plugin template repo and scaffolding (standalone templates/plugin-target [workspace] + WIT/componentize/contract test/own CI; polypack plugin new/digest; generate→build.sh→sandbox SRI load→describe/package real run in 14.4 min ≤ 30 min; template contract green in 272 s; actionlint green; remote template CI SKIP-with-print)
 - Role: core
 - Deps: T-M8-02
 - Estimate: 3d
-- Deliverable: a `poly plugin new <id>` scaffolder plus a standalone template repository (Rust + WIT starter, `describe` / `package` examples, its own CI).
-- Acceptance: from an empty repo to "plugin loaded by `poly` and completing one package run" takes ≤ 30 min (excluding dependency download); the template CI ships its own contract test and is green inside the template repo.
+- Deliverable: a `polypack plugin new <id>` scaffolder plus a standalone template repository (Rust + WIT starter, `describe` / `package` examples, its own CI).
+- Acceptance: from an empty repo to "plugin loaded by `polypack` and completing one package run" takes ≤ 30 min (excluding dependency download); the template CI ships its own contract test and is green inside the template repo.
 
 ### T-M8-05 · ✅ Built-in targets and plugins share one interface (no_std TargetProvider + ProviderRegistry; BuiltinProvider delegates the untouched packagers, PluginProvider bridges wasm; CLI build/verify/package use one path with no builtin special-casing; the same contract tests are green for both; unified Tizen entry bytes == direct packager, sha256 baseline 626f4a59…; L1–L5 packager sources untouched)
 - Role: core
@@ -934,7 +934,7 @@
 - Role: infra
 - Deps: T-M8-06
 - Estimate: 3d
-- Deliverable: the `poly-cache` object-storage backend shipped in its production shape, with multiple workers sharing one CAS and the §5.2 three-level cache reused across machines.
+- Deliverable: the `polypack-cache` object-storage backend shipped in its production shape, with multiple workers sharing one CAS and the §5.2 three-level cache reused across machines.
 - Acceptance: second-run cache hit ≥ 90% inside the farm (matching the M1 acceptance wording); the same input yields the same cache key on different workers; the backend stays a trait and the local filesystem default still works (the farm degrades rather than fails without object storage).
 
 ### T-M8-09 · ✅ Remote farm deployment guide (bilingual FARM-DEPLOY + farm-drill.sh dual-worker Linux rehearsal; concurrency/shared-cache second-run hit/in-memory credentials/degradation; macOS IPA R3 slot SKIP-with-print)
@@ -951,12 +951,12 @@
 - Deliverable: the `publish` stage maturing: exponential-backoff retries, idempotent submission (re-submitting does not create a second submission) and platform rate-limit handling (mitigating R4).
 - Acceptance: after injecting 5xx / timeout / rate-limit faults, the submission eventually succeeds with no duplicate submission record; unrecoverable failures emit a machine-readable `Failed{stage, code, hint}`; automation stops at "submit" and never promises automatic approval.
 
-### T-M8-11 · ✅ Submission receipt archival and review-status polling (receipt v2 + Published{submission} + poly retry --from publish; crash-window recovery with zero duplicate submissions; submission-id normalization)
+### T-M8-11 · ✅ Submission receipt archival and review-status polling (receipt v2 + Published{submission} + polypack retry --from publish; crash-window recovery with zero duplicate submissions; submission-id normalization)
 - Role: release-sec
 - Deps: T-M8-10
 - Estimate: 2.5d
 - Deliverable: submission receipt archival (the §5.2 submission level of the cache) and review-status polling, landing the `Published{channel, submission}` event.
-- Acceptance: once polling reaches a terminal state the receipt is persisted with submission ID and timestamp and is traceable; after an interruption `poly retry --from publish` resumes without creating a duplicate submission.
+- Acceptance: once polling reaches a terminal state the receipt is persisted with submission ID and timestamp and is traceable; after an interruption `polypack retry --from publish` resumes without creating a duplicate submission.
 
 ### T-M8-12 · ✅ 49-target status table (gen-status-table derives 49 rows from TargetSpec, synced into bilingual README/ROADMAP; L1–L7=7/9/9/4/7/10/3 matches the platform matrix; --check drift gate wired into docs-check)
 - Role: docs
@@ -965,7 +965,7 @@
 - Deliverable: a status table for all 49 targets generated from TargetSpec (tier, runtime, bridge, artifacts, signing, verification, channel, `experimental`, `notes`), synced into the bilingual README / ROADMAP.
 - Acceptance: the table matches TargetSpec field by field (generated, not hand-written twice); adding or removing a platform makes CI flag the pending updates per §11 item 4; all 49 rows are present and the L1–L7 tier counts match the README.
 
-### T-M8-13 · ✅ GA docs, technical review and the "add a target in one day" rehearsal (bilingual [GA docs](GA.en.md) in 7 sections + technical review; an independent-context developer agent drilled `pocket-notes`: ~38 min wall clock (30 min cold build, 2 min development), scaffolding→custom package in 12m23s, a real `poly build --target` load+package of 92 B, negative SRI yields E_PLUGIN_0006; blockers written back and fixed via single-source template assertions/SRI examples/minimal host docs; docs-check green across seven pairs)
+### T-M8-13 · ✅ GA docs, technical review and the "add a target in one day" rehearsal (bilingual [GA docs](GA.en.md) in 7 sections + technical review; an independent-context developer agent drilled `pocket-notes`: ~38 min wall clock (30 min cold build, 2 min development), scaffolding→custom package in 12m23s, a real `polypack build --target` load+package of 92 B, negative SRI yields E_PLUGIN_0006; blockers written back and fixed via single-source template assertions/SRI examples/minimal host docs; docs-check green across seven pairs)
 - Role: docs
 - Deps: T-M8-02, T-M8-04, T-M8-05, T-M8-09, T-M8-12
 - Estimate: 3d
@@ -982,20 +982,20 @@
 |---|---|---|
 | M9-E1 | SBOM / build provenance (delivered; SPDX / CycloneDX / in-toto + bilingual SBOM docs / sample) | T-M9-01..03 |
 | M9-E2 | monorepo / multi-app workspace (delivered; ADR 0008 / WORKSPACE / demo script) | T-M9-04..06 |
-| M9-E3 | Incremental release `poly release --changed` (delivered; 5-target savings 73–81%) | T-M9-07..09 |
+| M9-E3 | Incremental release `polypack release --changed` (delivered; 5-target savings 73–81%) | T-M9-07..09 |
 | M9-E4 | Production hot update / OTA channel (T-M9-10/11/12 delivered; run 39395255929's windows-updater-real real update / rollback passed) | T-M9-10..12 |
 | M9-E5 | Store metadata pipeline (delivered; schema / validation / deterministic digest / author guide) | T-M9-13..15 |
 | M9-E6 | GUI target-matrix view / build history (delivered; `app/` Tauri v2; real window environment-gated) | T-M9-16..18 |
 | M9-E7 | Pre-release device preview matrix (T-M9-19/20 delivered; T-M9-21 external) | T-M9-19..21 |
 | M9-P1 | Google Play Instant (retired; row kept, ADR 0006) | T-M9-22..23 |
 | M9-P2 | Snapchat Mini (closed; quarterly review 2027-01-20, ADR 0006) | T-M9-24..25 |
-| M9-P3 | LINE Mini App (delivered: `poly deploy line-liff` deploy mode, ADR 0009) | T-M9-26..27 |
+| M9-P3 | LINE Mini App (delivered: `polypack deploy line-liff` deploy mode, ADR 0009) | T-M9-26..27 |
 | M9-P4 | Sailfish OS (conditional; sponsorship / device commitment, ADR 0006) | T-M9-28..30 |
 | M9-P5 | Ubuntu Touch (conditional; sponsorship / device commitment, ADR 0006) | T-M9-31..33 |
 | M9-P6 | PlayStation (NDA-gated, ADR 0006) | T-M9-34..35 |
 | M9-P7 | Xbox (NDA-gated, ADR 0006) | T-M9-36..37 |
 | M9-P8 | Nintendo Switch (NDA-gated, ADR 0006) | T-M9-38..39 |
-| M9-D1 | Plugin marketplace distribution decision (ADR 0004 + signed index / `poly plugin add/search` delivered; production key ceremony / official mirror external) | T-M9-40..42 |
+| M9-D1 | Plugin marketplace distribution decision (ADR 0004 + signed index / `polypack plugin add/search` delivered; production key ceremony / official mirror external) | T-M9-40..42 |
 | M9-D2 | Remote farm hosting decision (ADR 0005 accepted; T-M9-44 self-host hardening checklist + Linux preflight / drill delivered, real production-host drill external) | T-M9-43..44 |
 | M9-G1 | CLI distribution (GitHub Releases delivered; T-M9-45 audit landed, crates.io publish closed by name conflicts / publish=false) | T-M9-45..47 |
 | M9-G2 | Human external developer trial protocol (protocol delivered; T-M9-49 human trials external) | T-M9-48..49 |
@@ -1003,8 +1003,8 @@
 | M9-G4 | MSI real-sample launch test (delivered; run 39308849058 windows-msi-real passed) | T-M9-53..54 |
 | M9-G5 | Branch-protection admin bypass (delivered; ENV-18 CLOSED) | T-M9-55 |
 
-> **Wave 2 progress (2026-10-20)**: M9-E2 delivered (`[workspace]`, `--workspace` / `--app`, cache / output isolation, ADR 0008, bilingual WORKSPACE docs, and a demo script); M9-E4 delivered T-M9-10/11 (mechanism matrix + signed manifest + `poly update`), with the T-M9-12 drill harness (`examples/updater-app` + `scripts/drill.ps1`) and the rust-ci `windows-updater-real` job delivered; the first windows-2022 run (run 39395255929) passed. Platform decisions are settled: M9-P1 is retired, M9-P2 is closed with a quarterly review (2027-01-20), M9-P3 delivers the `poly deploy line-liff` deploy mode (ADR 0009), M9-P4/P5 are conditional, and M9-P6–P8 are NDA-gated; M9-G5 is delivered (ENV-18 `CLOSED`, `enforce_admins=true` + 9 required contexts, verified 2026-10-20).
+> **Wave 2 progress (2026-10-20)**: M9-E2 delivered (`[workspace]`, `--workspace` / `--app`, cache / output isolation, ADR 0008, bilingual WORKSPACE docs, and a demo script); M9-E4 delivered T-M9-10/11 (mechanism matrix + signed manifest + `polypack update`), with the T-M9-12 drill harness (`examples/updater-app` + `scripts/drill.ps1`) and the rust-ci `windows-updater-real` job delivered; the first windows-2022 run (run 39395255929) passed. Platform decisions are settled: M9-P1 is retired, M9-P2 is closed with a quarterly review (2027-01-20), M9-P3 delivers the `polypack deploy line-liff` deploy mode (ADR 0009), M9-P4/P5 are conditional, and M9-P6–P8 are NDA-gated; M9-G5 is delivered (ENV-18 `CLOSED`, `enforce_admins=true` + 9 required contexts, verified 2026-10-20).
 >
-> **M9 close-out progress (2026-10-20)**: E3 T-M9-09 (5-target backend calls 5→1, wall clock 73–81%), E4 T-M9-12 drill harness and CI (`examples/updater-app`; windows-2022 run 39395255929 passed), E6 GUI (`app/` Tauri v2 matrix/detail), E7 T-M9-19/20 (device-farm matrix + `poly preview --dry-run`; ENV-20 real devices external), G1 T-M9-45 (workspace 1.16.0, metadata, `cargo package --list` 9/9; `poly-cli` / `poly-core` name conflicts and `publish=false` keep publish closed), `poly retry|verify --workspace/--app`, `publish.rs` split into submodules, P3 LINE deploy mode, G5 closed, and P1/P2/P4–P8 decisions settled. T-M9-21 / T-M9-49 / T-M9-51 and the actual crates.io publish remain external.
+> **M9 close-out progress (2026-10-20)**: E3 T-M9-09 (5-target backend calls 5→1, wall clock 73–81%), E4 T-M9-12 drill harness and CI (`examples/updater-app`; windows-2022 run 39395255929 passed), E6 GUI (`app/` Tauri v2 matrix/detail), E7 T-M9-19/20 (device-farm matrix + `polypack preview --dry-run`; ENV-20 real devices external), G1 T-M9-45 (workspace 1.16.0, metadata, `cargo package --list` 9/9; `polypack-cli` / `polypack-core` name conflicts and `publish=false` keep publish closed), `polypack retry|verify --workspace/--app`, `publish.rs` split into submodules, P3 LINE deploy mode, G5 closed, and P1/P2/P4–P8 decisions settled. T-M9-21 / T-M9-49 / T-M9-51 and the actual crates.io publish remain external.
 >
-> **Wave 1 progress (2026-10-20)**: M9-E1 (SBOM + `poly verify --sbom` + receipt `sbom_digest`), M9-E3 (`--changed` + 5-target measurement, see RELEASE-CHANGED), M9-E5 (store metadata), M9-E6 history and GUI (T-M9-16/17 + T-M9-18 `app/`; real window environment-gated), M9-G1 (install script / signing / install-smoke; T-M9-45 audit landed, crates.io publish closed), M9-G2 (protocol; human T-M9-49 external), M9-G3 (owner / validator; T-M9-51 external), M9-G4 (sample / CI; Windows first run passed, ENV-01 CLOSED), and M9-D1/D2 decisions are recorded; platform decisions and G5 are in the Wave 2 progress note. External items are not marked ✅.
+> **Wave 1 progress (2026-10-20)**: M9-E1 (SBOM + `polypack verify --sbom` + receipt `sbom_digest`), M9-E3 (`--changed` + 5-target measurement, see RELEASE-CHANGED), M9-E5 (store metadata), M9-E6 history and GUI (T-M9-16/17 + T-M9-18 `app/`; real window environment-gated), M9-G1 (install script / signing / install-smoke; T-M9-45 audit landed, crates.io publish closed), M9-G2 (protocol; human T-M9-49 external), M9-G3 (owner / validator; T-M9-51 external), M9-G4 (sample / CI; Windows first run passed, ENV-01 CLOSED), and M9-D1/D2 decisions are recorded; platform decisions and G5 are in the Wave 2 progress note. External items are not marked ✅.

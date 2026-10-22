@@ -2,7 +2,7 @@
 # 构建 PolyPack 插件：core wasm（wasm32-unknown-unknown）→ 组件模型（target-spec/v1）。
 #
 # 前置：rustup target add wasm32-unknown-unknown
-# 产物：dist/plugin.wasm；SRI 摘要用 `poly plugin digest dist/plugin.wasm`。
+# 产物：dist/plugin.wasm；SRI 摘要用 `polypack plugin digest dist/plugin.wasm`。
 set -euo pipefail
 
 here=$(cd "$(dirname "$0")" && pwd)

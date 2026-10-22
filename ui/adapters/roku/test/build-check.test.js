@@ -22,7 +22,7 @@ const zipToolsAvailable =
 
 const cleanEnv = () => {
   const env = { ...process.env };
-  delete env.POLY_ROKU_REAL;
+  delete env.POLYPACK_ROKU_REAL;
   delete env.ROKU_DEV_TARGET;
   delete env.ROKU_DEV_PASSWORD;
   return env;

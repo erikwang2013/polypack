@@ -1,7 +1,7 @@
 # GUI build-history matrix (M9-E6 · T-M9-18)
 
 > Status: T-M9-18 delivered (Tauri v2 + static frontend); the real Tauri window was not launched in this environment, disclosed as environment-gated.
-> Data source: `.polypack/history/events.jsonl` (same `HistoryRecord` schema as `poly history`).
+> Data source: `.polypack/history/events.jsonl` (same `HistoryRecord` schema as `polypack history`).
 
 ## 1. What it is / is not
 
@@ -13,9 +13,9 @@
 
 ## 2. Data source and privacy
 
-`poly build` appends `.polypack/history/events.jsonl` under the project root, one `HistoryRecord` per line (`schema_version`, `build_id`, `ts`, `target`, `event`, `status`, `duration_ms`, optional `artifact` / `artifact_digest` / `error_code`). The GUI deserializes through `poly_core::events::HistoryRecord`, so the field definition is shared with the CLI instead of copied.
+`polypack build` appends `.polypack/history/events.jsonl` under the project root, one `HistoryRecord` per line (`schema_version`, `build_id`, `ts`, `target`, `event`, `status`, `duration_ms`, optional `artifact` / `artifact_digest` / `error_code`). The GUI deserializes through `polypack_core::events::HistoryRecord`, so the field definition is shared with the CLI instead of copied.
 
-Paths are handled twice: before writing, the CLI turns in-project paths into relative paths and writes `<redacted>` for absolute paths outside the project and `..` traversal; on read, the GUI calls `poly_core::events::redact_path` again for every `artifact`, so hand-edited or legacy records cannot bypass redaction.
+Paths are handled twice: before writing, the CLI turns in-project paths into relative paths and writes `<redacted>` for absolute paths outside the project and `..` traversal; on read, the GUI calls `polypack_core::events::redact_path` again for every `artifact`, so hand-edited or legacy records cannot bypass redaction.
 
 A missing history file means empty history and shows the guide; unparseable lines are skipped and the skipped count is displayed.
 
@@ -29,17 +29,17 @@ Linux needs the GTK3 and WebKitGTK 4.1 development packages (Debian/Ubuntu: `lib
 
 ```bash
 # 1) Generate history in any project root containing polypack.toml
-poly build
+polypack build
 
 # 2) Start the GUI from that project root (keeps cwd = project root)
 cargo run --manifest-path /path/to/polypack/app/src-tauri/Cargo.toml
 ```
 
-An empty `Project root` uses the process working directory; an absolute path also works. An empty `Target` shows every target; `Per target` controls how many recent records are returned per target (1–200, default 20). Click a matrix row or target name to open details, and `Back to matrix` to return. CLI equivalent: `poly history [--target ID] [--limit N] [--json]`.
+An empty `Project root` uses the process working directory; an absolute path also works. An empty `Target` shows every target; `Per target` controls how many recent records are returned per target (1–200, default 20). Click a matrix row or target name to open details, and `Back to matrix` to return. CLI equivalent: `polypack history [--target ID] [--limit N] [--json]`.
 
 ### 3.3 Without a Tauri build
 
-If the WebKitGTK / GTK development packages are missing, `cargo check` fails. In that case `app/web/index.html` can still be inspected as static structure, but the page will not load data; this delivery does not ship a static `history.json` fallback because the Tauri build is available in this repository's target environment. For a pure static panel, run `poly history --json > history.json` and host it yourself; the fields match this GUI.
+If the WebKitGTK / GTK development packages are missing, `cargo check` fails. In that case `app/web/index.html` can still be inspected as static structure, but the page will not load data; this delivery does not ship a static `history.json` fallback because the Tauri build is available in this repository's target environment. For a pure static panel, run `polypack history --json > history.json` and host it yourself; the fields match this GUI.
 
 ## 4. View snapshot
 
@@ -51,7 +51,7 @@ These are text illustrations, not screenshots; the data has the same shape as th
 TARGET   LATEST STATUS   TIME (UTC)             DURATION   ARTIFACT                                   ERROR CODE
 linux    success         2026-10-20T10:42:11Z   1.25s      .polypack/packages/linux/app.AppImage       -
 web      warning         2026-10-20T10:41:03Z   842ms      .polypack/packages/web/app.zip             -
-tizen    failed          2026-10-20T10:39:55Z   2.10s      <redacted>                                 poly::E_COMPILE_0001
+tizen    failed          2026-10-20T10:39:55Z   2.10s      <redacted>                                 polypack::E_COMPILE_0001
 ```
 
 ### 4.2 Detail
@@ -60,7 +60,7 @@ tizen    failed          2026-10-20T10:39:55Z   2.10s      <redacted>           
 ← Back to matrix     linux · 2 most recent record(s) · latest 2026-10-20T10:42:11Z
 BUILD                  STATUS    TIME (UTC)             DURATION   ARTIFACT                              DIGEST        ERROR CODE
 build-1750416131000    success   2026-10-20T10:42:11Z   1.25s      .polypack/packages/linux/app.AppImage  sha256:abc    -
-build-1750416073000    failed    2026-10-20T10:41:13Z   980ms      <redacted>                             -             poly::E_COMPILE_0001
+build-1750416073000    failed    2026-10-20T10:41:13Z   980ms      <redacted>                             -             polypack::E_COMPILE_0001
 ```
 
 ### 4.3 Empty state
@@ -68,10 +68,10 @@ build-1750416073000    failed    2026-10-20T10:41:13Z   980ms      <redacted>   
 ```text
 No build history yet
 Run a build in the project root, then refresh this view.
-1. Run poly build in the project root.
+1. Run polypack build in the project root.
 2. History is appended to .polypack/history/events.jsonl.
 3. Click Refresh; clear the target filter if one is set.
-CLI equivalent: poly history --json
+CLI equivalent: polypack history --json
 ```
 
 ## 5. Tests and verification

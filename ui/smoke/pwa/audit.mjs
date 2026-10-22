@@ -6,7 +6,7 @@
 //      不要求 service worker）；
 //   3) 离线：service worker 接管后断网重载，文档仍从缓存渲染（controller 在位 + manifest
 //      link 仍在 + 正文非空）。
-// 只观测不定期望：结构门槛由 poly-bundle 的 pwa-audit 校验器判，本脚本补浏览器实证面。
+// 只观测不定期望：结构门槛由 polypack-bundle 的 pwa-audit 校验器判，本脚本补浏览器实证面。
 // Chrome 缺席时 SKIP-with-print（exit 0，status=skip），绝不假装跑过。
 
 import { spawn } from "node:child_process";
@@ -269,7 +269,7 @@ async function audit({ site, chromePath = null }) {
 
   const server = await serveSite(site);
   const port = server.address().port;
-  const profile = mkdtempSync(join(tmpdir(), "poly-pwa-audit-"));
+  const profile = mkdtempSync(join(tmpdir(), "polypack-pwa-audit-"));
   const stderrRef = [];
   const child = spawn(
     chrome,

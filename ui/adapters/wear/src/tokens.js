@@ -1,4 +1,4 @@
-// 紧凑皮肤 tokens（T-M7-01）：基值 = poly init 模板 tokens.css——与 adapter-native / taro / tv
+// 紧凑皮肤 tokens（T-M7-01）：基值 = polypack init 模板 tokens.css——与 adapter-native / taro / tv
 // 同一事实源（@polypack/ui 包落地前，模板文件是唯一源，ROADMAP §6）。
 // 穿戴派生 = 间距 / 圆角 ×0.75（小屏紧凑；字号保持基值——低于 14px 不可读），颜色直通。
 // 圆 / 方两种形态的安全区（几何口径见 SAFE_AREA）：圆形 = 内接正方形（Wear 圆形屏的

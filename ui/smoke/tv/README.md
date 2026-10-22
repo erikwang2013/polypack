@@ -64,6 +64,6 @@ node ui/smoke/tv/run.mjs --leg android [--serial emulator-5556] [--apk <宿主 a
 node ui/smoke/tv/run.mjs --leg all --logs <dir>
 ```
 
-缺省 `--dist host/dist`、`--logs $POLY_TV_SMOKE_LOGS`（否则 `target/tv-smoke-logs`，与
+缺省 `--dist host/dist`、`--logs $POLYPACK_TV_SMOKE_LOGS`（否则 `target/tv-smoke-logs`，与
 `packagers_android_tv.rs` 的设备腿归档同址）。退出码：任一目标 fail → 1；SKIP 不红。
 期望漂移后用 `node ui/smoke/tv/emit-expectations.mjs --write` 刷新金样。

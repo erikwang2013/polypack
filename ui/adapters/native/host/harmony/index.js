@@ -21,7 +21,7 @@ const tvForm = appConfig.polypack?.tv === true;
 // 设 "none" → 无指针形态生效（焦点环降级分支）。用 app.json 而非 process.env：RN 运行时
 // process.env 只保证 NODE_ENV（Libraries/Core/setUpGlobals.js），自定义 env 不会被打包内联。
 const pointer = tvForm ? "none" : appConfig.polypack?.pointer ?? "touch";
-// target = TargetSpec id（crates/poly-targets/src/builtin.rs / capabilities 矩阵口径 "harmonyos"；
+// target = TargetSpec id（crates/polypack-targets/src/builtin.rs / capabilities 矩阵口径 "harmonyos"；
 // 与本仓 <工程根>/harmony/ 目录名无关——目录名是 DevEco 工程路径，不是目标 id，T-M3-02 修正）
 const adapter = createAdapter({
   target: "harmonyos",
@@ -111,7 +111,7 @@ RN.BackHandler.addEventListener("hardwareBackPress", () => {
   return true;
 });
 
-// 原生模块注册位（T-M3-01 口径）：NAPI 模块由 `poly bridge ohos` 产出到
+// 原生模块注册位（T-M3-01 口径）：NAPI 模块由 `polypack bridge ohos` 产出到
 // <工程根>/bridge/harmonyos/<abi>/libpax.so，注入 harmony/entry/libs/<abi>/ 后随 HAP 打包。
 // 模块名 = UDL namespace（示例取 T-M3-01 真跑夹具 pax.udl + pax_core）；
 // ArkTS 侧 import 语法为 `import { greet } from 'libpax.so'`（host/harmony 仓库内解析不到

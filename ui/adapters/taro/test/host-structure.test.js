@@ -1,12 +1,12 @@
 // T-M3-06 宿主工程（host/）结构断言：不装 Taro 工具链也能跑的静态契约。
 //
-// 真跑链路（Taro 编译 / 产物结构 / 描述符落地）由 crates/poly-bundle/tests/packagers_miniapp.rs
-// 与 crates/poly-cli/tests/contract_m3_miniapp.rs 覆盖（工具链缺席即 SKIP-with-print）；
+// 真跑链路（Taro 编译 / 产物结构 / 描述符落地）由 crates/polypack-bundle/tests/packagers_miniapp.rs
+// 与 crates/polypack-cli/tests/contract_m3_miniapp.rs 覆盖（工具链缺席即 SKIP-with-print）；
 // 本文件钉住「宿主工程长什么样」这类无需工具链的事实——配置注入点、平台映射、描述符清单，
 // 任一漂移在 CI 的 node 腿即红，不必等真跑。
 //
-// 口径（与 poly-bundle 小程序打包器 src/packagers/miniapp.rs 的模块文档同源）：
-//  - 宿主候选链：<poly 工程>/ui → <poly 工程> → <poly 工程>/ui/adapters/taro/host（本仓布局）；
+// 口径（与 polypack-bundle 小程序打包器 src/packagers/miniapp.rs 的模块文档同源）：
+//  - 宿主候选链：<polypack 工程>/ui → <polypack 工程> → <polypack 工程>/ui/adapters/taro/host（本仓布局）；
 //  - 产物落点：Taro `outputRoot` 由 `POLYPACK_OUTPUT_ROOT` 注入（<out>/miniapp/dist）；
 //  - devtools 打开点：<out>/miniapp（描述符 `miniprogramRoot = ./dist/`）；
 //  - 快应用无 Taro 平台插件：编译工程由打包器组装（.rpk 归 T-M3-12）。
@@ -46,7 +46,7 @@ test("宿主工程清单：三平台插件 + @polypack/adapter-taro 走 file: �
   assert.ok(manifest.devDependencies["@tarojs/cli"], "编译 CLI 在 devDependencies");
   // react 18 是 @tarojs/react@4.3 的 peer 面
   assert.match(manifest.dependencies.react, /\^18/, "react 须在 18 大版本");
-  // 三平台的 npm scripts 是本地手跑入口（poly 经 POLYPACK_OUTPUT_ROOT 注入落点）
+  // 三平台的 npm scripts 是本地手跑入口（polypack 经 POLYPACK_OUTPUT_ROOT 注入落点）
   for (const script of ["build:weapp", "build:alipay", "build:tt"]) {
     assert.match(manifest.scripts[script], /^taro build --type (weapp|alipay|tt)$/, script);
   }

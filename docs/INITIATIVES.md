@@ -28,30 +28,30 @@
 
 ### M9-E1 · SBOM / 构建溯源
 
-- 状态：候选 · 已交付（T-M9-01/02/03；SPDX / CycloneDX / in-toto、`poly verify --sbom`、回执 `sbom_digest`、双语 [SBOM](SBOM.md) 与真实样例）。
+- 状态：候选 · 已交付（T-M9-01/02/03；SPDX / CycloneDX / in-toto、`polypack verify --sbom`、回执 `sbom_digest`、双语 [SBOM](SBOM.md) 与真实样例）。
 - 触发条件：首个合规或供应链审计需求出现；或目标渠道要求 SBOM / provenance。
-- 背景与问题：`poly verify` 只校验产物结构与签名；`poly release` 回执只有 `manifest_digest`（`crates/poly-cli/src/release.rs`），没有依赖清单与构建来源；T-M0-11 只覆盖基础扫描，审计无法回答「这个产物由哪些输入、在什么工具链上产生」。
-- 目标：每个产物旁生成 SPDX 2.3 JSON、CycloneDX 1.5 JSON 与 in-toto / SLSA 风格 provenance，绑定缓存键五输入（`CacheInputs`，`crates/poly-cache/src/digest.rs`）与 builder 身份；可离线校验。非目标：不追求 SLSA L3 认证、不接 Sigstore / Rekor、不生成 VEX。
-- 方案概览：新增叶子 crate（暂名 `poly-sbom`）或在 `poly-core` 增加子模块，复用 `CacheInputs` 的 sources / lockfile / target_spec / toolchain / profile；CLI 在 `crates/poly-cli/src/verify.rs` 增加 `--sbom`，`poly release` 回执增加可选 `sbom_digest`；数据模型为 `<产物>.cdx.json`、`<产物>.spdx.json`、`<产物>.intoto.jsonl`；provenance predicate 记 builder、invocation、materials、subject。备选：外部 `cargo-cyclonedx` + `syft`（非 hermetic、额外安装）、只生成 SBOM 不生成 provenance。
-- 交付物：设计说明；SBOM / provenance 生成器；`poly verify --sbom` 与回执字段；双语使用文档与 1 个真实产物样例。
+- 背景与问题：`polypack verify` 只校验产物结构与签名；`polypack release` 回执只有 `manifest_digest`（`crates/polypack-cli/src/release.rs`），没有依赖清单与构建来源；T-M0-11 只覆盖基础扫描，审计无法回答「这个产物由哪些输入、在什么工具链上产生」。
+- 目标：每个产物旁生成 SPDX 2.3 JSON、CycloneDX 1.5 JSON 与 in-toto / SLSA 风格 provenance，绑定缓存键五输入（`CacheInputs`，`crates/polypack-cache/src/digest.rs`）与 builder 身份；可离线校验。非目标：不追求 SLSA L3 认证、不接 Sigstore / Rekor、不生成 VEX。
+- 方案概览：新增叶子 crate（暂名 `polypack-sbom`）或在 `polypack-core` 增加子模块，复用 `CacheInputs` 的 sources / lockfile / target_spec / toolchain / profile；CLI 在 `crates/polypack-cli/src/verify.rs` 增加 `--sbom`，`polypack release` 回执增加可选 `sbom_digest`；数据模型为 `<产物>.cdx.json`、`<产物>.spdx.json`、`<产物>.intoto.jsonl`；provenance predicate 记 builder、invocation、materials、subject。备选：外部 `cargo-cyclonedx` + `syft`（非 hermetic、额外安装）、只生成 SBOM 不生成 provenance。
+- 交付物：设计说明；SBOM / provenance 生成器；`polypack verify --sbom` 与回执字段；双语使用文档与 1 个真实产物样例。
 - 风险与缓解：供应链工具格式漂移 → 固定 schema 版本并做金样；大产物清单膨胀 → 只记直接依赖并设体积上限；把「生成」误当「合规认证」→ 文档明示不等价。
 - 决策项：优先 SPDX 还是 CycloneDX；是否引入 Sigstore；SBOM 是否随产物一起发布。
-- 首步动作：在 `crates/poly-cache/src/digest.rs` 的 `CacheInputs` 上列出 materials 映射表，写 1 页设计草案。
+- 首步动作：在 `crates/polypack-cache/src/digest.rs` 的 `CacheInputs` 上列出 materials 映射表，写 1 页设计草案。
 
 | 任务 | 标题 | 角色 | 依赖 | 人日 | 验收 |
 | --- | --- | --- | --- | --- | --- |
 | T-M9-01 ✅ | SBOM 生成器（SPDX + CycloneDX） | coder | — | 4 | 同一输入二跑字节一致；真实产物的依赖集合与锁文件一致 |
 | T-M9-02 ✅ | SLSA 风格 provenance | coder | T-M9-01 | 4 | subject 摘要等于产物摘要；materials 覆盖 CacheInputs 五输入；离线校验器通过 |
-| T-M9-03 ✅ | verify / release / publish 接线 | coder + tester | T-M9-01, T-M9-02 | 3 | `poly verify --sbom` 产出三件套；回执含 `sbom_digest`；缺产物时明确报错 |
+| T-M9-03 ✅ | verify / release / publish 接线 | coder + tester | T-M9-01, T-M9-02 | 3 | `polypack verify --sbom` 产出三件套；回执含 `sbom_digest`；缺产物时明确报错 |
 
 ### M9-E2 · monorepo / 多应用工作区
 
 - 状态：候选 · 已交付（T-M9-04/05/06；代码、测试、ADR、双语文档与示例脚本）。
 - 触发条件：首个多应用仓库用户出现，且共享同一 Rust core 与发布流程。
-- 背景与问题：`PolypackConfig`（`crates/poly-core/src/config.rs`）是单应用模型（`[package]` / `[ui]` / `[core]` / `[targets.*]` / `[retention]`）且 `deny_unknown_fields`；`Project`（`crates/poly-core/src/plan.rs`）只有一个根目录，没有 workspace 成员、应用选择与共享缓存语义。
+- 背景与问题：`PolypackConfig`（`crates/polypack-core/src/config.rs`）是单应用模型（`[package]` / `[ui]` / `[core]` / `[targets.*]` / `[retention]`）且 `deny_unknown_fields`；`Project`（`crates/polypack-core/src/plan.rs`）只有一个根目录，没有 workspace 成员、应用选择与共享缓存语义。
 - 目标：一份根配置声明多个应用成员，按应用解析 JobSpec 与产物落点，共享 core 源树缓存键。非目标：不做跨应用依赖图、不做 Nx / Turborepo 级任务编排、不改变单应用配置含义。
-- 方案概览：已实现根 `[workspace] members`（成员目录各自持有 `polypack.toml`，id = 目录末段，唯一且不得逃逸根）；`JobSpec.app_id` 可省略，单应用序列化不变；`poly build --workspace` 按声明序构建全部成员，`--app <id>` 只构建一个；共享 core 的 compile 键不含 app id，UI bundle 键混入 app id；产物/快照落 `.polypack/packages/<app>/<target>/` 与 `.polypack/artifacts/<app>/<target>/`；新增 `E_WS_0001..0004`。集成点：`crates/poly-core/src/workspace.rs`、`plan.rs`、`job.rs`、`crates/poly-cli/src/build.rs`、`crates/poly-cache/src/digest.rs`。备选：外部脚本循环调用、把每个应用做成独立仓库（共享 core 成本高）。
-- 交付物：`[workspace]` schema 与 [ADR 0008](../decisions/0008-monorepo-workspace.md)；成员发现与 JobSpec 复合语义；CLI 选择器；两应用示例（`crates/poly-cli/tests/workspace.rs` / `scripts/demo-workspace.sh`）与缓存命中测试；[WORKSPACE](WORKSPACE.md) 双语使用文档。
+- 方案概览：已实现根 `[workspace] members`（成员目录各自持有 `polypack.toml`，id = 目录末段，唯一且不得逃逸根）；`JobSpec.app_id` 可省略，单应用序列化不变；`polypack build --workspace` 按声明序构建全部成员，`--app <id>` 只构建一个；共享 core 的 compile 键不含 app id，UI bundle 键混入 app id；产物/快照落 `.polypack/packages/<app>/<target>/` 与 `.polypack/artifacts/<app>/<target>/`；新增 `E_WS_0001..0004`。集成点：`crates/polypack-core/src/workspace.rs`、`plan.rs`、`job.rs`、`crates/polypack-cli/src/build.rs`、`crates/polypack-cache/src/digest.rs`。备选：外部脚本循环调用、把每个应用做成独立仓库（共享 core 成本高）。
+- 交付物：`[workspace]` schema 与 [ADR 0008](../decisions/0008-monorepo-workspace.md)；成员发现与 JobSpec 复合语义；CLI 选择器；两应用示例（`crates/polypack-cli/tests/workspace.rs` / `scripts/demo-workspace.sh`）与缓存命中测试；[WORKSPACE](WORKSPACE.md) 双语使用文档。
 - 风险与缓解：schema 破坏单应用兼容 → 缺省无 `[workspace]` 时行为逐字节不变；成员间配置漂移 → 统一继承 + 显式覆盖表；缓存串键 → 键中强制包含 app_id 与成员路径。
 - 决策项：单根配置还是每应用独立配置为事实源；成员是否允许不同 `core` crate。
 - 首步动作：写 `[workspace]` schema 草案与两应用最小示例，先跑通配置解析再改流水线。
@@ -60,19 +60,19 @@
 | --- | --- | --- | --- | --- | --- |
 | T-M9-04 | `[workspace]` schema 与 ADR | architect | — | 3 | 单应用配置零变化；两应用示例能通过解析；ADR 记录备选与影响 |
 | T-M9-05 | 成员发现与 JobSpec 复合语义 | coder | T-M9-04 | 8 | 按 `--app` 只构建指定成员；共享 core 同输入缓存键一致；产物落点隔离 |
-| T-M9-06 | CLI 选择器、示例与文档 | coder + tester | T-M9-05 | 5 | `poly build --workspace` 构建全部成员；两应用二跑缓存命中；双语文档可复现 |
+| T-M9-06 | CLI 选择器、示例与文档 | coder + tester | T-M9-05 | 5 | `polypack build --workspace` 构建全部成员；两应用二跑缓存命中；双语文档可复现 |
 
-### M9-E3 · 增量发布 `poly release --changed`
+### M9-E3 · 增量发布 `polypack release --changed`
 
 - 状态：候选 · 已交付（T-M9-07/08/09 于 2026-10-20 交付；5 目标实测见 [RELEASE-CHANGED](RELEASE-CHANGED.md)）。
 - 触发条件：多目标 CI 发布耗时成为瓶颈，或目标数 ≥ 5 的仓库每周发布 ≥ 1 次。
-- 背景与问题：`poly release` 只接受 target / repo / credential / dry-run（`crates/poly-cli/src/release.rs` 的 `Args`），没有变更判定；现有 no-op 只在单目标内比较回执 `manifest_digest`，CI 仍要构建全部目标。
+- 背景与问题：`polypack release` 只接受 target / repo / credential / dry-run（`crates/polypack-cli/src/release.rs` 的 `Args`），没有变更判定；现有 no-op 只在单目标内比较回执 `manifest_digest`，CI 仍要构建全部目标。
 - 目标：按缓存键或回执摘要跳过未变更目标，输出稳定的 skipped 事件与退出码，减少多端 CI 时间。非目标：不做增量编译、不做单目标内部分产物上传、不改变发布回执语义。
-- 方案概览：已实现 `--changed`：在 `prepare` 后比较回执 `cache_key`（当前等于 `manifest_digest`）并回退 `manifest_digest`，同时校验 repo 根与仓库格式；命中时发独立 `release-skipped` 事件，不写仓库、不重写回执、不递增 `runs`，`key_source` 标明降级路径。`--since <ref>` 因 release 没有 per-target source/package 映射而返回 `E_PLAN_0002`，提示用 `--changed` 或预筛 `--target`。集成点：`crates/poly-cli/src/release.rs`、`release/report.rs`、`release/tests.rs`、`poly-cli/tests/release.rs`。备选：`git diff` 判定（跨仓库/生成文件脆弱）、mtime（不可靠）。
+- 方案概览：已实现 `--changed`：在 `prepare` 后比较回执 `cache_key`（当前等于 `manifest_digest`）并回退 `manifest_digest`，同时校验 repo 根与仓库格式；命中时发独立 `release-skipped` 事件，不写仓库、不重写回执、不递增 `runs`，`key_source` 标明降级路径。`--since <ref>` 因 release 没有 per-target source/package 映射而返回 `E_PLAN_0002`，提示用 `--changed` 或预筛 `--target`。集成点：`crates/polypack-cli/src/release.rs`、`release/report.rs`、`release/tests.rs`、`polypack-cli/tests/release.rs`。备选：`git diff` 判定（跨仓库/生成文件脆弱）、mtime（不可靠）。
 - 交付物：`--changed` 与 `--since`（已交付）；回执 `cache_key` 字段（已交付）；skipped JSON 契约（已交付）；CI 示例与节时实测（已交付：后端调用 5→1，墙钟节省 73–81%）。
 - 风险与缓解：缓存键缺输入导致漏发 → 键构造单源 + 变更输入表测试；回执旧版本无 `cache_key` → 明确降级到摘要并告警；跳过被误认为成功发布 → skipped 与 published 事件严格区分。
 - 决策项：判定主键用缓存键还是回执摘要；`--changed` 是否默认开启。
-- 首步动作：在 `crates/poly-cli/src/release.rs` 写一个只读原型，打印每个目标的当前键与回执键差异。
+- 首步动作：在 `crates/polypack-cli/src/release.rs` 写一个只读原型，打印每个目标的当前键与回执键差异。
 
 | 任务 | 标题 | 角色 | 依赖 | 人日 | 验收 |
 | --- | --- | --- | --- | --- | --- |
@@ -86,7 +86,7 @@
 - 触发条件：首批用户提出线上更新诉求，且目标平台允许自管更新通道。
 - 背景与问题：流水线止于 publish；发布后的版本迭代没有清单、签名、灰度或回滚语义。各端机制不同（Tauri updater、Play In-App Updates、App Store 分阶段发布、小程序版本管理），不能用一个包打天下。
 - 目标：定义签名的更新清单与渠道 / 回滚模型，先覆盖自托管 Tauri 目标，再给出各平台机制矩阵。非目标：不做通用二进制 delta、不绕过商店审核、不承诺所有目标可自更新。
-- 方案概览：已实现 `poly update manifest --channel <name>`：校验 channel/version/platform/base URL/pub_date，选定唯一产物并嵌入其 Tauri `.sig`，输出确定性的 Tauri v2 `latest.json`（排序键、两空格、尾换行），用 `GpgSigner` 生成 GPG 分离签名，同时保留 `<version>.json` / `.sig` 供回滚；`poly update check` 做 schema 校验与可选信任根验签。平台矩阵与来源日期见 [OTA](OTA.md)。集成点：`crates/poly-cli/src/update.rs`、`update/manifest.rs`、`crates/poly-sign`。备选：只写调研文档、完全交给各端工具链。
+- 方案概览：已实现 `polypack update manifest --channel <name>`：校验 channel/version/platform/base URL/pub_date，选定唯一产物并嵌入其 Tauri `.sig`，输出确定性的 Tauri v2 `latest.json`（排序键、两空格、尾换行），用 `GpgSigner` 生成 GPG 分离签名，同时保留 `<version>.json` / `.sig` 供回滚；`polypack update check` 做 schema 校验与可选信任根验签。平台矩阵与来源日期见 [OTA](OTA.md)。集成点：`crates/polypack-cli/src/update.rs`、`update/manifest.rs`、`crates/polypack-sign`。备选：只写调研文档、完全交给各端工具链。
 - 交付物：机制矩阵（已交付）；更新清单 schema 与签名（已交付）；Tauri 自托管通道真实安装 / 回滚演练装置与 CI 作业（已交付并通过首跑：run 39395255929，见 `examples/updater-app`）；回滚手册（已交付，见 [OTA](OTA.md)）。
 - 风险与缓解：签名密钥泄露 → 复用引用模型与一次性签名环境；灰度失控 → 清单支持百分比/白名单但先只做单渠道；商店政策变化 → 矩阵标注来源日期，不写死。
 - 决策项：GA 支持哪些更新渠道；更新签名是否复用发布密钥；是否提供托管清单服务。
@@ -102,10 +102,10 @@
 
 - 状态：候选 · 已实现（T-M9-13/14/15；作者指南见 [STORE-METADATA](STORE-METADATA.md)）。
 - 触发条件：M2 / M3 首个商店发布跑通后，listing 文案或截图开始多语言维护。
-- 背景与问题：`poly publish --materials` 只接受单个 JSON 文件（`crates/poly-cli/src/publish.rs`、`PublishRequest::with_materials`），没有版本化目录、字段长度校验、截图规格与多语言完整性检查；每次发版靠人工拼 JSON。
+- 背景与问题：`polypack publish --materials` 只接受单个 JSON 文件（`crates/polypack-cli/src/publish.rs`、`PublishRequest::with_materials`），没有版本化目录、字段长度校验、截图规格与多语言完整性检查；每次发版靠人工拼 JSON。
 - 目标：仓库内版本化 metadata 目录，按平台 / 语言校验并确定性打包为提审材料。非目标：不自动生成截图、不调用商店 listing 更新 API、不替代人工审核。
-- 方案概览：已实现 `store/metadata/<platform>/<locale>.toml`（`schema = 1`；微信 / 支付宝两套规则，CJK 计 2），校验返回全部违规并使用稳定 `metadata.*` 码；`--metadata-dir` / `--check-metadata` / `--metadata-locale` 接入 `poly publish`，`--materials` 与 `--metadata-dir` 互斥；材料按 key 排序并以 blake3(canonical JSON) 摘要写入回执 `materials_digest`。集成点：`crates/poly-publish/src/metadata.rs`、`flow.rs`、`archive.rs`、`crates/poly-cli/src/publish.rs`。备选：外部商店 CLI、每平台各自维护 JSON。
-- 交付物：metadata schema 与校验器（已交付）；`poly publish` 接线（已交付）；多语言完整性报告（已交付）；双语作者指南（已交付，见 [STORE-METADATA](STORE-METADATA.md)）。
+- 方案概览：已实现 `store/metadata/<platform>/<locale>.toml`（`schema = 1`；微信 / 支付宝两套规则，CJK 计 2），校验返回全部违规并使用稳定 `metadata.*` 码；`--metadata-dir` / `--check-metadata` / `--metadata-locale` 接入 `polypack publish`，`--materials` 与 `--metadata-dir` 互斥；材料按 key 排序并以 blake3(canonical JSON) 摘要写入回执 `materials_digest`。集成点：`crates/polypack-publish/src/metadata.rs`、`flow.rs`、`archive.rs`、`crates/polypack-cli/src/publish.rs`。备选：外部商店 CLI、每平台各自维护 JSON。
+- 交付物：metadata schema 与校验器（已交付）；`polypack publish` 接线（已交付）；多语言完整性报告（已交付）；双语作者指南（已交付，见 [STORE-METADATA](STORE-METADATA.md)）。
 - 风险与缓解：平台字段规则变化 → 规则表版本化并标来源；截图资产膨胀 → 只存路径与摘要，不入库二进制；语言缺失 → 默认语言回退但显式告警。
 - 决策项：metadata 事实源放仓库还是 CMS；截图是否允许外链。
 - 首步动作：选 2 个已支持平台，列出其 listing 必填字段与长度限制，先落 schema。
@@ -120,27 +120,27 @@
 
 - 状态：候选 · 已交付（T-M9-16/17 与 T-M9-18 均于 2026-10-20 交付；T-M9-18 GUI 已落 `app/`（Tauri v2 + 静态前端），满足 [ADR 0007](../decisions/0007-external-and-ui-decisions.md) 的 `app/` 跟踪条件；真实 Tauri 窗口启动为环境门控）。
 - 触发条件：M1 Tauri 管线跑通且 `app/` 控制台骨架落地；或用户明确要求可视化构建历史。
-- 背景与问题：README 把 `app/` 描述为 poly-gui 控制台目标形态，但此前仓库未跟踪该目录；`BuildEvent`（`crates/poly-core/src/events.rs`）只经 stdout / JSON Lines 输出，没有持久历史，无法回答「某目标最近一次成功构建是什么时候」。
+- 背景与问题：README 把 `app/` 描述为 polypack-gui 控制台目标形态，但此前仓库未跟踪该目录；`BuildEvent`（`crates/polypack-core/src/events.rs`）只经 stdout / JSON Lines 输出，没有持久历史，无法回答「某目标最近一次成功构建是什么时候」。
 - 目标：本地持久化构建事件，提供目标 × 最近构建的矩阵视图与单次构建详情。非目标：不做多用户服务端、不做云端同步、不做远程农场调度 UI。
-- 方案概览：已实现 `HistoryRecord`（schema_version、build_id、ts、target、event、status、duration、artifact 摘要、错误码）写入 `.polypack/history/events.jsonl`，按 5 MiB / 10000 条双上限轮转并保留最新记录；路径落盘前脱敏为项目相对路径。`poly history [--target ID] [--limit N] [--json]` 提供按目标聚合的查询；`app/` 的 Tauri command `history_records` 复用同一 schema 并在读取时二次脱敏，前端渲染目标矩阵、按目标详情与空状态引导。集成点：`crates/poly-core/src/events.rs`、`crates/poly-cli/src/build.rs`、`crates/poly-cli/src/history.rs`、`app/`。备选：解析 CI 日志（不可靠）、SQLite（查询强但首版过重）。
+- 方案概览：已实现 `HistoryRecord`（schema_version、build_id、ts、target、event、status、duration、artifact 摘要、错误码）写入 `.polypack/history/events.jsonl`，按 5 MiB / 10000 条双上限轮转并保留最新记录；路径落盘前脱敏为项目相对路径。`polypack history [--target ID] [--limit N] [--json]` 提供按目标聚合的查询；`app/` 的 Tauri command `history_records` 复用同一 schema 并在读取时二次脱敏，前端渲染目标矩阵、按目标详情与空状态引导。集成点：`crates/polypack-core/src/events.rs`、`crates/polypack-cli/src/build.rs`、`crates/polypack-cli/src/history.rs`、`app/`。备选：解析 CI 日志（不可靠）、SQLite（查询强但首版过重）。
 - 交付物：history 写入与轮转（已交付）；查询 / 聚合命令（已交付）；矩阵与详情视图（已交付，`app/`）；隐私说明（路径脱敏，已交付）。
 - 风险与缓解：事件流含敏感路径 → 落盘前脱敏，只留相对路径；历史无限增长 → 条数与体积双上限；GUI 与 CLI 漂移 → 共用同一 schema 与金样。
 - 决策项：JSONL 还是 SQLite；历史默认保留期；是否记录本机绝对路径。
-- 首步动作：在 `crates/poly-core/src/events.rs` 定义可落盘的 `HistoryRecord` schema，并让 `poly build --json` 与文件写入共用。
+- 首步动作：在 `crates/polypack-core/src/events.rs` 定义可落盘的 `HistoryRecord` schema，并让 `polypack build --json` 与文件写入共用。
 
 | 任务 | 标题 | 角色 | 依赖 | 人日 | 验收 |
 | --- | --- | --- | --- | --- | --- |
 | T-M9-16 | 事件持久化与轮转 | coder | — | 3 | 每次构建追加一条可解析记录；超限轮转；路径脱敏断言 |
 | T-M9-17 | 历史查询与矩阵聚合 | coder | T-M9-16 | 5 | 按目标返回最近 N 次状态/耗时/摘要；空历史不报错 |
-| T-M9-18 | poly-gui 矩阵与详情视图 | frontend | T-M9-17 | 8 | 矩阵显示全部已构建目标；点击进入详情；无历史时给出引导 |
+| T-M9-18 | polypack-gui 矩阵与详情视图 | frontend | T-M9-17 | 8 | 矩阵显示全部已构建目标；点击进入详情；无历史时给出引导 |
 
 ### M9-E7 · 发布前设备预览矩阵
 
-- 状态：候选 · 部分交付（T-M9-19 调研矩阵与 T-M9-20 `DevicePool` / `DeviceLease` + `poly preview --dry-run` 已于 2026-10-20 交付，见 [DEVICE-PREVIEW](DEVICE-PREVIEW.md)；T-M9-21 真机演练为外部环境门控，不标 ✅；[ADR 0007](../decisions/0007-external-and-ui-decisions.md) 的「本阶段不写设备农场代码」由干跑协议取代，真实执行仍未接线）。
+- 状态：候选 · 部分交付（T-M9-19 调研矩阵与 T-M9-20 `DevicePool` / `DeviceLease` + `polypack preview --dry-run` 已于 2026-10-20 交付，见 [DEVICE-PREVIEW](DEVICE-PREVIEW.md)；T-M9-21 真机演练为外部环境门控，不标 ✅；[ADR 0007](../decisions/0007-external-and-ui-decisions.md) 的「本阶段不写设备农场代码」由干跑协议取代，真实执行仍未接线）。
 - 触发条件：M4 TV 或 M7 穿戴冒烟遇到设备瓶颈，或商店预览 / 真机回归成为发布阻塞。
-- 背景与问题：`poly smoke` 与各平台结构检查能在无设备时 SKIP，但没有设备池、租约、安装启动截图与日志归档；发布前真机矩阵完全靠人工。
+- 背景与问题：`polypack smoke` 与各平台结构检查能在无设备时 SKIP，但没有设备池、租约、安装启动截图与日志归档；发布前真机矩阵完全靠人工。
 - 目标：定义设备池与预览任务模型，在真机 / 模拟器上执行安装、启动、截图、日志采集并归档证据。非目标：不做完整设备农场产品、不做无人值守审核、不承诺所有目标有设备。
-- 方案概览：已实现 `DevicePool` / `DeviceLease` / `CleanupPolicy` 与 `poly preview --dry-run`（确定性计划、租约超时、清理语义、`preview/v1` + `farm/v1` 词汇），不触网、不接设备；vendor 矩阵与 build-vs-buy 见 [DEVICE-PREVIEW](DEVICE-PREVIEW.md)。provider 可为 Firebase Test Lab、BrowserStack、AWS Device Farm 或自建；产物落 `.polypack/preview/<target>/<device>/`。真实设备执行仍为 T-M9-21 外部项。
+- 方案概览：已实现 `DevicePool` / `DeviceLease` / `CleanupPolicy` 与 `polypack preview --dry-run`（确定性计划、租约超时、清理语义、`preview/v1` + `farm/v1` 词汇），不触网、不接设备；vendor 矩阵与 build-vs-buy 见 [DEVICE-PREVIEW](DEVICE-PREVIEW.md)。provider 可为 Firebase Test Lab、BrowserStack、AWS Device Farm 或自建；产物落 `.polypack/preview/<target>/<device>/`。真实设备执行仍为 T-M9-21 外部项。
 - 交付物：设备池模型与协议扩展（已交付）；预览任务 CLI（已交付，dry-run）；2 个目标的真实预览演练（外部）；成本与保留策略（已交付矩阵 / 策略）。
 - 风险与缓解：设备租用成本 → 先按需单次租用，不做常驻池；平台工具链差异 → provider 适配层隔离；截图含用户数据 → 只跑夹具应用并自动清理。
 - 决策项：自建还是购买云设备农场；证据保留期与访问权限。
@@ -167,7 +167,7 @@
 - 阻塞与前置：服务停服；无开发者后台入口；无审核路径。
 - 建议：关闭。保留历史链接，不再投入打包器。
 - 目标：保持矩阵诚实并清理失效规划；非目标：不为已停服平台实现 `instant-aab`。
-- 方案概览：不改 `crates/poly-targets/src/builtin.rs`；从 `tools/gen-status-table.mjs` 的规划清单移除或改标 retired，并同步 README 49 行计数与分级计数（ROADMAP §11 第 4 条）。备选：保留「规划中」但不实现（当前状态）、迁移到 PWA / Web 演示。
+- 方案概览：不改 `crates/polypack-targets/src/builtin.rs`；从 `tools/gen-status-table.mjs` 的规划清单移除或改标 retired，并同步 README 49 行计数与分级计数（ROADMAP §11 第 4 条）。备选：保留「规划中」但不实现（当前状态）、迁移到 PWA / Web 演示。
 - 交付物：关闭决策记录；生成器与 README 计数同步变更；CHANGELOG 条目。
 - 风险与缓解：删除行导致 49 目标表与 docs-check 全面漂移 → 一次性按生成器重生成并跑 `node tools/check-docs.mjs`；用户仍搜索该平台 → 保留一行 retired 说明。
 - 决策项：从 49 表移除还是标 retired（影响 TOTAL 与分级计数）。
@@ -205,9 +205,9 @@
 - 现状：LIFF 应用由 LINE Developers Console 以托管 URL 注册（LINE Login 渠道 → LIFF；Endpoint URL 必须 HTTPS 且不得含 fragment）；官方无本地上传包格式或 LIFF 配置文件。
 - 可行性：作为「部署 + 配置校验」可行；作为平台产物打包不可行。
 - 阻塞与前置：LINE Login 渠道、LIFF 应用、HTTPS 静态托管；无官方 CI 上传 API。
-- 建议：条件支持 `poly deploy line-liff --dir <dir> --config line-liff.toml`，只做校验与部署指引，不生成「平台包」。
+- 建议：条件支持 `polypack deploy line-liff --dir <dir> --config line-liff.toml`，只做校验与部署指引，不生成「平台包」。
 - 目标：让 LINE 用户复用 Web 构建与配置校验；非目标：不伪造 LIFF 配置文件、不声明商店受理。
-- 方案概览：已实现 `line-liff.toml`（`schema`、`liff_id`、`endpoint`、`channel_id`、`scopes`）与 `poly deploy line-liff --dir <dir> --config line-liff.toml`；校验 HTTPS / 无 fragment / 必填字段，输出 Console 人工步骤；命令始终 dry-run，不触网、不接上传 API。集成点：`crates/poly-cli/src/deploy.rs`、`crates/poly-cli/src/main.rs`；使用说明见 [LINE-DEPLOY](LINE-DEPLOY.md)。备选：纯文档指引、通用静态托管。
+- 方案概览：已实现 `line-liff.toml`（`schema`、`liff_id`、`endpoint`、`channel_id`、`scopes`）与 `polypack deploy line-liff --dir <dir> --config line-liff.toml`；校验 HTTPS / 无 fragment / 必填字段，输出 Console 人工步骤；命令始终 dry-run，不触网、不接上传 API。集成点：`crates/polypack-cli/src/deploy.rs`、`crates/polypack-cli/src/main.rs`；使用说明见 [LINE-DEPLOY](LINE-DEPLOY.md)。备选：纯文档指引、通用静态托管。
 - 交付物：部署模式设计；配置校验器；端到端托管演练（人工 Console 步骤）；文档。
 - 风险与缓解：把部署模式误当 TargetSpec → 文档与命令命名明确区分；Endpoint 规则变化 → 校验规则版本化；无上传 API → 明确 SKIP 人工步骤。
 - 决策项：是否接受「非 TargetSpec 的部署模式」进入官方支持面。
@@ -222,12 +222,12 @@
 
 - 状态：候选 · 条件支持（需赞助 / 设备承诺）；未排期，决策见 [ADR 0006](../decisions/0006-platform-decisions.md)。
 - 触发条件：有 Sailfish 用户或赞助方承诺测试设备与 Jolla 账号。
-- 现状：现有 `linux-rpm` 链只出桌面 Tauri RPM（`crates/poly-bundle/src/packagers/linux.rs`）；缺 Qt / Silica QML 宿主、Sailfish SDK 交叉工具链（armv7hl / aarch64）与 harbour 打包 / 签名。
+- 现状：现有 `linux-rpm` 链只出桌面 Tauri RPM（`crates/polypack-bundle/src/packagers/linux.rs`）；缺 Qt / Silica QML 宿主、Sailfish SDK 交叉工具链（armv7hl / aarch64）与 harbour 打包 / 签名。
 - 可行性：技术上中等偏高（可复用 RPM 与 Linux 交叉经验）；市场上小众。
 - 阻塞与前置：Sailfish SDK、QML / Silica 宿主模板、harbour 账号与签名、真机或模拟器。
 - 建议：条件支持；无赞助则不做。
 - 目标：产出可安装的 harbour RPM 并通过结构校验；非目标：不复用 Tauri 桌面壳冒充 Sailfish 应用。
-- 方案概览：新增 `ui/adapters/native/host/sailfish` QML / Silica 壳；`crates/poly-bundle` 增加 `sailfish-harbour` 打包器，复用 RPM 写入但使用 harbour spec 与 desktop 文件；`poly-toolchain` 探测 Sailfish SDK；TargetSpec 在打包与校验通过后再声明。备选：Qt 独立应用（不接 PolyPack）、纯 Web。
+- 方案概览：新增 `ui/adapters/native/host/sailfish` QML / Silica 壳；`crates/polypack-bundle` 增加 `sailfish-harbour` 打包器，复用 RPM 写入但使用 harbour spec 与 desktop 文件；`polypack-toolchain` 探测 Sailfish SDK；TargetSpec 在打包与校验通过后再声明。备选：Qt 独立应用（不接 PolyPack）、纯 Web。
 - 交付物：工具链探测；QML 宿主模板；harbour RPM 打包器；契约测试与 TargetSpec 草案。
 - 风险与缓解：SDK 获取与许可 → 只在本地探测，不入库；设备稀缺 → 条件任务要求提供设备；维护成本 → experimental 标注直到稳定。
 - 决策项：是否接受 experimental 级别的社区维护目标。
@@ -248,7 +248,7 @@
 - 阻塞与前置：Clickable、UBports SDK、AppArmor profile、OpenStore 提交流程。
 - 建议：条件支持；无赞助则不做。
 - 目标：产出可安装的 `.click` 并通过结构校验；非目标：不把 deb 改后缀当 `.click`。
-- 方案概览：新增 `ui/adapters/native/host/ubuntutouch` WebView 壳；`crates/poly-bundle` 增加 `clickable` 打包器（调用 Clickable 或生成 click 清单 + AppArmor）；`poly-toolchain` 探测 Clickable；TargetSpec 在真实安装通过后声明。备选：PWA、Flatpak、Ubuntu deb。
+- 方案概览：新增 `ui/adapters/native/host/ubuntutouch` WebView 壳；`crates/polypack-bundle` 增加 `clickable` 打包器（调用 Clickable 或生成 click 清单 + AppArmor）；`polypack-toolchain` 探测 Clickable；TargetSpec 在真实安装通过后声明。备选：PWA、Flatpak、Ubuntu deb。
 - 交付物：工具链探测；WebView 壳模板；`.click` 打包器；契约测试与 TargetSpec 草案。
 - 风险与缓解：Clickable 版本漂移 → 固定版本并做金样；AppArmor 策略过宽 → 最小权限模板；设备缺失 → 条件任务要求提供设备。
 - 决策项：是否接受 experimental 级别的社区维护目标。
@@ -269,7 +269,7 @@
 - 阻塞与前置：NDA、devkit、SDK、认证流程；任何一项缺失都不启动。
 - 建议：NDA 门控；公开仓库只保留插件接口与 mock，不提交 SDK 或平台包格式。
 - 目标：授权后以 `target-spec/v1` 插件接入打包；非目标：不在公开仓库实现或分发厂商 SDK。
-- 方案概览：插件实现 `describe` / `package`（`crates/poly-plugin/wit/polypack-target.wit`），宿主探测 `$SONY_SDK` 本地路径；无 SDK 时 SKIP-with-print；产物格式由授权方文档定义。备选：不做主机平台、只做 PC / Web 发行。
+- 方案概览：插件实现 `describe` / `package`（`crates/polypack-plugin/wit/polypack-target.wit`），宿主探测 `$SONY_SDK` 本地路径；无 SDK 时 SKIP-with-print；产物格式由授权方文档定义。备选：不做主机平台、只做 PC / Web 发行。
 - 交付物：NDA 前置清单；条件插件骨架；mock 契约测试；本地路径探测。
 - 风险与缓解：SDK 泄漏 → `.gitignore` 与 secret-scan 兜底；公开文档越界 → 只写已公开信息；维护者无授权 → 任务不启动。
 - 决策项：是否投入 NDA 与 devkit 成本。
@@ -326,12 +326,12 @@
 
 ### M9-D1 · 插件市场分发：官方注册表 vs 去中心化索引
 
-- 状态：候选 · 部分落地；决策采用去中心化签名索引（[ADR 0004](../decisions/0004-plugin-marketplace.md)），T-M9-41 的签名索引与 `poly plugin add/search` 已交付；官方注册表 / 生产密钥仪式外部。
+- 状态：候选 · 部分落地；决策采用去中心化签名索引（[ADR 0004](../decisions/0004-plugin-marketplace.md)），T-M9-41 的签名索引与 `polypack plugin add/search` 已交付；官方注册表 / 生产密钥仪式外部。
 - 触发条件：第三方插件 ≥ 3 个，或出现第一个「如何发现 / 安装插件」的外部请求。
-- 背景与问题：ADR 0003 已定 WASM 沙箱与 `target-spec/v1`，但插件只以文件形式分发（`crates/poly-plugin`、`crates/poly-cli/src/plugin_new.rs`），没有索引、版本解析、吊销与来源展示。
+- 背景与问题：ADR 0003 已定 WASM 沙箱与 `target-spec/v1`，但插件只以文件形式分发（`crates/polypack-plugin`、`crates/polypack-cli/src/plugin_new.rs`），没有索引、版本解析、吊销与来源展示。
 - 目标：选定分发模型并定义可验证的索引格式。非目标：不做付费市场、不做托管插件执行、不改变 SRI / 签名信任链。
-- 方案概览：推荐「去中心化签名索引优先」：`index.json` 含 schema、plugins[]（id、version、wit_version、sri、signature、url、revoked），索引本身用 GPG/minisign 签名；`poly plugin search/add` 复用 `poly-sign` 验签；官方注册表作为可选策展镜像。备选：官方注册表（治理与可用性成本高）、Git 仓库索引（无签名语义）、OCI registry（生态重）。
-- 交付物：ADR（已交付）；索引 schema（已交付）；`poly plugin add/search`（已交付，离线验签 / 吊销 / 回滚 / SRI）；吊销清单与信任根文档（ADR 已记录；生产公钥与仪式外部）。
+- 方案概览：推荐「去中心化签名索引优先」：`index.json` 含 schema、plugins[]（id、version、wit_version、sri、signature、url、revoked），索引本身用 GPG/minisign 签名；`polypack plugin search/add` 复用 `polypack-sign` 验签；官方注册表作为可选策展镜像。备选：官方注册表（治理与可用性成本高）、Git 仓库索引（无签名语义）、OCI registry（生态重）。
+- 交付物：ADR（已交付）；索引 schema（已交付）；`polypack plugin add/search`（已交付，离线验签 / 吊销 / 回滚 / SRI）；吊销清单与信任根文档（ADR 已记录；生产公钥与仪式外部）。
 - 风险与缓解：供应链投毒 → SRI + 签名 + 吊销三件套；索引不可用 → 本地缓存与多镜像；治理不清 → ADR 明确谁可吊销。
 - 决策项：官方注册表还是去中心化索引；谁拥有吊销权；是否允许私有索引。
 - 首步动作：写 ADR 0004 草案，比较两种模型的威胁与运维成本，先定签名与吊销语义。
@@ -339,14 +339,14 @@
 | 任务 | 标题 | 角色 | 依赖 | 人日 | 验收 |
 | --- | --- | --- | --- | --- | --- |
 | T-M9-40 ✅ | 分发模型 ADR 与威胁模型 | architect | — | 3 | 两模型对比；签名、吊销、信任根与治理结论明确 |
-| T-M9-41 ✅ | 签名索引与 `poly plugin add/search` | coder | T-M9-40 | 6 | 索引验签失败拒绝；安装复用 SRI + GPG；吊销条目拒绝加载 |
+| T-M9-41 ✅ | 签名索引与 `polypack plugin add/search` | coder | T-M9-40 | 6 | 索引验签失败拒绝；安装复用 SRI + GPG；吊销条目拒绝加载 |
 | T-M9-42 | 条件任务：官方注册表 / 镜像 | coder + maintainer | T-M9-41 | 8 | 仅在决定做官方服务后启动；可用性与吊销演练通过 |
 
 ### M9-D2 · 远程农场：仅自托管 vs 托管服务
 
 - 状态：候选 · 部分落地；决策 GA 仅自托管（[ADR 0005](../decisions/0005-farm-hosting.md)），T-M9-44 的加固清单 + 预检 / 演练已交付；生产主机演练外部。
 - 触发条件：外部用户缺少 macOS / Windows 构建机且明确要求托管；或自托管部署支持成本成为负担。
-- 背景与问题：农场 v1 已有协议、隔离、共享缓存与部署指南（`crates/poly-cli/src/farm.rs`、`docs/FARM.md`、`docs/FARM-DEPLOY.md`），但 ROADMAP 原则写明不托管用户代码与密钥；托管与否会影响信任边界与商业模式。
+- 背景与问题：农场 v1 已有协议、隔离、共享缓存与部署指南（`crates/polypack-cli/src/farm.rs`、`docs/FARM.md`、`docs/FARM-DEPLOY.md`），但 ROADMAP 原则写明不托管用户代码与密钥；托管与否会影响信任边界与商业模式。
 - 目标：做出「仅自托管」或「托管服务」的明确决策与边界。非目标：本文不承诺实现托管服务、不改变现有自托管能力。
 - 方案概览：推荐 GA 阶段仅自托管；托管作为独立服务另立项目，需租户隔离、配额、密钥托管、审计、数据驻留与 SLA。若做托管，复用农场协议 v1 与 worker 池，新增控制面；否则补强自托管参考部署。备选：合作伙伴托管、用户自带云（BYOC）。
 - 交付物：ADR（已交付）；成本与威胁模型（已交付）；自托管生产加固清单 + 预检（已交付，见 [FARM-DEPLOY](FARM-DEPLOY.md) §11）；生产主机演练（外部）。
@@ -365,13 +365,13 @@
 
 ### M9-G1 · CLI 分发到 crates.io / GitHub Releases
 
-- 状态：候选 · 部分落地（GitHub Releases + install script + 签名 / install-smoke 已落地；T-M9-45 审计已落地：workspace 1.16.0、crate 元数据、`cargo package --list` 9/9；crates.io 实际发布因 `poly-cli` / `poly-core` 名称占用与 `publish = false` 关闭）。
-- 触发条件：GA 发布；外部用户要求不装 Rust 工具链即可使用 `poly`。
-- 背景与问题：根 `Cargo.toml` 版本为 `0.0.0`，`crates/poly-cli/Cargo.toml` 的 bin 名为 `poly`，仓库有 `repository` 元数据；此前没有发布工作流，用户只能源码构建。现已落 `.github/workflows/release.yml`（`v*` tag 三宿主构建 + `SHA256SUMS.txt`）、`scripts/install.sh`（强制 SHA-256 + 可选 minisign 严格验签）、双语 `docs/INSTALL`、secret-gated 签名与 install-smoke；`docs/CRATES-IO` 记录了发布顺序、元数据与阻塞：`poly-cli`（已被占用）与 `poly-core`（已被占用）需改名或取得所有权，且全部 crate 仍 `publish = false`。
+- 状态：候选 · 部分落地（GitHub Releases + install script + 签名 / install-smoke 已落地；T-M9-45 审计已落地：workspace 1.16.0、crate 元数据、`cargo package --list` 9/9；crates.io 实际发布因 `polypack-cli` / `polypack-core` 名称占用与 `publish = false` 关闭）。
+- 触发条件：GA 发布；外部用户要求不装 Rust 工具链即可使用 `polypack`。
+- 背景与问题：根 `Cargo.toml` 版本为 `0.0.0`，`crates/polypack-cli/Cargo.toml` 的 bin 名为 `polypack`，仓库有 `repository` 元数据；此前没有发布工作流，用户只能源码构建。现已落 `.github/workflows/release.yml`（`v*` tag 三宿主构建 + `SHA256SUMS.txt`）、`scripts/install.sh`（强制 SHA-256 + 可选 minisign 严格验签）、双语 `docs/INSTALL`、secret-gated 签名与 install-smoke；`docs/CRATES-IO` 记录了发布顺序、元数据与阻塞：`polypack-cli`（已被占用）与 `polypack-core`（已被占用）需改名或取得所有权，且全部 crate 仍 `publish = false`。
 - 目标：提供可验证的 crates.io 安装与 GitHub Releases 二进制，带校验和与签名。非目标：首版不做 Homebrew / Scoop / apt 仓库。
-- 方案概览：先按依赖顺序 `cargo package` / `cargo publish --dry-run` 审计全部可发布 crate；GitHub Actions 构建 linux x86_64 / aarch64、macOS x86_64 / aarch64、Windows x86_64；发布 `SHA256SUMS` 与 GPG/minisign 签名；安装脚本验签后落盘。审计已完成（`cargo package --list` 9/9，`cargo publish --dry-run` 被 `publish = false` 拒绝）；GitHub Releases 腿已落地（三宿主构建 + `SHA256SUMS` + secret-gated minisign 签名 + install-smoke），安装脚本与双语文档已落地。crates.io 上传保持关闭，等待名称与 token 的维护者决策。集成点：根 `Cargo.toml`、`crates/poly-cli/Cargo.toml`、`.github/workflows/`、`docs/CRATES-IO`。备选：只发 GitHub Releases（已落地）、只发 crates.io（需 Rust，阻塞）。
+- 方案概览：先按依赖顺序 `cargo package` / `cargo publish --dry-run` 审计全部可发布 crate；GitHub Actions 构建 linux x86_64 / aarch64、macOS x86_64 / aarch64、Windows x86_64；发布 `SHA256SUMS` 与 GPG/minisign 签名；安装脚本验签后落盘。审计已完成（`cargo package --list` 9/9，`cargo publish --dry-run` 被 `publish = false` 拒绝）；GitHub Releases 腿已落地（三宿主构建 + `SHA256SUMS` + secret-gated minisign 签名 + install-smoke），安装脚本与双语文档已落地。crates.io 上传保持关闭，等待名称与 token 的维护者决策。集成点：根 `Cargo.toml`、`crates/polypack-cli/Cargo.toml`、`.github/workflows/`、`docs/CRATES-IO`。备选：只发 GitHub Releases（已落地）、只发 crates.io（需 Rust，阻塞）。
 - 交付物：发布清单与 crate 顺序（已交付，`docs/CRATES-IO`）；跨平台构建工作流（已交付）；校验和 / 签名（已交付，签名 secret-gated）；安装脚本与双语文档（已交付）；crates.io 实际发布（阻塞：名称占用、`publish = false`、无 token）。
-- 风险与缓解：crate 名 / 二进制名 `poly` 冲突 → 已查占位并准备备用名（`polypack-cli` / `polypack-engine`）；版本号曾为 0.0.0 → 已提升到 1.16.0 并与 tag 对齐；供应链 → 签名 + 可复现构建说明。
+- 风险与缓解：crate 名 / 二进制名 `polypack` 冲突 → 已查占位并准备备用名（`polypack-cli` / `polypack-engine`）；版本号曾为 0.0.0 → 已提升到 1.16.0 并与 tag 对齐；供应链 → 签名 + 可复现构建说明。
 - 决策项：crates.io 与 Releases 是否都做；二进制名冲突时是否改名。
 - 首步动作：跑 `cargo package --list` 与 `cargo publish --dry-run`，列出阻塞发布的 crate 元数据。
 
@@ -379,7 +379,7 @@
 | --- | --- | --- | --- | --- | --- |
 | T-M9-45 ✅ | crate 发布审计与版本策略 | release | — | 2 | 审计完成：元数据 9/9、`cargo package --list` 9/9、版本 1.16.0；实际发布因名称占用 / `publish = false` / 无 token 关闭 |
 | T-M9-46 ✅ | 跨平台 Release 工作流与签名 | release + coder | T-M9-45 | 5 | 三宿主产物可下载；SHA256SUMS 与 secret-gated 签名验证通过 |
-| T-M9-47 ✅ | 安装脚本与文档 | docs + tester | T-M9-45, T-M9-46 | 2 | install-smoke 跑通 `poly --version`；双语 INSTALL 可复现 |
+| T-M9-47 ✅ | 安装脚本与文档 | docs + tester | T-M9-45, T-M9-46 | 2 | install-smoke 跑通 `polypack --version`；双语 INSTALL 可复现 |
 
 ### M9-G2 · 人类外部开发者试用协议
 
@@ -419,11 +419,11 @@
 ### M9-G4 · MSI 真样本启动测试
 
 - 状态：候选 · 已交付（2026-10-20 `windows-2022` 首跑通过：`windows-msi-real` 6m30s）。
-- 进度（2026-10-20）：`examples/windows-msi-app/` 真实 Tauri v2 样例、`crates/poly-bundle/tests/windows_msi_real.rs` 门控真跑测试（`POLY_MSI_REAL=1`、`POLY_TAURI_CORE_BIN`、`POLY_MSI_REAL_OUT`，失败码 `POLY_MSI_REAL_0001..0006`）与 rust-ci `windows-msi-real` 作业已落；run 39308849058 真跑通过，MSI / 安装 / 启动 / 卸载 / 残留证据作为 CI 工件归档。ENV-01 已置 `CLOSED`。
+- 进度（2026-10-20）：`examples/windows-msi-app/` 真实 Tauri v2 样例、`crates/polypack-bundle/tests/windows_msi_real.rs` 门控真跑测试（`POLYPACK_MSI_REAL=1`、`POLYPACK_TAURI_CORE_BIN`、`POLYPACK_MSI_REAL_OUT`，失败码 `POLYPACK_MSI_REAL_0001..0006`）与 rust-ci `windows-msi-real` 作业已落；run 39308849058 真跑通过，MSI / 安装 / 启动 / 卸载 / 残留证据作为 CI 工件归档。ENV-01 已置 `CLOSED`。
 - 触发条件：Windows L1 对外宣称可安装；或首次 Windows 用户报告安装问题。
-- 背景与问题：`crates/poly-bundle/src/packagers/windows.rs` 生成 WiX `.wxs` 并调用 candle / light，注释给出 `msiexec /i` 冒烟提示，但没有真实样本的安装、启动、卸载与残留检查证据。
+- 背景与问题：`crates/polypack-bundle/src/packagers/windows.rs` 生成 WiX `.wxs` 并调用 candle / light，注释给出 `msiexec /i` 冒烟提示，但没有真实样本的安装、启动、卸载与残留检查证据。
 - 目标：用真实 Tauri 样例在干净 Windows 环境完成安装 → 启动 → 卸载 → 残留检查，并归档证据。非目标：不做 MSIX / Store 打包、不做多语言安装器矩阵。
-- 方案概览：新增样例工程（建议 `tests/fixtures/windows-msi-app` 或 `examples/`），Windows runner 构建 MSI；`msiexec /i /qn` 安装，启动进程并检查窗口 / 退出码，`msiexec /x /qn` 卸载，检查安装目录与注册表残留；日志与截图归档。集成点：`crates/poly-bundle/src/packagers/windows.rs`、`.github/workflows/rust-ci.yml`。备选：只做脚本结构检查（现状）、手工测试。
+- 方案概览：新增样例工程（建议 `tests/fixtures/windows-msi-app` 或 `examples/`），Windows runner 构建 MSI；`msiexec /i /qn` 安装，启动进程并检查窗口 / 退出码，`msiexec /x /qn` 卸载，检查安装目录与注册表残留；日志与截图归档。集成点：`crates/polypack-bundle/src/packagers/windows.rs`、`.github/workflows/rust-ci.yml`。备选：只做脚本结构检查（现状）、手工测试。
 - 交付物：真实样例工程；Windows CI 作业；安装 / 启动 / 卸载 / 残留证据；已知限制文档。
 - 风险与缓解：CI runner 无桌面 → 用 Windows runner 的交互式会话或 VM；WiX 版本漂移 → 固定工具链版本；残留误判 → 明确白名单与快照差异。
 - 决策项：样例放 `tests/fixtures` 还是 `examples/`；是否把该作业设为必过检查。
@@ -455,7 +455,7 @@
 按「先补 GA 可信度，再做高杠杆工程，最后做外部依赖项」排序；E1–E7 / G5 已交付或收口，剩余为外部依赖项与维护者决策。
 
 1. M9-G5 分支保护：已交付（2026-10-20，ENV-18 `CLOSED`）。
-2. M9-G1 CLI 分发：没有可安装的 `poly`，外部试用与 GA 都缺入口。
+2. M9-G1 CLI 分发：没有可安装的 `polypack`，外部试用与 GA 都缺入口。
 3. M9-G2 人类试用：用真实用户校准后续优先级，避免凭假设开工。
 4. M9-G3 环境槽收口：先建立「哪些已验证」的可信边界。
 5. M9-E3 `release --changed`：复用既有缓存，CI 收益最快。

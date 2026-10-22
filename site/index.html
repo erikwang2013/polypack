@@ -57,7 +57,7 @@
   <header class="site-header">
     <div class="wrap header-inner">
       <a class="brand" href="#top" aria-label="PolyPack home">
-        <img src="assets/img/pax-cute.svg" alt="" width="34" height="34">
+        <img src="assets/img/pax-mark.svg" alt="" width="48" height="48">
         <span>PolyPack</span>
       </a>
       <button class="nav-toggle" id="navToggle" aria-expanded="false" aria-controls="nav" aria-label="Menu">☰</button>
@@ -137,7 +137,7 @@
         <div class="grid grid-3">
           <article class="card reveal"><h3><span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></span><span data-zh="49 个目标" data-en="49 targets">49 个目标</span></h3><p data-zh="桌面、移动端、鸿蒙、小程序、TV、穿戴与嵌入式目标共享同一套 TargetSpec 与打包器契约。" data-en="Desktop, mobile, HarmonyOS, mini-programs, TV, wearables and embedded targets share one TargetSpec and packager contract.">桌面、移动端、鸿蒙、小程序、TV、穿戴与嵌入式目标共享同一套 TargetSpec 与打包器契约。</p></article>
           <article class="card reveal"><h3><span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3l8 4v5c0 5-3.4 8-8 9-4.6-1-8-4-8-9V7l8-4z"/><path d="M9 12l2 2 4-4"/></svg></span><span data-zh="可验证流水线" data-en="Verifiable pipeline">可验证流水线</span></h3><p data-zh="结构校验、可复现构建、产物摘要、SBOM 与签名回执在同一条 DAG 内完成。" data-en="Structure checks, reproducible builds, artifact digests, SBOMs and signed receipts in one DAG.">结构校验、可复现构建、产物摘要、SBOM 与签名回执在同一条 DAG 内完成。</p></article>
-          <article class="card reveal"><h3><span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M13 2L4 14h7l-1 8 9-12h-7l1-8z"/></svg></span><span data-zh="增量发布" data-en="Incremental releases">增量发布</span></h3><p data-zh="poly release --changed 用内容摘要跳过未变化目标；五目标实测后端调用 5→1。" data-en="poly release --changed skips unchanged targets by digest; a five-target test cut backend calls 5→1.">poly release --changed 用内容摘要跳过未变化目标；五目标实测后端调用 5→1。</p></article>
+          <article class="card reveal"><h3><span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M13 2L4 14h7l-1 8 9-12h-7l1-8z"/></svg></span><span data-zh="增量发布" data-en="Incremental releases">增量发布</span></h3><p data-zh="polypack release --changed 用内容摘要跳过未变化目标；五目标实测后端调用 5→1。" data-en="polypack release --changed skips unchanged targets by digest; a five-target test cut backend calls 5→1.">polypack release --changed 用内容摘要跳过未变化目标；五目标实测后端调用 5→1。</p></article>
           <article class="card reveal"><h3><span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2l8 4v6c0 5-3.5 8-8 10-4.5-2-8-5-8-10V6l8-4z"/><path d="M8 12h8"/></svg></span><span data-zh="插件沙箱" data-en="Plugin sandbox">插件沙箱</span></h3><p data-zh="Wasmtime 默认零能力，目录与出网显式授权，fuel / epoch / 内存三道上限，SRI 与 GPG 信任根。" data-en="Wasmtime deny-by-default, explicit directory/network grants, fuel/epoch/memory limits, SRI and GPG trust roots.">Wasmtime 默认零能力，目录与出网显式授权，fuel / epoch / 内存三道上限，SRI 与 GPG 信任根。</p></article>
           <article class="card reveal"><h3><span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 17l6-6-6-6"/><path d="M12 19h8"/></svg></span><span data-zh="自托管发布与 OTA" data-en="Self-hosted release & OTA">自托管发布与 OTA</span></h3><p data-zh="deb / rpm / pkg / pkgsrc 仓库签名，Tauri v2 更新清单、回滚与真实演练。" data-en="Signed deb / rpm / pkg / pkgsrc repositories, Tauri v2 update manifests, rollback and a real drill.">deb / rpm / pkg / pkgsrc 仓库签名，Tauri v2 更新清单、回滚与真实演练。</p></article>
           <article class="card reveal"><h3><span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 12h4l2-6 4 12 2-6h6"/></svg></span><span data-zh="农场与可观测性" data-en="Farm & observability">农场与可观测性</span></h3><p data-zh="多 worker 并发、共享 CAS、构建历史 JSONL、GUI 矩阵与设备预览协议。" data-en="Multi-worker concurrency, shared CAS, JSONL build history, a GUI matrix and a device-preview protocol.">多 worker 并发、共享 CAS、构建历史 JSONL、GUI 矩阵与设备预览协议。</p></article>
@@ -178,9 +178,9 @@
         <p class="eyebrow" data-zh="版本日志" data-en="CHANGELOG">版本日志</p>
         <h2 data-zh="最近发布了什么" data-en="What shipped recently">最近发布了什么</h2>
         <div class="grid grid-2">
-          <article class="card release reveal"><span class="tag">v1.16.0 · 2026-10-22</span><h3 data-zh="原生桌面安装器" data-en="Native desktop installers">原生桌面安装器</h3><ul><li data-zh="Linux .deb / .AppImage、Windows .msi、macOS .pkg，由 GitHub Actions 三宿主构建。" data-en="Linux .deb / .AppImage, Windows .msi and macOS .pkg built natively by GitHub Actions.">Linux .deb / .AppImage、Windows .msi、macOS .pkg，由 GitHub Actions 三宿主构建。</li><li data-zh="安装后自动执行 poly --version 冒烟；Pax 作为安装器预览图标。" data-en="Post-install poly --version smoke; Pax is the installer preview icon.">安装后自动执行 poly --version 冒烟；Pax 作为安装器预览图标。</li><li data-zh="安装器未做商业签名，SmartScreen / Gatekeeper 可能提示。" data-en="Installers are unsigned; SmartScreen / Gatekeeper may warn.">安装器未做商业签名，SmartScreen / Gatekeeper 可能提示。</li></ul></article>
-          <article class="card release reveal"><span class="tag">v1.15.0 · 2026-10-21</span><h3 data-zh="环境槽用户入口" data-en="Environment-slot entry points">环境槽用户入口</h3><ul><li data-zh="poly env-provide 工具：凭据隐藏上传、授权门户、硬件与试用表单。" data-en="An env-provide helper: hidden credential upload, authorization portals, hardware and trial forms.">poly env-provide 工具：凭据隐藏上传、授权门户、硬件与试用表单。</li><li data-zh="文档 / 图片全量同步，20 对文档门禁。" data-en="Full docs/image sync with a 20-pair docs gate.">文档 / 图片全量同步，20 对文档门禁。</li><li data-zh="安装示例与版本引用更新到 v1.15.0。" data-en="Install examples and version references updated to v1.15.0.">安装示例与版本引用更新到 v1.15.0。</li></ul></article>
-          <article class="card release reveal"><span class="tag">v1.14.0 · 2026-10-21</span><h3 data-zh="签名插件索引 + 农场加固" data-en="Signed plugin index + farm hardening">签名插件索引 + 农场加固</h3><ul><li data-zh="poly plugin add/search 离线验签，覆盖吊销、回滚、分叉与 SRI。" data-en="poly plugin add/search verifies offline, covering revocation, rollback, forks and SRI.">poly plugin add/search 离线验签，覆盖吊销、回滚、分叉与 SRI。</li><li data-zh="10 项自托管农场加固清单与预检脚本。" data-en="A 10-item self-hosted farm hardening checklist and preflight.">10 项自托管农场加固清单与预检脚本。</li><li data-zh="wasmtime 49.0.4 / rustls-webpki 0.103.16 安全修复。" data-en="wasmtime 49.0.4 / rustls-webpki 0.103.16 security fixes.">wasmtime 49.0.4 / rustls-webpki 0.103.16 安全修复。</li></ul></article>
+          <article class="card release reveal"><span class="tag">v1.16.0 · 2026-10-22</span><h3 data-zh="原生桌面安装器" data-en="Native desktop installers">原生桌面安装器</h3><ul><li data-zh="Linux .deb / .AppImage、Windows .msi、macOS .pkg，由 GitHub Actions 三宿主构建。" data-en="Linux .deb / .AppImage, Windows .msi and macOS .pkg built natively by GitHub Actions.">Linux .deb / .AppImage、Windows .msi、macOS .pkg，由 GitHub Actions 三宿主构建。</li><li data-zh="安装后自动执行 polypack --version 冒烟；Pax 作为安装器预览图标。" data-en="Post-install polypack --version smoke; Pax is the installer preview icon.">安装后自动执行 polypack --version 冒烟；Pax 作为安装器预览图标。</li><li data-zh="安装器未做商业签名，SmartScreen / Gatekeeper 可能提示。" data-en="Installers are unsigned; SmartScreen / Gatekeeper may warn.">安装器未做商业签名，SmartScreen / Gatekeeper 可能提示。</li></ul></article>
+          <article class="card release reveal"><span class="tag">v1.15.0 · 2026-10-21</span><h3 data-zh="环境槽用户入口" data-en="Environment-slot entry points">环境槽用户入口</h3><ul><li data-zh="polypack env-provide 工具：凭据隐藏上传、授权门户、硬件与试用表单。" data-en="An env-provide helper: hidden credential upload, authorization portals, hardware and trial forms.">polypack env-provide 工具：凭据隐藏上传、授权门户、硬件与试用表单。</li><li data-zh="文档 / 图片全量同步，20 对文档门禁。" data-en="Full docs/image sync with a 20-pair docs gate.">文档 / 图片全量同步，20 对文档门禁。</li><li data-zh="安装示例与版本引用更新到 v1.15.0。" data-en="Install examples and version references updated to v1.15.0.">安装示例与版本引用更新到 v1.15.0。</li></ul></article>
+          <article class="card release reveal"><span class="tag">v1.14.0 · 2026-10-21</span><h3 data-zh="签名插件索引 + 农场加固" data-en="Signed plugin index + farm hardening">签名插件索引 + 农场加固</h3><ul><li data-zh="polypack plugin add/search 离线验签，覆盖吊销、回滚、分叉与 SRI。" data-en="polypack plugin add/search verifies offline, covering revocation, rollback, forks and SRI.">polypack plugin add/search 离线验签，覆盖吊销、回滚、分叉与 SRI。</li><li data-zh="10 项自托管农场加固清单与预检脚本。" data-en="A 10-item self-hosted farm hardening checklist and preflight.">10 项自托管农场加固清单与预检脚本。</li><li data-zh="wasmtime 49.0.4 / rustls-webpki 0.103.16 安全修复。" data-en="wasmtime 49.0.4 / rustls-webpki 0.103.16 security fixes.">wasmtime 49.0.4 / rustls-webpki 0.103.16 安全修复。</li></ul></article>
           <article class="card release reveal"><span class="tag">v1.13.1 · 2026-10-20</span><h3 data-zh="环境槽关闭 + 安全补丁" data-en="Env-slot closures + security patch">环境槽关闭 + 安全补丁</h3><ul><li data-zh="ENV-15 keyring、ENV-16 Vault、ENV-17 S3 真跑通过。" data-en="ENV-15 keyring, ENV-16 Vault and ENV-17 S3 real runs passed.">ENV-15 keyring、ENV-16 Vault、ENV-17 S3 真跑通过。</li><li data-zh="wasmtime 49.0.4 修复 RUSTSEC-2026-0378/0379。" data-en="wasmtime 49.0.4 fixes RUSTSEC-2026-0378/0379.">wasmtime 49.0.4 修复 RUSTSEC-2026-0378/0379。</li></ul></article>
           <article class="card release reveal"><span class="tag">v1.13.0 · 2026-10-20</span><h3 data-zh="M9 收尾" data-en="M9 close-out">M9 收尾</h3><ul><li data-zh="增量发布、真实 OTA 演练、GUI、设备预览协议。" data-en="Incremental releases, a real OTA drill, GUI and device-preview protocol.">增量发布、真实 OTA 演练、GUI、设备预览协议。</li><li data-zh="Windows MSYS gpg 兼容与 crates.io 审计。" data-en="Windows MSYS gpg compatibility and the crates.io audit.">Windows MSYS gpg 兼容与 crates.io 审计。</li></ul></article>
         </div>
@@ -200,19 +200,19 @@
         </div>
         <div class="install-panel" id="panel-linux" role="tabpanel" aria-labelledby="tab-linux">
           <div class="code-card"><div class="code-head"><span>bash · release v1.16.0</span><button class="copy" type="button">Copy</button></div><pre><code>curl -fsSL https://raw.githubusercontent.com/erikwang2013/polypack/v1.16.0/scripts/install.sh | bash
-poly --version</code></pre></div>
+polypack --version</code></pre></div>
           <p class="small" data-zh="强制 SHA-256 校验；配置 MINISIGN 公钥后可启用严格签名验证。" data-en="Mandatory SHA-256 verification; strict minisign verification is available with a configured public key.">强制 SHA-256 校验；配置 MINISIGN 公钥后可启用严格签名验证。</p>
         </div>
         <div class="install-panel" id="panel-windows" role="tabpanel" aria-labelledby="tab-windows" hidden>
-          <div class="code-card"><div class="code-head"><span>PowerShell</span><button class="copy" type="button">Copy</button></div><pre><code># Download poly-x86_64-pc-windows-msvc.zip from downloads/,
-# verify SHA256SUMS.txt, then add poly.exe to PATH.
-poly --version</code></pre></div>
+          <div class="code-card"><div class="code-head"><span>PowerShell</span><button class="copy" type="button">Copy</button></div><pre><code># Download polypack-x86_64-pc-windows-msvc.zip from downloads/,
+# verify SHA256SUMS.txt, then add polypack.exe to PATH.
+polypack --version</code></pre></div>
         </div>
         <div class="install-panel" id="panel-source" role="tabpanel" aria-labelledby="tab-source" hidden>
           <div class="code-card"><div class="code-head"><span>bash</span><button class="copy" type="button">Copy</button></div><pre><code>git clone https://github.com/erikwang2013/polypack
 cd polypack
-cargo install --path crates/poly-cli
-poly doctor</code></pre></div>
+cargo install --path crates/polypack-cli
+polypack doctor</code></pre></div>
         </div>
         <p class="small" data-zh-html="需要一个可用的 Rust 工具链（MSRV 1.98）。完整说明见 <a href=&quot;https://github.com/erikwang2013/polypack/blob/v1.16.0/docs/INSTALL.md&quot; target=&quot;_blank&quot; rel=&quot;noopener&quot;>docs/INSTALL</a>。" data-en-html="A Rust toolchain (MSRV 1.98) is required for source builds. See <a href=&quot;https://github.com/erikwang2013/polypack/blob/v1.16.0/docs/INSTALL.en.md&quot; target=&quot;_blank&quot; rel=&quot;noopener&quot;>docs/INSTALL</a> for the full guide.">需要一个可用的 Rust 工具链（MSRV 1.98）。完整说明见 <a href="https://github.com/erikwang2013/polypack/blob/v1.16.0/docs/INSTALL.md" target="_blank" rel="noopener">docs/INSTALL</a>。</p>
       </div>
@@ -223,28 +223,28 @@ poly doctor</code></pre></div>
         <p class="eyebrow" data-zh="使用说明" data-en="USAGE">使用说明</p>
         <h2 data-zh="从初始化到发布" data-en="From init to release">从初始化到发布</h2>
         <div class="grid grid-2">
-          <div class="code-card"><div class="code-head"><span>poly init / build</span><button class="copy" type="button">Copy</button></div><pre><code>poly init my-app
+          <div class="code-card"><div class="code-head"><span>polypack init / build</span><button class="copy" type="button">Copy</button></div><pre><code>polypack init my-app
 cd my-app
-poly doctor
-poly build --target web</code></pre></div>
-          <div class="code-card"><div class="code-head"><span>poly verify / release</span><button class="copy" type="button">Copy</button></div><pre><code>poly verify --reproducible
-poly verify --sbom --target web
-poly release --changed --target linux,web \
+polypack doctor
+polypack build --target web</code></pre></div>
+          <div class="code-card"><div class="code-head"><span>polypack verify / release</span><button class="copy" type="button">Copy</button></div><pre><code>polypack verify --reproducible
+polypack verify --sbom --target web
+polypack release --changed --target linux,web \
   --repo .polypack/repo --credential env:RELEASE_GPG_KEY</code></pre></div>
-          <div class="code-card"><div class="code-head"><span>poly plugin</span><button class="copy" type="button">Copy</button></div><pre><code>poly plugin new my-target
-poly plugin check my-target
-poly plugin add my-plugin --index ./index.json \
+          <div class="code-card"><div class="code-head"><span>polypack plugin</span><button class="copy" type="button">Copy</button></div><pre><code>polypack plugin new my-target
+polypack plugin check my-target
+polypack plugin add my-plugin --index ./index.json \
   --trust-root env:INDEX_KEY --publisher-key env:PUBLISHER_KEY
-poly plugin search my-plugin --index ./index.json \
+polypack plugin search my-plugin --index ./index.json \
   --trust-root env:INDEX_KEY --revocations-trust-root env:REVOCATION_KEY</code></pre></div>
-          <div class="code-card"><div class="code-head"><span>history / update / preview</span><button class="copy" type="button">Copy</button></div><pre><code>poly history --target web --limit 10
-poly update manifest --channel stable --version 1.2.3 \
+          <div class="code-card"><div class="code-head"><span>history / update / preview</span><button class="copy" type="button">Copy</button></div><pre><code>polypack history --target web --limit 10
+polypack update manifest --channel stable --version 1.2.3 \
   --platform windows-x86_64 --artifact app.nsis.zip --base-url https://updates.example.com
-poly preview --dry-run --target android --device android-phone</code></pre></div>
+polypack preview --dry-run --target android --device android-phone</code></pre></div>
         </div>
         <figure class="figure reveal">
-          <img src="assets/img/request-cycle.svg" data-en-src="assets/img/en/request-cycle.svg" alt="一次 poly release 的请求周期" loading="lazy" width="1380" height="628">
-          <figcaption data-zh="一次 poly release 的请求周期：计划、构建、校验、签名与回执。" data-en="The request cycle of one poly release: plan, build, verify, sign and receipt.">一次 poly release 的请求周期：计划、构建、校验、签名与回执。</figcaption>
+          <img src="assets/img/request-cycle.svg" data-en-src="assets/img/en/request-cycle.svg" alt="一次 polypack release 的请求周期" loading="lazy" width="1380" height="628">
+          <figcaption data-zh="一次 polypack release 的请求周期：计划、构建、校验、签名与回执。" data-en="The request cycle of one polypack release: plan, build, verify, sign and receipt.">一次 polypack release 的请求周期：计划、构建、校验、签名与回执。</figcaption>
         </figure>
       </div>
     </section>
@@ -286,7 +286,7 @@ poly preview --dry-run --target android --device android-phone</code></pre></div
     <div class="wrap">
       <div class="footer-grid">
         <div>
-          <div class="footer-brand"><img src="assets/img/pax-cute.svg" alt="" width="44" height="44"><span>PolyPack</span></div>
+          <div class="footer-brand"><img src="assets/img/pax-mark.svg" alt="" width="48" height="48"><span>PolyPack</span></div>
           <p data-zh="多端打包，一次送达。Rust 核心 × React UI × 49 个目标。" data-en="Package once, deliver everywhere. Rust core × React UI × 49 targets.">多端打包，一次送达。Rust 核心 × React UI × 49 个目标。</p>
           <p><a href="https://erik.xyz" target="_blank" rel="noopener">艾瑞可 erik ↗</a></p>
         </div>

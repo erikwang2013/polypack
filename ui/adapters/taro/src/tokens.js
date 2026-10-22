@@ -1,5 +1,5 @@
-// 最小 token 集（T-M3-05）：值与 crates/poly-cli/templates/app/ui/tokens.css 同源
-// （与 adapter-native 同一事实源；@polypack/ui 包落地前，poly init 模板文件是唯一源）。
+// 最小 token 集（T-M3-05）：值与 crates/polypack-cli/templates/app/ui/tokens.css 同源
+// （与 adapter-native 同一事实源；@polypack/ui 包落地前，polypack init 模板文件是唯一源）。
 // 漂移由 test/tokens.test.js 解析该 CSS 逐一断言（含「模板新增 token 而包内未同步」）。
 
 /** 颜色 / 间距 / 字号 / 圆角。间距与字号为设计稿 px 数值（Taro 编译期按 designWidth 换算 rpx）。 */

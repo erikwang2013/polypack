@@ -44,7 +44,7 @@ test("target → 电视目标面：L3 七枚齐备且均可装配", () => {
       "vidaa-tv",
       "webos-tv",
     ],
-    "L3 目标面（lead 定案七枚；poly-targets 登记落位后由 capabilities 哨兵收口）",
+    "L3 目标面（lead 定案七枚；polypack-targets 登记落位后由 capabilities 哨兵收口）",
   );
 });
 

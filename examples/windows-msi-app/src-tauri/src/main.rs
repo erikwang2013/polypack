@@ -4,9 +4,9 @@
 //! `--smoke` starts the normal Tauri runtime (the configured window is created
 //! before the setup hook runs, so reaching the hook proves WebView2 initialized),
 //! writes an `ok` marker, and exits automatically a moment later. The marker path
-//! comes from `POLY_MSI_SMOKE_MARKER`, falling back to the user temp directory.
+//! comes from `POLYPACK_MSI_SMOKE_MARKER`, falling back to the user temp directory.
 //!
-//! The test launches the *installed* copy from `%ProgramFiles%\Poly MSI Sample`
+//! The test launches the *installed* copy from `%ProgramFiles%\Polypack MSI Sample`
 //! and uses the marker file rather than stdout because release builds use the
 //! Windows GUI subsystem (no console attached).
 
@@ -17,9 +17,9 @@ use std::time::Duration;
 
 /// Where `--smoke` records successful startup.
 fn smoke_marker() -> PathBuf {
-    std::env::var_os("POLY_MSI_SMOKE_MARKER")
+    std::env::var_os("POLYPACK_MSI_SMOKE_MARKER")
         .map(PathBuf::from)
-        .unwrap_or_else(|| std::env::temp_dir().join("poly-msi-sample-smoke.txt"))
+        .unwrap_or_else(|| std::env::temp_dir().join("polypack-msi-sample-smoke.txt"))
 }
 
 fn main() {
@@ -31,7 +31,7 @@ fn main() {
             let marker = smoke_marker();
             std::fs::write(&marker, "ok\n")?;
             println!(
-                "poly-msi-sample: smoke marker written to {}",
+                "polypack-msi-sample: smoke marker written to {}",
                 marker.display()
             );
             let handle = app.handle().clone();
@@ -45,5 +45,5 @@ fn main() {
 
     builder
         .run(tauri::generate_context!())
-        .expect("poly-msi-sample: Tauri runtime failed");
+        .expect("polypack-msi-sample: Tauri runtime failed");
 }

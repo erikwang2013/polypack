@@ -31,7 +31,7 @@ const CHROME_CANDIDATES = [
 /** 查找 Chrome/Chromium 可执行文件；缺席返回 null（调用方 SKIP-with-print）。 */
 export function findChrome(explicit = null) {
   if (explicit !== null) return existsSync(explicit) ? explicit : null;
-  if (process.env.POLY_TV_CHROME && existsSync(process.env.POLY_TV_CHROME)) return process.env.POLY_TV_CHROME;
+  if (process.env.POLYPACK_TV_CHROME && existsSync(process.env.POLYPACK_TV_CHROME)) return process.env.POLYPACK_TV_CHROME;
   const dirs = (process.env.PATH ?? "").split(":").filter((d) => d.length > 0);
   for (const candidate of CHROME_CANDIDATES) {
     if (candidate.startsWith("/")) {
@@ -205,7 +205,7 @@ async function pageSocketUrl(browserWs, tries = 40) {
 export async function runWebTargets({ targets, dist, logs, scenes, chromePath = null }) {
   const chrome = findChrome(chromePath);
   if (chrome === null) {
-    const skipNote = "SKIP：本机无 Chrome/Chromium（可经 --chrome 或 POLY_TV_CHROME 指定）；web 系腿未执行";
+    const skipNote = "SKIP：本机无 Chrome/Chromium（可经 --chrome 或 POLYPACK_TV_CHROME 指定）；web 系腿未执行";
     return targets.map((target) => ({ target, leg: "web-surrogate", status: "skip", skipNote, scenes: [] }));
   }
   if (typeof WebSocket === "undefined") {
@@ -217,7 +217,7 @@ export async function runWebTargets({ targets, dist, logs, scenes, chromePath = 
   }
 
   mkdirSync(logs, { recursive: true });
-  const profile = mkdtempSync(join(tmpdir(), "poly-tv-smoke-"));
+  const profile = mkdtempSync(join(tmpdir(), "polypack-tv-smoke-"));
   const stderrRef = [];
   const child = spawn(chrome, [
     "--headless=new",

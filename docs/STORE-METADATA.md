@@ -1,6 +1,6 @@
 # 商店元数据管线（M9-E5）
 
-> 状态：已实现（T-M9-13/14/15）。`store/metadata/<platform>/<locale>.toml` 由 `poly publish --metadata-dir` 校验并确定性打包为提审材料；`--check-metadata` 可单独校验不发布。截图只存路径，不读图片内容。
+> 状态：已实现（T-M9-13/14/15）。`store/metadata/<platform>/<locale>.toml` 由 `polypack publish --metadata-dir` 校验并确定性打包为提审材料；`--check-metadata` 可单独校验不发布。截图只存路径，不读图片内容。
 
 ## 1. 目录与 schema
 
@@ -28,7 +28,7 @@ store/metadata/
 | screenshots | 0–10 个路径，png/jpg/jpeg/gif | 必填，2–5 个路径，png/jpg/jpeg |
 | privacy_url / support_url | 必填，http(s) 绝对 URL | 必填，http(s) 绝对 URL |
 
-规则来源与检索日期见 `crates/poly-publish/src/metadata.rs` 模块文档；平台规则变化时升 `schema` 并同步该表。
+规则来源与检索日期见 `crates/polypack-publish/src/metadata.rs` 模块文档；平台规则变化时升 `schema` 并同步该表。
 
 ## 3. 完整示例
 
@@ -48,10 +48,10 @@ support_url = "https://example.com/support"
 
 ```bash
 # 只校验，不读取产物 / 凭据，不触网
-poly publish --check-metadata --metadata-dir store/metadata --channel wechat-open-platform
+polypack publish --check-metadata --metadata-dir store/metadata --channel wechat-open-platform
 
 # 校验并作为提审材料发布
-poly publish --metadata-dir store/metadata --channel wechat-open-platform \
+polypack publish --metadata-dir store/metadata --channel wechat-open-platform \
   --appid wx0000000000000000 --version 1.2.3 --credential env:WECHAT_KEY --package dist
 ```
 

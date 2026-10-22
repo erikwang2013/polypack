@@ -1,0 +1,25 @@
+# T-M2-01/02 真跑夹具：带 uniffi 接口定义（UDL）的核心库。
+#
+# 刻意独立 workspace：uniffi 是 MPL-2.0，**不得**进入主 workspace 的 Cargo.lock
+# （cargo-deny 的 licenses 白名单不放行）。夹具只被 `bridge_real.rs` 在
+# `POLYPACK_CONTRACT_REAL=1` 时经 `cargo build` 使用，主 tree 的依赖面因此零变化。
+#
+# crate-type：cdylib 供 `polypack bridge aar` 交叉编译取 lib<pax_core>.so；`lib`（rlib）供
+# wasm 出口的 shim 以路径依赖链接（T-M3-07——缺 rlib 形态时 shim 编译报 unlinked crate）。
+[package]
+name = "pax_core"
+version = "0.0.0"
+edition = "2024"
+publish = false
+
+[lib]
+crate-type = ["cdylib", "staticlib", "lib"]
+name = "pax_core"
+
+[dependencies]
+uniffi = { version = "0.32", features = ["build", "cli"] }
+
+[build-dependencies]
+uniffi = { version = "0.32", features = ["build", "cli"] }
+
+[workspace]

@@ -785,7 +785,7 @@ rect.c-bg-rect { fill: var(--bg); }</style><rect class="c-bg-rect" width="100%" 
 
         <!-- Transition paths -->
         <path data-edge-from="init" data-edge-to="dev" data-edge-key="0" data-edge-id="init-dev" data-composition-points="153,157;189,157" d="M 153 157 L 189 157" class="a-default" stroke-width="1.1" marker-end="url(#arrowhead)"/>
-        <path data-edge-from="dev" data-edge-to="build" data-edge-label="poly build" data-edge-key="1" data-edge-id="dev-build" data-composition-points="307,157;343,157" d="M 307 157 L 343 157" class="a-emphasis" stroke-width="2" marker-end="url(#arrowhead-emphasis)"/>
+        <path data-edge-from="dev" data-edge-to="build" data-edge-label="polypack build" data-edge-key="1" data-edge-id="dev-build" data-composition-points="307,157;343,157" d="M 307 157 L 343 157" class="a-emphasis" stroke-width="2" marker-end="url(#arrowhead-emphasis)"/>
         <path data-edge-from="build" data-edge-to="verify" data-edge-label="artifacts ready" data-edge-key="2" data-edge-id="build-verify" data-composition-points="461,157;497,157" d="M 461 157 L 497 157" class="a-default" stroke-width="1.1" marker-end="url(#arrowhead)"/>
         <path data-edge-from="verify" data-edge-to="release" data-edge-label="verified" data-edge-key="3" data-edge-id="verify-release" data-composition-points="615,157;651,157" d="M 615 157 L 651 157" class="a-emphasis" stroke-width="2" marker-end="url(#arrowhead-emphasis)"/>
         <path data-edge-from="verify" data-edge-to="keys" data-edge-label="missing creds" data-edge-key="4" data-edge-id="verify-keys" data-composition-points="556,188;556,278" d="M 556 188 L 556 278" class="a-security" stroke-width="1.1" marker-end="url(#arrowhead-security)"/>
@@ -798,8 +798,8 @@ rect.c-bg-rect { fill: var(--bg); }</style><rect class="c-bg-rect" width="100%" 
         <path data-edge-from="release" data-edge-to="archived" data-edge-label="end of life" data-edge-key="11" data-edge-id="release-archived" data-composition-points="769,157;790,157;790,408;689,408;710,450" d="M 769 157 L 780 157 Q 790 157 790 167 L 790 398 Q 790 408 780 408 L 699 408 Q 689 408 693.4721359549995 416.94427190999915 L 710 450" class="a-default" stroke-width="1.1" marker-end="url(#arrowhead)"/>
 
         <!-- States -->
-        <g id="node-init" data-node-id="init" data-node-label="Bootstrap" tabindex="0" role="button" aria-label="Focus Bootstrap, poly init · manifest generated, Project stages" aria-pressed="false" data-node-kind="start" data-node-sublabel="poly init · manifest generated" data-node-tag="entry" data-node-context="Project stages">
-          <title>Bootstrap · poly init · manifest generated · Project stages · entry</title>
+        <g id="node-init" data-node-id="init" data-node-label="Bootstrap" tabindex="0" role="button" aria-label="Focus Bootstrap, polypack init · manifest generated, Project stages" aria-pressed="false" data-node-kind="start" data-node-sublabel="polypack init · manifest generated" data-node-tag="entry" data-node-context="Project stages">
+          <title>Bootstrap · polypack init · manifest generated · Project stages · entry</title>
           <rect x="35" y="126" width="118" height="62" rx="7" class="c-mask"/>
           <rect x="35" y="126" width="118" height="62" rx="7" class="c-frontend" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="start" class="semantic-sigil s-frontend" transform="translate(136 132) scale(0.6875)">
@@ -808,12 +808,12 @@ rect.c-bg-rect { fill: var(--bg); }</style><rect class="c-bg-rect" width="100%" 
           </g>
         <text data-detail="fine" x="45" y="140" class="t-frontend" font-size="7" font-weight="700">01</text>
           <text data-detail-anchor="" x="94" y="147" class="t-primary" font-size="10" font-weight="600" text-anchor="middle">Bootstrap</text>
-          <text data-detail="context" x="94" y="163" class="t-muted" font-size="7" text-anchor="middle">poly init · manifest generated</text>
+          <text data-detail="context" x="94" y="163" class="t-muted" font-size="7" text-anchor="middle">polypack init · manifest generated</text>
         <text data-detail="fine" x="94" y="177" class="t-frontend" font-size="7" text-anchor="middle">entry</text>
         </g>
 
-        <g id="node-dev" data-node-id="dev" data-node-label="Dev iteration" tabindex="0" role="button" aria-label="Focus Dev iteration, poly dev · hot preview, Project stages" aria-pressed="false" data-node-kind="active" data-node-sublabel="poly dev · hot preview" data-node-context="Project stages">
-          <title>Dev iteration · poly dev · hot preview · Project stages</title>
+        <g id="node-dev" data-node-id="dev" data-node-label="Dev iteration" tabindex="0" role="button" aria-label="Focus Dev iteration, polypack dev · hot preview, Project stages" aria-pressed="false" data-node-kind="active" data-node-sublabel="polypack dev · hot preview" data-node-context="Project stages">
+          <title>Dev iteration · polypack dev · hot preview · Project stages</title>
           <rect x="189" y="126" width="118" height="62" rx="7" class="c-mask"/>
           <rect x="189" y="126" width="118" height="62" rx="7" class="c-backend" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="active" class="semantic-sigil s-backend" transform="translate(290 132) scale(0.6875)">
@@ -821,7 +821,7 @@ rect.c-bg-rect { fill: var(--bg); }</style><rect class="c-bg-rect" width="100%" 
           </g>
         <text data-detail="fine" x="199" y="140" class="t-backend" font-size="7" font-weight="700">02</text>
           <text data-detail-anchor="" x="248" y="147" class="t-primary" font-size="10" font-weight="600" text-anchor="middle">Dev iteration</text>
-          <text data-detail="context" x="248" y="163" class="t-muted" font-size="7" text-anchor="middle">poly dev · hot preview</text>
+          <text data-detail="context" x="248" y="163" class="t-muted" font-size="7" text-anchor="middle">polypack dev · hot preview</text>
         </g>
 
         <g id="node-build" data-node-id="build" data-node-label="Build" tabindex="0" role="button" aria-label="Focus Build, cross-compile + UI bundle, Project stages" aria-pressed="false" data-node-kind="active" data-node-sublabel="cross-compile + UI bundle" data-node-context="Project stages">
@@ -925,9 +925,9 @@ rect.c-bg-rect { fill: var(--bg); }</style><rect class="c-bg-rect" width="100%" 
 
         <!-- Transition labels -->
 
-        <g data-detail="context" data-edge-from="dev" data-edge-to="build" data-edge-label="poly build" data-edge-key="1" data-edge-id="dev-build">
+        <g data-detail="context" data-edge-from="dev" data-edge-to="build" data-edge-label="polypack build" data-edge-key="1" data-edge-id="dev-build">
           <rect x="294.5" y="191" width="61" height="16" rx="4" class="c-mask"/>
-          <text x="325" y="202" class="t-backend" font-size="8" text-anchor="middle">poly build</text>
+          <text x="325" y="202" class="t-backend" font-size="8" text-anchor="middle">polypack build</text>
         </g>
         <g data-detail="context" data-edge-from="build" data-edge-to="verify" data-edge-label="artifacts ready" data-edge-key="2" data-edge-id="build-verify">
           <rect x="436.25" y="191" width="85.5" height="16" rx="4" class="c-mask"/>

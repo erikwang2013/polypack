@@ -4,9 +4,9 @@
 - 日期（Date）：2026-10-20
 - 决策者（Deciders）：项目维护者
 
-> **后续更新（2026-10-20）**：本 ADR 记录的决策边界仍然有效，但当时的暂缓理由已被后续交付取代——G5 已核实 `enforce_admins=true`（ENV-18 CLOSED）；T-M9-18 GUI 已在 `app/` 交付（真实窗口环境门控）；T-M9-20 的 `DevicePool` / `DeviceLease` 与 `poly preview --dry-run` 已交付，仅 T-M9-21 真机演练仍为外部项。详见 `docs/GUI.md`、`docs/DEVICE-PREVIEW.md` 与 `docs/INITIATIVES.md`。
+> **后续更新（2026-10-20）**：本 ADR 记录的决策边界仍然有效，但当时的暂缓理由已被后续交付取代——G5 已核实 `enforce_admins=true`（ENV-18 CLOSED）；T-M9-18 GUI 已在 `app/` 交付（真实窗口环境门控）；T-M9-20 的 `DevicePool` / `DeviceLease` 与 `polypack preview --dry-run` 已交付，仅 T-M9-21 真机演练仍为外部项。详见 `docs/GUI.md`、`docs/DEVICE-PREVIEW.md` 与 `docs/INITIATIVES.md`。
 >
-> **Follow-up (2026-10-20)**: the decision boundaries in this ADR still hold, but the deferral reasons have since been superseded — G5 verified `enforce_admins=true` (ENV-18 CLOSED); the T-M9-18 GUI landed in `app/` (real window environment-gated); T-M9-20's `DevicePool` / `DeviceLease` and `poly preview --dry-run` landed, leaving only the T-M9-21 real-device drill external. See `docs/GUI.md`, `docs/DEVICE-PREVIEW.md`, and `docs/INITIATIVES.md`.
+> **Follow-up (2026-10-20)**: the decision boundaries in this ADR still hold, but the deferral reasons have since been superseded — G5 verified `enforce_admins=true` (ENV-18 CLOSED); the T-M9-18 GUI landed in `app/` (real window environment-gated); T-M9-20's `DevicePool` / `DeviceLease` and `polypack preview --dry-run` landed, leaving only the T-M9-21 real-device drill external. See `docs/GUI.md`, `docs/DEVICE-PREVIEW.md`, and `docs/INITIATIVES.md`.
 
 > **English abstract**: Three M9 items are decided without writing code. M9-G5 branch protection is an external repository-owner action: apply a ruleset with `enforce_admins=true` and archive evidence; the repository cannot fix it. M9-E6 splits build history into implementable event persistence (T-M9-16/17) and a deferred GUI (T-M9-18) because `app/` is not tracked. M9-E7 device preview starts with build-vs-buy research (T-M9-19); no device-farm or `DevicePool`/`DeviceLease` code is added here. Each item has concrete acceptance and exit criteria below.
 
@@ -16,9 +16,9 @@ INITIATIVES 的三个 GA / 孵化项各有不同的阻塞类型：
 
 - **M9-G5**：required checks 已配置，但 `enforce_admins=false`，管理员直推可以绕过 secret-scan 等必过检查；这是 GitHub 仓库设置问题，仓库内代码无法修复。
 - **M9-E6**：`BuildEvent` 只经 stdout / JSON Lines 输出，没有持久历史；README 描述的 `app/` 控制台目录当前未被仓库跟踪，GUI 任务没有可构建的落点。
-- **M9-E7**：`poly smoke` 能在无设备时 SKIP，但没有设备池、租约、安装启动截图与日志归档；自建农场与购买云设备农场都缺乏成本与覆盖证据。
+- **M9-E7**：`polypack smoke` 能在无设备时 SKIP，但没有设备池、租约、安装启动截图与日志归档；自建农场与购买云设备农场都缺乏成本与覆盖证据。
 
-本 ADR 为三项分别给出决策、责任方与验收 / 退出标准。它**不新增代码**：不改 `.github/` 设置或工作流、不改 `crates/poly-core/src/events.rs`、不改 `crates/poly-cli/src/farm.rs`、不实现 `DevicePool` / `DeviceLease`。
+本 ADR 为三项分别给出决策、责任方与验收 / 退出标准。它**不新增代码**：不改 `.github/` 设置或工作流、不改 `crates/polypack-core/src/events.rs`、不改 `crates/polypack-cli/src/farm.rs`、不实现 `DevicePool` / `DeviceLease`。
 
 ## 决策摘要
 
@@ -61,7 +61,7 @@ M9-G5 **不是代码任务**，是仓库管理员的 GitHub 设置动作，状�
 ### 决策
 
 1. **T-M9-16（事件持久化与轮转）与 T-M9-17（历史查询与矩阵聚合）是实现第一步**，可以在当前仓库内完成，不依赖 `app/`。
-2. **T-M9-18（poly-gui 矩阵与详情视图）暂缓**，因为 `app/` 目录未被仓库跟踪；现在写 GUI 既无法在 CI 构建，也无法评审。
+2. **T-M9-18（polypack-gui 矩阵与详情视图）暂缓**，因为 `app/` 目录未被仓库跟踪；现在写 GUI 既无法在 CI 构建，也无法评审。
 3. GUI 的启动条件是 `app/` 控制台骨架落地（M1 Tauri 管线跑通并被跟踪），届时复用同一 history schema，不另起数据源。
 
 ### 持久化契约（决策级）
@@ -70,12 +70,12 @@ M9-G5 **不是代码任务**，是仓库管理员的 GitHub 设置动作，状�
 - 每行一个 JSON 对象，至少含：`schema_version`、`build_id`、`ts`（RFC 3339 UTC）、`target`、`event`；可选 `duration_ms`、`artifact_digest`、`error_code`、`status`。
 - 追加写，不在构建中重写整个文件；按条数与体积双上限轮转，轮转文件命名确定、可排序。
 - 路径写入前脱敏，只保留相对工程根的路径；不写环境变量值、凭据、绝对宿主路径。
-- 与 `poly build --json` 共用同一序列化 schema 与金样，避免 CLI / 文件 / 未来 GUI 三套字段。
+- 与 `polypack build --json` 共用同一序列化 schema 与金样，避免 CLI / 文件 / 未来 GUI 三套字段。
 - 历史写入是尽力而为：写入失败输出告警事件，但不让构建失败；显式查询历史时才报告读取错误。
 
 ### 验收 / 退出标准（T-M9-16 / T-M9-17）
 
-- [ ] 每次构建恰好追加一条可解析记录；`poly build --json` 与文件记录字段一致；
+- [ ] 每次构建恰好追加一条可解析记录；`polypack build --json` 与文件记录字段一致；
 - [ ] 超过条数或体积上限时轮转，旧文件完整、无半行 JSON；
 - [ ] 路径脱敏断言：记录中不出现绝对宿主路径、凭据引用值或环境变量值；
 - [ ] 查询按目标返回最近 N 次状态 / 耗时 / 摘要；空历史返回空结果且退出码 0；
@@ -94,7 +94,7 @@ M9-G5 **不是代码任务**，是仓库管理员的 GitHub 设置动作，状�
 ### 明确不做
 
 - 不做多用户服务端、不做云同步、不做远程农场调度 UI（INITIATIVES M9-E6 非目标）。
-- 本 ADR 不修改 `crates/poly-core/src/events.rs`、`crates/poly-cli/src/build.rs` 或新建 `app/`。
+- 本 ADR 不修改 `crates/polypack-core/src/events.rs`、`crates/polypack-cli/src/build.rs` 或新建 `app/`。
 
 ## 3. M9-E7 · 设备预览：先 build-vs-buy 调研
 
@@ -117,14 +117,14 @@ M9-E7 当前只批准**调研**（T-M9-19），不批准设备农场实现。T-M
 ### 退出 / 升级标准
 
 - **Go**：调研结论支持购买或混合，且成本、覆盖、隐私均可接受；此时才启动 T-M9-20，协议扩展需保持与农场 v1 兼容。
-- **No-go**：维持人工矩阵与 `poly smoke` 的 SKIP-with-print，E7 关闭或继续观察；不得用不完整调研启动采购。
+- **No-go**：维持人工矩阵与 `polypack smoke` 的 SKIP-with-print，E7 关闭或继续观察；不得用不完整调研启动采购。
 - **安全边界**：任何预览只跑夹具应用，不使用真实用户数据；截图与日志默认保留 ≤ 30 天；凭据不进入农场协议帧。
 - **重开条件**：商店预览 / 真机回归成为发布阻塞，或供应商价格 / 覆盖发生显著变化。
 
 ### 明确不做
 
 - 不做完整设备农场产品、不做无人值守审核、不承诺所有目标都有设备。
-- 不修改 `crates/poly-cli/src/farm.rs`、`crates/poly-cli/src/smoke.rs`、`docs/FARM.md`。
+- 不修改 `crates/polypack-cli/src/farm.rs`、`crates/polypack-cli/src/smoke.rs`、`docs/FARM.md`。
 - 不在调研前采购设备或签署云服务合同。
 
 ## 备选方案（Alternatives）
@@ -151,6 +151,6 @@ M9-E7 当前只批准**调研**（T-M9-19），不批准设备农场实现。T-M
 - [INITIATIVES](../INITIATIVES.md) §2 M9-E6 / M9-E7、§5 M9-G5（[English](../INITIATIVES.en.md)）
 - [ROADMAP](../ROADMAP.md) §13 E6 / E7（[English](../ROADMAP.en.md)）
 - [TASKS](../TASKS.md) T-M2-12（`enforce_admins=false` 记录，[English](../TASKS.en.md)）
-- [`crates/poly-core/src/events.rs`](../../crates/poly-core/src/events.rs)（`BuildEvent`）
-- [`crates/poly-cli/src/farm.rs`](../../crates/poly-cli/src/farm.rs)、[FARM](../FARM.md)（农场协议）
-- [`crates/poly-cli/src/smoke.rs`](../../crates/poly-cli/src/smoke.rs)（现有冒烟与 SKIP 行为）
+- [`crates/polypack-core/src/events.rs`](../../crates/polypack-core/src/events.rs)（`BuildEvent`）
+- [`crates/polypack-cli/src/farm.rs`](../../crates/polypack-cli/src/farm.rs)、[FARM](../FARM.md)（农场协议）
+- [`crates/polypack-cli/src/smoke.rs`](../../crates/polypack-cli/src/smoke.rs)（现有冒烟与 SKIP 行为）

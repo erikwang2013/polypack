@@ -1,29 +1,29 @@
 #!/usr/bin/env bash
-# T-M9-44 农场生产预检：在真实部署目录上检查权限 / 路径隔离 / 凭据变量 / poly scan。
+# T-M9-44 农场生产预检：在真实部署目录上检查权限 / 路径隔离 / 凭据变量 / polypack scan。
 # 只读：临时文件写入目标目录后立即删除；不访问网络；不打印任何凭据值。
 #
 # 用法（先构建同一提交的 CLI）：
-#   cargo build -p poly-cli
-#   POLY=target/debug/poly tools/farm-preflight.sh [--project DIR] \
+#   cargo build -p polypack-cli
+#   POLYPACK=target/debug/polypack tools/farm-preflight.sh [--project DIR] \
 #     [--credential NAME=env:VAR]... <farm-dir> <cache|local|s3://bucket/prefix> <work-dir>
 #
 # 退出码：0 = 无 FAIL；1 = 有 FAIL；2 = 用法错误。WARN 不影响退出码。
 set -uo pipefail
 
 ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
-POLY=${POLY:-poly}
-if ! command -v "$POLY" >/dev/null 2>&1; then
-  if [ -x "$ROOT/target/debug/poly" ]; then
-    POLY="$ROOT/target/debug/poly"
-  elif [ -x "$ROOT/target/release/poly" ]; then
-    POLY="$ROOT/target/release/poly"
+POLYPACK=${POLYPACK:-polypack}
+if ! command -v "$POLYPACK" >/dev/null 2>&1; then
+  if [ -x "$ROOT/target/debug/polypack" ]; then
+    POLYPACK="$ROOT/target/debug/polypack"
+  elif [ -x "$ROOT/target/release/polypack" ]; then
+    POLYPACK="$ROOT/target/release/polypack"
   else
-    echo "找不到 poly：先 cargo build -p poly-cli，或设 POLY=<二进制路径>" >&2
+    echo "找不到 polypack：先 cargo build -p polypack-cli，或设 POLYPACK=<二进制路径>" >&2
     exit 2
   fi
 fi
-POLY=$(command -v "$POLY")
-case "$POLY" in /*) ;; *) POLY="$(cd "$(dirname "$POLY")" && pwd)/$(basename "$POLY")" ;; esac
+POLYPACK=$(command -v "$POLYPACK")
+case "$POLYPACK" in /*) ;; *) POLYPACK="$(cd "$(dirname "$POLYPACK")" && pwd)/$(basename "$POLYPACK")" ;; esac
 
 usage() {
   cat >&2 <<'EOF'
@@ -105,11 +105,11 @@ has_other_bits() {
   (( (8#$1 & 8#007) != 0 ))
 }
 
-# ---------------------------------------------------------------- poly
-if "$POLY" --version >/dev/null 2>&1; then
-  pass "poly：$("$POLY" --version 2>/dev/null | head -n 1)"
+# ---------------------------------------------------------------- polypack
+if "$POLYPACK" --version >/dev/null 2>&1; then
+  pass "polypack：$("$POLYPACK" --version 2>/dev/null | head -n 1)"
 else
-  fail "poly 不可执行：$POLY"
+  fail "polypack 不可执行：$POLYPACK"
 fi
 
 # ---------------------------------------------------------------- 目录
@@ -219,22 +219,22 @@ for spec in ${CREDS[@]+"${CREDS[@]}"}; do
   esac
 done
 
-# ---------------------------------------------------------------- poly scan 哨兵
+# ---------------------------------------------------------------- polypack scan 哨兵
 if [ -n "$PROJECT" ]; then
   if [ ! -d "$PROJECT" ]; then
     fail "工程目录不存在：$PROJECT"
   else
     SCAN_LOG=$(mktemp "${TMPDIR:-/tmp}/farm-preflight-scan-XXXXXX")
-    if "$POLY" scan --dir "$PROJECT" >"$SCAN_LOG" 2>&1; then
-      pass "poly scan：未发现明文凭据（$PROJECT）"
+    if "$POLYPACK" scan --dir "$PROJECT" >"$SCAN_LOG" 2>&1; then
+      pass "polypack scan：未发现明文凭据（$PROJECT）"
     else
-      fail "poly scan 命中或失败（$PROJECT）；复跑：$POLY scan --dir $PROJECT"
+      fail "polypack scan 命中或失败（$PROJECT）；复跑：$POLYPACK scan --dir $PROJECT"
       tail -n 20 "$SCAN_LOG" >&2
     fi
     rm -f "$SCAN_LOG"
   fi
 else
-  warn "未提供 --project：跳过 poly scan 哨兵（建议对构建地工程运行）"
+  warn "未提供 --project：跳过 polypack scan 哨兵（建议对构建地工程运行）"
 fi
 
 printf '\npreflight: %d passed, %d failed, %d warnings\n' "$PASSED" "$FAILED" "$WARNED"

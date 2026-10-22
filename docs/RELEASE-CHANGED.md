@@ -1,6 +1,6 @@
-# 增量发布：`poly release --changed`
+# 增量发布：`polypack release --changed`
 
-`poly release --changed` 在多目标仓库里只重发变更过的目标。判定键来自产物集合的
+`polypack release --changed` 在多目标仓库里只重发变更过的目标。判定键来自产物集合的
 清单摘要（`manifest_digest` / `cache_key`）；命中既有回执的目标输出独立的
 `release-skipped` 事件并以 0 退出，不触仓库后端、不重写回执、`runs` 不递增。
 
@@ -11,7 +11,7 @@
 - 命中条件：回执的 `cache_key`（旧回执降级为 `manifest_digest`）、仓库根与仓库格式
   三者一致。
 - 未命中（新产物 / 新目标 / 换仓库）照常发布，并在 `--changed` 路径写入 `cache_key`。
-- 首跑用普通 `poly release` 留下的回执没有 `cache_key`：紧随其后的 `--changed` 会按
+- 首跑用普通 `polypack release` 留下的回执没有 `cache_key`：紧随其后的 `--changed` 会按
   `manifest_digest` 降级命中（`key_source: "manifest_digest"`，仍然跳过）；之后的
   `--changed` 回执带 `cache_key`（`key_source: "cache_key"`）。
 
@@ -33,7 +33,7 @@ format = "deb"
 两跑使用同一命令；首跑没有回执，因此 5 个目标全部发布，二跑只发布变更目标：
 
 ```bash
-poly release --changed \
+polypack release --changed \
   --target linux,web,windows,macos,android \
   --repo .polypack/repo \
   --credential env:RELEASE_GPG_KEY \
@@ -83,7 +83,7 @@ Rust 集成测试中的另一次测量为 11743 ms → 3163 ms（73%）。
 - name: release --changed 5 目标实测（Linux 聚焦）
   if: runner.os == 'Linux'
   run: |
-    cargo test -p poly-cli --test release five_target_changed -- --nocapture 2>&1 \
+    cargo test -p polypack-cli --test release five_target_changed -- --nocapture 2>&1 \
       | tee /tmp/release-changed.log
     grep -q "first_published=5 second_published=1" /tmp/release-changed.log
 ```
@@ -93,6 +93,6 @@ Rust 集成测试中的另一次测量为 11743 ms → 3163 ms（73%）。
 
 ## `--since` 的限制
 
-`poly release` 不构建，回执也没有按目标的源码 / 包路径映射，无法用 git diff 稳健判定
-目标是否变更。因此 `--since <REF>` 在本模式返回 `poly::E_PLAN_0002` 而不是静默忽略；
+`polypack release` 不构建，回执也没有按目标的源码 / 包路径映射，无法用 git diff 稳健判定
+目标是否变更。因此 `--since <REF>` 在本模式返回 `polypack::E_PLAN_0002` 而不是静默忽略；
 请改用 `--changed`（按回执判定），或先用 git diff 预筛 `--target`。

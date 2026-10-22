@@ -77,7 +77,7 @@ test("桥产物挂载点就位：gradle fileTree 指向 T-M2-02 口径路径 + �
   assert.match(
     read("android/app/build.gradle"),
     /fileTree\(dir: "\$\{rootProject\.projectDir\}\/\.\.\/bridge\/android", include: \["\*\.aar"\]\)/,
-    "app/build.gradle 须挂 <工程根>/bridge/android（`poly bridge aar` 的输出目录，非 libs/）",
+    "app/build.gradle 须挂 <工程根>/bridge/android（`polypack bridge aar` 的输出目录，非 libs/）",
   );
   assert.ok(!exists("android/app/libs"), "libs/ 挂载点已按 T-M2-02 口径移除");
   assert.match(read("index.js"), /adapter\.native\.register/, "装配层须保留桥产物注册位");

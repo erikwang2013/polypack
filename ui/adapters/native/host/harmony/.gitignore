@@ -1,4 +1,4 @@
 node_modules/
 
-# 桥产物（T-M3-01：`poly bridge ohos` 的输出，不入库）
+# 桥产物（T-M3-01：`polypack bridge ohos` 的输出，不入库）
 bridge/

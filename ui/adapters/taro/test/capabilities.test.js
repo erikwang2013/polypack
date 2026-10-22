@@ -1,5 +1,5 @@
-// T-M3-05 能力矩阵对照测试：adapter-taro 的 capabilities 与 poly-targets 内建声明
-// （crates/poly-targets/src/builtin.rs，单一事实源）不得漂移。
+// T-M3-05 能力矩阵对照测试：adapter-taro 的 capabilities 与 polypack-targets 内建声明
+// （crates/polypack-targets/src/builtin.rs，单一事实源）不得漂移。
 // JS 侧不依赖 cargo（CI 三宿主的 JS 步骤不构建 Rust），故以正则解析该 Rust 单源文件做哨兵。
 
 import assert from "node:assert/strict";
@@ -18,7 +18,7 @@ import {
 } from "../src/index.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
-const BUILTIN_RS = path.resolve(HERE, "../../../../crates/poly-targets/src/builtin.rs");
+const BUILTIN_RS = path.resolve(HERE, "../../../../crates/polypack-targets/src/builtin.rs");
 
 /** 解析内建 TargetSpec 块 → [{ id, ui, format }]（正则够用：单源文件结构由 Rust 侧测试保证）。 */
 function parseBuiltinTargets() {
@@ -41,7 +41,7 @@ test("矩阵与内建目标声明对照：矩阵每行都有对应 TargetSpec", 
   const ids = builtinTargets.map((t) => t.id);
   assert.ok(ids.length >= 7, `内建目标解析异常（${ids.length} 个）`);
   for (const id of Object.keys(CAPABILITY_MATRIX)) {
-    assert.ok(ids.includes(id), `矩阵目标 "${id}" 不在 poly-targets 内建声明中`);
+    assert.ok(ids.includes(id), `矩阵目标 "${id}" 不在 polypack-targets 内建声明中`);
   }
 });
 

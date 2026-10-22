@@ -6,26 +6,26 @@
 
 ## 1. Conclusion
 
-- The workspace version is raised from `0.0.0` to `1.16.0` with `Cargo.lock` synced; `poly --version` now matches the latest tag.
+- The workspace version is raised from `0.0.0` to `1.16.0` with `Cargo.lock` synced; `polypack --version` now matches the latest tag.
 - All 9 crates have `description`, `license`, `repository`, `readme`, `keywords`, and `categories`. `readme` inherits the root `README.md`, while `keywords` / `categories` are declared once in the root manifest.
 - Internal workspace path dependencies now carry `version = "1.16.0"`; without a version, `cargo package` refuses to package them (path dependency without version).
 - Every crate still sets `publish = false`. Nothing was published or uploaded, and no crates.io token was used.
-- Two names are already owned by others on crates.io: `poly-cli` and `poly-core`; the other 7 are available. Publication requires a rename or ownership transfer, which is a maintainer decision.
+- Two names are already owned by others on crates.io: `polypack-cli` and `polypack-core`; the other 7 are available. Publication requires a rename or ownership transfer, which is a maintainer decision.
 - `cargo package --list` passes 9/9 (content audit); `cargo publish --dry-run` is refused because of `publish = false`. That is the intended release gate, not a metadata error.
 
 ## 2. Publish Order
 
 | Order | Crate | Internal dependencies | Name status (2026-10-20) |
 | --- | --- | --- | --- |
-| 1 | `poly-targets` | — | available |
-| 2 | `poly-cache` | — | available |
-| 3 | `poly-toolchain` | — | available |
-| 4 | `poly-core` | `poly-cache`, `poly-targets` (optional `poly-toolchain`) | taken (0.0.1) |
-| 5 | `poly-bundle` | `poly-targets` | available |
-| 6 | `poly-sign` | `poly-core` | available |
-| 7 | `poly-publish` | `poly-core` | available |
-| 8 | `poly-plugin` | `poly-core`, `poly-sign`, `poly-targets` | available |
-| 9 | `poly-cli` | all internal crates | taken (0.5.0) |
+| 1 | `polypack-targets` | — | available |
+| 2 | `polypack-cache` | — | available |
+| 3 | `polypack-toolchain` | — | available |
+| 4 | `polypack-core` | `polypack-cache`, `polypack-targets` (optional `polypack-toolchain`) | taken (0.0.1) |
+| 5 | `polypack-bundle` | `polypack-targets` | available |
+| 6 | `polypack-sign` | `polypack-core` | available |
+| 7 | `polypack-publish` | `polypack-core` | available |
+| 8 | `polypack-plugin` | `polypack-core`, `polypack-sign`, `polypack-targets` | available |
+| 9 | `polypack-cli` | all internal crates | taken (0.5.0) |
 
 ## 3. Required Metadata
 
@@ -45,11 +45,11 @@
 
 | Blocker | Evidence | Status / exit condition |
 | --- | --- | --- |
-| Version was `0.0.0` | root manifest value; `poly --version` printed `0.0.0` | resolved: raised to `1.16.0` |
+| Version was `0.0.0` | root manifest value; `polypack --version` printed `0.0.0` | resolved: raised to `1.16.0` |
 | Path dependencies had no `version` | `cargo package` reports "all dependencies must have a version specified when packaging" | resolved: workspace dependencies now carry `1.16.0` |
 | `publish = false` | set on 9/9 crates | open: remove in a separate commit after the maintainer approves the plan |
-| `poly-cli` name taken | crates.io has 0.5.0 owned outside this repository | open: rename to `polypack-cli` (available) or obtain ownership |
-| `poly-core` name taken | crates.io has 0.0.1 owned outside this repository | open: rename to `polypack-engine` (available) or obtain ownership |
+| `polypack-cli` name taken | crates.io has 0.5.0 owned outside this repository | open: rename to `polypack-cli` (available) or obtain ownership |
+| `polypack-core` name taken | crates.io has 0.0.1 owned outside this repository | open: rename to `polypack-engine` (available) or obtain ownership |
 | No crates.io token | no `CARGO_REGISTRY_TOKEN` in the repository or CI secrets | open: maintainer configures a secret; never commit it |
 
 ## 5. Commands
@@ -58,32 +58,32 @@ Audit commands; no token and no upload:
 
 ```bash
 # Content listing (one crate at a time; CI runs only this step, on Linux)
-cargo package --list -p poly-targets --locked
-cargo package --list -p poly-cache --locked
-cargo package --list -p poly-toolchain --locked
-cargo package --list -p poly-core --locked
-cargo package --list -p poly-bundle --locked
-cargo package --list -p poly-sign --locked
-cargo package --list -p poly-publish --locked
-cargo package --list -p poly-plugin --locked
-cargo package --list -p poly-cli --locked
+cargo package --list -p polypack-targets --locked
+cargo package --list -p polypack-cache --locked
+cargo package --list -p polypack-toolchain --locked
+cargo package --list -p polypack-core --locked
+cargo package --list -p polypack-bundle --locked
+cargo package --list -p polypack-sign --locked
+cargo package --list -p polypack-publish --locked
+cargo package --list -p polypack-plugin --locked
+cargo package --list -p polypack-cli --locked
 
 # Inspect the current gate (expected failure: publish = false)
-cargo publish --dry-run -p poly-targets
+cargo publish --dry-run -p polypack-targets
 ```
 
 Actual publication (only after the maintainer approves and `publish = false` is removed; follow the §2 order and wait for each crate to appear in the index):
 
 ```bash
-cargo publish -p poly-targets
-cargo publish -p poly-cache
-cargo publish -p poly-toolchain
-cargo publish -p poly-core
-cargo publish -p poly-bundle
-cargo publish -p poly-sign
-cargo publish -p poly-publish
-cargo publish -p poly-plugin
-cargo publish -p poly-cli
+cargo publish -p polypack-targets
+cargo publish -p polypack-cache
+cargo publish -p polypack-toolchain
+cargo publish -p polypack-core
+cargo publish -p polypack-bundle
+cargo publish -p polypack-sign
+cargo publish -p polypack-publish
+cargo publish -p polypack-plugin
+cargo publish -p polypack-cli
 ```
 
 ## 6. Release Checklist
@@ -91,14 +91,14 @@ cargo publish -p poly-cli
 | # | Check | Command | Pass criterion |
 | --- | --- | --- | --- |
 | 1 | Contents and metadata | `cargo package --list -p <crate> --locked` | 9/9 succeed; listings contain only sources, tests, README, and Cargo files |
-| 2 | Name decision | maintainer reviews §4 | a written conclusion for the `poly-cli` / `poly-core` rename or ownership |
+| 2 | Name decision | maintainer reviews §4 | a written conclusion for the `polypack-cli` / `polypack-core` rename or ownership |
 | 3 | Remove the release gate | separate commit deleting `publish = false` | 9/9 crates publishable and CI still green |
 | 4 | Tests | `cargo test --workspace --no-fail-fast` | all green |
 | 5 | Lint | `cargo clippy --workspace --all-targets -- -D warnings` | all green |
-| 6 | Version consistency | `cargo run -p poly-cli -- --version` | prints `1.16.0`, matching `[workspace.package].version` |
+| 6 | Version consistency | `cargo run -p polypack-cli -- --version` | prints `1.16.0`, matching `[workspace.package].version` |
 | 7 | Topological dry-run | `cargo publish --dry-run -p <crate>` | all pass in §2 order |
 | 8 | Actual publication | `cargo publish -p <crate>` | succeeds in §2 order; continue only after the index shows the crate |
-| 9 | Install verification | `cargo install poly-cli --version 1.16.0 --locked` | installs bin `poly`; `poly --version` prints `1.16.0` |
+| 9 | Install verification | `cargo install polypack-cli --version 1.16.0 --locked` | installs bin `polypack`; `polypack --version` prints `1.16.0` |
 
 ## 7. Version and Tag Policy
 

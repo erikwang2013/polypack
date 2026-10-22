@@ -1,6 +1,6 @@
 // T-M4-01/02 代理渲染测试：同一示例页面组件树经 react-dom/server 静态渲染。
 // 定位：TV 真机 / 模拟器预览需设备链，本测试是代理证据，非真机证据；
-// 断言四件事：① 语义标记与 poly init 模板页一致；② 焦点环随方向键移动（capabilities 驱动）；
+// 断言四件事：① 语义标记与 polypack init 模板页一致；② 焦点环随方向键移动（capabilities 驱动）；
 // ③ data-focus 观测锚点（T-M4-13 冒烟通道）；④ 安全区外框由 platformStyle().safeArea 派生。
 // react/react-dom 未安装（CI 无 npm install）时 skip 不 fail。
 
@@ -13,7 +13,7 @@ import { fileURLToPath } from "node:url";
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const TEMPLATE_MAIN_JSX = path.resolve(
   HERE,
-  "../../../../crates/poly-cli/templates/app/ui/main.jsx",
+  "../../../../crates/polypack-cli/templates/app/ui/main.jsx",
 );
 const ACCENT = "#0e7490"; // focusRing.borderColor（tokens.color.accent）
 
@@ -56,7 +56,7 @@ function focusedId(html) {
 /** 焦点环出现次数（border 颜色计数；每帧恰好 1 个节点带环）。 */
 const ringCount = (html) => html.split(ACCENT).length - 1;
 
-test("代理渲染：同一示例页面组件树可渲染，语义标记与 poly init 模板页一致", { skip }, () => {
+test("代理渲染：同一示例页面组件树可渲染，语义标记与 polypack init 模板页一致", { skip }, () => {
   const { page } = setup();
   const html = render(page);
   const template = fs.readFileSync(TEMPLATE_MAIN_JSX, "utf8");

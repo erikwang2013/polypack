@@ -4,17 +4,17 @@
 - 日期（Date）：2026-10-20
 - 决策者（Deciders）：项目维护者
 
-> **English abstract**: Third-party plugins are distributed through a decentralized, signed index rather than an official registry at GA. The index and its append-only revocation document are canonical JSON signed with detached GPG signatures; clients verify both through `poly-sign` (`ArtifactVerifier` + `CredentialRef` trust roots). Every indexed artifact must carry a publisher signature and a BLAKE3 SRI. Maintainers sign the index, a separately held revocation key owns revocation, and mirrors are untrusted replicas. No index or CLI code is added by this ADR.
+> **English abstract**: Third-party plugins are distributed through a decentralized, signed index rather than an official registry at GA. The index and its append-only revocation document are canonical JSON signed with detached GPG signatures; clients verify both through `polypack-sign` (`ArtifactVerifier` + `CredentialRef` trust roots). Every indexed artifact must carry a publisher signature and a BLAKE3 SRI. Maintainers sign the index, a separately held revocation key owns revocation, and mirrors are untrusted replicas. No index or CLI code is added by this ADR.
 
 ## 背景（Context）
 
-[ADR 0003](0003-wasm-plugins.md) 已确定 WASM 插件沙箱与 `target-spec/v1`，但插件目前只以文件形式分发：构建 `dist/plugin.wasm`、复制到应用目录、在 `polypack.toml` 的 `[[plugins]]` 中写 `path`，签名可选。`poly plugin digest` 能算 SRI，`poly plugin check` 能查脚手架，却没有索引、版本解析、来源展示与吊销机制。用户无法回答「有哪些插件、哪个版本可信、是否已被撤回」。
+[ADR 0003](0003-wasm-plugins.md) 已确定 WASM 插件沙箱与 `target-spec/v1`，但插件目前只以文件形式分发：构建 `dist/plugin.wasm`、复制到应用目录、在 `polypack.toml` 的 `[[plugins]]` 中写 `path`，签名可选。`polypack plugin digest` 能算 SRI，`polypack plugin check` 能查脚手架，却没有索引、版本解析、来源展示与吊销机制。用户无法回答「有哪些插件、哪个版本可信、是否已被撤回」。
 
 ROADMAP §14 把分发形态列为开放问题；INITIATIVES M9-D1 的触发条件是第三方插件 ≥ 3 个或出现第一个「如何发现 / 安装插件」的外部请求。本 ADR 先定治理与可验证格式，不等待触发条件，也不新增实现代码。约束来自既有决策：
 
 - 不做付费市场、不做托管插件执行（INITIATIVES M9-D1 非目标）；
 - 不改变 SRI 与 GPG 验签信任链（ADR 0003、GA §3.2）；
-- 凭据只以 `CredentialRef` 引用出现，私钥与口令永不进入客户端路径（ROADMAP §7、[`crates/poly-sign/src/artifact.rs`](../../crates/poly-sign/src/artifact.rs)）；
+- 凭据只以 `CredentialRef` 引用出现，私钥与口令永不进入客户端路径（ROADMAP §7、[`crates/polypack-sign/src/artifact.rs`](../../crates/polypack-sign/src/artifact.rs)）；
 - 插件能力仍由 ADR 0003 的沙箱按插件显式授权，索引不能扩大能力。
 
 ## 决策（Decision）
@@ -32,9 +32,9 @@ ROADMAP §14 把分发形态列为开放问题；INITIATIVES M9-D1 的触发条�
 | `index.json` + `index.json.asc` | 发现、版本与发布者元数据 | 索引签名密钥 | `sequence` 单调递增 + `previous_digest` 链 |
 | `revocations.json` + `revocations.json.asc` | 只追加的吊销快照 | 吊销密钥（与索引密钥分离） | `sequence` 单调递增，客户端保留最高值 |
 
-`poly plugin add` 的验证顺序固定，任一步失败即拒绝安装，不做部分信任：
+`polypack plugin add` 的验证顺序固定，任一步失败即拒绝安装，不做部分信任：
 
-1. 索引分离签名（`poly-sign` 的 `ArtifactVerifier`，信任根来自 `CredentialRef`）；
+1. 索引分离签名（`polypack-sign` 的 `ArtifactVerifier`，信任根来自 `CredentialRef`）；
 2. 索引 `schema`、`sequence`、`previous_digest` 与 `expires_at`（防回滚、防分叉、防过期）；
 3. 吊销快照验签与版本 / 密钥匹配（吊销优先于安装）；
 4. 制品 SRI（`blake3-<hex>`）与字节数；
@@ -99,9 +99,9 @@ ROADMAP §14 把分发形态列为开放问题；INITIATIVES M9-D1 的触发条�
 ### 5. 规范化与签名算法
 
 - 两个文档均使用 RFC 8785 JSON Canonicalization Scheme（JCS）序列化为 UTF-8，无多余空白；签名对象是规范化字节，不是文件原始排版。
-- 签名使用 GPG detached signature（ASCII armor）；摘要算法由 GPG 默认的安全摘要决定，客户端通过 `poly-sign` 的 `gpg --verify` 验证。
+- 签名使用 GPG detached signature（ASCII armor）；摘要算法由 GPG 默认的安全摘要决定，客户端通过 `polypack-sign` 的 `gpg --verify` 验证。
 - 客户端不接触私钥。索引与吊销签名在离线发布步骤完成，密钥不进入 CI 的普通作业；发布 CI 只上传已签名的静态文件。
-- `poly-sign` 的复用点：`ArtifactVerifier::from_reference` 从 `CredentialRef`（keyring / Vault / env / 内存注入）解析公钥，`verify_detached` 校验字节与签名。索引与制品使用同一验证器，不引入第二套密码学实现。
+- `polypack-sign` 的复用点：`ArtifactVerifier::from_reference` 从 `CredentialRef`（keyring / Vault / env / 内存注入）解析公钥，`verify_detached` 校验字节与签名。索引与制品使用同一验证器，不引入第二套密码学实现。
 
 ### 6. 信任根
 
@@ -144,7 +144,7 @@ ROADMAP §14 把分发形态列为开放问题；INITIATIVES M9-D1 的触发条�
 
 ### 10. 规范边界
 
-- 本 ADR 不实现 `poly plugin search/add`、不新增索引文件、不修改 `crates/poly-plugin` 或 `crates/poly-cli`。
+- 本 ADR 不实现 `polypack plugin search/add`、不新增索引文件、不修改 `crates/polypack-plugin` 或 `crates/polypack-cli`。
 - 不新增 TargetSpec；插件仍是 `target-spec/v1` 的 WASM 组件。
 - 不改变 [ADR 0003](0003-wasm-plugins.md) 的沙箱、SRI、签名加载顺序与错误码语义，只在其上增加索引层的治理规则。
 - 官方注册表 / 镜像若启动，必须另立 ADR 说明运维、可用性与治理；本 ADR 不承诺该服务。
@@ -174,18 +174,18 @@ ROADMAP §14 把分发形态列为开放问题；INITIATIVES M9-D1 的触发条�
 - [ADR 0003：WASM 插件沙箱与 `target-spec/v1` WIT](0003-wasm-plugins.md)
 - [ROADMAP](../ROADMAP.md) §7（安全与密钥）、§14（开放问题，[English](../ROADMAP.en.md)）
 - [GA](../GA.md) §3.2（制品加载顺序）、§3.4（`E_PLUGIN_0001`–`0010`）
-- [`crates/poly-sign/src/artifact.rs`](../../crates/poly-sign/src/artifact.rs)（`ArtifactVerifier` 与 `CredentialRef` 信任根）
-- [`crates/poly-plugin`](../../crates/poly-plugin/)（沙箱与 WIT 契约）
+- [`crates/polypack-sign/src/artifact.rs`](../../crates/polypack-sign/src/artifact.rs)（`ArtifactVerifier` 与 `CredentialRef` 信任根）
+- [`crates/polypack-plugin`](../../crates/polypack-plugin/)（沙箱与 WIT 契约）
 - RFC 8785（JSON Canonicalization Scheme）
 
 ## 实现后记（T-M9-41，2026-10）
 
 本节只记录落地差异与限制，不改变上文决策。
 
-- **代码位置**：`crates/poly-cli/src/plugin/index/{schema,rules,verify,select,mod}.rs`；`poly plugin add` / `poly plugin search` 复用 `poly-sign` 的 `ArtifactVerifier` / `CredentialRef`，不新增密码学实现。
+- **代码位置**：`crates/polypack-cli/src/plugin/index/{schema,rules,verify,select,mod}.rs`；`polypack plugin add` / `polypack plugin search` 复用 `polypack-sign` 的 `ArtifactVerifier` / `CredentialRef`，不新增密码学实现。
 - **命令行**：`--index`（文件或目录，目录读 `index.json`）、`--index-signature`、`--revocations`、`--revocations-signature`、`--trust-root`、`--revocations-trust-root`、`--state`（默认 `.polypack/plugin-index`）；`add` 另需 `--publisher-key`。省略签名/吊销路径时按同目录 `.asc` / `revocations.json` 推导。
 - **默认离线**：`add` 只解析 `file:` 制品与签名 URL，`https://` 条目会以 `E_PLUGIN_0011` 拒绝并提示先手动下载；未实现镜像下载、多索引回退或网络探测。`search` 完全不触网。
-- **规范化**：签名对象是 `poly-publish` 既有 `metadata::canonical_json` 的紧凑 UTF-8 字节；该 schema 只有整数与字符串，输出与 RFC 8785 JCS 一致。索引/吊销文件无需按规范化排版落盘；客户端解析后重新规范化再验签，不依赖磁盘排版。
+- **规范化**：签名对象是 `polypack-publish` 既有 `metadata::canonical_json` 的紧凑 UTF-8 字节；该 schema 只有整数与字符串，输出与 RFC 8785 JCS 一致。索引/吊销文件无需按规范化排版落盘；客户端解析后重新规范化再验签，不依赖磁盘排版。
 - **验证顺序**：索引分离签名与 `signing_key_id` 指纹绑定 → schema / sequence / `previous_digest` / `expires_at` → 吊销快照分离签名 → 吊销密钥必须与索引密钥不同 → 吊销 schema / `revocations_digest` 绑定 / sequence → 新鲜度 → 条目选择 → 制品大小与 `blake3` SRI → 发布者分离签名与指纹。任一步失败即拒绝，`add` 不执行插件。
 - **吊销快照为必需输入（fail closed）**；超过 30 天未刷新拒绝新安装，与 §7 一致。尚未实现 §7 的 7 天本地缓存 TTL 与 `--allow-stale`，当前过期索引在 `search` 阶段同样拒绝（比「允许查询已安装元数据」更保守）。
 - **回滚基线**：`<state>/state.json` 记录索引与吊销的 `sequence` + 规范化摘要；同 sequence 不同摘要 → `E_PLUGIN_0012`，低 sequence → `E_PLUGIN_0011`，紧邻上一版还会校验 `previous_digest`。基线在 `add` 安装成功后或 `search` 验证通过后推进（已见即记录，搜索本身也会失败关闭）。跨版本跳号依赖单调 sequence，不做逐版链验证。

@@ -1,5 +1,5 @@
-// T-M4-01 能力矩阵对照测试：矩阵形态、宿主提示覆盖、降级分支闭合集 + poly-targets 哨兵。
-// 哨兵手法与 adapter-native 同源：JS 侧不依赖 cargo，正则解析 crates/poly-targets/src/builtin.rs
+// T-M4-01 能力矩阵对照测试：矩阵形态、宿主提示覆盖、降级分支闭合集 + polypack-targets 哨兵。
+// 哨兵手法与 adapter-native 同源：JS 侧不依赖 cargo，正则解析 crates/polypack-targets/src/builtin.rs
 // 单源文件；TV 目标登记（T-M4-04/08/09/10）落位前该哨兵为空集通过，落位后自动收口。
 
 import assert from "node:assert/strict";
@@ -17,7 +17,7 @@ import {
 } from "../src/index.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
-const BUILTIN_RS = path.resolve(HERE, "../../../../crates/poly-targets/src/builtin.rs");
+const BUILTIN_RS = path.resolve(HERE, "../../../../crates/polypack-targets/src/builtin.rs");
 
 /** 解析内建 TargetSpec 块 → [{ id, ui }]（与 adapter-native 同一解析手法）。 */
 function parseBuiltinTargets() {
@@ -35,7 +35,7 @@ function parseBuiltinTargets() {
 
 const builtinTargets = parseBuiltinTargets();
 
-test("poly-targets 哨兵：内建 L3 电视目标（*-tv）⊆ 本矩阵（登记落位后自动收口）", () => {
+test("polypack-targets 哨兵：内建 L3 电视目标（*-tv）⊆ 本矩阵（登记落位后自动收口）", () => {
   assert.ok(builtinTargets.length >= 7, `内建目标解析异常（${builtinTargets.length} 个）`);
   // L3 七枚口径（lead 定案）：android-tv / fire-tv / harmonyos-tv / tizen-tv / webos-tv /
   // vidaa-tv / smartcast-tv——凡内建目标 id 以 -tv 结尾者必在本矩阵（tvos 不带后缀，不在本哨兵面）。

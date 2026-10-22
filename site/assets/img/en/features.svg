@@ -803,15 +803,15 @@ rect.c-bg-rect { fill: var(--bg); }</style><rect class="c-bg-rect" width="100%" 
         <text data-detail="context" x="160" y="166" class="t-muted" font-size="9" text-anchor="middle">50+ TargetSpecs · declarative</text>
         </g>
 
-        <g id="node-one_command" data-node-id="one_command" data-node-label="One command, many targets" tabindex="0" role="button" aria-label="Focus One command, many targets, poly release covers all, 1 · Targets &amp; coverage" aria-pressed="false" data-node-kind="backend" data-node-sublabel="poly release covers all" data-node-context="1 · Targets &amp; coverage">
-          <title>One command, many targets · poly release covers all · 1 · Targets &amp; coverage</title>
+        <g id="node-one_command" data-node-id="one_command" data-node-label="One command, many targets" tabindex="0" role="button" aria-label="Focus One command, many targets, polypack release covers all, 1 · Targets &amp; coverage" aria-pressed="false" data-node-kind="backend" data-node-sublabel="polypack release covers all" data-node-context="1 · Targets &amp; coverage">
+          <title>One command, many targets · polypack release covers all · 1 · Targets &amp; coverage</title>
           <rect x="335" y="120" width="200" height="64" rx="6" class="c-mask"/>
           <rect x="335" y="120" width="200" height="64" rx="6" class="c-backend" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(341 126) scale(0.6875)">
             <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
           </g>
           <text data-detail-anchor="" x="435" y="150" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">One command, many targets</text>
-        <text data-detail="context" x="435" y="166" class="t-muted" font-size="9" text-anchor="middle">poly release covers all</text>
+        <text data-detail="context" x="435" y="166" class="t-muted" font-size="9" text-anchor="middle">polypack release covers all</text>
         </g>
 
         <g id="node-variants" data-node-id="variants" data-node-label="OS variants" tabindex="0" role="button" aria-label="Focus OS variants, GrapheneOS · KaiOS · HarmonyOS, 1 · Targets &amp; coverage" aria-pressed="false" data-node-kind="frontend" data-node-sublabel="GrapheneOS · KaiOS · HarmonyOS" data-node-context="1 · Targets &amp; coverage">
@@ -890,8 +890,8 @@ rect.c-bg-rect { fill: var(--bg); }</style><rect class="c-bg-rect" width="100%" 
         <text data-detail="context" x="435" y="426" class="t-muted" font-size="9" text-anchor="middle">Material · HIG · HarmonyOS</text>
         </g>
 
-        <g id="node-preview" data-node-id="preview" data-node-label="Hot preview" tabindex="0" role="button" aria-label="Focus Hot preview, poly dev · live reload, 3 · Cross-platform UI" aria-pressed="false" data-node-kind="frontend" data-node-sublabel="poly dev · live reload" data-node-context="3 · Cross-platform UI">
-          <title>Hot preview · poly dev · live reload · 3 · Cross-platform UI</title>
+        <g id="node-preview" data-node-id="preview" data-node-label="Hot preview" tabindex="0" role="button" aria-label="Focus Hot preview, polypack dev · live reload, 3 · Cross-platform UI" aria-pressed="false" data-node-kind="frontend" data-node-sublabel="polypack dev · live reload" data-node-context="3 · Cross-platform UI">
+          <title>Hot preview · polypack dev · live reload · 3 · Cross-platform UI</title>
           <rect x="610" y="380" width="200" height="64" rx="6" class="c-mask"/>
           <rect x="610" y="380" width="200" height="64" rx="6" class="c-frontend" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="frontend" class="semantic-sigil s-frontend" transform="translate(616 386) scale(0.6875)">
@@ -901,7 +901,7 @@ rect.c-bg-rect { fill: var(--bg); }</style><rect class="c-bg-rect" width="100%" 
             <circle cx="6.3" cy="4.8" r=".7" class="sigil-fill"/>
           </g>
           <text data-detail-anchor="" x="710" y="410" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Hot preview</text>
-        <text data-detail="context" x="710" y="426" class="t-muted" font-size="9" text-anchor="middle">poly dev · live reload</text>
+        <text data-detail="context" x="710" y="426" class="t-muted" font-size="9" text-anchor="middle">polypack dev · live reload</text>
         </g>
 
         <g id="node-keystore" data-node-id="keystore" data-node-label="Key vault" tabindex="0" role="button" aria-label="Focus Key vault, Keychain/Vault · references, 4 · Signing &amp; publishing" aria-pressed="false" data-node-kind="security" data-node-sublabel="Keychain/Vault · references" data-node-context="4 · Signing &amp; publishing">

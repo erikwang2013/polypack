@@ -1,5 +1,5 @@
-// 示例页面（T-M4-01/02/03 验收的「同一页面组件树」）：与 poly init 模板页
-// （crates/poly-cli/templates/app/ui/main.jsx）语义同形——图标 / 标题 / 版本行 /
+// 示例页面（T-M4-01/02/03 验收的「同一页面组件树」）：与 polypack init 模板页
+// （crates/polypack-cli/templates/app/ui/main.jsx）语义同形——图标 / 标题 / 版本行 /
 // 计数按钮 / 提示行；TV 增量：10-foot 蒙皮、安全区外框、2×2 几何遍历网格（四向可达）、
 // 焦点环（遥控器无指针恒开）、详情弹层 + 播放器子层（分层 Back 逐层回退 + 数字键快捷）。
 // 原语由宿主注入（react-dom 元素）；测试传 DOM 标签做代理渲染（test/helpers/dom-primitives.js）。
@@ -138,7 +138,7 @@ export function createExamplePage(primitives, adapter) {
         h(
           Text,
           { style: styles.muted },
-          `版本 0.1.0 · 由 PolyPack 构建（poly build --target ${adapter.target}）`,
+          `版本 0.1.0 · 由 PolyPack 构建（polypack build --target ${adapter.target}）`,
         ),
         row([button("counter", `点击计数：${clicks}`), button("reset", "重置")]),
         row([button("detail", "详情"), button("exit", "退出")]),

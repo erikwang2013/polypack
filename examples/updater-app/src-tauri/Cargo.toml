@@ -1,5 +1,5 @@
 [package]
-name = "poly-updater-sample"
+name = "polypack-updater-sample"
 version = "0.1.0"
 description = "Tauri v2 self-hosted updater sample used by the real update/rollback drill (T-M9-12)"
 edition = "2021"

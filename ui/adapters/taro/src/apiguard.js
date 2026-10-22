@@ -6,10 +6,10 @@
 //  - `FORBIDDEN_GLOBALS`：DOM / 浏览器全局——小程序沙箱无 DOM（降级分支 no-direct-dom），
 //    出现即构建期报错（语义上必然运行期 TypeError 的调用不该走到编译）。
 //
-// 扫描是行级词边界匹配（同 poly-core scan.rs 的行内标记口径）：够用、确定、无 parser 依赖；
-// 字符串 / 注释里的同名词用同行标记 `poly:allow-api` 放行（构造样本与文档示例的出口）。
+// 扫描是行级词边界匹配（同 polypack-core scan.rs 的行内标记口径）：够用、确定、无 parser 依赖；
+// 字符串 / 注释里的同名词用同行标记 `polypack:allow-api` 放行（构造样本与文档示例的出口）。
 // 属性键位置（`window:`）放行：Taro app.config 的标准键会被词边界匹配误伤（T-M3-06 真跑实证）。
-// 构建期入口：bin/check-api.mjs（poly-bundle 小程序打包器的编译前预检调用同一实现）。
+// 构建期入口：bin/check-api.mjs（polypack-bundle 小程序打包器的编译前预检调用同一实现）。
 
 /** 允许的 Taro API 名（`Taro.<name>`）；每一行都对应本包或示例的真实使用面。 */
 export const API_WHITELIST = Object.freeze([
@@ -60,7 +60,7 @@ export const FORBIDDEN_GLOBALS = Object.freeze([
 ]);
 
 /** 放行标记：同一行含任一标记即整行豁免（构造样本 / 文档示例）。 */
-export const ALLOW_MARKERS = Object.freeze(["poly:allow-api"]);
+export const ALLOW_MARKERS = Object.freeze(["polypack:allow-api"]);
 
 /** 扫描的规则 id → 人话说明（报告与测试断言共用）。 */
 export const VIOLATION_KINDS = Object.freeze({

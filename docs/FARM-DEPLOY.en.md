@@ -1,6 +1,6 @@
 # Remote farm deployment guide
 
-> Applies to: farm protocol v1 (`farm/v1`; a v1 master still accepts `farm/v0` workers). Commands and flags follow `poly farm worker|submit --help` and `crates/poly-cli/src/farm.rs`.
+> Applies to: farm protocol v1 (`farm/v1`; a v1 master still accepts `farm/v0` workers). Commands and flags follow `polypack farm worker|submit --help` and `crates/polypack-cli/src/farm.rs`.
 > Chinese: [FARM-DEPLOY.md](FARM-DEPLOY.md)
 > Companion reading: [FARM.en.md](FARM.en.md) (frames / credential model / signature verification), [ROADMAP.en.md](ROADMAP.en.md) §7 (security and secrets), §8 (tests and CI), §9 (M2 risk R3: Apple targets require a macOS host).
 
@@ -8,7 +8,7 @@
 
 ```text
 Linux / Windows origin                       macOS build site
-poly farm submit                            poly farm worker (mac-01, mac-02, ... processes)
+polypack farm submit                            polypack farm worker (mac-01, mac-02, ... processes)
         │                                          │
         └──────────► /srv/polypack-farm ◄──────────┘   v1/<worker_id>/ mailbox pair + JSON Lines frames
                      /srv/polypack-cache                shared-directory CAS (--cache; optional but recommended)
@@ -19,17 +19,17 @@ poly farm submit                            poly farm worker (mac-01, mac-02, ..
 
 | Role | Responsibility | Requirements |
 |---|---|---|
-| Origin | `poly farm submit`: declare targets, wait for the worker pool, merge results | `poly`, project sources, farm directory; no Xcode |
-| Build site | `poly farm worker`: register, pull, execute, report | `poly`, platform toolchain (Xcode / SDK), farm directory, credential backend |
+| Origin | `polypack farm submit`: declare targets, wait for the worker pool, merge results | `polypack`, project sources, farm directory; no Xcode |
+| Build site | `polypack farm worker`: register, pull, execute, report | `polypack`, platform toolchain (Xcode / SDK), farm directory, credential backend |
 
 ## 2. Prerequisites
 
 | Item | Requirement |
 |---|---|
-| `poly` version | Build both sides from the **same commit** (`poly-cli` has `publish = false` and is not on crates.io yet); `poly --version` must match |
+| `polypack` version | Build both sides from the **same commit** (`polypack-cli` has `publish = false` and is not on crates.io yet); `polypack --version` must match |
 | Shared filesystem | Farm directory and cache directory visible at the **same path** on both sides; the cache directory must provide same-directory POSIX atomic rename (verify NFS export semantics; SMB / sync drives that break rename must not host the shared CAS) |
 | Project visibility | v0 requires the project at the path carried by the job frame on the build site (same-path mount, or rsync to the same path); automatic cross-machine sync is out of scope for v0 |
-| Platform toolchain | macOS worker: full Xcode (`xcodebuild` / `plutil` / `ditto` / `codesign`) plus three Apple Rust triples; the Linux origin only needs Rust and `poly` |
+| Platform toolchain | macOS worker: full Xcode (`xcodebuild` / `plutil` / `ditto` / `codesign`) plus three Apple Rust triples; the Linux origin only needs Rust and `polypack` |
 
 ## 3. Deploy from zero
 
@@ -52,12 +52,12 @@ sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
 sudo xcodebuild -license accept
 xcodebuild -version
 
-# poly from the same commit (example repo path /srv/poly-src)
-cd /srv/poly-src
+# polypack from the same commit (example repo path /srv/polypack-src)
+cd /srv/polypack-src
 rustup target add aarch64-apple-ios aarch64-apple-ios-sim x86_64-apple-ios
-cargo build --release -p poly-cli --locked
-sudo install -m 755 target/release/poly /usr/local/bin/poly
-poly --version
+cargo build --release -p polypack-cli --locked
+sudo install -m 755 target/release/polypack /usr/local/bin/polypack
+polypack --version
 
 # Keychain profile: its name must equal TargetSpec.signing (apple-codesign for Apple targets)
 export APPLE_ID='build@example.com'      # non-secret: Apple ID email
@@ -72,11 +72,11 @@ Start the worker pool (one mailbox per process; pooling means multiple processes
 
 ```bash
 mkdir -p /var/tmp/polypack-work
-poly farm worker --dir /srv/polypack-farm --id mac-01 --target ios --jobs 0 --idle 120 \
+polypack farm worker --dir /srv/polypack-farm --id mac-01 --target ios --jobs 0 --idle 120 \
   --cache /srv/polypack-cache --work-dir /var/tmp/polypack-work
 
 # Second worker (another terminal / supervisor)
-poly farm worker --dir /srv/polypack-farm --id mac-02 --target ios --jobs 0 --idle 120 \
+polypack farm worker --dir /srv/polypack-farm --id mac-02 --target ios --jobs 0 --idle 120 \
   --cache /srv/polypack-cache --work-dir /var/tmp/polypack-work
 ```
 
@@ -85,17 +85,17 @@ poly farm worker --dir /srv/polypack-farm --id mac-02 --target ios --jobs 0 --id
 ### 3.3 Origin (Linux)
 
 ```bash
-cd /srv/poly-src
-cargo build --release -p poly-cli --locked
-sudo install -m 755 target/release/poly /usr/local/bin/poly
-poly --version
+cd /srv/polypack-src
+cargo build --release -p polypack-cli --locked
+sudo install -m 755 target/release/polypack /usr/local/bin/polypack
+polypack --version
 
-poly farm submit --dir /srv/polypack-farm --config /srv/proj/polypack.toml \
+polypack farm submit --dir /srv/polypack-farm --config /srv/proj/polypack.toml \
   --target ios --wait 1800 --retries 1 --project-dir /srv/proj \
   --cache /srv/polypack-cache
 ```
 
-An explicit `--target ios` is **not filtered by the origin host**: the job waits for a build site whose host matches the target's declared hosts (macOS). The default `--target all` only takes the origin-reachable subset, so cross-host submission must list target IDs explicitly. `--wait` bounds both "wait for worker registration" and "wait for each job result"; use a value well above a single IPA build. On failure the origin wraps the remote code and hint in `poly::E_FARM_0003` and exits 1.
+An explicit `--target ios` is **not filtered by the origin host**: the job waits for a build site whose host matches the target's declared hosts (macOS). The default `--target all` only takes the origin-reachable subset, so cross-host submission must list target IDs explicitly. `--wait` bounds both "wait for worker registration" and "wait for each job result"; use a value well above a single IPA build. On failure the origin wraps the remote code and hint in `polypack::E_FARM_0003` and exits 1.
 
 ### 3.4 Artifacts and verification
 
@@ -147,13 +147,13 @@ Scheduling: the master splits jobs per target; each idle worker takes one job it
 Two layers, both implemented by the worker itself:
 
 - **Process boundary**: every job runs inside a worker process; the master can only deliver frames and cannot touch the build-site filesystem. Concurrency comes from multiple worker processes; one process runs one job at a time.
-- **One-shot work directory**: on startup the worker creates a 0700 private work root under `--work-dir` (default `std::env::temp_dir()`); each job gets a 0700 child whose name contains only pid + an in-process sequence, **never job identifiers or network paths**, created with `create_dir` (a pre-planted symlink cannot redirect it). At task end the whole directory is removed with `remove_dir_all` (which does not follow symlinks inside it); the work root is removed at worker exit; failures surface as `poly::E_FARM_0006` with cleanup hints.
+- **One-shot work directory**: on startup the worker creates a 0700 private work root under `--work-dir` (default `std::env::temp_dir()`); each job gets a 0700 child whose name contains only pid + an in-process sequence, **never job identifiers or network paths**, created with `create_dir` (a pre-planted symlink cannot redirect it). At task end the whole directory is removed with `remove_dir_all` (which does not follow symlinks inside it); the work root is removed at worker exit; failures surface as `polypack::E_FARM_0006` with cleanup hints.
 
 `--work-dir` should be a local, worker-private writable directory (never the shared farm or cache directory). Signing temporary material is redirected into the task directory through `CredentialScope`, so it shares the task's lifetime.
 
 ### 5.2 Container boundary (optional hardening layer)
 
-The repository **does not start or manage containers**: the container boundary is an operator-provided hardening layer, not built-in `poly` isolation. If you need a stronger boundary, put the worker process inside a self-managed container and own these constraints and their verification:
+The repository **does not start or manage containers**: the container boundary is an operator-provided hardening layer, not built-in `polypack` isolation. If you need a stronger boundary, put the worker process inside a self-managed container and own these constraints and their verification:
 
 - Mount only the required farm directory, cache directory and project; keep the toolchain and base image read-only; point `--work-dir` at a container-local tmpfs / scratch volume.
 - Inject credentials only through the process environment (images, `docker run -e` command lines, compose files and logs must never contain plaintext); if the Apple keychain is unavailable inside the container, use the env injection of §7.3 or a host-side keychain.
@@ -166,7 +166,7 @@ The repository **does not start or manage containers**: the container boundary i
 
 `--cache local` (default) uses the project-local CAS at `<project>/.polypack/cache`. `--cache <shared-dir>` switches to the shared-directory object store; point every worker at the same directory to reuse across machines — the cache-key formula excludes absolute paths, so the same input produces the same key on different build sites.
 
-Layout and format (`crates/poly-cache/src/store.rs`, `DirSharedStore`):
+Layout and format (`crates/polypack-cache/src/store.rs`, `DirSharedStore`):
 
 ```text
 <root>/<first 2 hex chars>/<hex>      # object file
@@ -193,7 +193,7 @@ Environment variables (`POLYPACK_*` wins, `AWS_*` is the fallback):
 | `POLYPACK_S3_PATH_STYLE` | `1`/`true` = path-style; `0`/`false` = virtual-host | `1` when an endpoint is set, else `0` |
 | `POLYPACK_S3_OSS_COMPAT` | `1` = send `x-oss-s3-compat: true` (OSS S3-compatible mode) | `0` |
 
-Profiles / instance metadata (IMDS) / STS are not supported: credentials come only from environment variables and never enter argv, logs or diagnostics. Remote errors keep only the endpoint, HTTP status and S3 `<Code>`; Authorization, keys and session tokens are never logged. Configuration errors (bad URI / missing credentials) fail hard with `poly::E_CACHE_0001` before the worker starts; reachability / runtime errors degrade per §6.3.
+Profiles / instance metadata (IMDS) / STS are not supported: credentials come only from environment variables and never enter argv, logs or diagnostics. Remote errors keep only the endpoint, HTTP status and S3 `<Code>`; Authorization, keys and session tokens are never logged. Configuration errors (bad URI / missing credentials) fail hard with `polypack::E_CACHE_0001` before the worker starts; reachability / runtime errors degrade per §6.3.
 
 Minimum IAM permissions (`<prefix>` is the configured prefix; bucket-level list plus object read/write/delete under the prefix):
 
@@ -220,7 +220,7 @@ MinIO example:
 ```bash
 export POLYPACK_S3_ENDPOINT=http://127.0.0.1:9000 POLYPACK_S3_REGION=us-east-1
 export POLYPACK_S3_ACCESS_KEY_ID=... POLYPACK_S3_SECRET_ACCESS_KEY=...
-poly farm worker --cache s3://build-cache/polypack --work-dir /var/tmp/polypack-work
+polypack farm worker --cache s3://build-cache/polypack --work-dir /var/tmp/polypack-work
 ```
 
 On AWS use `--cache s3://<bucket>/<prefix>` with the usual `AWS_*` variables (or explicit `POLYPACK_S3_*`).
@@ -238,7 +238,7 @@ Hit statistics remain honest (`缓存命中 N/M` in the task-completion event).
 
 ### 7.1 CredentialRef boundary
 
-`JobSpec.secrets` carries only `CredentialRef { name, source }`: `name` is the `TargetSpec.signing` profile (`apple-codesign` / `android-keystore` / `harmonyos-hap-sign` / `tizen-author`, ...), and `source` is `keyring` / `env { variable }` / `vault`. Plaintext never enters farm frames, command lines, plans or logs. The current configuration maps target signing profiles to `keyring` references; the `poly-sign` resolution layer selects a backend per source, and worker-side in-memory injection takes precedence over the backend chain.
+`JobSpec.secrets` carries only `CredentialRef { name, source }`: `name` is the `TargetSpec.signing` profile (`apple-codesign` / `android-keystore` / `harmonyos-hap-sign` / `tizen-author`, ...), and `source` is `keyring` / `env { variable }` / `vault`. Plaintext never enters farm frames, command lines, plans or logs. The current configuration maps target signing profiles to `keyring` references; the `polypack-sign` resolution layer selects a backend per source, and worker-side in-memory injection takes precedence over the backend chain.
 
 ### 7.2 macOS keychain
 
@@ -258,31 +258,31 @@ These two environment variables must be visible in the **worker process** enviro
 For CI / Vault scenarios, `--credential` binds a profile name to an environment variable; the worker reads it into memory at **task start** and injects it via `CredentialScope`, clearing it when the scope drops at task end:
 
 ```bash
-# Value = the poly-sign backend payload, base64(JSON) per secret.rs; the variable exists only in the worker env
+# Value = the polypack-sign backend payload, base64(JSON) per secret.rs; the variable exists only in the worker env
 export POLYPACK_ANDROID_KEYSTORE_B64='<base64(JSON) payload>'   # placeholder; never commit real values
 
-poly farm worker --dir /srv/polypack-farm --id build-01 --target android \
+polypack farm worker --dir /srv/polypack-farm --id build-01 --target android \
   --credential android-keystore=env:POLYPACK_ANDROID_KEYSTORE_B64 \
   --cache /srv/polypack-cache --work-dir /var/tmp/polypack-work
 ```
 
-Constraints and behavior (`crates/poly-cli/src/farm.rs`, `crates/poly-sign/src/inject.rs`):
+Constraints and behavior (`crates/polypack-cli/src/farm.rs`, `crates/polypack-sign/src/inject.rs`):
 
-- Only `<profile>=env:<variable>` is accepted; malformed arguments raise `poly::E_FARM_0002` and the **argument text is never echoed** (so a plaintext mistake cannot reach logs).
+- Only `<profile>=env:<variable>` is accepted; malformed arguments raise `polypack::E_FARM_0002` and the **argument text is never echoed** (so a plaintext mistake cannot reach logs).
 - Values travel only through the environment: never in argv, never written to disk, never in events / logs (injection warnings list profile names and counts only); they are cleared at task end with zero cross-task residue.
 - A missing variable is not a failure: the worker warns "凭据档案 X 的注入变量 VAR 不可用" and the sign stage applies its skip-if-missing credential semantics.
-- The payload contract lives in `crates/poly-sign/src/secret.rs` (Android: `keystore` / `store_password` / `key_alias` / `key_password`; HarmonyOS adds `app_cert` / `profile`). The Vault source needs a caller-injected Vault client; the farm CLI does not wire one today — bridge through env injection or inject the material into the keychain first.
+- The payload contract lives in `crates/polypack-sign/src/secret.rs` (Android: `keystore` / `store_password` / `key_alias` / `key_password`; HarmonyOS adds `app_cert` / `profile`). The Vault source needs a caller-injected Vault client; the farm CLI does not wire one today — bridge through env injection or inject the material into the keychain first.
 
 ## 8. Linux two-worker drill
 
-This machine has no macOS and no cross-machine farm, so the macOS / IPA leg is recorded as a SKIP-with-print environment slot (§9); the stand-in evidence is a scriptable Linux two-worker local drill: two real worker processes, a multi-target `poly farm submit`, a second-run shared-cache hit, credential memory injection and cache degradation.
+This machine has no macOS and no cross-machine farm, so the macOS / IPA leg is recorded as a SKIP-with-print environment slot (§9); the stand-in evidence is a scriptable Linux two-worker local drill: two real worker processes, a multi-target `polypack farm submit`, a second-run shared-cache hit, credential memory injection and cache degradation.
 
 ### 8.1 Run
 
 ```bash
-cd /srv/poly-src
-cargo build -p poly-cli
-POLY=target/debug/poly DRILL_OUT=target/farm-drill tools/farm-drill.sh
+cd /srv/polypack-src
+cargo build -p polypack-cli
+POLYPACK=target/debug/polypack DRILL_OUT=target/farm-drill tools/farm-drill.sh
 ```
 
 The script creates its own static-UI fixtures (three independent project copies, no node / network) and archives output under `$DRILL_OUT` (`transcript.log` + `logs/`). Every executed command is printed with its actual paths and can be copied to rerun.
@@ -294,7 +294,7 @@ The script creates `farm/`, `cache/`, `work/`, `logs/` and the three project fix
 The drill log must end with these lines (all really executed):
 
 ```text
-PASS preflight: dir permissions, path isolation and poly scan
+PASS preflight: dir permissions, path isolation and polypack scan
 PASS round 1: two targets completed on two workers
 PASS round 2: shared-cache hit 1/1 on a fresh project copy
 PASS cache format: POLYPACK-FARM-OBJECT v0
@@ -304,13 +304,13 @@ PASS isolation: no task work directories left behind
 PASS SKIP printed (environment slot); no macOS claims made
 ```
 
-- Preflight: before the rounds, `tools/farm-preflight.sh` runs static checks on the temporary farm / cache / work directories and `site-a` (permissions, path distinctness, `poly scan`); any FAIL aborts the drill.
+- Preflight: before the rounds, `tools/farm-preflight.sh` runs static checks on the temporary farm / cache / work directories and `site-a` (permissions, path distinctness, `polypack scan`); any FAIL aborts the drill.
 - Round 1: the `web` and `vidaa-tv` jobs land on two different workers and `dist/index.html` is merged into the result.
 - Round 2: a **fresh** project copy (empty local cache) reports `缓存命中 1/1` on another worker; the hit can only come from the shared CAS.
 - Round 3: the sentinel travels only through an `env:` variable; scanning the farm, work, project directories and both logs finds zero hits.
 - Round 4: an unavailable shared-cache path triggers a warning and falls back to the local cache while the job still succeeds.
 - Isolation: no work root / task directory remains after the workers exit.
-- CI wiring suggestion (no workflow change in this task): after `cargo build -p poly-cli` in a Linux build job, run this script and upload `$DRILL_OUT` as an artifact to put the drill log into CI.
+- CI wiring suggestion (no workflow change in this task): after `cargo build -p polypack-cli` in a Linux build job, run this script and upload `$DRILL_OUT` as an artifact to put the drill log into CI.
 
 ## 9. macOS / IPA environment slot
 
@@ -320,17 +320,17 @@ PASS SKIP printed (environment slot); no macOS claims made
 
 ### 9.2 Run on a macOS host
 
-Build site (macOS, after preparing Xcode / triples / poly / keychain per §3.2):
+Build site (macOS, after preparing Xcode / triples / polypack / keychain per §3.2):
 
 ```bash
-poly farm worker --dir /srv/polypack-farm --id mac-01 --target ios --jobs 0 --idle 120 \
+polypack farm worker --dir /srv/polypack-farm --id mac-01 --target ios --jobs 0 --idle 120 \
   --cache /srv/polypack-cache --work-dir /var/tmp/polypack-work
 ```
 
 Origin (Linux, with the project and farm directory visible at the same path):
 
 ```bash
-poly farm submit --dir /srv/polypack-farm --config /srv/proj/polypack.toml \
+polypack farm submit --dir /srv/polypack-farm --config /srv/proj/polypack.toml \
   --target ios --wait 1800 --retries 1 --project-dir /srv/proj \
   --cache /srv/polypack-cache
 ```
@@ -341,14 +341,14 @@ Pass criteria: the origin prints `worker 已注册：mac-01（aarch64-apple-darw
 
 | Code | Meaning | Action |
 |---|---|---|
-| `poly::E_FARM_0001` | Frame parse failure / unsupported version / unexpected frame | Upgrade both sides to the same `poly`; check the frame order (`hello` → `hello_ack` → `job` → `result` → `goodbye`) |
-| `poly::E_FARM_0002` | Registration timeout / rejected / invalid worker ID / invalid `--credential` syntax | Start workers before submitting; check target-declared hosts vs worker `--target`; `--id` uses letters, digits, `-`, `_`; credentials are `NAME=env:VAR` |
-| `poly::E_FARM_0003` | Worker execution failure (remote code embedded in the message) | Reproduce the same code on the build site; fix per the remote hint and resubmit |
-| `poly::E_FARM_0004` | Job result timeout | Confirm the worker is alive; raise `--wait`; add workers or `--retries` |
-| `poly::E_FARM_0005` | Lost worker / no available worker | Check farm-directory permissions and worker processes; start a worker declaring the target |
-| `poly::E_FARM_0006` | Work root / task work directory creation or removal failed | Check `--work-dir` permissions; use a worker-private writable directory; clean up `polypack-farm-work-*` residue manually |
+| `polypack::E_FARM_0001` | Frame parse failure / unsupported version / unexpected frame | Upgrade both sides to the same `polypack`; check the frame order (`hello` → `hello_ack` → `job` → `result` → `goodbye`) |
+| `polypack::E_FARM_0002` | Registration timeout / rejected / invalid worker ID / invalid `--credential` syntax | Start workers before submitting; check target-declared hosts vs worker `--target`; `--id` uses letters, digits, `-`, `_`; credentials are `NAME=env:VAR` |
+| `polypack::E_FARM_0003` | Worker execution failure (remote code embedded in the message) | Reproduce the same code on the build site; fix per the remote hint and resubmit |
+| `polypack::E_FARM_0004` | Job result timeout | Confirm the worker is alive; raise `--wait`; add workers or `--retries` |
+| `polypack::E_FARM_0005` | Lost worker / no available worker | Check farm-directory permissions and worker processes; start a worker declaring the target |
+| `polypack::E_FARM_0006` | Work root / task work directory creation or removal failed | Check `--work-dir` permissions; use a worker-private writable directory; clean up `polypack-farm-work-*` residue manually |
 
-Farm-directory IO failures report `poly::E_IO_0001` (check existence and permissions on both sides). Shared-cache / S3 warnings (§6.3) are not build failures; if they persist, fix the mount / permissions / endpoint and credentials before looking at hit rates.
+Farm-directory IO failures report `polypack::E_IO_0001` (check existence and permissions on both sides). Shared-cache / S3 warnings (§6.3) are not build failures; if they persist, fix the mount / permissions / endpoint and credentials before looking at hit rates.
 
 ## 11. Production hardening checklist (self-hosted)
 
@@ -356,24 +356,24 @@ ADR 0005 makes GA self-hosted only: the project ships software and deployment gu
 
 | # | Hardening item | Requirement | Implementation / verification | Automation |
 |---|---|---|---|---|
-| 1 | TLS / reverse-proxy auth | `poly farm` has no network listener: transport is a same-directory mailbox pair (§1) and the protocol itself has no TLS or authentication. Across untrusted networks, share the directory only over a VPN / SSH tunnel or an authenticated NFSv4 / SMB mount; never expose the farm directory through an unauthenticated web server or public SMB / NFS. HTTP / SSH transport and mTLS are M3+ and do not exist today. | §1, §2; confirm no `poly` listening port | Manual; preflight warns on network filesystems (§11.1) |
+| 1 | TLS / reverse-proxy auth | `polypack farm` has no network listener: transport is a same-directory mailbox pair (§1) and the protocol itself has no TLS or authentication. Across untrusted networks, share the directory only over a VPN / SSH tunnel or an authenticated NFSv4 / SMB mount; never expose the farm directory through an unauthenticated web server or public SMB / NFS. HTTP / SSH transport and mTLS are M3+ and do not exist today. | §1, §2; confirm no `polypack` listening port | Manual; preflight warns on network filesystems (§11.1) |
 | 2 | Directory permissions | Set the farm / cache directories to `2770` with a shared group per §3.1; keep them separate; `--work-dir` is a local, worker-private directory where the worker creates a 0700 child per job and removes it at job end. | §3.1, §5.1; `stat -c '%a %U:%G'`; `tools/farm-preflight.sh` checks writability, non-world-writable mode and distinct paths | Preflight |
 | 3 | Cache namespace isolation | Cache keys are content-addressed and carry no tenant / origin identity: projects in different trust boundaries must use a separate cache root or S3 `<prefix>`; never point mutually untrusted teams at one cache. Farm, cache and work directories must not overlap. | §6.1, §6.2; per-team `--cache` path / prefix; S3 IAM scoped to that prefix (§6.2 least privilege) | Preflight checks distinct paths; S3 prefix and multi-tenant isolation are **manual** |
-| 4 | Credential backend (no plaintext on disk) | Use only the macOS keychain (`apple-codesign`, §7.2) or `--credential NAME=env:VAR` memory injection (§7.3); plaintext must not enter the repository, argv, `polypack.toml`, plans, logs or backups. The Vault source needs caller wiring; the farm CLI does not wire one today. | §7.2, §7.3; preflight verifies the variables exist and are non-empty without printing values | Preflight + `poly scan` |
-| 5 | `poly scan` sentinel | Scan for plaintext credentials before commit and in CI: `poly scan --dir <project>` (optionally `--history`); `poly scan --install-hook` installs a pre-commit hook; CI also has `secret-scan.yml`. `poly farm worker` does **not** run the scan automatically. | §7.1; `poly scan --dir /srv/proj --history`; preflight runs `poly scan` when given `--project` | Command + preflight |
+| 4 | Credential backend (no plaintext on disk) | Use only the macOS keychain (`apple-codesign`, §7.2) or `--credential NAME=env:VAR` memory injection (§7.3); plaintext must not enter the repository, argv, `polypack.toml`, plans, logs or backups. The Vault source needs caller wiring; the farm CLI does not wire one today. | §7.2, §7.3; preflight verifies the variables exist and are non-empty without printing values | Preflight + `polypack scan` |
+| 5 | `polypack scan` sentinel | Scan for plaintext credentials before commit and in CI: `polypack scan --dir <project>` (optionally `--history`); `polypack scan --install-hook` installs a pre-commit hook; CI also has `secret-scan.yml`. `polypack farm worker` does **not** run the scan automatically. | §7.1; `polypack scan --dir /srv/proj --history`; preflight runs `polypack scan` when given `--project` | Command + preflight |
 | 6 | Worker isolation / one-shot work directories | One 0700 private directory per job, whose name carries no job identifier, removed at job end; the work root is removed at worker exit; the container boundary is optional and the operator verifies it. | §5.1, §5.2; `--work-dir`; the isolation check in `tools/farm-drill.sh` | Drill |
-| 7 | Upgrade / rollback | Build both sides from the same commit; `poly --version` must match. Upgrade the origin first (a v1 master accepts `farm/v0` workers), then replace workers one at a time; install to a temporary name and `mv` it into place, keeping the previous binary. Roll back in reverse: workers first, then the origin. | §2; `poly --version`; `poly farm worker --help` / `poly farm submit --help` to confirm flags | Manual |
+| 7 | Upgrade / rollback | Build both sides from the same commit; `polypack --version` must match. Upgrade the origin first (a v1 master accepts `farm/v0` workers), then replace workers one at a time; install to a temporary name and `mv` it into place, keeping the previous binary. Roll back in reverse: workers first, then the origin. | §2; `polypack --version`; `polypack farm worker --help` / `polypack farm submit --help` to confirm flags | Manual |
 | 8 | Backup | Back up project sources, `polypack.toml` and the authoritative copy of signing material (back up the keychain the Apple way or keep it reproducible); farm mailboxes and the CAS are disposable intermediates and need no backup. Never write plaintext keys into a backup. | §6.1 (cache is rebuildable), §7.2 (keychain); `rsync` / snapshots are the operator's choice | Manual |
 | 9 | Logging / monitoring | Collect worker and submit stdout (`--json` emits JSON Lines); monitor registration failures, job error codes (§10), cache-degradation warnings (§6.3), disk usage of farm / cache / work, and leftover `polypack-farm-work-*`. There is no built-in metrics / alerting endpoint. | §8.1 drill archive; §10 error codes; `--json` | Manual |
 | 10 | Rate / concurrency limits | Concurrency = the number of worker processes running per target; each process runs one job at a time. `--jobs N` caps jobs per session (N=1 suits one-shot / untrusted batches), `--jobs 0` is unlimited; `--idle` bounds waiting, `--wait` / `--retries` bound origin waits and retries. There is no built-in queue quota or token bucket; use systemd / cgroup / `ulimit` for resource limits. | §4.1, §4.2, §5.1 | Manual; the drill verifies multi-worker concurrency |
 
 ### 11.1 Preflight
 
-`tools/farm-preflight.sh` is the runnable static preflight for the table above: read-only checks for directory existence / writability / non-world-writable mode, distinct farm / cache / work paths, a local work directory, the environment variables referenced by `--credential`, the environment variables required by an S3 cache, and one `poly scan` over `--project`. It does not access the network, print credential values or leave long-lived files.
+`tools/farm-preflight.sh` is the runnable static preflight for the table above: read-only checks for directory existence / writability / non-world-writable mode, distinct farm / cache / work paths, a local work directory, the environment variables referenced by `--credential`, the environment variables required by an S3 cache, and one `polypack scan` over `--project`. It does not access the network, print credential values or leave long-lived files.
 
 ```bash
 # Run on the origin and the build site separately; --project is that machine's project copy
-POLY=/usr/local/bin/poly tools/farm-preflight.sh \
+POLYPACK=/usr/local/bin/polypack tools/farm-preflight.sh \
   --project /srv/proj \
   --credential android-keystore=env:POLYPACK_ANDROID_KEYSTORE_B64 \
   /srv/polypack-farm /srv/polypack-cache /var/tmp/polypack-work
@@ -388,11 +388,11 @@ POLY=/usr/local/bin/poly tools/farm-preflight.sh \
 ## 12. References
 
 - [FARM.en.md](FARM.en.md): frames, origin / build-site model, signature verification guidance.
-- `crates/poly-cli/src/farm.rs`: `worker` / `submit` flags and scheduling entry points.
-- `crates/poly-core/src/farm/`: protocol, pool scheduling, one-shot work directories.
-- `crates/poly-cache/src/store.rs`: shared-directory CAS, shared object envelope and fallback backend.
-- `crates/poly-cache/src/s3.rs`, `crates/poly-cache/src/s3/sigv4.rs`: S3 / OSS-compatible backend and SigV4 signing.
-- `crates/poly-cache/tests/s3_contract.rs`: mock-S3 wire contract (independent SigV4 recomputation); `tests/s3_real.rs` is the S3 / OSS-compatible environment slot (`POLYPACK_S3_REAL=1`); MinIO CI passes (ENV-17, run 39425835979), with native AWS / Alibaba OSS evidence separate.
-- `crates/poly-sign/src/secret.rs`, `crates/poly-sign/src/inject.rs`: credential backend contract and memory injection.
+- `crates/polypack-cli/src/farm.rs`: `worker` / `submit` flags and scheduling entry points.
+- `crates/polypack-core/src/farm/`: protocol, pool scheduling, one-shot work directories.
+- `crates/polypack-cache/src/store.rs`: shared-directory CAS, shared object envelope and fallback backend.
+- `crates/polypack-cache/src/s3.rs`, `crates/polypack-cache/src/s3/sigv4.rs`: S3 / OSS-compatible backend and SigV4 signing.
+- `crates/polypack-cache/tests/s3_contract.rs`: mock-S3 wire contract (independent SigV4 recomputation); `tests/s3_real.rs` is the S3 / OSS-compatible environment slot (`POLYPACK_S3_REAL=1`); MinIO CI passes (ENV-17, run 39425835979), with native AWS / Alibaba OSS evidence separate.
+- `crates/polypack-sign/src/secret.rs`, `crates/polypack-sign/src/inject.rs`: credential backend contract and memory injection.
 - `tools/farm-drill.sh`: the executable drill for §8.
 - `tools/farm-preflight.sh`: the production preflight for §11.1.

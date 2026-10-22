@@ -41,7 +41,7 @@
     <rect x="252" y="244" width="96" height="76" rx="14" fill="#d4a373" stroke="#9a3412" stroke-width="3"/>
     <rect x="292" y="244" width="16" height="76" fill="#b08968" opacity="0.85"/>
     <rect x="262" y="256" width="44" height="30" rx="4" fill="#fffdf7" stroke="#b08968" stroke-width="1.5"/>
-    <text x="284" y="270" text-anchor="middle" font-size="8.5" font-weight="700" font-family="'JetBrains Mono', ui-monospace, 'PingFang SC', 'Microsoft YaHei', monospace" fill="#7c4a2a">POLY</text>
+    <text x="284" y="270" text-anchor="middle" font-size="8.5" font-weight="700" font-family="'JetBrains Mono', ui-monospace, 'PingFang SC', 'Microsoft YaHei', monospace" fill="#7c4a2a">POLYPACK</text>
     <path d="M266,276 h36 M268,280 h32 M272,284 h24" stroke="#7c4a2a" stroke-width="1.5"/>
     <circle cx="330" cy="272" r="12" fill="#ffffff" stroke="#0891b2" stroke-width="2" stroke-dasharray="2.5 2"/>
     <ellipse cx="330" cy="272" rx="8" ry="3.2" fill="none" stroke="#0891b2" stroke-width="1.5" transform="rotate(-30 330 272)"/>

@@ -16,7 +16,7 @@ import appConfig from "./app.json";
 // 走查会话改 none」的形态不同）。用 app.json 而非 process.env：RN 运行时 process.env 只保证
 // NODE_ENV，自定义 env 不会被打包内联（android 宿主同因）。
 const pointer = appConfig.polypack?.pointer ?? "none";
-// target = TargetSpec id（crates/poly-targets/src/builtin.rs 的 "tvos"）
+// target = TargetSpec id（crates/polypack-targets/src/builtin.rs 的 "tvos"）
 const adapter = createAdapter({ target: "tvos", runtime: RN, host: { pointer } });
 
 // 原语显式取用（不展开 RN 命名空间：避免握手期 getter 全量求值）

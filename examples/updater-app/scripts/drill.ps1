@@ -6,13 +6,13 @@
 .DESCRIPTION
     Builds the sample app twice (0.1.0 and 0.1.1) with a throwaway Tauri updater
     key pair, signs the NSIS installers (the Windows updater artifact), generates the static `latest.json`
-    with the repository's own `poly update manifest`, verifies the manifest's GPG
-    signature with `poly update check`, serves the channel over local HTTP,
+    with the repository's own `polypack update manifest`, verifies the manifest's GPG
+    signature with `polypack update check`, serves the channel over local HTTP,
     installs 0.1.0, lets the installed app update itself to 0.1.1, then restores
     the 0.1.0 manifest and lets it roll back.
 
     Artifacts and evidence live under -WorkDir (default:
-    $env:RUNNER_TEMP\poly-updater-drill). The throwaway private key and GPG home
+    $env:RUNNER_TEMP\polypack-updater-drill). The throwaway private key and GPG home
     live in "${WorkDir}-secrets", outside the evidence tree; they must never be
     committed or uploaded.
 
@@ -37,7 +37,7 @@ param(
 )
 
 if ([string]::IsNullOrWhiteSpace($WorkDir)) {
-    $WorkDir = Join-Path ([IO.Path]::GetTempPath()) 'poly-updater-drill'
+    $WorkDir = Join-Path ([IO.Path]::GetTempPath()) 'polypack-updater-drill'
 }
 
 $ErrorActionPreference = 'Stop'
@@ -53,7 +53,7 @@ $pubDate = '2026-10-20T00:00:00Z'
 
 $appDir = Split-Path -Parent $PSScriptRoot
 $repoRoot = Split-Path -Parent (Split-Path -Parent $appDir)
-$poly = Join-Path $repoRoot 'target\release\poly.exe'
+$polypack = Join-Path $repoRoot 'target\release\polypack.exe'
 $srcTauri = Join-Path $appDir 'src-tauri'
 
 # Secrets live in a sibling directory so the evidence upload (WorkDir) can never
@@ -70,7 +70,7 @@ $evidenceDir = Join-Path $WorkDir 'evidence'
 $overlaysDir = Join-Path $WorkDir 'overlays'
 
 $installDir = Join-Path $env:LOCALAPPDATA 'PolyUpdaterSample'
-$installedExe = Join-Path $installDir 'poly-updater-sample.exe'
+$installedExe = Join-Path $installDir 'polypack-updater-sample.exe'
 $uninstaller = Join-Path $installDir 'uninstall.exe'
 
 $server = $null
@@ -83,7 +83,7 @@ function ConvertTo-GpgPath([string]$Path) {
     if ($gpgNeedsPosix) {
         $converted = & cygpath -u $Path
         if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($converted)) {
-            throw "POLY_UPDATER_DRILL_0001 cygpath -u failed for $Path"
+            throw "POLYPACK_UPDATER_DRILL_0001 cygpath -u failed for $Path"
         }
         return $converted.Trim()
     }
@@ -140,20 +140,20 @@ function Get-BuildArtifacts {
     param([string]$Version)
     $bundleDir = Join-Path $srcTauri 'target\release\bundle\nsis'
     if (-not (Test-Path -LiteralPath $bundleDir)) {
-        throw "POLY_UPDATER_DRILL_0003 bundle directory missing: $bundleDir"
+        throw "POLYPACK_UPDATER_DRILL_0003 bundle directory missing: $bundleDir"
     }
     $installer = Get-ChildItem -LiteralPath $bundleDir -File -Filter '*.exe' |
         Where-Object { $_.Name -like "*_${Version}_x64-setup.exe" } |
         Select-Object -First 1
     if (-not $installer) {
-        throw "POLY_UPDATER_DRILL_0003 NSIS installer for $Version not found in $bundleDir"
+        throw "POLYPACK_UPDATER_DRILL_0003 NSIS installer for $Version not found in $bundleDir"
     }
     # Tauri v2 uses the signed NSIS installer itself as the Windows updater
     # artifact (the plugin can install an .exe directly); the CLI writes
     # `<installer>.exe.sig` when createUpdaterArtifacts is true.
     $signature = "$($installer.FullName).sig"
     if (-not (Test-Path -LiteralPath $signature)) {
-        throw "POLY_UPDATER_DRILL_0003 updater signature missing: $signature"
+        throw "POLYPACK_UPDATER_DRILL_0003 updater signature missing: $signature"
     }
     [pscustomobject]@{
         Installer = $installer.FullName
@@ -189,17 +189,17 @@ function Build-Version {
     try {
         # Force the app crate (and tauri-codegen's TAURI_CONFIG merge) to rebuild
         # so the second version embeds its own version/pubkey config; deps stay cached.
-        & cargo clean -p poly-updater-sample --manifest-path (Join-Path $srcTauri 'Cargo.toml') |
+        & cargo clean -p polypack-updater-sample --manifest-path (Join-Path $srcTauri 'Cargo.toml') |
             Out-Null
         if ($LASTEXITCODE -ne 0) {
-            throw "POLY_UPDATER_DRILL_0002 cargo clean for $Version exited $LASTEXITCODE"
+            throw "POLYPACK_UPDATER_DRILL_0002 cargo clean for $Version exited $LASTEXITCODE"
         }
         $env:TAURI_SIGNING_PRIVATE_KEY = Join-Path $keysDir 'updater.key'
         $env:TAURI_SIGNING_PRIVATE_KEY_PASSWORD = $KeyPassword
         & tauri build --config $overlayPath --bundles nsis 2>&1 |
             Tee-Object -FilePath (Join-Path $WorkDir "build-$Version.log")
         if ($LASTEXITCODE -ne 0) {
-            throw "POLY_UPDATER_DRILL_0002 tauri build $Version exited $LASTEXITCODE"
+            throw "POLYPACK_UPDATER_DRILL_0002 tauri build $Version exited $LASTEXITCODE"
         }
     } finally {
         Pop-Location
@@ -214,7 +214,7 @@ function New-Manifest {
         [string]$ArtifactName
     )
     New-Directory $ManifestDir
-    & $poly update manifest `
+    & $polypack update manifest `
         --channel $channel `
         --version $Version `
         --notes "PolyPack updater drill $Version" `
@@ -227,14 +227,14 @@ function New-Manifest {
         --credential env:POLYPACK_UPDATE_KEY `
         --pub-date $pubDate
     if ($LASTEXITCODE -ne 0) {
-        throw "POLY_UPDATER_DRILL_0004 poly update manifest $Version exited $LASTEXITCODE"
+        throw "POLYPACK_UPDATER_DRILL_0004 polypack update manifest $Version exited $LASTEXITCODE"
     }
-    & $poly update check `
+    & $polypack update check `
         --manifest (Join-Path $ManifestDir 'latest.json') `
         --signature (Join-Path $ManifestDir 'latest.json.sig') `
         --trust-root env:POLYPACK_UPDATE_TRUST
     if ($LASTEXITCODE -ne 0) {
-        throw "POLY_UPDATER_DRILL_0005 poly update check $Version failed (manifest GPG signature)"
+        throw "POLYPACK_UPDATER_DRILL_0005 polypack update check $Version failed (manifest GPG signature)"
     }
 }
 
@@ -258,7 +258,7 @@ try {
         }
     }
     if ($missing.Count -gt 0) {
-        throw "POLY_UPDATER_DRILL_0001 missing prerequisites: $($missing -join ', ')"
+        throw "POLYPACK_UPDATER_DRILL_0001 missing prerequisites: $($missing -join ', ')"
     }
     $wv2Keys = @(
         'HKLM:\SOFTWARE\WOW6432Node\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}',
@@ -266,7 +266,7 @@ try {
         'HKCU:\SOFTWARE\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}'
     )
     if (@($wv2Keys | Where-Object { Test-Path $_ }).Count -eq 0) {
-        throw 'POLY_UPDATER_DRILL_0001 WebView2 Runtime missing (windows-2022 should preinstall it)'
+        throw 'POLYPACK_UPDATER_DRILL_0001 WebView2 Runtime missing (windows-2022 should preinstall it)'
     }
     $versions = & {
         cargo --version
@@ -276,14 +276,14 @@ try {
     }
     $versions | Tee-Object -FilePath (Join-Path $evidenceDir 'tool-versions.txt') | Out-Host
 
-    if (-not (Test-Path -LiteralPath $poly)) {
-        Step 'Building poly CLI (release)'
+    if (-not (Test-Path -LiteralPath $polypack)) {
+        Step 'Building polypack CLI (release)'
         Push-Location $repoRoot
         try {
-            & cargo build -p poly-cli --release 2>&1 |
-                Tee-Object -FilePath (Join-Path $WorkDir 'poly-build.log')
+            & cargo build -p polypack-cli --release 2>&1 |
+                Tee-Object -FilePath (Join-Path $WorkDir 'polypack-build.log')
             if ($LASTEXITCODE -ne 0) {
-                throw "POLY_UPDATER_DRILL_0001 cargo build -p poly-cli exited $LASTEXITCODE"
+                throw "POLYPACK_UPDATER_DRILL_0001 cargo build -p polypack-cli exited $LASTEXITCODE"
             }
         } finally {
             Pop-Location
@@ -291,13 +291,13 @@ try {
     }
 
     Step 'Generating throwaway Tauri updater key pair'
-    Invoke-Checked 'tauri signer generate' 'POLY_UPDATER_DRILL_0001' {
+    Invoke-Checked 'tauri signer generate' 'POLYPACK_UPDATER_DRILL_0001' {
         tauri signer generate --ci --force --password $KeyPassword `
             --write-keys (Join-Path $keysDir 'updater.key')
     }
     $pubkey = (Get-Content -LiteralPath (Join-Path $keysDir 'updater.key.pub') -Raw).Trim()
     if ([string]::IsNullOrWhiteSpace($pubkey)) {
-        throw 'POLY_UPDATER_DRILL_0001 generated public key is empty'
+        throw 'POLYPACK_UPDATER_DRILL_0001 generated public key is empty'
     }
     Write-Host "Tauri updater public key: $pubkey"
     Set-Content -LiteralPath (Join-Path $evidenceDir 'tauri-updater-pubkey.txt') -Value $pubkey
@@ -316,7 +316,7 @@ Expire-Date: 1d
 %commit
 "@
     [IO.File]::WriteAllText($gpgBatch, $batch)
-    Invoke-Checked 'gpg --generate-key' 'POLY_UPDATER_DRILL_0001' {
+    Invoke-Checked 'gpg --generate-key' 'POLYPACK_UPDATER_DRILL_0001' {
         gpg --homedir (ConvertTo-GpgPath $gpgHome) --batch --pinentry-mode loopback `
             --generate-key (ConvertTo-GpgPath $gpgBatch)
     }
@@ -324,19 +324,19 @@ Expire-Date: 1d
         Select-String '^fpr:' |
         Select-Object -First 1
     if (-not $fingerprintLine) {
-        throw 'POLY_UPDATER_DRILL_0001 could not read the GPG fingerprint'
+        throw 'POLYPACK_UPDATER_DRILL_0001 could not read the GPG fingerprint'
     }
     $fingerprint = $fingerprintLine.Line.Split(':')[9]
     if ([string]::IsNullOrWhiteSpace($fingerprint)) {
-        throw 'POLY_UPDATER_DRILL_0001 generated GPG fingerprint is empty'
+        throw 'POLYPACK_UPDATER_DRILL_0001 generated GPG fingerprint is empty'
     }
     $secretAsc = Join-Path $credentialsDir 'manifest-secret.asc'
     $publicAsc = Join-Path $evidenceDir 'manifest-public.asc'
-    Invoke-Checked 'gpg --export-secret-keys' 'POLY_UPDATER_DRILL_0001' {
+    Invoke-Checked 'gpg --export-secret-keys' 'POLYPACK_UPDATER_DRILL_0001' {
         gpg --homedir (ConvertTo-GpgPath $gpgHome) --batch --armor `
             --output (ConvertTo-GpgPath $secretAsc) --export-secret-keys $fingerprint
     }
-    Invoke-Checked 'gpg --export' 'POLY_UPDATER_DRILL_0001' {
+    Invoke-Checked 'gpg --export' 'POLYPACK_UPDATER_DRILL_0001' {
         gpg --homedir (ConvertTo-GpgPath $gpgHome) --batch --armor `
             --output (ConvertTo-GpgPath $publicAsc) --export $fingerprint
     }
@@ -377,7 +377,7 @@ Expire-Date: 1d
     Copy-Item -LiteralPath $artifactsV2.Installer -Destination (Join-Path $pkgV2 $artifactV2Name)
     Copy-Item -LiteralPath $artifactsV2.Signature -Destination (Join-Path $pkgV2 "$artifactV2Name.sig")
 
-    Step "Generating and verifying static manifests with poly update"
+    Step "Generating and verifying static manifests with polypack update"
     $manifestV1 = Join-Path $manifestsDir $v1
     $manifestV2 = Join-Path $manifestsDir $v2
     New-Manifest -Version $v1 -PackageDir $pkgV1 -ManifestDir $manifestV1 -ArtifactName $artifactV1Name
@@ -411,16 +411,16 @@ Expire-Date: 1d
         }
     }
     if (-not $serverReady) {
-        throw "POLY_UPDATER_DRILL_0006 local HTTP server did not serve latest.json on port $Port"
+        throw "POLYPACK_UPDATER_DRILL_0006 local HTTP server did not serve latest.json on port $Port"
     }
 
     Step "Installing $v1 with the NSIS installer"
     $install = Start-Process -FilePath $artifactsV1.Installer -ArgumentList '/S' -PassThru -Wait
     if ($install.ExitCode -ne 0) {
-        throw "POLY_UPDATER_DRILL_0007 NSIS install exited $($install.ExitCode)"
+        throw "POLYPACK_UPDATER_DRILL_0007 NSIS install exited $($install.ExitCode)"
     }
     if (-not (Test-Path -LiteralPath $installedExe)) {
-        throw "POLY_UPDATER_DRILL_0007 installed executable missing: $installedExe"
+        throw "POLYPACK_UPDATER_DRILL_0007 installed executable missing: $installedExe"
     }
     $installedV1Hash = (Get-FileHash -LiteralPath $installedExe -Algorithm SHA256).Hash
     Write-Host "Installed $v1 exe SHA256: $installedV1Hash"
@@ -431,14 +431,14 @@ Expire-Date: 1d
     $updateArgs = "--smoke-update --marker `"$updateMarker`""
     $null = Start-Process -FilePath $installedExe -ArgumentList $updateArgs -PassThru
     $updateLog = Wait-ForMarker -Path $updateMarker -Pattern "up-to-date version=$v2" `
-        -TimeoutSeconds 300 -Description "update to $v2" -Code 'POLY_UPDATER_DRILL_0008'
+        -TimeoutSeconds 300 -Description "update to $v2" -Code 'POLYPACK_UPDATER_DRILL_0008'
     if ($updateLog -notmatch [regex]::Escape("detected current=$v1 remote=$v2")) {
-        throw "POLY_UPDATER_DRILL_0008 update did not report the expected detection: $updateLog"
+        throw "POLYPACK_UPDATER_DRILL_0008 update did not report the expected detection: $updateLog"
     }
     Start-Sleep -Seconds 3
     $installedV2Hash = (Get-FileHash -LiteralPath $installedExe -Algorithm SHA256).Hash
     if ($installedV2Hash -eq $installedV1Hash) {
-        throw 'POLY_UPDATER_DRILL_0008 installed binary hash did not change after the update'
+        throw 'POLYPACK_UPDATER_DRILL_0008 installed binary hash did not change after the update'
     }
     Write-Host "Updated $v2 exe SHA256: $installedV2Hash"
 
@@ -450,14 +450,14 @@ Expire-Date: 1d
     $rollbackArgs = "--smoke-update --marker `"$rollbackMarker`""
     $null = Start-Process -FilePath $installedExe -ArgumentList $rollbackArgs -PassThru
     $rollbackLog = Wait-ForMarker -Path $rollbackMarker -Pattern "up-to-date version=$v1" `
-        -TimeoutSeconds 300 -Description "rollback to $v1" -Code 'POLY_UPDATER_DRILL_0009'
+        -TimeoutSeconds 300 -Description "rollback to $v1" -Code 'POLYPACK_UPDATER_DRILL_0009'
     if ($rollbackLog -notmatch [regex]::Escape("detected current=$v2 remote=$v1")) {
-        throw "POLY_UPDATER_DRILL_0009 rollback did not report the expected detection: $rollbackLog"
+        throw "POLYPACK_UPDATER_DRILL_0009 rollback did not report the expected detection: $rollbackLog"
     }
     Start-Sleep -Seconds 3
     $installedRollbackHash = (Get-FileHash -LiteralPath $installedExe -Algorithm SHA256).Hash
     if ($installedRollbackHash -ne $installedV1Hash) {
-        throw "POLY_UPDATER_DRILL_0009 rolled-back binary hash differs from the original $v1 install"
+        throw "POLYPACK_UPDATER_DRILL_0009 rolled-back binary hash differs from the original $v1 install"
     }
     Write-Host "Rolled back $v1 exe SHA256: $installedRollbackHash"
 
@@ -493,10 +493,10 @@ Expire-Date: 1d
 
     Step 'Drill completed'
     Get-Content -LiteralPath (Join-Path $evidenceDir 'summary.json') | Out-Host
-    Write-Host 'POLY_UPDATER_DRILL_RESULT: PASS'
+    Write-Host 'POLYPACK_UPDATER_DRILL_RESULT: PASS'
     exit 0
 } catch {
-    Write-Host 'POLY_UPDATER_DRILL_RESULT: FAIL'
+    Write-Host 'POLYPACK_UPDATER_DRILL_RESULT: FAIL'
     Write-Host $_
     exit 1
 } finally {

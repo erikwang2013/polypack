@@ -330,7 +330,7 @@ test("设备腿（HAP 安装启动 + 遥控器键走查）：SKIP-with-print—�
       "HAP 安装启动与遥控器键走查阻塞——证据边界：本文件为 JS 层替代证据（结构快照 + 键序内核推导对拍 + " +
       "安全区换算），真机证据由设备上机窗口补。设备就绪后按下列清单执行（TV HAP 前置 app.json " +
       "polypack.tv=true 再出包）：\n" +
-      "  出包： poly build --target harmonyos（复用 M3 链：hvigorw assembleHap + hap-sign-tool 签名）\n" +
+      "  出包： polypack build --target harmonyos（复用 M3 链：hvigorw assembleHap + hap-sign-tool 签名）\n" +
       "  安装： hdc install <签名 HAP>（bundleName com.polypack.host）\n" +
       "  启动： hdc shell aa force-stop com.polypack.host && hdc shell aa start -b com.polypack.host -a EntryAbility\n" +
       `  按键： hdc shell uitest uiInput keyEvent <code>（内核键 ↔ KEYCODE：${keyEvents}）；Back 键单独 uitest uiInput keyEvent Back\n` +

@@ -1,4 +1,4 @@
-// T-M3-05 tokens 对照测试：包内最小 token 集与 poly init 模板 tokens.css 同源。
+// T-M3-05 tokens 对照测试：包内最小 token 集与 polypack init 模板 tokens.css 同源。
 // 双重哨兵：值逐一相等 + 键集合双向相等（模板新增 token 而包内未同步即失败）。
 
 import assert from "node:assert/strict";
@@ -10,16 +10,16 @@ import { fileURLToPath } from "node:url";
 import { platformStyle, tokens } from "../src/index.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
-const TOKENS_CSS = path.resolve(HERE, "../../../../crates/poly-cli/templates/app/ui/tokens.css");
+const TOKENS_CSS = path.resolve(HERE, "../../../../crates/polypack-cli/templates/app/ui/tokens.css");
 
 const cssVars = Object.fromEntries(
-  [...fs.readFileSync(TOKENS_CSS, "utf8").matchAll(/--poly-([\w-]+):\s*([^;]+);/g)].map((m) => [
+  [...fs.readFileSync(TOKENS_CSS, "utf8").matchAll(/--polypack-([\w-]+):\s*([^;]+);/g)].map((m) => [
     m[1],
     m[2].trim(),
   ]),
 );
 
-test("token 值与 poly init 模板 tokens.css 逐一相等（CSS 为唯一事实源）", () => {
+test("token 值与 polypack init 模板 tokens.css 逐一相等（CSS 为唯一事实源）", () => {
   const expected = {
     "color-brand": tokens.color.brand,
     "color-brand-strong": tokens.color.brandStrong,
@@ -41,7 +41,7 @@ test("token 值与 poly init 模板 tokens.css 逐一相等（CSS 为唯一事�
     "token 键集合漂移：模板与包内最小 token 集须同步",
   );
   for (const [key, value] of Object.entries(expected)) {
-    assert.equal(cssVars[key], value, `token --poly-${key} 漂移`);
+    assert.equal(cssVars[key], value, `token --polypack-${key} 漂移`);
   }
 });
 

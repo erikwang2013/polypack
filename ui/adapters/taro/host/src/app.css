@@ -1,4 +1,4 @@
-/* 页面底色取 poly init 模板 tokens.css 的 surface 值（装配层蒙皮走 platformStyle，这里是
+/* 页面底色取 polypack init 模板 tokens.css 的 surface 值（装配层蒙皮走 platformStyle，这里是
    页面级兜底）；pxtransform 按 750 设计稿折半，写 750 基数下的 px。 */
 page {
   background: #f8fafc;

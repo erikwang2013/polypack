@@ -47,7 +47,7 @@ interface types {
     bytes: list<u8>,
   }
 
-  // 稳定错误：`code` 为 `poly::E_PLUGIN_xxxx` 或插件自定义码。
+  // 稳定错误：`code` 为 `polypack::E_PLUGIN_xxxx` 或插件自定义码。
   record error {
     code: string,
     message: string,

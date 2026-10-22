@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // 宿主 API 白名单构建期预检（T-M3-05）：扫描页面源码，越界即非零退出。
-// poly-bundle 小程序打包器把它排进编译前命令链（构建期拒绝，见 src/apiguard.js 的口径）。
+// polypack-bundle 小程序打包器把它排进编译前命令链（构建期拒绝，见 src/apiguard.js 的口径）。
 //
 // 用法: polypack-taro-api <文件或目录>... [--allow name,name]
 
@@ -55,7 +55,7 @@ for (const target of targets) {
 }
 if (violations > 0) {
   console.error(
-    `宿主 API 白名单预检失败：${violations} 处越界调用（${scanned} 个文件）；确为示例请加同行标记 poly:allow-api`,
+    `宿主 API 白名单预检失败：${violations} 处越界调用（${scanned} 个文件）；确为示例请加同行标记 polypack:allow-api`,
   );
   process.exit(1);
 }

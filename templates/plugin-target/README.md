@@ -26,8 +26,8 @@ rustup target add wasm32-unknown-unknown
 构建前后都可用宿主 CLI 校验工程骨架与接口同步：
 
 ```bash
-poly plugin check .
-# 脚本用（单行 JSON 事件）：poly --json plugin check .
+polypack plugin check .
+# 脚本用（单行 JSON 事件）：polypack --json plugin check .
 ```
 
 检查脚手架文件是否齐全、`plugin/wit/polypack-target.wit` 是否与宿主逐字一致；
@@ -55,7 +55,7 @@ cargo test -- --nocapture
 [[plugins]]
 id = "__polypack_plugin_id__"
 path = "plugins/__polypack_plugin_id__.wasm"
-# 可选：制品内容摘要；设置后加载前强制校验（poly plugin digest 产出）
+# 可选：制品内容摘要；设置后加载前强制校验（polypack plugin digest 产出）
 # sri = "blake3-<hex>"
 # 默认零能力（无文件系统、无网络）；确需时按最小权限显式授权：
 # fs_read = ["data"]
@@ -66,13 +66,13 @@ path = "plugins/__polypack_plugin_id__.wasm"
 SRI（加载前校验的制品摘要）：
 
 ```bash
-poly plugin digest dist/plugin.wasm
+polypack plugin digest dist/plugin.wasm
 # blake3-<hex>
-poly --json plugin digest dist/plugin.wasm   # 脚本用（不混入横幅）
+polypack --json plugin digest dist/plugin.wasm   # 脚本用（不混入横幅）
 ```
 
 该值与宿主 `Sandbox::load` 的 SRI 口径一致；插件重新构建后需重新计算。
-`poly plugin new` 只生成插件工程，不写入应用目录；构建后把产物复制过去：
+`polypack plugin new` 只生成插件工程，不写入应用目录；构建后把产物复制过去：
 
 ```bash
 mkdir -p <app>/plugins
@@ -92,12 +92,12 @@ crate = "core"
 ```
 
 ```bash
-poly build --config <app>/polypack.toml --target __polypack_plugin_id__
+polypack build --config <app>/polypack.toml --target __polypack_plugin_id__
 ```
 
 ## 占位符
 
-`poly plugin new <id>` 会自动替换以下占位符；手工复制本模板时请一并替换：
+`polypack plugin new <id>` 会自动替换以下占位符；手工复制本模板时请一并替换：
 
 - `__polypack_plugin_id__`：插件 id（kebab-case）
 - `__polypack_plugin_name__`：显示名

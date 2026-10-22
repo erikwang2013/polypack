@@ -8,7 +8,7 @@ ROADMAP §6 RendererAdapter 契约的电视（10-foot）装配层（T-M4-01）�
 ui/adapters/tv/
 ├── src/
 │   ├── index.js          # createAdapter：mount（react-dom）/ platformStyle / capabilities / degradations / safeArea
-│   ├── capabilities.js   # TV 能力矩阵（focusNav 基线 true）+ 降级分支（对照 poly-targets 内建声明）
+│   ├── capabilities.js   # TV 能力矩阵（focusNav 基线 true）+ 降级分支（对照 polypack-targets 内建声明）
 │   ├── tokens.js         # 10-foot tokens：基值同源 tokens.css，TV 派生 ×TV_SCALE + 安全区
 │   ├── focus.js          # TV 焦点内核入口：复用 adapter-native 共享内核（T-M2-05）+ handleTvKey 统一键路由（T-M4-03）
 │   ├── geometry.js       # 几何推导（rect → 方向邻居 / focusOrder 覆盖）+ 连通性检查器（T-M4-02）
@@ -37,7 +37,7 @@ adapter.safeArea();               // → { top: 54, right: 96, bottom: 54, left:
 - **与 adapter-native 的能力口径差异**（有意为之）：遥控器恒有方向键 → `focusNav` 基线真、
   宿主 `pointer` 提示不翻转它（Magic Remote 的指针不取消焦点环）；`gestures` 假 →
   `back-affordance` 降级由遥控器 Back 键承接（分层 Back 语义）。
-- **目标 id** 以 ROADMAP §3.4 的 `tizen-tv` 命名口径为准；poly-targets 登记
+- **目标 id** 以 ROADMAP §3.4 的 `tizen-tv` 命名口径为准；polypack-targets 登记
   （T-M4-04/08/09/10）落位后由 `capabilities.test.js` 哨兵收口（内建 `*-tv` ⊆ 本矩阵）。
 - **降级分支闭合集**：`focus-ring` / `safe-area-padding` / `back-affordance`。
 
@@ -86,7 +86,7 @@ handleTvKey(session, key, { activate });            // 宿主事件源唯一入�
 
 ## 10-foot tokens（tokens 由单一源派生）
 
-基值 = poly init 模板 `crates/poly-cli/templates/app/ui/tokens.css`（与 adapter-native /
+基值 = polypack init 模板 `crates/polypack-cli/templates/app/ui/tokens.css`（与 adapter-native /
 adapter-taro 同一事实源；`@polypack/ui` 包落地前模板文件是唯一源，ROADMAP §6）。
 TV 值 = 基值 × `TV_SCALE`（字号 / 间距 / 圆角各 ×2，远距可读），颜色直通；
 安全区 = 视口百分比（四边 5%，1080p 即 96/54px），蒙皮给 CSS 形态、`safeAreaInsets` 给像素。
@@ -98,7 +98,7 @@ TV 值 = 基值 × `TV_SCALE`（字号 / 间距 / 圆角各 ×2，远距可读�
 | 测试 | 断言 |
 |---|---|
 | `contract.test.js` | 契约对象形状、react-dom 挂载装配（桩 runtime）、边界校验、安全区换算 |
-| `capabilities.test.js` | 矩阵形态、宿主提示覆盖、降级分支闭合集、poly-targets 哨兵（`*-tv` ⊆ 矩阵） |
+| `capabilities.test.js` | 矩阵形态、宿主提示覆盖、降级分支闭合集、polypack-targets 哨兵（`*-tv` ⊆ 矩阵） |
 | `tokens.test.js` | 基值 ↔ tokens.css 双向齐全、10-foot 派生、react-dom 合法形态（环零布局抖动）、金样比对 |
 | `geometry.test.js` | 2×2 网格四向邻接 / 遍历快照、几何裁定三重平手、focusOrder 覆盖、连通性检查器（0 孤立验收）、推导边界校验 |
 | `focus.test.js` | 与共享内核口径对拍（遍历快照恒等）、键路由四类描述符、Back 焦点记忆、入口边界 |

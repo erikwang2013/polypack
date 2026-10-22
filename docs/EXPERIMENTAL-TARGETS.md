@@ -1,7 +1,7 @@
 # PolyPack 实验目标：能力 / 缺口 / 替代方案
 
 > 适用目标：`watchos` / `garmin`（`experimental = true`）。Wear OS 为平台级目标（`experimental = false`），边界见 §4。
-> 单一事实源：`crates/poly-targets/src/builtin.rs` 的 `TargetSpec.experimental`。生成的文档状态表（README ×2 / ROADMAP ×2）与 CI 强度由 `node tools/check-experimental.mjs` 校验三处一致；本文件与英文版的结构（标题数 / 表格行数）由 `node tools/check-docs.mjs` 对账。
+> 单一事实源：`crates/polypack-targets/src/builtin.rs` 的 `TargetSpec.experimental`。生成的文档状态表（README ×2 / ROADMAP ×2）与 CI 强度由 `node tools/check-experimental.mjs` 校验三处一致；本文件与英文版的结构（标题数 / 表格行数）由 `node tools/check-docs.mjs` 对账。
 > 决策：两个实验目标均**继续（受限档）**——watchOS 以 SwiftUI 伴生模板提供打包 / 签名链；Garmin 以构建期 Monkey C 子集发射器提供受限出包面。触发前置（编译器 / 真机闭环）见各节。
 
 ## 1. 判定口径与决策
@@ -17,11 +17,11 @@
 
 | 能力 | 说明 | 证据 |
 |---|---|---|
-| 模板生成 | `poly init --target watchos` 生成最小可构建 SwiftUI 手表 App：`@main` 入口、ContentView、CoreBridge 桩、WatchConnectivity 骨架、Info.plist（WKApplication）、Xcode 工程 + 共享 scheme | `crates/poly-cli/templates/watchos/`；TargetSpec `watchos` |
-| 打包 | `watchos-xcodebuild`：`xcodebuild archive` → `ditto` → `export/Payload/PolyPackWatch.app`；`plan()` 为纯组装，任意宿主可跑 | `crates/poly-bundle/src/packagers/watchos.rs` |
+| 模板生成 | `polypack init --target watchos` 生成最小可构建 SwiftUI 手表 App：`@main` 入口、ContentView、CoreBridge 桩、WatchConnectivity 骨架、Info.plist（WKApplication）、Xcode 工程 + 共享 scheme | `crates/polypack-cli/templates/watchos/`；TargetSpec `watchos` |
+| 打包 | `watchos-xcodebuild`：`xcodebuild archive` → `ditto` → `export/Payload/PolyPackWatch.app`；`plan()` 为纯组装，任意宿主可跑 | `crates/polypack-bundle/src/packagers/watchos.rs` |
 | 签名 / 校验 | 复用 M2 Apple 链（`apple-codesign`，codesign 硬化运行时 + 时间戳）；`codesign --verify --deep --strict` + `spctl --assess`；凭据只以 CredentialRef 出现 | TargetSpec verify；模板 README |
 | 伴生通信 | WatchConnectivity 三通道骨架（`sendMessage` / `transferUserInfo` / `updateApplicationContext`）；核心调用经 iOS 伴生 App 代理 | `WatchConnectivity.swift`；`CoreBridge.swift` |
-| 跨宿主发起 | Linux / Windows 上 package 阶段如实 `ToolMissing`（`poly::E_BND_0001`），走 `poly farm submit --target watchos`（R3 macOS worker） | `packagers/watchos.rs`；模板 README |
+| 跨宿主发起 | Linux / Windows 上 package 阶段如实 `ToolMissing`（`polypack::E_BND_0001`），走 `polypack farm submit --target watchos`（R3 macOS worker） | `packagers/watchos.rs`；模板 README |
 
 ### 2.2 缺口与替代方案
 
@@ -49,8 +49,8 @@
 | UI 子集 | View / 卡片 / 文本 / Pressable 复合（底 + 焦点环 + 文字）；颜色 / 间距 / 安全区与 adapter-wear tokens 同源；圆 454×454、方 320×320 参考视口 | 草稿 §2 表 A/C |
 | 交互子集 | 三键 UP / DOWN / SELECT / BACK；焦点序 = 共享焦点内核 `engine.order` 线性循环；Back 历史同形 | 草稿 §2 表 B |
 | Connect IQ 工程 | `manifest.xml` + `monkey.jungle` + `resources/strings/strings.xml` + `source/*.mc`；参考设备 `venu2` / `venusq`；应用 id = `sha256(identifier)` 前 32 hex | 草稿 §2 表 D |
-| 校验 | 29/29 Node 测试 + Rust 内建 `.iq` 结构自检（包根 `manifest.xml` + ≥1 个按设备 `.prg`）；`poly verify` 的 `iq-structure-check` 已接线；`npm run build` 真跑结构自检 | 草稿 §5；`ui/adapters/garmin/test/`；`crates/poly-bundle/tests/packagers_garmin.rs` |
-| 编译器腿（环境就绪时） | Rust 打包器 `crates/poly-bundle/src/packagers/garmin.rs` 解析 `<project>/garmin`（或宿主根）并调用 `monkeyc -e -w -r -o out.iq -y <devkey> -f monkey.jungle` → `.iq`（`manifest.xml` + 按设备 `.prg`）；devkey 仅取路径（`CIQ_DEVKEY`） | 草稿 §2 表 D、§5；`crates/poly-bundle/src/packagers/garmin.rs` |
+| 校验 | 29/29 Node 测试 + Rust 内建 `.iq` 结构自检（包根 `manifest.xml` + ≥1 个按设备 `.prg`）；`polypack verify` 的 `iq-structure-check` 已接线；`npm run build` 真跑结构自检 | 草稿 §5；`ui/adapters/garmin/test/`；`crates/polypack-bundle/tests/packagers_garmin.rs` |
+| 编译器腿（环境就绪时） | Rust 打包器 `crates/polypack-bundle/src/packagers/garmin.rs` 解析 `<project>/garmin`（或宿主根）并调用 `monkeyc -e -w -r -o out.iq -y <devkey> -f monkey.jungle` → `.iq`（`manifest.xml` + 按设备 `.prg`）；devkey 仅取路径（`CIQ_DEVKEY`） | 草稿 §2 表 D、§5；`crates/polypack-bundle/src/packagers/garmin.rs` |
 
 ### 3.2 缺口与替代方案
 
@@ -86,4 +86,4 @@
 | 缺口 / 替代方案变化 | 同提交更新本文件与 README L6 说明；每个缺口必须保留「替代方案」或明示「无替代」 |
 | CI 校验 | `node tools/gen-target-table.mjs --check`；`node tools/check-docs.mjs`；`node tools/check-experimental.mjs` |
 
-素材：`ui/adapters/garmin/CAPABILITY-BOUNDARY-DRAFT.md`（T-M7-09）、`crates/poly-bundle/src/packagers/garmin.rs`、`crates/poly-cli/templates/watchos/README.md`、`crates/poly-bundle/src/packagers/watchos.rs`、TargetSpec notes。
+素材：`ui/adapters/garmin/CAPABILITY-BOUNDARY-DRAFT.md`（T-M7-09）、`crates/polypack-bundle/src/packagers/garmin.rs`、`crates/polypack-cli/templates/watchos/README.md`、`crates/polypack-bundle/src/packagers/watchos.rs`、TargetSpec notes。

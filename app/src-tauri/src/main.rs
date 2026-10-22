@@ -11,5 +11,5 @@ fn main() {
     tauri::Builder::default()
         .invoke_handler(tauri::generate_handler![history::history_records])
         .run(tauri::generate_context!())
-        .expect("poly-gui: Tauri runtime failed");
+        .expect("polypack-gui: Tauri runtime failed");
 }

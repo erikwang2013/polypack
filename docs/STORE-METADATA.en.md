@@ -1,6 +1,6 @@
 # Store metadata pipeline (M9-E5)
 
-> Status: implemented (T-M9-13/14/15). `store/metadata/<platform>/<locale>.toml` is validated by `poly publish --metadata-dir` and deterministically packed into submission materials; `--check-metadata` validates without publishing. Screenshots are stored as paths only; image bytes are not read.
+> Status: implemented (T-M9-13/14/15). `store/metadata/<platform>/<locale>.toml` is validated by `polypack publish --metadata-dir` and deterministically packed into submission materials; `--check-metadata` validates without publishing. Screenshots are stored as paths only; image bytes are not read.
 
 ## 1. Directory and schema
 
@@ -28,7 +28,7 @@ Lengths use the platform convention: CJK / full-width characters count as 2, eve
 | screenshots | 0–10 paths, png/jpg/jpeg/gif | required, 2–5 paths, png/jpg/jpeg |
 | privacy_url / support_url | required, absolute http(s) URL | required, absolute http(s) URL |
 
-Rule sources and the retrieval date live in the `crates/poly-publish/src/metadata.rs` module docs; when platform rules change, bump `schema` and update that table.
+Rule sources and the retrieval date live in the `crates/polypack-publish/src/metadata.rs` module docs; when platform rules change, bump `schema` and update that table.
 
 ## 3. Complete example
 
@@ -48,10 +48,10 @@ support_url = "https://example.com/support"
 
 ```bash
 # Validate only: no artifact/credential parsing, no network
-poly publish --check-metadata --metadata-dir store/metadata --channel wechat-open-platform
+polypack publish --check-metadata --metadata-dir store/metadata --channel wechat-open-platform
 
 # Validate and publish as submission materials
-poly publish --metadata-dir store/metadata --channel wechat-open-platform \
+polypack publish --metadata-dir store/metadata --channel wechat-open-platform \
   --appid wx0000000000000000 --version 1.2.3 --credential env:WECHAT_KEY --package dist
 ```
 

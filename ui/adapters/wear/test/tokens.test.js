@@ -1,5 +1,5 @@
 // T-M7-01 tokens 对照 + 金样测试：
-// ① 基值 = poly init 模板 tokens.css（唯一事实源）逐项相等（键集合双向，含「模板新增而包内未同步」）；
+// ① 基值 = polypack init 模板 tokens.css（唯一事实源）逐项相等（键集合双向，含「模板新增而包内未同步」）；
 // ② 穿戴值 = 基值 × WEAR_SCALE（间距 / 圆角紧凑，字号直通）；③ 圆 / 方安全区口径与像素换算；
 // ④ 蒙皮为 RN 合法形态（数值即 dp、拆键）；⑤ 快照金样（再生成：node golden/emit-tokens.mjs）。
 
@@ -21,11 +21,11 @@ import {
 } from "../src/index.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
-const TOKENS_CSS = path.resolve(HERE, "../../../../crates/poly-cli/templates/app/ui/tokens.css");
+const TOKENS_CSS = path.resolve(HERE, "../../../../crates/polypack-cli/templates/app/ui/tokens.css");
 const GOLDEN = path.resolve(HERE, "../golden/wear-tokens.json");
 
 const cssVars = Object.fromEntries(
-  [...fs.readFileSync(TOKENS_CSS, "utf8").matchAll(/--poly-([\w-]+):\s*([^;]+);/g)].map((m) => [
+  [...fs.readFileSync(TOKENS_CSS, "utf8").matchAll(/--polypack-([\w-]+):\s*([^;]+);/g)].map((m) => [
     m[1],
     m[2].trim(),
   ]),
@@ -54,7 +54,7 @@ test("token 基值：与模板 tokens.css 逐一相等（CSS 为唯一事实源�
     "token 键集合漂移：模板与包内 token 集须同步",
   );
   for (const [key, value] of Object.entries(expected)) {
-    assert.equal(cssVars[key], value, `token --poly-${key} 漂移`);
+    assert.equal(cssVars[key], value, `token --polypack-${key} 漂移`);
   }
 });
 

@@ -2,7 +2,7 @@
 //   1) 发射生成件（components/PolypackScene.xml + source/focusgraph.brs）并入 staging
 //   2) 组 zip（布局对齐 rokudev/hello-world 官方 makefile：zip 根 = manifest + source/ + components/）
 //   3) 结构自检（zip 布局 / manifest 必填字段 / XML 良构 / BRS 标记）——无真机时的替代验证
-//   4) 侧载自检：POLY_ROKU_REAL=1 + ROKU_DEV_TARGET 时真跑（ECP 探测 + plugin_install）；
+//   4) 侧载自检：POLYPACK_ROKU_REAL=1 + ROKU_DEV_TARGET 时真跑（ECP 探测 + plugin_install）；
 //      否则 SKIP-with-print 打印官方式手册命令（依据 rokudev/hello-world makefile/app.mk）。
 //
 // 用法: node scripts/build-and-check.mjs [--src <频道骨架目录>] [--out <产物目录>]
@@ -137,15 +137,15 @@ const sceneBrs = read("components/PolypackScene.brs");
 
 // ---- 4) 侧载自检 ----
 const target = process.env.ROKU_DEV_TARGET;
-if (process.env.POLY_ROKU_REAL !== "1") {
-  skip("无真机侧载（结构自检替代）。真跑: POLY_ROKU_REAL=1 + ROKU_DEV_TARGET=<ip>（+ ROKU_DEV_PASSWORD）");
+if (process.env.POLYPACK_ROKU_REAL !== "1") {
+  skip("无真机侧载（结构自检替代）。真跑: POLYPACK_ROKU_REAL=1 + ROKU_DEV_TARGET=<ip>（+ ROKU_DEV_PASSWORD）");
   console.log("      手册（依据 rokudev/hello-world makefile/app.mk）：");
   console.log("      1) Roku 设备开开发者模式（设置 → 系统 → 开发者模式），记 IP 与开发者密码");
-  console.log("      2) export ROKU_DEV_TARGET=<ip> ROKU_DEV_PASSWORD=<pwd> POLY_ROKU_REAL=1");
+  console.log("      2) export ROKU_DEV_TARGET=<ip> ROKU_DEV_PASSWORD=<pwd> POLYPACK_ROKU_REAL=1");
   console.log(`      3) 重跑本脚本；或手动: curl --user rokudev:<pwd> --digest -F "mysubmit=Install" -F "archive=@${zipPath}" http://<ip>/plugin_install`);
   console.log("      4) 结果页 Success 即侧载成功；另: ECP 设备描述 http://<ip>:8060/");
 } else if (!target) {
-  fail("POLY_ROKU_REAL=1 但未设 ROKU_DEV_TARGET");
+  fail("POLYPACK_ROKU_REAL=1 但未设 ROKU_DEV_TARGET");
 } else {
   const ecp = run("curl", ["--connect-timeout", "2", "-s", `http://${target}:8060/`]);
   const name = /<friendlyName>([^<]*)<\/friendlyName>/.exec(ecp.stdout ?? "");

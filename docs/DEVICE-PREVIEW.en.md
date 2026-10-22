@@ -1,11 +1,11 @@
 # Pre-release device preview matrix (M9-E7)
 
-> Status: T-M9-19 (device-farm research matrix) and T-M9-20 (`DevicePool` / `DeviceLease` protocol + `poly preview --dry-run`) are delivered; **T-M9-21 real-device install / launch / screenshot is external environment work, not executed and not marked ✅**.
+> Status: T-M9-19 (device-farm research matrix) and T-M9-20 (`DevicePool` / `DeviceLease` protocol + `polypack preview --dry-run`) are delivered; **T-M9-21 real-device install / launch / screenshot is external environment work, not executed and not marked ✅**.
 > Chinese: [DEVICE-PREVIEW.md](DEVICE-PREVIEW.md)
 
 ## 1. Status and scope
 
-This document answers three questions: buy or build a device farm; what the device-pool and lease protocol looks like; which commands and evidence a real-device drill requires. `poly preview --dry-run` only generates a deterministic plan: it does not lease devices, read credentials, or access the network. Real execution is left to T-M9-21's external devices and manually archived evidence.
+This document answers three questions: buy or build a device farm; what the device-pool and lease protocol looks like; which commands and evidence a real-device drill requires. `polypack preview --dry-run` only generates a deterministic plan: it does not lease devices, read credentials, or access the network. Real execution is left to T-M9-21's external devices and manually archived evidence.
 
 Non-goals: a full device-farm product, unattended review, or promising real-device coverage for all 49 targets. Device availability (especially Android TV / Wear OS) changes with each provider catalog and must be checked at lease time.
 
@@ -67,7 +67,7 @@ Non-goals: a full device-farm product, unattended review, or promising real-devi
 ## 6. Dry-run command and plan
 
 ```bash
-poly preview --dry-run --json --at 0 --timeout 900 \
+polypack preview --dry-run --json --at 0 --timeout 900 \
   --device "firebase-test-lab/Pixel 7/android" \
   --device "self-hosted/tv-lab-01/android/android-tv"
 ```
@@ -105,18 +105,18 @@ poly preview --dry-run --json --at 0 --timeout 900 \
 ## 7. Lease, timeout and cleanup semantics
 
 - Leases are numbered in `--device` declaration order; the same input and `--at` produce byte-identical JSON, so reruns can be diffed.
-- `expires_at = acquired_at + timeout_secs` with an overflow check; `--timeout 0` and overflow are rejected with `poly::E_PLAN_0001`.
+- `expires_at = acquired_at + timeout_secs` with an overflow check; `--timeout 0` and overflow are rejected with `polypack::E_PLAN_0001`.
 - Success releases; failure releases and archives; timeout force-releases. All three paths uninstall the fixture app and release the device from the provider.
 - The evidence directory is fixed at `.polypack/preview/<target>/<device>/`; device / os / target values containing `/`, `\`, control characters, or equal to `.` / `..` are rejected to prevent evidence-path escape.
-- Dry-run is a pure function path: no credentials, no child processes, no sockets. Real execution is not wired; omitting `--dry-run` fails with `poly::E_FARM_0005` instead of faking a result.
+- Dry-run is a pure function path: no credentials, no child processes, no sockets. Real execution is not wired; omitting `--dry-run` fails with `polypack::E_FARM_0005` instead of faking a result.
 
 | Condition | Stable error code | Status |
 | --- | --- | --- |
-| Invalid provider / device expression / empty list / duplicate device | `poly::E_FARM_0002` | Implemented |
-| Invalid or overflowing lease duration | `poly::E_PLAN_0001` | Implemented |
-| Real execution without `--dry-run` | `poly::E_FARM_0005` | Implemented (explicit refusal) |
-| Lease expires before completion | `poly::E_FARM_0004` | Planned, not implemented |
-| Remote install / launch failure | `poly::E_FARM_0003` | Planned, not implemented |
+| Invalid provider / device expression / empty list / duplicate device | `polypack::E_FARM_0002` | Implemented |
+| Invalid or overflowing lease duration | `polypack::E_PLAN_0001` | Implemented |
+| Real execution without `--dry-run` | `polypack::E_FARM_0005` | Implemented (explicit refusal) |
+| Lease expires before completion | `polypack::E_FARM_0004` | Planned, not implemented |
+| Remote install / launch failure | `polypack::E_FARM_0003` | Planned, not implemented |
 
 ## 8. T-M9-21 external device drill (not delivered)
 
@@ -126,7 +126,7 @@ Status: **EXTERNAL / OPEN, not executed, not marked ✅**. It requires one real 
 
 ```bash
 # 0. Deterministic lease plan (archive first to prove devices and time window)
-poly preview --dry-run --json --at 0 --timeout 900 \
+polypack preview --dry-run --json --at 0 --timeout 900 \
   --device "self-hosted/<android-serial>/android" \
   --device "self-hosted/<android-tv-serial>/android/android-tv"
 
@@ -154,8 +154,8 @@ adb devices -l
 
 | Evidence | Requirement |
 | --- | --- |
-| Plan | Raw `poly preview --dry-run --json` output with lease_ids and the time window |
-| Artifact | APK path + blake3 digest from the build receipt (`poly build --json`) |
+| Plan | Raw `polypack preview --dry-run --json` output with lease_ids and the time window |
+| Artifact | APK path + blake3 digest from the build receipt (`polypack build --json`) |
 | Device | `adb devices -l` output, model, and API level (`getprop ro.build.version.sdk`) |
 | Install | Exact `adb install` command and exit code |
 | Launch | `am start -W` output with `Status: ok`, and the focused activity equal to the target activity |

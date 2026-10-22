@@ -79,13 +79,13 @@ ok('donation QR images present');
 
 // 7) Downloads are served from site/downloads/, never from the release page.
 const DOWNLOADS = [
-  'polypack-cli_1.16.0_amd64.deb',
-  'poly-1.16.0-x86_64.AppImage',
-  'poly-1.16.0-x86_64.msi',
-  'poly-1.16.0-aarch64.pkg',
-  'poly-x86_64-unknown-linux-gnu.tar.gz',
-  'poly-aarch64-apple-darwin.tar.gz',
-  'poly-x86_64-pc-windows-msvc.zip',
+  'polypack_1.16.0_amd64.deb',
+  'polypack-1.16.0-x86_64.AppImage',
+  'polypack-1.16.0-x86_64.msi',
+  'polypack-1.16.0-aarch64.pkg',
+  'polypack-x86_64-unknown-linux-gnu.tar.gz',
+  'polypack-aarch64-apple-darwin.tar.gz',
+  'polypack-x86_64-pc-windows-msvc.zip',
   'SHA256SUMS.txt',
 ];
 for (const file of DOWNLOADS) {

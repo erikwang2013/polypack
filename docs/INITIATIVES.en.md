@@ -28,30 +28,30 @@ This document covers 22 candidates: 7 incubation items, 8 planned platforms, 2 o
 
 ### M9-E1 · SBOM / build provenance
 
-- Status: candidate · delivered (T-M9-01/02/03; SPDX / CycloneDX / in-toto, `poly verify --sbom`, receipt `sbom_digest`, bilingual [SBOM](SBOM.en.md), and a real sample).
+- Status: candidate · delivered (T-M9-01/02/03; SPDX / CycloneDX / in-toto, `polypack verify --sbom`, receipt `sbom_digest`, bilingual [SBOM](SBOM.en.md), and a real sample).
 - Trigger: the first compliance or supply-chain audit request; or a target channel requires SBOM / provenance.
-- Why: `poly verify` only checks artifact structure and signatures; the `poly release` receipt only carries `manifest_digest` (`crates/poly-cli/src/release.rs`), with no dependency list or build origin; T-M0-11 only covers baseline scanning, so an audit cannot answer "which inputs and toolchain produced this artifact".
-- Goals: generate SPDX 2.3 JSON, CycloneDX 1.5 JSON, and in-toto / SLSA-style provenance next to every artifact, bound to the five cache-key inputs (`CacheInputs`, `crates/poly-cache/src/digest.rs`) and builder identity; verifiable offline. Non-goals: SLSA L3 certification, Sigstore / Rekor integration, VEX generation.
-- Design sketch: add a leaf crate (working name `poly-sbom`) or a `poly-core` submodule that reuses `CacheInputs` sources / lockfile / target_spec / toolchain / profile; add `--sbom` to `crates/poly-cli/src/verify.rs` and an optional `sbom_digest` to the `poly release` receipt; data model is `<artifact>.cdx.json`, `<artifact>.spdx.json`, `<artifact>.intoto.jsonl`; the provenance predicate records builder, invocation, materials, and subject. Alternatives: external `cargo-cyclonedx` + `syft` (non-hermetic, extra install), or SBOM only without provenance.
-- Deliverables: design note; SBOM / provenance generator; `poly verify --sbom` and receipt field; bilingual usage docs and one real artifact sample.
+- Why: `polypack verify` only checks artifact structure and signatures; the `polypack release` receipt only carries `manifest_digest` (`crates/polypack-cli/src/release.rs`), with no dependency list or build origin; T-M0-11 only covers baseline scanning, so an audit cannot answer "which inputs and toolchain produced this artifact".
+- Goals: generate SPDX 2.3 JSON, CycloneDX 1.5 JSON, and in-toto / SLSA-style provenance next to every artifact, bound to the five cache-key inputs (`CacheInputs`, `crates/polypack-cache/src/digest.rs`) and builder identity; verifiable offline. Non-goals: SLSA L3 certification, Sigstore / Rekor integration, VEX generation.
+- Design sketch: add a leaf crate (working name `polypack-sbom`) or a `polypack-core` submodule that reuses `CacheInputs` sources / lockfile / target_spec / toolchain / profile; add `--sbom` to `crates/polypack-cli/src/verify.rs` and an optional `sbom_digest` to the `polypack release` receipt; data model is `<artifact>.cdx.json`, `<artifact>.spdx.json`, `<artifact>.intoto.jsonl`; the provenance predicate records builder, invocation, materials, and subject. Alternatives: external `cargo-cyclonedx` + `syft` (non-hermetic, extra install), or SBOM only without provenance.
+- Deliverables: design note; SBOM / provenance generator; `polypack verify --sbom` and receipt field; bilingual usage docs and one real artifact sample.
 - Risks and mitigations: format drift in supply-chain tools → pin schema versions and keep golden samples; manifest bloat → direct dependencies only with a size cap; mistaking generation for compliance certification → say so explicitly in docs.
 - Decisions: SPDX or CycloneDX first; whether to add Sigstore; whether SBOMs ship with artifacts.
-- First step: map the `CacheInputs` fields in `crates/poly-cache/src/digest.rs` to provenance materials and write a one-page design draft.
+- First step: map the `CacheInputs` fields in `crates/polypack-cache/src/digest.rs` to provenance materials and write a one-page design draft.
 
 | Task | Title | Role | Depends | Days | Acceptance |
 | --- | --- | --- | --- | --- | --- |
 | T-M9-01 ✅ | SBOM generator (SPDX + CycloneDX) | coder | — | 4 | Byte-identical across two runs; dependency set matches the lockfile for a real artifact |
 | T-M9-02 ✅ | SLSA-style provenance | coder | T-M9-01 | 4 | Subject digest equals artifact digest; materials cover all five CacheInputs; offline verifier passes |
-| T-M9-03 ✅ | verify / release / publish wiring | coder + tester | T-M9-01, T-M9-02 | 3 | `poly verify --sbom` emits all three files; receipt contains `sbom_digest`; missing artifact fails clearly |
+| T-M9-03 ✅ | verify / release / publish wiring | coder + tester | T-M9-01, T-M9-02 | 3 | `polypack verify --sbom` emits all three files; receipt contains `sbom_digest`; missing artifact fails clearly |
 
 ### M9-E2 · monorepo / multi-app workspace
 
 - Status: candidate · delivered (T-M9-04/05/06; code, tests, ADR, bilingual docs, and demo script).
 - Trigger: the first multi-app repository user appears and shares one Rust core plus release process.
-- Why: `PolypackConfig` (`crates/poly-core/src/config.rs`) is single-app (`[package]` / `[ui]` / `[core]` / `[targets.*]` / `[retention]`) with `deny_unknown_fields`; `Project` (`crates/poly-core/src/plan.rs`) has one root and no workspace members, app selection, or shared-cache semantics.
+- Why: `PolypackConfig` (`crates/polypack-core/src/config.rs`) is single-app (`[package]` / `[ui]` / `[core]` / `[targets.*]` / `[retention]`) with `deny_unknown_fields`; `Project` (`crates/polypack-core/src/plan.rs`) has one root and no workspace members, app selection, or shared-cache semantics.
 - Goals: one root config declares multiple app members, resolves JobSpec and artifact paths per app, and shares core source-tree cache keys. Non-goals: cross-app dependency graphs, Nx / Turborepo-level orchestration, changing single-app config meaning.
-- Design sketch: root `[workspace] members` is implemented (each member owns its `polypack.toml`, id = final directory segment, unique, no root escape); `JobSpec.app_id` is optional and omitted for single-app jobs; `poly build --workspace` builds all members in declaration order and `--app <id>` builds one; the shared core compile key excludes the app id while the UI bundle key includes it; outputs/snapshots land in `.polypack/packages/<app>/<target>/` and `.polypack/artifacts/<app>/<target>/`; new `E_WS_0001..0004`. Integration points: `crates/poly-core/src/workspace.rs`, `plan.rs`, `job.rs`, `crates/poly-cli/src/build.rs`, `crates/poly-cache/src/digest.rs`. Alternatives: an external loop over invocations, or one repository per app (shared core cost is high).
-- Deliverables: `[workspace]` schema and [ADR 0008](../decisions/0008-monorepo-workspace.md); member discovery and composite JobSpec semantics; CLI selector; two-app example (`crates/poly-cli/tests/workspace.rs` / `scripts/demo-workspace.sh`) and cache-hit tests; bilingual [WORKSPACE](WORKSPACE.en.md) usage docs.
+- Design sketch: root `[workspace] members` is implemented (each member owns its `polypack.toml`, id = final directory segment, unique, no root escape); `JobSpec.app_id` is optional and omitted for single-app jobs; `polypack build --workspace` builds all members in declaration order and `--app <id>` builds one; the shared core compile key excludes the app id while the UI bundle key includes it; outputs/snapshots land in `.polypack/packages/<app>/<target>/` and `.polypack/artifacts/<app>/<target>/`; new `E_WS_0001..0004`. Integration points: `crates/polypack-core/src/workspace.rs`, `plan.rs`, `job.rs`, `crates/polypack-cli/src/build.rs`, `crates/polypack-cache/src/digest.rs`. Alternatives: an external loop over invocations, or one repository per app (shared core cost is high).
+- Deliverables: `[workspace]` schema and [ADR 0008](../decisions/0008-monorepo-workspace.md); member discovery and composite JobSpec semantics; CLI selector; two-app example (`crates/polypack-cli/tests/workspace.rs` / `scripts/demo-workspace.sh`) and cache-hit tests; bilingual [WORKSPACE](WORKSPACE.en.md) usage docs.
 - Risks and mitigations: schema breaks single-app compatibility → behavior is byte-identical when `[workspace]` is absent; config drift between members → shared inheritance plus explicit override table; cache key collisions → force app_id and member path into the key.
 - Decisions: whether the root or per-app config is the source of truth; whether members may use different `core` crates.
 - First step: draft the `[workspace]` schema and a minimal two-app example, and land config parsing before touching the pipeline.
@@ -60,19 +60,19 @@ This document covers 22 candidates: 7 incubation items, 8 planned platforms, 2 o
 | --- | --- | --- | --- | --- | --- |
 | T-M9-04 | `[workspace]` schema and ADR | architect | — | 3 | Single-app config unchanged; two-app example parses; ADR records alternatives and impact |
 | T-M9-05 | Member discovery and composite JobSpec | coder | T-M9-04 | 8 | `--app` builds only that member; shared core has identical cache keys for identical input; artifact roots are isolated |
-| T-M9-06 | CLI selector, example, and docs | coder + tester | T-M9-05 | 5 | `poly build --workspace` builds all members; two-app second run hits cache; bilingual docs reproduce |
+| T-M9-06 | CLI selector, example, and docs | coder + tester | T-M9-05 | 5 | `polypack build --workspace` builds all members; two-app second run hits cache; bilingual docs reproduce |
 
-### M9-E3 · Incremental release `poly release --changed`
+### M9-E3 · Incremental release `polypack release --changed`
 
 - Status: candidate · delivered (T-M9-07/08/09 delivered 2026-10-20; the five-target measurement is in [RELEASE-CHANGED.en.md](RELEASE-CHANGED.en.md)).
 - Trigger: multi-target CI release time becomes a bottleneck, or a repository with ≥ 5 targets releases at least weekly.
-- Why: `poly release` only accepts target / repo / credential / dry-run (`Args` in `crates/poly-cli/src/release.rs`) with no change detection; the existing no-op only compares a receipt `manifest_digest` inside one target, so CI still builds every target.
+- Why: `polypack release` only accepts target / repo / credential / dry-run (`Args` in `crates/polypack-cli/src/release.rs`) with no change detection; the existing no-op only compares a receipt `manifest_digest` inside one target, so CI still builds every target.
 - Goals: skip unchanged targets based on cache keys or receipt digests and emit stable skipped events and exit codes, cutting multi-target CI time. Non-goals: incremental compilation, partial artifact upload inside one target, changing release receipt semantics.
-- Design sketch: `--changed` is implemented: after `prepare`, compare the receipt `cache_key` (currently equal to `manifest_digest`) with a `manifest_digest` fallback, plus repo root and repo kind; a hit emits a distinct `release-skipped` event, does not write the repo, does not rewrite the receipt, and does not increment `runs`; `key_source` names the fallback path. `--since <ref>` returns `E_PLAN_0002` because release has no per-target source/package mapping, with a hint to use `--changed` or pre-filter `--target`. Integration points: `crates/poly-cli/src/release.rs`, `release/report.rs`, `release/tests.rs`, `poly-cli/tests/release.rs`. Alternatives: `git diff` detection (fragile across repos/generated files), mtime (unreliable).
+- Design sketch: `--changed` is implemented: after `prepare`, compare the receipt `cache_key` (currently equal to `manifest_digest`) with a `manifest_digest` fallback, plus repo root and repo kind; a hit emits a distinct `release-skipped` event, does not write the repo, does not rewrite the receipt, and does not increment `runs`; `key_source` names the fallback path. `--since <ref>` returns `E_PLAN_0002` because release has no per-target source/package mapping, with a hint to use `--changed` or pre-filter `--target`. Integration points: `crates/polypack-cli/src/release.rs`, `release/report.rs`, `release/tests.rs`, `polypack-cli/tests/release.rs`. Alternatives: `git diff` detection (fragile across repos/generated files), mtime (unreliable).
 - Deliverables: `--changed` and `--since` (delivered); receipt `cache_key` field (delivered); skipped JSON contract (delivered); CI example and measured savings (delivered: backend calls 5→1, wall clock saved 73–81%).
 - Risks and mitigations: missing cache-key input causes a missed release → single-source key construction plus change-input table tests; old receipts lack `cache_key` → explicit warning and digest fallback; skipped mistaken for a successful release → strictly separate skipped and published events.
 - Decisions: use the cache key or the receipt digest as the primary key; whether `--changed` is on by default.
-- First step: write a read-only prototype in `crates/poly-cli/src/release.rs` that prints the current key and receipt key per target.
+- First step: write a read-only prototype in `crates/polypack-cli/src/release.rs` that prints the current key and receipt key per target.
 
 | Task | Title | Role | Depends | Days | Acceptance |
 | --- | --- | --- | --- | --- | --- |
@@ -86,7 +86,7 @@ This document covers 22 candidates: 7 incubation items, 8 planned platforms, 2 o
 - Trigger: the first users ask for online updates and the target platform allows a self-managed update channel.
 - Why: the pipeline ends at publish; there is no manifest, signature, staged rollout, or rollback semantics after release. Mechanisms differ per platform (Tauri updater, Play In-App Updates, App Store phased release, mini-program version management), so one package cannot cover all.
 - Goals: define a signed update manifest with channel / rollback semantics, first for self-hosted Tauri targets, plus a per-platform mechanism matrix. Non-goals: generic binary deltas, bypassing store review, promising self-update for every target.
-- Design sketch: `poly update manifest --channel <name>` is implemented: validate channel/version/platform/base URL/pub_date, select a unique artifact and embed its Tauri `.sig`, emit a deterministic Tauri v2 `latest.json` (sorted keys, two spaces, trailing newline), produce a GPG detached signature with `GpgSigner`, and retain `<version>.json` / `.sig` for rollback; `poly update check` validates the schema and optionally verifies with a trust root. The mechanism matrix and source dates are in [OTA.en.md](OTA.en.md). Integration points: `crates/poly-cli/src/update.rs`, `update/manifest.rs`, `crates/poly-sign`. Alternatives: documentation only, or leave everything to vendor toolchains.
+- Design sketch: `polypack update manifest --channel <name>` is implemented: validate channel/version/platform/base URL/pub_date, select a unique artifact and embed its Tauri `.sig`, emit a deterministic Tauri v2 `latest.json` (sorted keys, two spaces, trailing newline), produce a GPG detached signature with `GpgSigner`, and retain `<version>.json` / `.sig` for rollback; `polypack update check` validates the schema and optionally verifies with a trust root. The mechanism matrix and source dates are in [OTA.en.md](OTA.en.md). Integration points: `crates/polypack-cli/src/update.rs`, `update/manifest.rs`, `crates/polypack-sign`. Alternatives: documentation only, or leave everything to vendor toolchains.
 - Deliverables: mechanism matrix (delivered); update manifest schema and signature (delivered); the real Tauri self-hosted install / rollback drill harness and CI job (delivered and passing its first run: run 39395255929, see `examples/updater-app`); rollback runbook (delivered, see [OTA.en.md](OTA.en.md)).
 - Risks and mitigations: signing key leakage → reuse the reference model and one-shot signing environment; uncontrolled rollout → manifest supports percentage/allowlist but only one channel first; store policy changes → matrix records source dates and does not hard-code.
 - Decisions: which update channels GA supports; whether update signing reuses the release key; whether to offer a hosted manifest service.
@@ -102,10 +102,10 @@ This document covers 22 candidates: 7 incubation items, 8 planned platforms, 2 o
 
 - Status: candidate · implemented (T-M9-13/14/15; author guide in [STORE-METADATA.en.md](STORE-METADATA.en.md)).
 - Trigger: after the first M2 / M3 store release works, listing copy or screenshots need multi-language maintenance.
-- Why: `poly publish --materials` accepts one JSON file (`crates/poly-cli/src/publish.rs`, `PublishRequest::with_materials`) with no versioned directory, field-length validation, screenshot specs, or locale completeness checks; every release hand-assembles JSON.
+- Why: `polypack publish --materials` accepts one JSON file (`crates/polypack-cli/src/publish.rs`, `PublishRequest::with_materials`) with no versioned directory, field-length validation, screenshot specs, or locale completeness checks; every release hand-assembles JSON.
 - Goals: a versioned metadata directory in the repository, validated per platform / locale and deterministically packed into submission materials. Non-goals: generating screenshots, calling store listing APIs, replacing human review.
-- Design sketch: `store/metadata/<platform>/<locale>.toml` is implemented (`schema = 1`; WeChat and Alipay rule sets, CJK counts as 2); validation reports every violation with stable `metadata.*` codes; `--metadata-dir` / `--check-metadata` / `--metadata-locale` are wired into `poly publish`, with `--materials` and `--metadata-dir` mutually exclusive; materials are key-sorted and their blake3(canonical JSON) digest is recorded in the receipt as `materials_digest`. Integration points: `crates/poly-publish/src/metadata.rs`, `flow.rs`, `archive.rs`, `crates/poly-cli/src/publish.rs`. Alternatives: external store CLIs, per-platform ad hoc JSON.
-- Deliverables: metadata schema and validator (delivered); `poly publish` wiring (delivered); locale completeness report (delivered); bilingual author guide (delivered, see [STORE-METADATA.en.md](STORE-METADATA.en.md)).
+- Design sketch: `store/metadata/<platform>/<locale>.toml` is implemented (`schema = 1`; WeChat and Alipay rule sets, CJK counts as 2); validation reports every violation with stable `metadata.*` codes; `--metadata-dir` / `--check-metadata` / `--metadata-locale` are wired into `polypack publish`, with `--materials` and `--metadata-dir` mutually exclusive; materials are key-sorted and their blake3(canonical JSON) digest is recorded in the receipt as `materials_digest`. Integration points: `crates/polypack-publish/src/metadata.rs`, `flow.rs`, `archive.rs`, `crates/polypack-cli/src/publish.rs`. Alternatives: external store CLIs, per-platform ad hoc JSON.
+- Deliverables: metadata schema and validator (delivered); `polypack publish` wiring (delivered); locale completeness report (delivered); bilingual author guide (delivered, see [STORE-METADATA.en.md](STORE-METADATA.en.md)).
 - Risks and mitigations: platform field rules change → version the rule table and record sources; screenshot asset bloat → store paths and digests, not binaries; missing locales → fall back to the default locale with an explicit warning.
 - Decisions: metadata source of truth in the repository or a CMS; whether screenshots may be linked externally.
 - First step: pick 2 supported platforms, list their required listing fields and length limits, and land the schema first.
@@ -120,27 +120,27 @@ This document covers 22 candidates: 7 incubation items, 8 planned platforms, 2 o
 
 - Status: candidate · delivered (T-M9-16/17 and T-M9-18 delivered 2026-10-20; the GUI now lives in `app/` (Tauri v2 + static frontend), satisfying ADR 0007's tracked-`app/` condition; real Tauri window launch is environment-gated).
 - Trigger: the M1 Tauri pipeline works and the `app/` console skeleton lands; or users explicitly ask for a visual build history.
-- Why: README describes `app/` as the target shape of the poly-gui console, but the directory was previously untracked; `BuildEvent` (`crates/poly-core/src/events.rs`) only goes to stdout / JSON Lines with no persistent history, so "when did this target last build successfully" is unanswerable.
+- Why: README describes `app/` as the target shape of the polypack-gui console, but the directory was previously untracked; `BuildEvent` (`crates/polypack-core/src/events.rs`) only goes to stdout / JSON Lines with no persistent history, so "when did this target last build successfully" is unanswerable.
 - Goals: persist build events locally and show a target × recent-build matrix plus per-build details. Non-goals: multi-user server, cloud sync, remote farm scheduling UI.
-- Design sketch: `HistoryRecord` (schema_version, build_id, ts, target, event, status, duration, artifact digest, error code) is written to `.polypack/history/events.jsonl`, rotating at 5 MiB / 10,000 records while keeping the newest records; paths are redacted to project-relative form before writing. `poly history [--target ID] [--limit N] [--json]` provides per-target aggregation; the `app/` Tauri command `history_records` reuses the same schema and redacts again on read, and the frontend renders the target matrix, per-target details, and an empty-state guide. Integration points: `crates/poly-core/src/events.rs`, `crates/poly-cli/src/build.rs`, `crates/poly-cli/src/history.rs`, `app/`. Alternatives: parse CI logs (unreliable), SQLite (strong queries but too heavy for v1).
+- Design sketch: `HistoryRecord` (schema_version, build_id, ts, target, event, status, duration, artifact digest, error code) is written to `.polypack/history/events.jsonl`, rotating at 5 MiB / 10,000 records while keeping the newest records; paths are redacted to project-relative form before writing. `polypack history [--target ID] [--limit N] [--json]` provides per-target aggregation; the `app/` Tauri command `history_records` reuses the same schema and redacts again on read, and the frontend renders the target matrix, per-target details, and an empty-state guide. Integration points: `crates/polypack-core/src/events.rs`, `crates/polypack-cli/src/build.rs`, `crates/polypack-cli/src/history.rs`, `app/`. Alternatives: parse CI logs (unreliable), SQLite (strong queries but too heavy for v1).
 - Deliverables: history write and rotation (delivered); query / aggregation command (delivered); matrix and detail views (delivered, `app/`); privacy note (path redaction, delivered).
 - Risks and mitigations: event stream contains sensitive paths → redact before writing and keep relative paths only; unbounded history → count and size caps; GUI and CLI drift → one schema and golden samples.
 - Decisions: JSONL or SQLite; default retention; whether absolute host paths are recorded.
-- First step: define a persistable `HistoryRecord` schema in `crates/poly-core/src/events.rs` and share it between `poly build --json` and file writes.
+- First step: define a persistable `HistoryRecord` schema in `crates/polypack-core/src/events.rs` and share it between `polypack build --json` and file writes.
 
 | Task | Title | Role | Depends | Days | Acceptance |
 | --- | --- | --- | --- | --- | --- |
 | T-M9-16 | Event persistence and rotation | coder | — | 3 | Every build appends one parseable record; rotation at the cap; path-redaction assertion |
 | T-M9-17 | History query and matrix aggregation | coder | T-M9-16 | 5 | Returns the latest N statuses/durations/digests per target; empty history is not an error |
-| T-M9-18 | poly-gui matrix and detail view | frontend | T-M9-17 | 8 | Matrix shows all built targets; clicking opens details; guidance shown when empty |
+| T-M9-18 | polypack-gui matrix and detail view | frontend | T-M9-17 | 8 | Matrix shows all built targets; clicking opens details; guidance shown when empty |
 
 ### M9-E7 · Pre-release device preview matrix
 
-- Status: candidate · partially delivered (the T-M9-19 research matrix and T-M9-20 `DevicePool` / `DeviceLease` + `poly preview --dry-run` were delivered 2026-10-20, see [DEVICE-PREVIEW.en.md](DEVICE-PREVIEW.en.md); the T-M9-21 real-device drill is external environment-gated and is not marked ✅; ADR 0007's "no device-farm code at this stage" is superseded by the dry-run protocol, real execution is still not wired).
+- Status: candidate · partially delivered (the T-M9-19 research matrix and T-M9-20 `DevicePool` / `DeviceLease` + `polypack preview --dry-run` were delivered 2026-10-20, see [DEVICE-PREVIEW.en.md](DEVICE-PREVIEW.en.md); the T-M9-21 real-device drill is external environment-gated and is not marked ✅; ADR 0007's "no device-farm code at this stage" is superseded by the dry-run protocol, real execution is still not wired).
 - Trigger: M4 TV or M7 wearable smoke hits a device bottleneck, or store preview / real-device regression blocks releases.
-- Why: `poly smoke` and platform structure checks can SKIP without devices, but there is no device pool, lease, install/launch screenshot, or log archive; the pre-release device matrix is fully manual.
+- Why: `polypack smoke` and platform structure checks can SKIP without devices, but there is no device pool, lease, install/launch screenshot, or log archive; the pre-release device matrix is fully manual.
 - Goals: define a device pool and preview job model, then install, launch, screenshot, and collect logs on real devices / simulators with archived evidence. Non-goals: a full device-farm product, unattended review, promising devices for every target.
-- Design sketch: `DevicePool` / `DeviceLease` / `CleanupPolicy` and `poly preview --dry-run` are implemented (deterministic plan, lease timeout, cleanup semantics, `preview/v1` + `farm/v1` vocabulary) with no network or device access; the vendor matrix and build-vs-buy are in [DEVICE-PREVIEW.en.md](DEVICE-PREVIEW.en.md). Providers may be Firebase Test Lab, BrowserStack, AWS Device Farm, or self-hosted; artifacts go to `.polypack/preview/<target>/<device>/`. Real device execution remains the external T-M9-21 item.
+- Design sketch: `DevicePool` / `DeviceLease` / `CleanupPolicy` and `polypack preview --dry-run` are implemented (deterministic plan, lease timeout, cleanup semantics, `preview/v1` + `farm/v1` vocabulary) with no network or device access; the vendor matrix and build-vs-buy are in [DEVICE-PREVIEW.en.md](DEVICE-PREVIEW.en.md). Providers may be Firebase Test Lab, BrowserStack, AWS Device Farm, or self-hosted; artifacts go to `.polypack/preview/<target>/<device>/`. Real device execution remains the external T-M9-21 item.
 - Deliverables: device pool model and protocol extension (delivered); preview CLI (delivered, dry-run); real preview drill for 2 targets (external); cost and retention policy (matrix/policy delivered).
 - Risks and mitigations: rental cost → on-demand single leases first, no standing pool; toolchain differences → isolate behind a provider adapter; screenshots may contain user data → run fixture apps only and clean up automatically.
 - Decisions: self-host or buy a cloud device farm; evidence retention and access control.
@@ -167,7 +167,7 @@ This document covers 22 candidates: 7 incubation items, 8 planned platforms, 2 o
 - Blockers and prerequisites: service shutdown; no developer console entry; no review path.
 - Recommendation: close. Keep historical links and invest no further packager work.
 - Goals: keep the matrix honest and remove a dead plan; non-goals: implementing `instant-aab` for a discontinued platform.
-- Design sketch: do not touch `crates/poly-targets/src/builtin.rs`; remove the planned row from `tools/gen-status-table.mjs` or mark it retired, and update the README 49-row count and tier counts (ROADMAP §11 item 4). Alternatives: keep "planned" without implementation (status quo), or move to a PWA / Web demo.
+- Design sketch: do not touch `crates/polypack-targets/src/builtin.rs`; remove the planned row from `tools/gen-status-table.mjs` or mark it retired, and update the README 49-row count and tier counts (ROADMAP §11 item 4). Alternatives: keep "planned" without implementation (status quo), or move to a PWA / Web demo.
 - Deliverables: closure decision record; synchronized generator and README count changes; CHANGELOG entry.
 - Risks and mitigations: removing the row drifts the 49-target table and docs-check → regenerate once from the generator and run `node tools/check-docs.mjs`; users still search for the platform → keep a retired row with an explanation.
 - Decisions: remove from the 49-row table or mark retired (affects TOTAL and tier counts).
@@ -205,9 +205,9 @@ This document covers 22 candidates: 7 incubation items, 8 planned platforms, 2 o
 - Current state: LIFF apps are registered by hosted URL in the LINE Developers Console (LINE Login channel → LIFF; the endpoint URL must be HTTPS without fragments); there is no official local upload format or LIFF config file.
 - Feasibility: feasible as "deploy + config validation"; not feasible as platform artifact packaging.
 - Blockers and prerequisites: LINE Login channel, LIFF app, HTTPS static hosting; no official CI upload API.
-- Recommendation: conditionally support `poly deploy line-liff --dir <dir> --config line-liff.toml`, validating config and guiding deployment, without generating a "platform package".
+- Recommendation: conditionally support `polypack deploy line-liff --dir <dir> --config line-liff.toml`, validating config and guiding deployment, without generating a "platform package".
 - Goals: let LINE users reuse the Web build and config validation; non-goals: fabricate a LIFF config file or claim store acceptance.
-- Design sketch: implemented `line-liff.toml` (`schema`, `liff_id`, `endpoint`, `channel_id`, `scopes`) and `poly deploy line-liff --dir <dir> --config line-liff.toml`; it validates HTTPS / no fragment / required fields and prints the manual Console steps; the command is always a dry run — no network and no upload API. Integration points: `crates/poly-cli/src/deploy.rs`, `crates/poly-cli/src/main.rs`; usage in [LINE-DEPLOY](LINE-DEPLOY.md). Alternatives: documentation only, or generic static hosting.
+- Design sketch: implemented `line-liff.toml` (`schema`, `liff_id`, `endpoint`, `channel_id`, `scopes`) and `polypack deploy line-liff --dir <dir> --config line-liff.toml`; it validates HTTPS / no fragment / required fields and prints the manual Console steps; the command is always a dry run — no network and no upload API. Integration points: `crates/polypack-cli/src/deploy.rs`, `crates/polypack-cli/src/main.rs`; usage in [LINE-DEPLOY](LINE-DEPLOY.md). Alternatives: documentation only, or generic static hosting.
 - Deliverables: deploy mode design; config validator; end-to-end hosting drill (manual Console steps); docs.
 - Risks and mitigations: deploy mode mistaken for a TargetSpec → separate naming in docs and commands; endpoint rules change → version the validation rules; no upload API → explicitly SKIP the manual step.
 - Decisions: whether a non-TargetSpec deploy mode is accepted into the official support surface.
@@ -222,12 +222,12 @@ This document covers 22 candidates: 7 incubation items, 8 planned platforms, 2 o
 
 - Status: candidate · conditional (needs sponsorship / device commitment); unscheduled, decision in [ADR 0006](../decisions/0006-platform-decisions.md).
 - Trigger: a Sailfish user or sponsor commits test devices and a Jolla account.
-- Current state: the existing `linux-rpm` chain only emits a desktop Tauri RPM (`crates/poly-bundle/src/packagers/linux.rs`); it lacks a Qt / Silica QML host, the Sailfish SDK cross toolchain (armv7hl / aarch64), and harbour packaging / signing.
+- Current state: the existing `linux-rpm` chain only emits a desktop Tauri RPM (`crates/polypack-bundle/src/packagers/linux.rs`); it lacks a Qt / Silica QML host, the Sailfish SDK cross toolchain (armv7hl / aarch64), and harbour packaging / signing.
 - Feasibility: medium-high technically (RPM and Linux cross-compilation experience is reusable); market is niche.
 - Blockers and prerequisites: Sailfish SDK, QML / Silica host template, harbour account and signing, a real device or emulator.
 - Recommendation: conditional support; do not build without sponsorship.
 - Goals: produce an installable harbour RPM that passes structure checks; non-goals: reuse the Tauri desktop shell and call it a Sailfish app.
-- Design sketch: add a `ui/adapters/native/host/sailfish` QML / Silica shell; add a `sailfish-harbour` packager in `crates/poly-bundle` that reuses RPM writing but uses the harbour spec and desktop file; probe the Sailfish SDK in `poly-toolchain`; declare the TargetSpec only after packaging and validation pass. Alternatives: a standalone Qt app outside PolyPack, or pure Web.
+- Design sketch: add a `ui/adapters/native/host/sailfish` QML / Silica shell; add a `sailfish-harbour` packager in `crates/polypack-bundle` that reuses RPM writing but uses the harbour spec and desktop file; probe the Sailfish SDK in `polypack-toolchain`; declare the TargetSpec only after packaging and validation pass. Alternatives: a standalone Qt app outside PolyPack, or pure Web.
 - Deliverables: toolchain probe; QML host template; harbour RPM packager; contract tests and TargetSpec draft.
 - Risks and mitigations: SDK access and licensing → probe locally only, never commit; device scarcity → the conditional task requires a device; maintenance cost → mark experimental until stable.
 - Decisions: whether to accept an experimental, community-maintained target.
@@ -248,7 +248,7 @@ This document covers 22 candidates: 7 incubation items, 8 planned platforms, 2 o
 - Blockers and prerequisites: Clickable, UBports SDK, AppArmor profile, OpenStore submission process.
 - Recommendation: conditional support; do not build without sponsorship.
 - Goals: produce an installable `.click` that passes structure checks; non-goals: rename a deb and call it a `.click`.
-- Design sketch: add a `ui/adapters/native/host/ubuntutouch` WebView shell; add a `clickable` packager in `crates/poly-bundle` (invoke Clickable or generate the click manifest + AppArmor); probe Clickable in `poly-toolchain`; declare the TargetSpec after a real install passes. Alternatives: PWA, Flatpak, Ubuntu deb.
+- Design sketch: add a `ui/adapters/native/host/ubuntutouch` WebView shell; add a `clickable` packager in `crates/polypack-bundle` (invoke Clickable or generate the click manifest + AppArmor); probe Clickable in `polypack-toolchain`; declare the TargetSpec after a real install passes. Alternatives: PWA, Flatpak, Ubuntu deb.
 - Deliverables: toolchain probe; WebView shell template; `.click` packager; contract tests and TargetSpec draft.
 - Risks and mitigations: Clickable version drift → pin the version and keep golden samples; overly broad AppArmor policy → least-privilege template; missing devices → the conditional task requires a device.
 - Decisions: whether to accept an experimental, community-maintained target.
@@ -269,7 +269,7 @@ This document covers 22 candidates: 7 incubation items, 8 planned platforms, 2 o
 - Blockers and prerequisites: NDA, devkit, SDK, certification process; any missing item means no start.
 - Recommendation: NDA-gated; the public repository keeps only the plugin interface and a mock, never the SDK or platform package format.
 - Goals: integrate packaging as a `target-spec/v1` plugin after authorization; non-goals: implement or distribute the vendor SDK in the public repository.
-- Design sketch: the plugin implements `describe` / `package` (`crates/poly-plugin/wit/polypack-target.wit`), and the host probes a local `$SONY_SDK` path; SKIP-with-print without the SDK; the artifact format is defined by authorized documentation. Alternatives: no console platform, ship on PC / Web only.
+- Design sketch: the plugin implements `describe` / `package` (`crates/polypack-plugin/wit/polypack-target.wit`), and the host probes a local `$SONY_SDK` path; SKIP-with-print without the SDK; the artifact format is defined by authorized documentation. Alternatives: no console platform, ship on PC / Web only.
 - Deliverables: NDA prerequisite checklist; conditional plugin skeleton; mock contract tests; local path probe.
 - Risks and mitigations: SDK leakage → `.gitignore` and secret-scan; public docs overreach → publish only already-public information; maintainers lack authorization → do not start.
 - Decisions: whether to invest in the NDA and devkit cost.
@@ -326,12 +326,12 @@ This document covers 22 candidates: 7 incubation items, 8 planned platforms, 2 o
 
 ### M9-D1 · Plugin marketplace distribution: official registry vs decentralized index
 
-- Status: candidate · partially delivered; the decision is a signed decentralized index ([ADR 0004](../decisions/0004-plugin-marketplace.md)), and T-M9-41's signed index plus `poly plugin add/search` are delivered; the official registry / production key ceremony remain external.
+- Status: candidate · partially delivered; the decision is a signed decentralized index ([ADR 0004](../decisions/0004-plugin-marketplace.md)), and T-M9-41's signed index plus `polypack plugin add/search` are delivered; the official registry / production key ceremony remain external.
 - Trigger: at least 3 third-party plugins, or the first external request for "how to discover / install plugins".
-- Why: ADR 0003 fixed the WASM sandbox and `target-spec/v1`, but plugins are distributed only as files (`crates/poly-plugin`, `crates/poly-cli/src/plugin_new.rs`) with no index, version resolution, revocation, or provenance display.
+- Why: ADR 0003 fixed the WASM sandbox and `target-spec/v1`, but plugins are distributed only as files (`crates/polypack-plugin`, `crates/polypack-cli/src/plugin_new.rs`) with no index, version resolution, revocation, or provenance display.
 - Goals: choose a distribution model and define a verifiable index format. Non-goals: a paid marketplace, hosted plugin execution, or changing the SRI / signature trust chain.
-- Design sketch: prefer a "signed decentralized index first" model: `index.json` contains schema and plugins[] (id, version, wit_version, sri, signature, url, revoked), and the index itself is signed with GPG/minisign; `poly plugin search/add` reuses `poly-sign`; the official registry is an optional curated mirror. Alternatives: an official registry (high governance and availability cost), a Git repository index (no signature semantics), an OCI registry (heavy ecosystem).
-- Deliverables: ADR; index schema; `poly plugin add/search` prototype; revocation list and trust-root docs.
+- Design sketch: prefer a "signed decentralized index first" model: `index.json` contains schema and plugins[] (id, version, wit_version, sri, signature, url, revoked), and the index itself is signed with GPG/minisign; `polypack plugin search/add` reuses `polypack-sign`; the official registry is an optional curated mirror. Alternatives: an official registry (high governance and availability cost), a Git repository index (no signature semantics), an OCI registry (heavy ecosystem).
+- Deliverables: ADR; index schema; `polypack plugin add/search` prototype; revocation list and trust-root docs.
 - Risks and mitigations: supply-chain poisoning → SRI + signature + revocation; index outage → local cache and multiple mirrors; unclear governance → the ADR names who can revoke.
 - Decisions: official registry or decentralized index; who owns revocation; whether private indexes are allowed.
 - First step: draft ADR 0004 comparing threats and operational cost, and settle signing and revocation semantics first.
@@ -339,14 +339,14 @@ This document covers 22 candidates: 7 incubation items, 8 planned platforms, 2 o
 | Task | Title | Role | Depends | Days | Acceptance |
 | --- | --- | --- | --- | --- | --- |
 | T-M9-40 | Distribution model ADR and threat model | architect | — | 3 | Two-model comparison; signing, revocation, trust root, and governance conclusions explicit |
-| T-M9-41 | Signed index and `poly plugin add/search` | coder | T-M9-40 | 6 | Index signature failure rejects; install reuses SRI + GPG; revoked entries refuse to load |
+| T-M9-41 | Signed index and `polypack plugin add/search` | coder | T-M9-40 | 6 | Index signature failure rejects; install reuses SRI + GPG; revoked entries refuse to load |
 | T-M9-42 | Conditional task: official registry / mirror | coder + maintainer | T-M9-41 | 8 | Starts only if an official service is chosen; availability and revocation drills pass |
 
 ### M9-D2 · Remote farm: self-hosted only vs hosted service
 
 - Status: candidate · partially delivered; GA is self-hosted only ([ADR 0005](../decisions/0005-farm-hosting.md)), and T-M9-44's hardening checklist + preflight / drill are delivered; a production-host drill remains external.
 - Trigger: external users lack macOS / Windows build hosts and explicitly ask for hosting; or self-hosted deployment support becomes a burden.
-- Why: farm v1 already has a protocol, isolation, shared cache, and deployment guide (`crates/poly-cli/src/farm.rs`, `docs/FARM.md`, `docs/FARM-DEPLOY.md`), but the ROADMAP principle says user code and keys are not hosted; hosting changes the trust boundary and business model.
+- Why: farm v1 already has a protocol, isolation, shared cache, and deployment guide (`crates/polypack-cli/src/farm.rs`, `docs/FARM.md`, `docs/FARM-DEPLOY.md`), but the ROADMAP principle says user code and keys are not hosted; hosting changes the trust boundary and business model.
 - Goals: make a clear "self-hosted only" or "hosted service" decision with boundaries. Non-goals: this document does not commit to implementing hosting or change current self-hosted capability.
 - Design sketch: recommend self-hosted only for GA; hosting becomes a separate project requiring tenant isolation, quotas, key custody, audit, data residency, and SLAs. If hosted, reuse farm protocol v1 and the worker pool and add a control plane; otherwise harden the self-hosted reference deployment. Alternatives: partner hosting, bring-your-own-cloud (BYOC).
 - Deliverables: ADR; cost and threat model; one-page production deployment checklist if self-hosted; control-plane requirements if hosted.
@@ -365,13 +365,13 @@ This document covers 22 candidates: 7 incubation items, 8 planned platforms, 2 o
 
 ### M9-G1 · CLI distribution to crates.io / GitHub Releases
 
-- Status: candidate · partially landed (GitHub Releases + install script + signing / install-smoke landed; the T-M9-45 audit landed: workspace 1.16.0, crate metadata, `cargo package --list` 9/9; the actual crates.io publish is closed by `poly-cli` / `poly-core` name conflicts and `publish = false`).
-- Trigger: GA release; external users want `poly` without a Rust toolchain.
-- Why: the root `Cargo.toml` version is `0.0.0`, `crates/poly-cli/Cargo.toml` declares the bin name `poly`, and the repository has `repository` metadata; previously there was no release workflow, so users could only build from source. `.github/workflows/release.yml` now builds all three hosts on a `v*` tag and attaches `SHA256SUMS.txt`; `scripts/install.sh` (mandatory SHA-256 + optional strict minisign verification), bilingual `docs/INSTALL`, secret-gated signing, and an install-smoke job have landed. `docs/CRATES-IO` records the publish order, metadata, and blockers: `poly-cli` and `poly-core` are already taken (rename or obtain ownership), and every crate is still `publish = false`.
+- Status: candidate · partially landed (GitHub Releases + install script + signing / install-smoke landed; the T-M9-45 audit landed: workspace 1.16.0, crate metadata, `cargo package --list` 9/9; the actual crates.io publish is closed by `polypack-cli` / `polypack-core` name conflicts and `publish = false`).
+- Trigger: GA release; external users want `polypack` without a Rust toolchain.
+- Why: the root `Cargo.toml` version is `0.0.0`, `crates/polypack-cli/Cargo.toml` declares the bin name `polypack`, and the repository has `repository` metadata; previously there was no release workflow, so users could only build from source. `.github/workflows/release.yml` now builds all three hosts on a `v*` tag and attaches `SHA256SUMS.txt`; `scripts/install.sh` (mandatory SHA-256 + optional strict minisign verification), bilingual `docs/INSTALL`, secret-gated signing, and an install-smoke job have landed. `docs/CRATES-IO` records the publish order, metadata, and blockers: `polypack-cli` and `polypack-core` are already taken (rename or obtain ownership), and every crate is still `publish = false`.
 - Goals: provide verifiable crates.io installation and GitHub Releases binaries with checksums and signatures. Non-goals: Homebrew / Scoop / apt repositories in v1.
-- Design sketch: first audit all publishable crates in dependency order with `cargo package` / `cargo publish --dry-run`; GitHub Actions builds linux x86_64 / aarch64, macOS x86_64 / aarch64, and Windows x86_64; publish `SHA256SUMS` and a GPG/minisign signature; the installer verifies before writing. The audit is complete (`cargo package --list` 9/9; `cargo publish --dry-run` refused by `publish = false`); the GitHub Releases leg has landed (three-host build + `SHA256SUMS` + secret-gated minisign signing + install-smoke), and the installer and bilingual docs have landed. crates.io uploads stay closed pending maintainer decisions on names and a token. Integration points: root `Cargo.toml`, `crates/poly-cli/Cargo.toml`, `.github/workflows/`, `docs/CRATES-IO`. Alternatives: GitHub Releases only (landed), crates.io only (requires Rust; blocked).
+- Design sketch: first audit all publishable crates in dependency order with `cargo package` / `cargo publish --dry-run`; GitHub Actions builds linux x86_64 / aarch64, macOS x86_64 / aarch64, and Windows x86_64; publish `SHA256SUMS` and a GPG/minisign signature; the installer verifies before writing. The audit is complete (`cargo package --list` 9/9; `cargo publish --dry-run` refused by `publish = false`); the GitHub Releases leg has landed (three-host build + `SHA256SUMS` + secret-gated minisign signing + install-smoke), and the installer and bilingual docs have landed. crates.io uploads stay closed pending maintainer decisions on names and a token. Integration points: root `Cargo.toml`, `crates/polypack-cli/Cargo.toml`, `.github/workflows/`, `docs/CRATES-IO`. Alternatives: GitHub Releases only (landed), crates.io only (requires Rust; blocked).
 - Deliverables: release inventory and crate order (landed, `docs/CRATES-IO`); cross-platform build workflow (landed); checksums / signatures (landed, signing secret-gated); installer and bilingual docs (landed); actual crates.io publishing (blocked: name conflicts, `publish = false`, no token).
-- Risks and mitigations: crate name / binary name `poly` collision → ownership checked and fallback names prepared (`polypack-cli` / `polypack-engine`); the version was 0.0.0 → now 1.16.0 aligned with the latest tag; supply chain → signatures plus reproducible-build notes.
+- Risks and mitigations: crate name / binary name `polypack` collision → ownership checked and fallback names prepared (`polypack-cli` / `polypack-engine`); the version was 0.0.0 → now 1.16.0 aligned with the latest tag; supply chain → signatures plus reproducible-build notes.
 - Decisions: publish to both crates.io and Releases; whether to rename on a binary collision.
 - First step: run `cargo package --list` and `cargo publish --dry-run` to list crate metadata that blocks release.
 
@@ -379,7 +379,7 @@ This document covers 22 candidates: 7 incubation items, 8 planned platforms, 2 o
 | --- | --- | --- | --- | --- | --- |
 | T-M9-45 ✅ | Crate release audit and version policy | release | — | 2 | Audit complete: metadata 9/9, `cargo package --list` 9/9, version 1.16.0; actual publishing closed by name conflicts / `publish = false` / no token |
 | T-M9-46 ✅ | Cross-platform Release workflow and signing | release + coder | T-M9-45 | 5 | Artifacts downloadable on all three hosts; SHA256SUMS and secret-gated signature verify |
-| T-M9-47 ✅ | Installer and docs | docs + tester | T-M9-45, T-M9-46 | 2 | install-smoke runs `poly --version`; bilingual INSTALL reproduces |
+| T-M9-47 ✅ | Installer and docs | docs + tester | T-M9-45, T-M9-46 | 2 | install-smoke runs `polypack --version`; bilingual INSTALL reproduces |
 
 ### M9-G2 · Human external developer trial protocol
 
@@ -419,11 +419,11 @@ This document covers 22 candidates: 7 incubation items, 8 planned platforms, 2 o
 ### M9-G4 · MSI real-sample launch test
 
 - Status: candidate · delivered (the first `windows-2022` run passed on 2026-10-20: `windows-msi-real` in 6m30s).
-- Progress (2026-10-20): the real Tauri v2 sample `examples/windows-msi-app/`, the gated real-run test `crates/poly-bundle/tests/windows_msi_real.rs` (`POLY_MSI_REAL=1`, `POLY_TAURI_CORE_BIN`, `POLY_MSI_REAL_OUT`, codes `POLY_MSI_REAL_0001..0006`), and the rust-ci `windows-msi-real` job have landed; run 39308849058 passed, with MSI / install / launch / uninstall / residue evidence archived as CI artifacts. ENV-01 is now `CLOSED`.
+- Progress (2026-10-20): the real Tauri v2 sample `examples/windows-msi-app/`, the gated real-run test `crates/polypack-bundle/tests/windows_msi_real.rs` (`POLYPACK_MSI_REAL=1`, `POLYPACK_TAURI_CORE_BIN`, `POLYPACK_MSI_REAL_OUT`, codes `POLYPACK_MSI_REAL_0001..0006`), and the rust-ci `windows-msi-real` job have landed; run 39308849058 passed, with MSI / install / launch / uninstall / residue evidence archived as CI artifacts. ENV-01 is now `CLOSED`.
 - Trigger: Windows L1 claims installability; or the first Windows user reports an install problem.
-- Why: `crates/poly-bundle/src/packagers/windows.rs` generates a WiX `.wxs` and calls candle / light, and comments suggest an `msiexec /i` smoke, but there is no evidence of install, launch, uninstall, and residue checks on a real sample.
+- Why: `crates/polypack-bundle/src/packagers/windows.rs` generates a WiX `.wxs` and calls candle / light, and comments suggest an `msiexec /i` smoke, but there is no evidence of install, launch, uninstall, and residue checks on a real sample.
 - Goals: use a real Tauri sample on a clean Windows environment to install → launch → uninstall → check residue and archive evidence. Non-goals: MSIX / Store packaging, a multi-language installer matrix.
-- Design sketch: add a sample project (suggest `tests/fixtures/windows-msi-app` or `examples/`), have a Windows runner build the MSI; `msiexec /i /qn` install, launch the process and check the window / exit code, `msiexec /x /qn` uninstall, and check install-directory and registry residue; archive logs and screenshots. Integration points: `crates/poly-bundle/src/packagers/windows.rs`, `.github/workflows/rust-ci.yml`. Alternatives: script structure checks only (status quo), manual testing.
+- Design sketch: add a sample project (suggest `tests/fixtures/windows-msi-app` or `examples/`), have a Windows runner build the MSI; `msiexec /i /qn` install, launch the process and check the window / exit code, `msiexec /x /qn` uninstall, and check install-directory and registry residue; archive logs and screenshots. Integration points: `crates/polypack-bundle/src/packagers/windows.rs`, `.github/workflows/rust-ci.yml`. Alternatives: script structure checks only (status quo), manual testing.
 - Deliverables: real sample project; Windows CI job; install / launch / uninstall / residue evidence; known-limitations doc.
 - Risks and mitigations: CI runner has no desktop → use an interactive Windows runner session or VM; WiX version drift → pin the toolchain version; false residue positives → explicit allowlist and snapshot diff.
 - Decisions: put the sample under `tests/fixtures` or `examples/`; whether the job becomes a required check.
@@ -455,7 +455,7 @@ This document covers 22 candidates: 7 incubation items, 8 planned platforms, 2 o
 Ordered by "repair GA credibility first, then high-leverage engineering, then external dependencies"; everything remains candidate / unscheduled.
 
 1. M9-G5 branch protection: delivered (2026-10-20, ENV-18 `CLOSED`).
-2. M9-G1 CLI distribution: without an installable `poly`, external trials and GA lack an entry point.
+2. M9-G1 CLI distribution: without an installable `polypack`, external trials and GA lack an entry point.
 3. M9-G2 human trial: calibrate priorities with real users instead of assumptions.
 4. M9-G3 environment-slot closure: establish a trustworthy boundary for "what is verified".
 5. M9-E3 `release --changed`: reuses the existing cache and yields the fastest CI payoff.

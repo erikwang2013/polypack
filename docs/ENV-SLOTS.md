@@ -56,20 +56,20 @@
 
 - 关联任务：T-M1-05（Windows 打包器），T-M1-03（Tauri 布局）。 缺口：现有 NSIS 冒烟用 rustc 夹具 PE 和 `/D=` 临时目录；真实 Tauri 样例、默认 `$PROGRAMFILES64\Pax Notes`、开始菜单启动未验证。`real_tauri_core_binary_resolves_injected_resources` 目前固定 `Host::Linux`，不能产出 Windows 证据。
 - 环境 / 工具链 / 凭据：windows-2022 或物理 Windows 10/11、WebView2 Runtime、NSIS、WiX v3.14、Tauri CLI、真实 Tauri 样例工程；无需云凭据。
-- 开关：`POLY_TAURI_CORE_BIN=<真实 Tauri 可执行>`；MSI 真跑另需 `POLY_MSI_REAL=1` 与 `POLY_MSI_REAL_OUT=<证据目录>`；NSIS 测试无需额外开关。
+- 开关：`POLYPACK_TAURI_CORE_BIN=<真实 Tauri 可执行>`；MSI 真跑另需 `POLYPACK_MSI_REAL=1` 与 `POLYPACK_MSI_REAL_OUT=<证据目录>`；NSIS 测试无需额外开关。
 - 命令：
 ```powershell
-cargo test -p poly-bundle --test packagers_windows nsis_real_build_produces_pe_installer -- --nocapture
-cargo test -p poly-bundle --test packagers_windows nsis_install_launch_uninstall_smoke -- --nocapture
-$env:POLY_TAURI_CORE_BIN = "C:\work\pax-notes\target\release\pax-notes.exe"
-cargo test -p poly-bundle --test tauri_layout real_tauri_core_binary_resolves_injected_resources -- --nocapture
-$env:POLY_MSI_REAL = "1"; $env:POLY_MSI_REAL_OUT = "C:\work\msi-evidence"
-cargo test -p poly-bundle --test windows_msi_real -- --nocapture
-poly build --target windows
+cargo test -p polypack-bundle --test packagers_windows nsis_real_build_produces_pe_installer -- --nocapture
+cargo test -p polypack-bundle --test packagers_windows nsis_install_launch_uninstall_smoke -- --nocapture
+$env:POLYPACK_TAURI_CORE_BIN = "C:\work\pax-notes\target\release\pax-notes.exe"
+cargo test -p polypack-bundle --test tauri_layout real_tauri_core_binary_resolves_injected_resources -- --nocapture
+$env:POLYPACK_MSI_REAL = "1"; $env:POLYPACK_MSI_REAL_OUT = "C:\work\msi-evidence"
+cargo test -p polypack-bundle --test windows_msi_real -- --nocapture
+polypack build --target windows
 msiexec /i ".polypack\packages\windows\Pax Notes_1.2.3_x64_en-US.msi" /qn
 & "$env:ProgramFiles\Pax Notes\pax-notes.exe" --version
 ```
-- 进度（2026-10-20）：`examples/windows-msi-app/` 真实 Tauri v2 样例、`crates/poly-bundle/tests/windows_msi_real.rs` 与 rust-ci `windows-msi-real` 作业已落地；真实 MSI / 安装 / 启动 / 卸载 / 残留已由 windows-2022 run 39308849058 真跑通过（main run 39399687968 复跑通过），槽位已关闭。
+- 进度（2026-10-20）：`examples/windows-msi-app/` 真实 Tauri v2 样例、`crates/polypack-bundle/tests/windows_msi_real.rs` 与 rust-ci `windows-msi-real` 作业已落地；真实 MSI / 安装 / 启动 / 卸载 / 残留已由 windows-2022 run 39308849058 真跑通过（main run 39399687968 复跑通过），槽位已关闭。
 - 证据：两条 NSIS 测试输出；真实样例安装到默认路径后的 `--version` 输出与窗口截图；`Pax Notes_1.2.3_x64-setup.exe` 的 SHA-256；卸载后目录消失。当前 `tauri_layout` 仅 Linux 断言，Windows 真实样例腿需新增测试或外部脚本，不得用 Linux 输出冒充。
 - 现状：`CLOSED`（2026-10-20）。run 39308849058 的 `windows-msi-real` 作业在 windows-2022 真跑通过：构建 MSI → `msiexec /i /qn` → 启动安装副本 `--smoke` → `msiexec /x /qn` → 检查安装目录 / 开始菜单 / HKCU / ARP 残留；日志、MSI、`.wxs`、`smoke-marker.txt`、摘要作为 CI 工件归档。 负责人：release-sec。
 - 下一步：无（该槽已关闭）；仅在新 Windows / WebView2 / WiX 版本变化时复跑。
@@ -89,7 +89,7 @@ msiexec /i ".polypack\packages\windows\Pax Notes_1.2.3_x64_en-US.msi" /qn
 xcrun notarytool store-credentials apple-codesign \
   --apple-id "$POLYPACK_APPLE_ID" --team-id "$POLYPACK_IOS_TEAM_ID" \
   --password "$POLYPACK_APPLE_APP_PASSWORD"
-poly build --target ios --config /srv/proj/polypack.toml
+polypack build --target ios --config /srv/proj/polypack.toml
 APP="/srv/proj/.polypack/packages/ios/export/Payload/Pax Notes.app"
 codesign --verify --deep --strict --verbose=2 "$APP"
 ditto -c -k --keepParent "$APP" /tmp/pax-ios.zip
@@ -114,10 +114,10 @@ spctl --assess --type execute --verbose=4 "$APP"
 - 命令：
 ```sh
 # macOS worker
-poly farm worker --dir /srv/polypack-farm --id mac-01 --target ios --jobs 0 --idle 120 \
+polypack farm worker --dir /srv/polypack-farm --id mac-01 --target ios --jobs 0 --idle 120 \
   --cache /srv/polypack-cache --work-dir /var/tmp/polypack-work
 # Linux submit（工程与农场目录同路径可见）
-poly farm submit --dir /srv/polypack-farm --config /srv/proj/polypack.toml \
+polypack farm submit --dir /srv/polypack-farm --config /srv/proj/polypack.toml \
   --target ios --wait 1800 --retries 1 --project-dir /srv/proj \
   --cache /srv/polypack-cache
 APP=$(find .polypack/packages/ios -path '*/export/Payload/*.app' -print -quit)
@@ -135,16 +135,16 @@ spctl --assess --type execute --verbose=4 "$APP"
 
 - 用户入口：登录态 / 变量 → [ENV-PROVIDE §ENV-04](ENV-PROVIDE.md#env-04)；三端账号授权 → [授权登记](https://github.com/erikwang2013/polypack/issues/new?template=env-authorization.yml)；GUI 宿主 → [硬件申请](https://github.com/erikwang2013/polypack/issues/new?template=env-hardware-request.yml)。
 
-- 关联任务：T-M3-05（Taro adapter）、T-M3-06（小程序构建管线）。 缺口：`contract_devtools_real_preview` 在 `POLY_CONTRACT_REAL=1` 下调用三端 CLI；工具未安装或未登录时只 NOTE / SKIP。真实项目预览码 / 真机预览未产出。
+- 关联任务：T-M3-05（Taro adapter）、T-M3-06（小程序构建管线）。 缺口：`contract_devtools_real_preview` 在 `POLYPACK_CONTRACT_REAL=1` 下调用三端 CLI；工具未安装或未登录时只 NOTE / SKIP。真实项目预览码 / 真机预览未产出。
 - 环境 / 工具链 / 凭据：macOS（三端 devtools 官方支持最好）、WeChat DevTools CLI、Alipay Mini Program Studio `minidev`、Douyin DevTools `tma`、三端已登录账号（扫码 / 2FA）；抖音免密 Token 可走 CI。
-- 开关：`POLY_CONTRACT_REAL=1`、`POLYPACK_WECHAT_DEVTOOLS_CLI`、`POLYPACK_ALIPAY_DEVTOOLS_CLI`、`POLYPACK_DOUYIN_DEVTOOLS_CLI`、`POLYPACK_WECHAT_DEVTOOLS_LOGIN`、`POLYPACK_ALIPAY_DEVTOOLS_LOGIN`、`POLYPACK_DOUYIN_DEVTOOLS_LOGIN`、`POLYPACK_DEVTOOLS_LOGIN_FILE`。
+- 开关：`POLYPACK_CONTRACT_REAL=1`、`POLYPACK_WECHAT_DEVTOOLS_CLI`、`POLYPACK_ALIPAY_DEVTOOLS_CLI`、`POLYPACK_DOUYIN_DEVTOOLS_CLI`、`POLYPACK_WECHAT_DEVTOOLS_LOGIN`、`POLYPACK_ALIPAY_DEVTOOLS_LOGIN`、`POLYPACK_DOUYIN_DEVTOOLS_LOGIN`、`POLYPACK_DEVTOOLS_LOGIN_FILE`。
 - 命令：
 ```sh
-POLY_CONTRACT_REAL=1 POLYPACK_WECHAT_DEVTOOLS_CLI=/Applications/wechatwebdevtools.app/Contents/MacOS/cli \
+POLYPACK_CONTRACT_REAL=1 POLYPACK_WECHAT_DEVTOOLS_CLI=/Applications/wechatwebdevtools.app/Contents/MacOS/cli \
 POLYPACK_ALIPAY_DEVTOOLS_CLI=/Applications/minidev POLYPACK_DOUYIN_DEVTOOLS_CLI=/Applications/tma \
 POLYPACK_WECHAT_DEVTOOLS_LOGIN="$POLYPACK_WECHAT_DEVTOOLS_LOGIN" \
 POLYPACK_ALIPAY_DEVTOOLS_LOGIN="$POLYPACK_ALIPAY_DEVTOOLS_LOGIN" \
-cargo test -p poly-cli --test contract_m3_devtools contract_devtools_real_preview -- --nocapture
+cargo test -p polypack-cli --test contract_m3_devtools contract_devtools_real_preview -- --nocapture
 ```
 - 证据：三端预览命令退出码 0；WeChat / Alipay 预览二维码截图或预览 URL；抖音远程预览返回；工具版本与登录账号（脱敏）；`contract_devtools_real_preview` 无 SKIP 的完整输出。
 - 现状：`PARTIAL`。mock 与命令组装真跑；真实预览依赖 GUI 登录，miniprogram-contract `real` 作业在 vars / secrets 未设时只 NOTE。 负责人：core + release-sec。
@@ -157,13 +157,13 @@ cargo test -p poly-cli --test contract_m3_devtools contract_devtools_real_previe
 
 - 用户入口：设备 / 局域网 → [ENV-PROVIDE §ENV-05](ENV-PROVIDE.md#env-05) + [硬件申请](https://github.com/erikwang2013/polypack/issues/new?template=env-hardware-request.yml)；设备密码 → [Secrets](https://github.com/erikwang2013/polypack/settings/secrets/actions) 或 `node tools/env-provide.mjs --set-secret ROKU_DEV_PASSWORD`。
 
-- 关联任务：T-M4-15（Roku 频道包与校验器）。 缺口：结构自检 19 项真跑；`POLY_ROKU_REAL=1` 的 ECP 探测与 `plugin_install` 未对真实 Roku 执行。
+- 关联任务：T-M4-15（Roku 频道包与校验器）。 缺口：结构自检 19 项真跑；`POLYPACK_ROKU_REAL=1` 的 ECP 探测与 `plugin_install` 未对真实 Roku 执行。
 - 环境 / 工具链 / 凭据：Roku 设备（开发者模式）、与设备同局域网的宿主、设备 IP、开发者密码、`curl`、`zip` / `unzip`。
-- 开关：`POLY_ROKU_REAL=1`、`ROKU_DEV_TARGET=<ip>`、`ROKU_DEV_PASSWORD=<pwd>`。
+- 开关：`POLYPACK_ROKU_REAL=1`、`ROKU_DEV_TARGET=<ip>`、`ROKU_DEV_PASSWORD=<pwd>`。
 - 命令：
 ```sh
 cd ui/adapters/roku
-POLY_ROKU_REAL=1 ROKU_DEV_TARGET=<ip> ROKU_DEV_PASSWORD=<pwd> node scripts/build-and-check.mjs
+POLYPACK_ROKU_REAL=1 ROKU_DEV_TARGET=<ip> ROKU_DEV_PASSWORD=<pwd> node scripts/build-and-check.mjs
 curl --connect-timeout 2 -s "http://<ip>:8060/"
 ```
 - 证据：脚本输出 `ECP 设备: <name>` 与 `plugin_install 侧载成功`；Roku 屏幕上的频道启动截图；`ui/adapters/roku/dist/polypack-spike-channel.zip` 的 SHA-256；设备型号 / 固件版本。
@@ -183,9 +183,9 @@ curl --connect-timeout 2 -s "http://<ip>:8060/"
 - 命令：
 ```sh
 pkg_add rust
-cargo build -p poly-cli --ignore-rust-version
-./target/debug/poly init /tmp/poly-openbsd && cd /tmp/poly-openbsd
-./target/debug/poly build --target openbsd
+cargo build -p polypack-cli --ignore-rust-version
+./target/debug/polypack init /tmp/polypack-openbsd && cd /tmp/polypack-openbsd
+./target/debug/polypack build --target openbsd
 cd /usr/ports/x11/<port> && make package PACKAGES=/tmp/openbsd-packages
 pkg_add /tmp/openbsd-packages/<pkg>.tgz && pkg_info && pkg_check
 ```
@@ -196,20 +196,20 @@ pkg_add /tmp/openbsd-packages/<pkg>.tgz && pkg_info && pkg_check
 
 ### ENV-07 · NetBSD `bmake` / pkgsrc
 
-- 关联任务：T-M5-08（BSD 家族 pkgsrc 目标）。 缺口：`bmake package` 与 NetBSD VM 真跑尚无首跑证据；`netbsd` TargetSpec 的 `hosts` 只含 Linux，`poly build --target netbsd` 在 NetBSD 内会被判不可达。
+- 关联任务：T-M5-08（BSD 家族 pkgsrc 目标）。 缺口：`bmake package` 与 NetBSD VM 真跑尚无首跑证据；`netbsd` TargetSpec 的 `hosts` 只含 Linux，`polypack build --target netbsd` 在 NetBSD 内会被判不可达。
 - 环境 / 工具链 / 凭据：NetBSD 11.0 VM（vmactions/netbsd-vm@v1）、`pkgin install rust bmake`、pkgsrc current 树、`pkg_add`；无需签名凭据（自建仓库另配）。
-- 开关：无专用开关；`poly build --target netbsd` 只在 Linux 宿主可达（生成 pkgsrc 骨架并做结构自检）。
+- 开关：无专用开关；`polypack build --target netbsd` 只在 Linux 宿主可达（生成 pkgsrc 骨架并做结构自检）。
 - 命令（CI 形状：Linux 生成骨架 → VM 内真跑；也可在 NetBSD 主机按此复跑）：
 ```sh
 # Linux 宿主（目标 host 门控只认 Linux）
-cargo build -p poly-cli
-./target/debug/poly init /tmp/poly-netbsd && cd /tmp/poly-netbsd
-./target/debug/poly build --target netbsd          # 生成 .polypack/packages/netbsd/pkgsrc/<DISTNAME>/
+cargo build -p polypack-cli
+./target/debug/polypack init /tmp/polypack-netbsd && cd /tmp/polypack-netbsd
+./target/debug/polypack build --target netbsd          # 生成 .polypack/packages/netbsd/pkgsrc/<DISTNAME>/
 # NetBSD VM（11.0）；base 无根证书，先用 http 引导 mozilla-rootcerts-openssl
 export PKG_PATH="http://cdn.netbsd.org/pub/pkgsrc/packages/NetBSD/$(uname -p)/$(uname -r)/All"
 pkg_add mozilla-rootcerts-openssl pkgin   # 生成 /etc/openssl/certs/ca-certificates.crt
 pkgin -y install rust bmake
-cargo build -p poly-cli --ignore-rust-version
+cargo build -p polypack-cli --ignore-rust-version
 cd core && cargo build --release --ignore-rust-version   # 原生核心，替换骨架里的 Linux 载荷
 curl -fsSL -o /tmp/pkgsrc.tar.gz https://cdn.netbsd.org/pub/pkgsrc/current/pkgsrc.tar.gz && tar xzf /tmp/pkgsrc.tar.gz -C /usr
 cp -R <骨架> /usr/pkgsrc/misc/<DISTNAME> && cd /usr/pkgsrc/misc/<DISTNAME>
@@ -218,7 +218,7 @@ pkg_add -v /tmp/pkgsrc-packages/<DISTNAME>.tgz
 pkg_info <DISTNAME> && pkg_info -L <DISTNAME> && /usr/pkg/bin/polypack-app
 ```
 - 证据：`bmake package` 退出码 0；`pkg_add` / `pkg_info` 输出；安装后的二进制输出；`.tgz` SHA-256；NetBSD 版本与 `bmake -V MAKE_VERSION`；CI 首跑 run ID + artifact。
-- 现状：`CLOSED`（2026-10-21）。run 39489096346 的 `netbsd / 11.0 / qemu` 在 Linux 宿主生成骨架，NetBSD 11.0 VM 内原生构建应用核心，`bmake package` → `pkg_add` / `pkg_info` → 运行安装二进制全部通过；`.tgz` 摘要与日志已归档。不构建 poly CLI：pkgsrc rust 1.96 低于仓库 MSRV 1.98，本槽只验证 pkgsrc 打包。 负责人：infra。
+- 现状：`CLOSED`（2026-10-21）。run 39489096346 的 `netbsd / 11.0 / qemu` 在 Linux 宿主生成骨架，NetBSD 11.0 VM 内原生构建应用核心，`bmake package` → `pkg_add` / `pkg_info` → 运行安装二进制全部通过；`.tgz` 摘要与日志已归档。不构建 polypack CLI：pkgsrc rust 1.96 低于仓库 MSRV 1.98，本槽只验证 pkgsrc 打包。 负责人：infra。
 - 下一步：无（该槽已关闭）；pkgsrc / NetBSD 大版本升级时复跑。
 - 阻塞：无；生产 pkgsrc 仓库签名与发布仍由部署者负责。
 
@@ -235,10 +235,10 @@ pkg_info <DISTNAME> && pkg_info -L <DISTNAME> && /usr/pkg/bin/polypack-app
 ```sh
 export POLYPACK_QNX_SDP=/opt/qnx710
 source "$POLYPACK_QNX_SDP/qnxsdp-env.sh"
-poly doctor --json
-poly init /tmp/poly-qnx && cd /tmp/poly-qnx
-poly build --target qnx --json
-POLYPACK_QNX_QEMU=/usr/bin/qemu-system-x86_64 poly verify --target qnx --json
+polypack doctor --json
+polypack init /tmp/polypack-qnx && cd /tmp/polypack-qnx
+polypack build --target qnx --json
+POLYPACK_QNX_QEMU=/usr/bin/qemu-system-x86_64 polypack verify --target qnx --json
 ```
 - 证据：`doctor` 找到 `qcc` / `nto*-gcc`；build JSONL 出现 `qnx-image-structure` 的 `verified`；QEMU 串口日志与 `result.json`；`.ifs` / 静态库 SHA-256。
 - 现状：`PARTIAL`。SDP 探测、结构校验与 CI 矩阵已接线；SDP 未提供，真实编译 / QEMU 冒烟 SKIP。 负责人：infra。
@@ -258,9 +258,9 @@ POLYPACK_QNX_QEMU=/usr/bin/qemu-system-x86_64 poly verify --target qnx --json
 ```sh
 export WR_CC=/opt/windriver/wr-cc
 export POLYPACK_VXWORKS_TRIPLE=x86_64-wrs-vxworks
-poly doctor --json
-poly init /tmp/poly-vx && cd /tmp/poly-vx
-poly build --target vxworks --json
+polypack doctor --json
+polypack init /tmp/polypack-vx && cd /tmp/polypack-vx
+polypack build --target vxworks --json
 ```
 - 证据：build JSONL 出现 `vxworks-ld-check` 的 `verified`；`check.sh` 的 `wr-cc -c` 与链接命令退出码 0；`nm` 无白名单外未解析符号；`.vxe` / 库 SHA-256；`wr-cc --version`。
 - 现状：`PARTIAL`。打包器与结构断言真跑；`wr-cc` 链接腿 SKIP。 负责人：infra。
@@ -297,14 +297,14 @@ node ui/smoke/wear/run.mjs --leg android --serial emulator-5554 \
 - 开关：无专用开关；`mobile-contract` 的 `watchos` 作业仅每夜 / 手动触发（Xcode 构建成本不进 push / PR），打包器按宿主自动门控。
 - 命令：
 ```sh
-poly init --target watchos /tmp/pax-watch && cd /tmp/pax-watch
+polypack init --target watchos /tmp/pax-watch && cd /tmp/pax-watch
 xcodebuild -project PolyPackWatch.xcodeproj -scheme PolyPackWatch \
   -sdk watchsimulator -destination 'generic/platform=watchOS Simulator' \
   build CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY=
-poly build --target watchos --json   # package 阶段内部跑 xcodebuild archive + ditto
+polypack build --target watchos --json   # package 阶段内部跑 xcodebuild archive + ditto
 ```
 - 证据：`xcodebuild` 的 `BUILD SUCCEEDED`；build JSONL 的 `packaged`（format=watch）、无 `目标 watchos 未打包`；`.polypack/packages/watchos/export/Payload/polypack-watch.app` 的 `Info.plist` / `PkgInfo` / 可执行文件与 SHA-256；Xcode 版本与 SDK 列表；CI 首跑 run ID + artifact。
-- 现状：`CLOSED`（2026-10-20）。run 39455179337 的 `watchos / macos-14` 真跑 `xcodebuild -sdk watchsimulator` 与 `poly build --target watchos` 通过（`BUILD SUCCEEDED`、`packaged` / `format=watch`、Payload `.app` 结构与摘要归档）；无 Apple 凭据时 sign / `codesign-verify` 仍如实告警未签名。 负责人：core。
+- 现状：`CLOSED`（2026-10-20）。run 39455179337 的 `watchos / macos-14` 真跑 `xcodebuild -sdk watchsimulator` 与 `polypack build --target watchos` 通过（`BUILD SUCCEEDED`、`packaged` / `format=watch`、Payload `.app` 结构与摘要归档）；无 Apple 凭据时 sign / `codesign-verify` 仍如实告警未签名。 负责人：core。
 - 下一步：签名 / 公证腿在取得 Apple 凭据后另行立槽。
 - 阻塞：首跑风险——runner 镜像的 Xcode 需同时提供 watchOS 与 watchOS Simulator SDK；签名 / 公证需 Apple 凭据（保持外部）。 运行位置：CI（macos-14）可关闭打包腿；签名腿需凭据。
 
@@ -317,15 +317,15 @@ poly build --target watchos --json   # package 阶段内部跑 xcodebuild archiv
 ```sh
 npm install -g @fitbit/sdk-cli@1.7.3 @fitbit/sdk@6.1.0
 fitbit-build --help
-poly init /tmp/poly-fitbit && cd /tmp/poly-fitbit
+polypack init /tmp/polypack-fitbit && cd /tmp/polypack-fitbit
 # 放 fitbit/package.json（config.fitbit.appUUID）、fitbit/app/index.js、fitbit/resources/icon.png
-poly build --target fitbit --json
-poly verify --target fitbit --json
+polypack build --target fitbit --json
+polypack verify --target fitbit --json
 ```
 - 证据：`fitbit-build --help` 退出码 0；verify JSONL 出现 `fitbit-build 自检真跑通过`，且不含 `自检 SKIP-with-print` / `自检未通过`；`verified` / `fitbit-structure-check` 事件；`.fba` SHA-256；CI 首跑 run ID + artifact。
 - 现状：`CLOSED`（2026-10-20）。run 39455185737 的 `fitbit` 作业安装官方 CLI，`fitbit-build` 自检、`.fba` build / verify 通过并归档。 负责人：infra。
 - 下一步：`@fitbit/sdk-cli` 的交互入口在 Node 22 上游缺陷不影响本链路；升级 Node / CLI 时复跑。
-- 阻塞：首跑风险——keytar 在 Node 22 需系统 `libsecret-1-dev`（缺则 npm 安装直接失败）；`contract_m7_wear_js` 的旧断言要求 CLI 缺席时打印 SKIP，装 CLI 后该测试不适用（本作业改用直接 `poly build/verify`，不改测试）；`@fitbit/sdk-cli` 的 `fitbit` 入口在 Node 22 上因 `@openid/appauth` 1.4 模块布局变化报 `MODULE_NOT_FOUND`（本链路只用 `fitbit-build`，作业仅断言 `fitbit` 已安装、不执行它）；冷缓存首跑还要在 runner 上编 wasmtime（作业上限 60 min，已去 debuginfo / 关增量）。 运行位置：CI（ubuntu）可关闭。
+- 阻塞：首跑风险——keytar 在 Node 22 需系统 `libsecret-1-dev`（缺则 npm 安装直接失败）；`contract_m7_wear_js` 的旧断言要求 CLI 缺席时打印 SKIP，装 CLI 后该测试不适用（本作业改用直接 `polypack build/verify`，不改测试）；`@fitbit/sdk-cli` 的 `fitbit` 入口在 Node 22 上因 `@openid/appauth` 1.4 模块布局变化报 `MODULE_NOT_FOUND`（本链路只用 `fitbit-build`，作业仅断言 `fitbit` 已安装、不执行它）；冷缓存首跑还要在 runner 上编 wasmtime（作业上限 60 min，已去 debuginfo / 关增量）。 运行位置：CI（ubuntu）可关闭。
 
 <a id="slot-env-13"></a>
 
@@ -340,10 +340,10 @@ poly verify --target fitbit --json
 ```sh
 npm install -g @zeppos/zeus-cli@1.9.3
 zeus --version
-poly init /tmp/poly-zepp && cd /tmp/poly-zepp
+polypack init /tmp/polypack-zepp && cd /tmp/polypack-zepp
 # 放 zepp/app.json（app.appName / appId / version）与 zepp/app.js
-poly build --target zepp --json
-poly verify --target zepp --json
+polypack build --target zepp --json
+polypack verify --target zepp --json
 # 模拟器（外部人工腿）：手动把 .polypack/packages/zepp/*.zab 装入 Zepp OS 模拟器并截图
 ```
 - 证据：`zeus --version` 输出；verify JSONL 出现 `zeus 自检真跑通过`，且不含 `zeus 自检 SKIP-with-print` / `自检未通过`；`模拟器安装腿 SKIP-with-print` 注记保留；`verified` / `zepp-structure-check` 事件；`.zab` SHA-256；CI 首跑 run ID + artifact。
@@ -368,7 +368,7 @@ cd <生成目录>/round && monkeyc -e -w -r -o ../garmin-round.iq -y "$CIQ_DEVKE
 cd <生成目录>/square && monkeyc -e -w -r -o ../garmin-square.iq -y "$CIQ_DEVKEY" -f monkey.jungle
 ```
 - 证据：`npm run build` 输出 PASS 7 / FAIL 0 / SKIP 0；圆 / 方 `.iq` 文件与条目断言；`monkeyc --version`；devkey 指纹（不含私钥）；编译日志。
-- 现状：`PARTIAL`。转译与结构自检真跑；`poly build --target garmin` 的内建 iq 打包器已交付（`crates/poly-bundle/src/packagers/garmin.rs`）；剩余为 monkeyc 编译 / devkey 腿 SKIP。 负责人：core。
+- 现状：`PARTIAL`。转译与结构自检真跑；`polypack build --target garmin` 的内建 iq 打包器已交付（`crates/polypack-bundle/src/packagers/garmin.rs`）；剩余为 monkeyc 编译 / devkey 腿 SKIP。 负责人：core。
 - 下一步：在 CI 安装 Connect IQ SDK 并把 devkey 放 secret；关闭编译器腿。
 - 阻塞：SDK 获取可能需 Garmin 账号；devkey 由开发者生成，不能入库。 运行位置：CI（ubuntu / macOS + SDK）可关闭编译器腿。
 
@@ -376,20 +376,20 @@ cd <生成目录>/square && monkeyc -e -w -r -o ../garmin-square.iq -y "$CIQ_DEV
 
 - 关联任务：T-M8-03（插件信任根）。 缺口：env 载体已由 `plugin_trust_root_env` 自动化；keyring 后端单测（`keyring_real`）与 CLI E2E（`plugin_trust_root_keyring`，只换 `source = "keyring"`）已接 rust-ci `keyring-real` 作业，真实 Secret Service 首跑证据待归档。
 - 环境 / 工具链 / 凭据：Linux Secret Service（dbus + gnome-keyring）、macOS Keychain 或 Windows Credential Manager；`secret-tool` 或等价写入工具；GPG 密钥对（信任根载荷）。
-- 开关：`POLY_KEYRING_REAL=1`、`DBUS_SESSION_BUS_ADDRESS`；CLI 配置 `trust_root = { name = "plugin-trust-root", source = "keyring" }`。
+- 开关：`POLYPACK_KEYRING_REAL=1`、`DBUS_SESSION_BUS_ADDRESS`；CLI 配置 `trust_root = { name = "plugin-trust-root", source = "keyring" }`。
 - 命令：
 ```sh
-mkdir -p -m 700 /tmp/poly-keyring-rt /tmp/poly-keyring-home/keyrings
+mkdir -p -m 700 /tmp/polypack-keyring-rt /tmp/polypack-keyring-home/keyrings
 dbus-run-session -- bash -c '
-  export HOME=/tmp/poly-keyring-home XDG_RUNTIME_DIR=/tmp/poly-keyring-rt \
-         XDG_DATA_HOME=/tmp/poly-keyring-home/.local/share \
-         GNOME_KEYRING_CUSTOM_LOCAL_PATH=/tmp/poly-keyring-home/keyrings
-  printf "poly-it-pass\n" | gnome-keyring-daemon --unlock --components=secrets --foreground &
+  export HOME=/tmp/polypack-keyring-home XDG_RUNTIME_DIR=/tmp/polypack-keyring-rt \
+         XDG_DATA_HOME=/tmp/polypack-keyring-home/.local/share \
+         GNOME_KEYRING_CUSTOM_LOCAL_PATH=/tmp/polypack-keyring-home/keyrings
+  printf "polypack-it-pass\n" | gnome-keyring-daemon --unlock --components=secrets --foreground &
   sleep 3
-  POLY_KEYRING_REAL=1 cargo test -p poly-sign --test keyring_real -- --nocapture
-  POLY_KEYRING_REAL=1 cargo test -p poly-cli --test plugin_trust_root_keyring -- --nocapture'
+  POLYPACK_KEYRING_REAL=1 cargo test -p polypack-sign --test keyring_real -- --nocapture
+  POLYPACK_KEYRING_REAL=1 cargo test -p polypack-cli --test plugin_trust_root_keyring -- --nocapture'
 ```
-- 证据：`keyring_real` 的真写 / 真读 / 真删输出；`gdbus` 交叉查询条目存在；`plugin_trust_root_keyring` 的 `poly build --target linux-reference --json` 出现 `plugin_granted` / `packaged`，删除条目后为 `E_PLUGIN_0010`；日志无载荷明文。
+- 证据：`keyring_real` 的真写 / 真读 / 真删输出；`gdbus` 交叉查询条目存在；`plugin_trust_root_keyring` 的 `polypack build --target linux-reference --json` 出现 `plugin_granted` / `packaged`，删除条目后为 `E_PLUGIN_0010`；日志无载荷明文。
 - 现状：`CLOSED`（2026-10-20）。rust-ci `keyring-real`（run 39409593528）在隔离 Secret Service 上真跑 `keyring_real` 与 `plugin_trust_root_keyring` 通过，作业内 SKIP 即失败。 负责人：release-sec。
 - 下一步：macOS / Windows 真钥匙串宿主另行立槽；Linux 腿已关，不能用本证据冒充其他平台。
 - 阻塞：headless Secret Service 需按文件头配方隔离；macOS / Windows 需各自真钥匙串宿主，不能拿 Linux 结果冒充。 运行位置：CI（ubuntu + dbus / gnome-keyring）可关闭 Linux 腿；macOS / Windows 另行。
@@ -398,15 +398,15 @@ dbus-run-session -- bash -c '
 
 - 关联任务：T-M8-03（插件信任根）。 缺口：`vault_real` 验证 `VaultBackend` 自身的 KV v2 读写；`default_backends()` 现按 `VAULT_ADDR` / `VAULT_TOKEN` 自动加入 `VaultBackend<HttpVaultClient>`（插件信任根、发布、签名共用同一条后端链），代码缺口已关闭。CLI E2E `plugin_trust_root_vault`（只换 `source = "vault"`）已接 rust-ci `vault-real` 作业，首个真实 Vault 服务运行（run 39414212765）已通过。
 - 环境 / 工具链 / 凭据：Vault 服务（dev 或真实集群）、`VAULT_ADDR`、`VAULT_TOKEN`、KV v2 路径；插件公钥载荷 `base64(JSON)`。
-- 开关：`POLY_VAULT_REAL=1`、`VAULT_ADDR`、`VAULT_TOKEN`；CLI 配置 `trust_root = { name = "plugin-trust-root", source = "vault" }`。
+- 开关：`POLYPACK_VAULT_REAL=1`、`VAULT_ADDR`、`VAULT_TOKEN`；CLI 配置 `trust_root = { name = "plugin-trust-root", source = "vault" }`。
 - 命令：
 ```sh
 vault server -dev -dev-root-token-id=root -dev-listen-address=127.0.0.1:8200 &
 export VAULT_ADDR=http://127.0.0.1:8200 VAULT_TOKEN=root
-POLY_VAULT_REAL=1 cargo test -p poly-sign --test vault_real -- --nocapture
-POLY_VAULT_REAL=1 cargo test -p poly-cli --test plugin_trust_root_vault -- --nocapture
+POLYPACK_VAULT_REAL=1 cargo test -p polypack-sign --test vault_real -- --nocapture
+POLYPACK_VAULT_REAL=1 cargo test -p polypack-cli --test plugin_trust_root_vault -- --nocapture
 ```
-- 证据：`vault_real` 的真 KV v2 往返 / 404 / 403 脱敏输出；`plugin_trust_root_vault` 的 `poly build --target linux-reference --json` 出现 `plugin_granted` / `packaged`，删除 KV 条目后为 `E_PLUGIN_0010`；日志无 token。rust-ci `vault-real` run 39414212765 首跑通过。
+- 证据：`vault_real` 的真 KV v2 往返 / 404 / 403 脱敏输出；`plugin_trust_root_vault` 的 `polypack build --target linux-reference --json` 出现 `plugin_granted` / `packaged`，删除 KV 条目后为 `E_PLUGIN_0010`；日志无 token。rust-ci `vault-real` run 39414212765 首跑通过。
 - 现状：`CLOSED`（2026-10-20）。CI 作业与门控 E2E 在真实 Vault dev 服务上通过，作业内 SKIP 即失败。 负责人：release-sec + core。
 - 下一步：真实集群 / 私有 CA 场景另行立槽；dev 服务证据不得冒充生产 Vault。
 - 阻塞：无（CI dev server 已提供）；代码缺口已关闭。
@@ -422,12 +422,12 @@ POLY_VAULT_REAL=1 cargo test -p poly-cli --test plugin_trust_root_vault -- --noc
 POLYPACK_S3_REAL=1 POLYPACK_S3_TEST_URI=s3://polypack-ci/ci-prefix \
 POLYPACK_S3_ENDPOINT=http://127.0.0.1:9000 POLYPACK_S3_REGION=us-east-1 \
 POLYPACK_S3_ACCESS_KEY_ID=... POLYPACK_S3_SECRET_ACCESS_KEY=... \
-cargo test -p poly-cache --test s3_real -- --nocapture
+cargo test -p polypack-cache --test s3_real -- --nocapture
 # 两 worker 二跑：同一桶前缀作为共享缓存，二跑必须 1/1 命中
 POLYPACK_S3_REAL=1 POLYPACK_S3_TEST_URI=s3://polypack-ci/ci-prefix \
 POLYPACK_S3_ENDPOINT=http://127.0.0.1:9000 POLYPACK_S3_REGION=us-east-1 \
 POLYPACK_S3_ACCESS_KEY_ID=... POLYPACK_S3_SECRET_ACCESS_KEY=... \
-cargo test -p poly-cli --test farm_cache \
+cargo test -p polypack-cli --test farm_cache \
   shared_cache_hits_across_worker_processes_on_s3 -- --nocapture
 ```
 - 证据：`s3_real` 的 PUT / GET / LIST / DELETE 全绿；`farm_cache` S3 腿首跑 `缓存命中 0/1`、二跑 `1/1` 且两侧缓存键相同；作业内 SKIP 即失败，并要求两条 `... ok`；对象列表由 `mc ls` 记录。rust-ci `s3-real` run 39425835979 首跑通过。
@@ -463,9 +463,9 @@ gh api repos/erikwang2013/polypack/branches/main/protection/required_status_chec
 - 命令：
 ```sh
 # 每位试用者从零开始，仅按 docs/GA.md §2 操作；记录命令、耗时与卡点
-poly plugin new pocket-notes
-poly plugin check <dir>
-poly build --config <app>/polypack.toml --target pocket-notes
+polypack plugin new pocket-notes
+polypack plugin check <dir>
+polypack build --config <app>/polypack.toml --target pocket-notes
 ```
 - 证据：每位试用者的试用报告（环境、开始 / 结束时间、完成的命令、卡点原文、是否 1 天内出包）；汇总 issue；文档修订 PR 链接。
 - 现状：`OPEN`。尚无外部试用记录。 负责人：docs。
@@ -478,12 +478,12 @@ poly build --config <app>/polypack.toml --target pocket-notes
 
 - 用户入口：真机 / 云农场 → [ENV-PROVIDE §ENV-20](ENV-PROVIDE.md#env-20) + [硬件申请](https://github.com/erikwang2013/polypack/issues/new?template=env-hardware-request.yml)；云账号 → [授权登记](https://github.com/erikwang2013/polypack/issues/new?template=env-authorization.yml)。
 
-- 关联任务：T-M9-21（设备预览矩阵）。 缺口：`poly preview --dry-run` 已交付（DevicePool / DeviceLease、确定性计划、超时 / 清理），但真实租约、安装、启动、截图、日志与清理未执行。
+- 关联任务：T-M9-21（设备预览矩阵）。 缺口：`polypack preview --dry-run` 已交付（DevicePool / DeviceLease、确定性计划、超时 / 清理），但真实租约、安装、启动、截图、日志与清理未执行。
 - 环境 / 工具链 / 凭据：两台真实设备（Android 手机 + Android TV）或等价云设备；`adb`；夹具 APK；证据目录；云厂商账号（若走云）。
-- 开关：无（`poly preview --dry-run` 不需要凭据；真实执行由 provider 适配层接线）。
+- 开关：无（`polypack preview --dry-run` 不需要凭据；真实执行由 provider 适配层接线）。
 - 命令：
 ```sh
-poly preview --dry-run --target android --device android-phone --device android-tv
+polypack preview --dry-run --target android --device android-phone --device android-tv
 # 真实执行命令与 provider 适配见 docs/DEVICE-PREVIEW.md §8.1
 ```
 - 证据：plan JSON、APK blake3、`adb devices -l` / API level、安装 / 启动退出码、两张 PNG + SHA-256、logcat / crash、卸载后设备列表。
@@ -504,7 +504,7 @@ poly preview --dry-run --target android --device android-phone --device android-
 ### 4.2 取证步骤
 
 1. 建 issue：标题 `[ENV-XX] <槽位>`，正文写关联任务、计划命令、预期证据、负责人。
-2. 从目标 commit 构建 CLI 并记录 `git rev-parse HEAD`、`poly --version`、宿主 `uname -a` / `winver` / `sw_vers`。
+2. 从目标 commit 构建 CLI 并记录 `git rev-parse HEAD`、`polypack --version`、宿主 `uname -a` / `winver` / `sw_vers`。
 3. 按执行卡设置环境变量；凭据只从 secret / 本机钥匙串读，绝不写进命令历史或仓库。
 4. 用 `tee` 或 runner 日志捕获 stdout / stderr / 退出码；命令本身也要记录（脱敏后）。
 5. 生成证据包并计算产物 SHA-256；截图只拍必要区域，遮住账号 / token / 设备密码。
@@ -517,7 +517,7 @@ poly preview --dry-run --target android --device android-phone --device android-
 | 文件 | 内容 |
 | --- | --- |
 | `cmd.txt` | 实际命令（token / 密码以 `<redacted>` 替换） |
-| `versions.txt` | 宿主、OS、工具链、SDK、`poly --version`、commit |
+| `versions.txt` | 宿主、OS、工具链、SDK、`polypack --version`、commit |
 | `stdout.log` / `stderr.log` | 原始输出与退出码；必须能看到真实工具调用，不能只有 SKIP |
 | `result.json` | 机器可读结果（Wear / QEMU / 农场等有 schema 的槽位） |
 | `sha256.txt` | 产物与证据文件的 SHA-256 |
@@ -542,11 +542,11 @@ poly preview --dry-run --target android --device android-phone --device android-
 | ENV-04 | `.github/workflows/miniprogram-contract.yml` | `real / macos-14` | CLI 预览测试接线；vars / secrets 未设时 NOTE |
 | ENV-05 | — | — | 无 Roku 作业 |
 | ENV-06 | `.github/workflows/bsd-ci.yml` | `openbsd` | VM 作业存在，`continue-on-error` 且 TCG 启动失败 |
-| ENV-07 | `.github/workflows/bsd-ci.yml` | `netbsd` | Linux 生成 pkgsrc 骨架 → NetBSD 11.0 VM 原生应用核心构建 + `bmake package` → `pkg_add` / `pkg_info` / 运行安装二进制（run 39489096346 通过；不构建 poly CLI） |
+| ENV-07 | `.github/workflows/bsd-ci.yml` | `netbsd` | Linux 生成 pkgsrc 骨架 → NetBSD 11.0 VM 原生应用核心构建 + `bmake package` → `pkg_add` / `pkg_info` / 运行安装二进制（run 39489096346 通过；不构建 polypack CLI） |
 | ENV-08 | `.github/workflows/embedded-ci.yml` | `embedded`（matrix `qnx`） | 构建 / doctor / QEMU 接线；SDP 缺失即 SKIP |
 | ENV-09 | `.github/workflows/embedded-ci.yml` | `embedded`（matrix `vxworks`） | 构建接线；`wr-cc` 缺失即 SKIP |
 | ENV-10 | `.github/workflows/wear-release-smoke.yml` | `wear-device-smoke` | 发版硬门；缺 KVM / APK 阻断 |
-| ENV-11 | `.github/workflows/mobile-contract.yml` | `watchos / macos-14` | 真 `xcodebuild`（watchsimulator）+ `poly build --target watchos`，run 39455179337 通过；签名 / 公证无 Apple 凭据（外部腿） |
+| ENV-11 | `.github/workflows/mobile-contract.yml` | `watchos / macos-14` | 真 `xcodebuild`（watchsimulator）+ `polypack build --target watchos`，run 39455179337 通过；签名 / 公证无 Apple 凭据（外部腿） |
 | ENV-12 | `.github/workflows/wear-js-contract.yml` | `fitbit` | 安装 `@fitbit/sdk-cli` + `@fitbit/sdk`；`fitbit-build` 自检 + `.fba` build/verify，run 39455185737 通过；SKIP / 自检未通过即红 |
 | ENV-13 | `.github/workflows/wear-js-contract.yml` | `zepp` | `zeus --version` + `.zab` build/verify，run 39455185737 通过；GUI 模拟器安装腿保持外部人工 |
 | ENV-14 | — | — | 无 Connect IQ 作业 |
@@ -555,7 +555,7 @@ poly preview --dry-run --target android --device android-phone --device android-
 | ENV-17 | `.github/workflows/rust-ci.yml` | `s3-real` | MinIO（127.0.0.1:9000，run 39425835979）：`s3_real` PUT / GET / LIST / DELETE + `farm_cache` 两 worker 共享桶二跑 1/1；作业内 SKIP 即失败 |
 | ENV-18 | `.github/workflows/secret-scan.yml` | `scan`（3 宿主） | 提供 required checks；admin bypass 已于 2026-10-20 关闭，设置不在工作流 |
 | ENV-19 | — | — | 人工试用，无工作流 |
-| ENV-20 | — | — | 无设备预览作业；`poly preview --dry-run` 已交付 |
+| ENV-20 | — | — | 无设备预览作业；`polypack preview --dry-run` 已交付 |
 
 ## 6. 仓库内不可关闭清单
 
@@ -576,7 +576,7 @@ poly preview --dry-run --target android --device android-phone --device android-
 | 项 | 类型 | 处置 |
 | --- | --- | --- |
 | Vault 默认后端链 | 已关闭（代码） | `default_backends()` 已按环境装配 Vault；ENV-16 只剩真实服务 E2E |
-| Garmin 内建 iq 打包器 | 已交付 | `poly build --target garmin` 已有内建打包器；ENV-14 只关编译器 / 真机腿 |
+| Garmin 内建 iq 打包器 | 已交付 | `polypack build --target garmin` 已有内建打包器；ENV-14 只关编译器 / 真机腿 |
 | 缺失的 CI 作业 | 基建 | Garmin / Roku 仍只有执行卡，没有工作流 |
 
 ## 8. 参考

@@ -774,14 +774,14 @@ rect.c-bg-rect { fill: var(--bg); }</style><rect class="c-bg-rect" width="100%" 
 
         <!-- Boundaries (behind everything) -->
         <rect data-graph-role="structural-frame" data-composition-frame-kind="region" data-composition-frame-id="0" x="380" y="90" width="790" height="290" rx="12" class="c-region" stroke-width="1"/>
-        <text x="388" y="108" class="t-cloud" font-size="9" font-weight="600">Rust core workspace · poly workspace</text>
+        <text x="388" y="108" class="t-cloud" font-size="9" font-weight="600">Rust core workspace · polypack workspace</text>
 
         <rect data-graph-role="structural-frame" data-composition-frame-kind="region" data-composition-frame-id="1" x="350" y="450" width="400" height="110" rx="12" class="c-region" stroke-width="1"/>
         <text x="358" y="468" class="t-cloud" font-size="9" font-weight="600">React UI adapter layer</text>
 
         <!-- Connection paths (before components for correct z-order) -->
-        <path data-edge-from="dev" data-edge-to="cli" data-edge-label="poly release" data-edge-key="0" data-edge-id="dev-to-cli" data-composition-points="150,330;190,330" d="M 150 330 L 190 330" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
-        <path data-edge-from="guishell" data-edge-to="cli" data-edge-label="poly gui" data-edge-key="1" data-edge-id="gui-to-cli" data-composition-points="255,440;255,360" d="M 255 440 L 255 360" class="a-default" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+        <path data-edge-from="dev" data-edge-to="cli" data-edge-label="polypack release" data-edge-key="0" data-edge-id="dev-to-cli" data-composition-points="150,330;190,330" d="M 150 330 L 190 330" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
+        <path data-edge-from="guishell" data-edge-to="cli" data-edge-label="polypack gui" data-edge-key="1" data-edge-id="gui-to-cli" data-composition-points="255,440;255,360" d="M 255 440 L 255 360" class="a-default" stroke-width="1.5" marker-end="url(#arrowhead)"/>
         <path data-edge-from="cli" data-edge-to="core" data-edge-label="polypack.toml" data-edge-key="2" data-edge-id="cli-to-core" data-composition-points="320,330;410,330" d="M 320 330 L 410 330" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
         <path data-edge-from="core" data-edge-to="targets" data-edge-label="resolve TargetSpec" data-edge-key="3" data-edge-id="core-to-targets" data-composition-points="487,300;528.5,300;528.5,184;570,184" d="M 487 300 L 520.5 300 Q 528.5 300 528.5 292 L 528.5 192 Q 528.5 184 536.5 184 L 570 184" class="a-default" stroke-width="1.5" marker-end="url(#arrowhead)"/>
         <path data-edge-from="core" data-edge-to="farm" data-edge-label="Apple targets dispatched" data-edge-key="4" data-edge-id="core-to-farm" data-composition-points="473,300;371.5,300;371.5,184;270,184" d="M 473 300 L 379.5 300 Q 371.5 300 371.5 292 L 371.5 192 Q 371.5 184 363.5 184 L 270 184" class="a-dashed" stroke-width="1.5" marker-end="url(#arrowhead-dashed)"/>
@@ -807,8 +807,8 @@ rect.c-bg-rect { fill: var(--bg); }</style><rect class="c-bg-rect" width="100%" 
         <text data-detail="context" x="90" y="344" class="t-muted" font-size="9" text-anchor="middle">repo · pipelines</text>
         </g>
 
-        <g id="node-guishell" data-node-id="guishell" data-node-label="poly-gui console" tabindex="0" role="button" aria-label="Focus poly-gui console, Tauri + React, Architecture component" aria-pressed="false" data-node-kind="frontend" data-node-sublabel="Tauri + React" data-node-context="Architecture component">
-          <title>poly-gui console · Tauri + React · Architecture component</title>
+        <g id="node-guishell" data-node-id="guishell" data-node-label="polypack-gui console" tabindex="0" role="button" aria-label="Focus polypack-gui console, Tauri + React, Architecture component" aria-pressed="false" data-node-kind="frontend" data-node-sublabel="Tauri + React" data-node-context="Architecture component">
+          <title>polypack-gui console · Tauri + React · Architecture component</title>
           <rect x="190" y="440" width="130" height="60" rx="6" class="c-mask"/>
           <rect x="190" y="440" width="130" height="60" rx="6" class="c-frontend" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="frontend" class="semantic-sigil s-frontend" transform="translate(196 446) scale(0.6875)">
@@ -817,12 +817,12 @@ rect.c-bg-rect { fill: var(--bg); }</style><rect class="c-bg-rect" width="100%" 
             <circle cx="4.1" cy="4.8" r=".7" class="sigil-fill"/>
             <circle cx="6.3" cy="4.8" r=".7" class="sigil-fill"/>
           </g>
-          <text data-detail-anchor="" x="255" y="468" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">poly-gui console</text>
+          <text data-detail-anchor="" x="255" y="468" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">polypack-gui console</text>
         <text data-detail="context" x="255" y="484" class="t-muted" font-size="9" text-anchor="middle">Tauri + React</text>
         </g>
 
-        <g id="node-cli" data-node-id="cli" data-node-label="poly CLI" tabindex="0" role="button" aria-label="Focus poly CLI, clap · single binary, Architecture component" aria-pressed="false" data-node-kind="frontend" data-node-sublabel="clap · single binary" data-node-context="Architecture component">
-          <title>poly CLI · clap · single binary · Architecture component</title>
+        <g id="node-cli" data-node-id="cli" data-node-label="polypack CLI" tabindex="0" role="button" aria-label="Focus polypack CLI, clap · single binary, Architecture component" aria-pressed="false" data-node-kind="frontend" data-node-sublabel="clap · single binary" data-node-context="Architecture component">
+          <title>polypack CLI · clap · single binary · Architecture component</title>
           <rect x="190" y="300" width="130" height="60" rx="6" class="c-mask"/>
           <rect x="190" y="300" width="130" height="60" rx="6" class="c-frontend" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="frontend" class="semantic-sigil s-frontend" transform="translate(196 306) scale(0.6875)">
@@ -831,52 +831,52 @@ rect.c-bg-rect { fill: var(--bg); }</style><rect class="c-bg-rect" width="100%" 
             <circle cx="4.1" cy="4.8" r=".7" class="sigil-fill"/>
             <circle cx="6.3" cy="4.8" r=".7" class="sigil-fill"/>
           </g>
-          <text data-detail-anchor="" x="255" y="328" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">poly CLI</text>
+          <text data-detail-anchor="" x="255" y="328" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">polypack CLI</text>
         <text data-detail="context" x="255" y="344" class="t-muted" font-size="9" text-anchor="middle">clap · single binary</text>
         </g>
 
-        <g id="node-core" data-node-id="core" data-node-label="poly-core" tabindex="0" role="button" aria-label="Focus poly-core, pipeline · plan · scheduling, Rust core workspace · poly workspace" aria-pressed="false" data-node-kind="backend" data-node-sublabel="pipeline · plan · scheduling" data-node-context="Rust core workspace · poly workspace">
-          <title>poly-core · pipeline · plan · scheduling · Rust core workspace · poly workspace</title>
+        <g id="node-core" data-node-id="core" data-node-label="polypack-core" tabindex="0" role="button" aria-label="Focus polypack-core, pipeline · plan · scheduling, Rust core workspace · polypack workspace" aria-pressed="false" data-node-kind="backend" data-node-sublabel="pipeline · plan · scheduling" data-node-context="Rust core workspace · polypack workspace">
+          <title>polypack-core · pipeline · plan · scheduling · Rust core workspace · polypack workspace</title>
           <rect x="410" y="300" width="140" height="60" rx="6" class="c-mask"/>
           <rect x="410" y="300" width="140" height="60" rx="6" class="c-backend" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(416 306) scale(0.6875)">
             <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
           </g>
-          <text data-detail-anchor="" x="480" y="328" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">poly-core</text>
+          <text data-detail-anchor="" x="480" y="328" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">polypack-core</text>
         <text data-detail="context" x="480" y="344" class="t-muted" font-size="9" text-anchor="middle">pipeline · plan · scheduling</text>
         </g>
 
-        <g id="node-bundle" data-node-id="bundle" data-node-label="poly-bundle" tabindex="0" role="button" aria-label="Focus poly-bundle, packager matrix, Rust core workspace · poly workspace" aria-pressed="false" data-node-kind="backend" data-node-sublabel="packager matrix" data-node-context="Rust core workspace · poly workspace">
-          <title>poly-bundle · packager matrix · Rust core workspace · poly workspace</title>
+        <g id="node-bundle" data-node-id="bundle" data-node-label="polypack-bundle" tabindex="0" role="button" aria-label="Focus polypack-bundle, packager matrix, Rust core workspace · polypack workspace" aria-pressed="false" data-node-kind="backend" data-node-sublabel="packager matrix" data-node-context="Rust core workspace · polypack workspace">
+          <title>polypack-bundle · packager matrix · Rust core workspace · polypack workspace</title>
           <rect x="610" y="300" width="130" height="60" rx="6" class="c-mask"/>
           <rect x="610" y="300" width="130" height="60" rx="6" class="c-backend" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(616 306) scale(0.6875)">
             <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
           </g>
-          <text data-detail-anchor="" x="675" y="328" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">poly-bundle</text>
+          <text data-detail-anchor="" x="675" y="328" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">polypack-bundle</text>
         <text data-detail="context" x="675" y="344" class="t-muted" font-size="9" text-anchor="middle">packager matrix</text>
         </g>
 
-        <g id="node-signer" data-node-id="signer" data-node-label="poly-sign" tabindex="0" role="button" aria-label="Focus poly-sign, sign · notarize · harden, Rust core workspace · poly workspace" aria-pressed="false" data-node-kind="security" data-node-sublabel="sign · notarize · harden" data-node-context="Rust core workspace · poly workspace">
-          <title>poly-sign · sign · notarize · harden · Rust core workspace · poly workspace</title>
+        <g id="node-signer" data-node-id="signer" data-node-label="polypack-sign" tabindex="0" role="button" aria-label="Focus polypack-sign, sign · notarize · harden, Rust core workspace · polypack workspace" aria-pressed="false" data-node-kind="security" data-node-sublabel="sign · notarize · harden" data-node-context="Rust core workspace · polypack workspace">
+          <title>polypack-sign · sign · notarize · harden · Rust core workspace · polypack workspace</title>
           <rect x="810" y="300" width="130" height="60" rx="6" class="c-mask"/>
           <rect x="810" y="300" width="130" height="60" rx="6" class="c-security" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="security" class="semantic-sigil s-security" transform="translate(816 306) scale(0.6875)">
             <path d="M8 2.2 13 4v3.5c0 3.1-1.8 5.4-5 6.5-3.2-1.1-5-3.4-5-6.5V4Z"/>
             <path d="m5.8 8 1.5 1.5 3-3"/>
           </g>
-          <text data-detail-anchor="" x="875" y="328" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">poly-sign</text>
+          <text data-detail-anchor="" x="875" y="328" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">polypack-sign</text>
         <text data-detail="context" x="875" y="344" class="t-muted" font-size="9" text-anchor="middle">sign · notarize · harden</text>
         </g>
 
-        <g id="node-publish" data-node-id="publish" data-node-label="poly-publish" tabindex="0" role="button" aria-label="Focus poly-publish, store APIs · submission, Rust core workspace · poly workspace" aria-pressed="false" data-node-kind="backend" data-node-sublabel="store APIs · submission" data-node-context="Rust core workspace · poly workspace">
-          <title>poly-publish · store APIs · submission · Rust core workspace · poly workspace</title>
+        <g id="node-publish" data-node-id="publish" data-node-label="polypack-publish" tabindex="0" role="button" aria-label="Focus polypack-publish, store APIs · submission, Rust core workspace · polypack workspace" aria-pressed="false" data-node-kind="backend" data-node-sublabel="store APIs · submission" data-node-context="Rust core workspace · polypack workspace">
+          <title>polypack-publish · store APIs · submission · Rust core workspace · polypack workspace</title>
           <rect x="1010" y="300" width="130" height="60" rx="6" class="c-mask"/>
           <rect x="1010" y="300" width="130" height="60" rx="6" class="c-backend" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(1016 306) scale(0.6875)">
             <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
           </g>
-          <text data-detail-anchor="" x="1075" y="328" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">poly-publish</text>
+          <text data-detail-anchor="" x="1075" y="328" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">polypack-publish</text>
         <text data-detail="context" x="1075" y="344" class="t-muted" font-size="9" text-anchor="middle">store APIs · submission</text>
         </g>
 
@@ -903,25 +903,25 @@ rect.c-bg-rect { fill: var(--bg); }</style><rect class="c-bg-rect" width="100%" 
         <text data-detail="context" x="270" y="166" class="t-muted" font-size="9" text-anchor="middle">macOS workers · matrix</text>
         </g>
 
-        <g id="node-targets" data-node-id="targets" data-node-label="poly-targets" tabindex="0" role="button" aria-label="Focus poly-targets, 50+ TargetSpecs, Rust core workspace · poly workspace" aria-pressed="false" data-node-kind="backend" data-node-sublabel="50+ TargetSpecs" data-node-context="Rust core workspace · poly workspace">
-          <title>poly-targets · 50+ TargetSpecs · Rust core workspace · poly workspace</title>
+        <g id="node-targets" data-node-id="targets" data-node-label="polypack-targets" tabindex="0" role="button" aria-label="Focus polypack-targets, 50+ TargetSpecs, Rust core workspace · polypack workspace" aria-pressed="false" data-node-kind="backend" data-node-sublabel="50+ TargetSpecs" data-node-context="Rust core workspace · polypack workspace">
+          <title>polypack-targets · 50+ TargetSpecs · Rust core workspace · polypack workspace</title>
           <rect x="500" y="120" width="140" height="64" rx="6" class="c-mask"/>
           <rect x="500" y="120" width="140" height="64" rx="6" class="c-backend" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(506 126) scale(0.6875)">
             <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
           </g>
-          <text data-detail-anchor="" x="570" y="150" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">poly-targets</text>
+          <text data-detail-anchor="" x="570" y="150" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">polypack-targets</text>
         <text data-detail="context" x="570" y="166" class="t-muted" font-size="9" text-anchor="middle">50+ TargetSpecs</text>
         </g>
 
-        <g id="node-toolchain" data-node-id="toolchain" data-node-label="poly-toolchain" tabindex="0" role="button" aria-label="Focus poly-toolchain, SDK/NDK/Xcode probing, Rust core workspace · poly workspace" aria-pressed="false" data-node-kind="backend" data-node-sublabel="SDK/NDK/Xcode probing" data-node-context="Rust core workspace · poly workspace">
-          <title>poly-toolchain · SDK/NDK/Xcode probing · Rust core workspace · poly workspace</title>
+        <g id="node-toolchain" data-node-id="toolchain" data-node-label="polypack-toolchain" tabindex="0" role="button" aria-label="Focus polypack-toolchain, SDK/NDK/Xcode probing, Rust core workspace · polypack workspace" aria-pressed="false" data-node-kind="backend" data-node-sublabel="SDK/NDK/Xcode probing" data-node-context="Rust core workspace · polypack workspace">
+          <title>polypack-toolchain · SDK/NDK/Xcode probing · Rust core workspace · polypack workspace</title>
           <rect x="680" y="120" width="140" height="64" rx="6" class="c-mask"/>
           <rect x="680" y="120" width="140" height="64" rx="6" class="c-backend" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(686 126) scale(0.6875)">
             <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
           </g>
-          <text data-detail-anchor="" x="750" y="150" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">poly-toolchain</text>
+          <text data-detail-anchor="" x="750" y="150" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">polypack-toolchain</text>
         <text data-detail="context" x="750" y="166" class="t-muted" font-size="9" text-anchor="middle">SDK/NDK/Xcode probing</text>
         </g>
 
@@ -978,13 +978,13 @@ rect.c-bg-rect { fill: var(--bg); }</style><rect class="c-bg-rect" width="100%" 
         </g>
 
         <!-- Connection labels -->
-        <g data-detail="context" data-edge-from="dev" data-edge-to="cli" data-edge-label="poly release" data-edge-key="0" data-edge-id="dev-to-cli">
+        <g data-detail="context" data-edge-from="dev" data-edge-to="cli" data-edge-label="polypack release" data-edge-key="0" data-edge-id="dev-to-cli">
           <rect x="136.2" y="366" width="67.6" height="14" rx="3" class="c-mask"/>
-          <text x="170" y="376" class="t-backend" font-size="8" text-anchor="middle">poly release</text>
+          <text x="170" y="376" class="t-backend" font-size="8" text-anchor="middle">polypack release</text>
         </g>
-        <g data-detail="context" data-edge-from="guishell" data-edge-to="cli" data-edge-label="poly gui" data-edge-key="1" data-edge-id="gui-to-cli">
+        <g data-detail="context" data-edge-from="guishell" data-edge-to="cli" data-edge-label="polypack gui" data-edge-key="1" data-edge-id="gui-to-cli">
           <rect x="230.8" y="420" width="48.4" height="14" rx="3" class="c-mask"/>
-          <text x="255" y="430" class="t-muted" font-size="8" text-anchor="middle">poly gui</text>
+          <text x="255" y="430" class="t-muted" font-size="8" text-anchor="middle">polypack gui</text>
         </g>
         <g data-detail="context" data-edge-from="cli" data-edge-to="core" data-edge-label="polypack.toml" data-edge-key="2" data-edge-id="cli-to-core">
           <rect x="328.8" y="310" width="72.4" height="14" rx="3" class="c-mask"/>

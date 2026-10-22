@@ -1,12 +1,12 @@
 // capabilities 契约（ROADMAP §6）：`capabilities(): { focusNav, safeArea, gestures }`。
-// 矩阵与 poly-targets 内建 TargetSpec（crates/poly-targets/src/builtin.rs）逐一对照；
+// 矩阵与 polypack-targets 内建 TargetSpec（crates/polypack-targets/src/builtin.rs）逐一对照；
 // JS 侧不依赖 cargo，漂移由 test/capabilities.test.js 解析该单源文件哨兵断言。
 //
 // 小程序族基线（T-M3-05）：触屏指针（focusNav = false）、有安全区（刘海 / 状态栏，safeArea = true）、
 // 有系统返回手势（gestures = true）。「无 DOM 直连」与「生命周期 / 路由映射」不是宿主可提示的能力位，
 // 而是沙箱恒真约束，进降级分支清单（DEGRADATION_IDS）而非三键。
 
-/** 目标 id → Taro 编译平台（`taro build --type` 值）。格式列于 poly-targets 的目标声明 `ui`。 */
+/** 目标 id → Taro 编译平台（`taro build --type` 值）。格式列于 polypack-targets 的目标声明 `ui`。 */
 export const TARO_PLATFORMS = Object.freeze({
   wechat: "weapp",
   alipay: "alipay",

@@ -1,10 +1,10 @@
 # 无 UI 嵌入式编译矩阵（T-M6-08）：矩阵条目由 TargetSpec 派生，不在 workflow 手写目标。
 #
-# prepare 作业构建 `poly` 并跑 `poly targets --tier 6 --headless --json`，jq 取出
+# prepare 作业构建 `polypack` 并跑 `polypack targets --tier 6 --headless --json`，jq 取出
 # `{id,builder,format,probes}` 作为 matrix.include；新增一条 tier 6 / ui 为空的
 # TargetSpec 后，矩阵自动出现该目标，无需改本文件。android-automotive 带 UI，不进矩阵。
 #
-# 每个矩阵作业在临时工程里跑 `poly build --target <id>`（package + verify 同源流水线，
+# 每个矩阵作业在临时工程里跑 `polypack build --target <id>`（package + verify 同源流水线，
 # 含 QNX / Zephyr QEMU 冒烟腿），并把日志归档到 .polypack/logs/smoke/。
 # 环境槽缺失（QNX SDP / wr-cc / 网络）按 SKIP-with-print：作业不硬红，但 job summary
 # 逐条列出 REAL（verified 事件）与 SKIP/告警（warning 事件），不静默降级。
@@ -21,21 +21,21 @@ on:
   push:
     branches: [main]
     paths:
-      - "crates/poly-bundle/**"
-      - "crates/poly-cli/**"
-      - "crates/poly-core/**"
-      - "crates/poly-targets/**"
-      - "crates/poly-toolchain/**"
+      - "crates/polypack-bundle/**"
+      - "crates/polypack-cli/**"
+      - "crates/polypack-core/**"
+      - "crates/polypack-targets/**"
+      - "crates/polypack-toolchain/**"
       - "Cargo.toml"
       - "Cargo.lock"
       - ".github/workflows/embedded-ci.yml"
   pull_request:
     paths:
-      - "crates/poly-bundle/**"
-      - "crates/poly-cli/**"
-      - "crates/poly-core/**"
-      - "crates/poly-targets/**"
-      - "crates/poly-toolchain/**"
+      - "crates/polypack-bundle/**"
+      - "crates/polypack-cli/**"
+      - "crates/polypack-core/**"
+      - "crates/polypack-targets/**"
+      - "crates/polypack-toolchain/**"
       - "Cargo.toml"
       - "Cargo.lock"
       - ".github/workflows/embedded-ci.yml"
@@ -70,20 +70,20 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Rust stable（构建 poly）
+      - name: Rust stable（构建 polypack）
         uses: dtolnay/rust-toolchain@stable
 
       - name: 构建缓存
         uses: Swatinem/rust-cache@v2
 
-      - name: 构建 poly（矩阵作业只下载该二进制）
-        run: cargo build -j 2 -p poly-cli --bin poly
+      - name: 构建 polypack（矩阵作业只下载该二进制）
+        run: cargo build -j 2 -p polypack-cli --bin polypack
 
       - name: 派生矩阵（tier 6 且 ui 为空）
         id: matrix
         run: |
           set -euo pipefail
-          ./target/debug/poly targets --tier 6 --headless --json > matrix.jsonl
+          ./target/debug/polypack targets --tier 6 --headless --json > matrix.jsonl
           cat matrix.jsonl
           count=$(head -n 1 matrix.jsonl | jq -r '.count')
           include=$(jq -s -c '[.[] | select(.event == "target") |
@@ -94,19 +94,19 @@ jobs:
           {
             echo "## 嵌入式矩阵来源"
             echo ""
-            echo "- \`poly targets --tier 6 --headless\` → ${count} 个目标：${targets}"
-            echo "- 声明面：TargetSpec（crates/poly-targets/src/builtin.rs）；新增 tier 6 无 UI 目标自动进矩阵"
+            echo "- \`polypack targets --tier 6 --headless\` → ${count} 个目标：${targets}"
+            echo "- 声明面：TargetSpec（crates/polypack-targets/src/builtin.rs）；新增 tier 6 无 UI 目标自动进矩阵"
           } >> "$GITHUB_STEP_SUMMARY"
           if [ "$count" -lt 1 ]; then
             echo "::error::TargetSpec 派生的 tier 6 无 UI 矩阵为空（预期至少 5 个嵌入式目标）"
             exit 1
           fi
 
-      - name: 上传 poly 二进制
+      - name: 上传 polypack 二进制
         uses: actions/upload-artifact@v4
         with:
-          name: poly-cli-bin
-          path: target/debug/poly
+          name: polypack-cli-bin
+          path: target/debug/polypack
           retention-days: 1
 
   embedded:
@@ -120,13 +120,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: 下载 poly 二进制
+      - name: 下载 polypack 二进制
         uses: actions/download-artifact@v4
         with:
-          name: poly-cli-bin
-          path: ${{ runner.temp }}/poly-bin
+          name: polypack-cli-bin
+          path: ${{ runner.temp }}/polypack-bin
 
-      - name: Rust stable（poly 运行时 / 宿主静态库）
+      - name: Rust stable（polypack 运行时 / 宿主静态库）
         uses: dtolnay/rust-toolchain@stable
 
       - name: Rust nightly + rust-src（嵌入式 build-std：zephyr / freertos / vxworks）
@@ -225,7 +225,7 @@ jobs:
           KERNEL_DIR: ${{ runner.temp }}/freertos-kernel
         run: |
           set -euo pipefail
-          sh crates/poly-bundle/src/packagers/freertos_template/fetch_kernel.sh
+          sh crates/polypack-bundle/src/packagers/freertos_template/fetch_kernel.sh
           echo "POLYPACK_FREERTOS_KERNEL_DIR=$KERNEL_DIR" >> "$GITHUB_ENV"
 
       # ---------------------------------------------------------------- QNX（可选环境槽）
@@ -243,25 +243,25 @@ jobs:
           fi
 
       # ---------------------------------------------------------------- 构建 + 校验 + 冒烟
-      - name: poly 构建 / 校验 / QEMU 冒烟（${{ matrix.id }}）
+      - name: polypack 构建 / 校验 / QEMU 冒烟（${{ matrix.id }}）
         env:
           TARGET_ID: ${{ matrix.id }}
-          POLYPACK_ENGINE_CRATE: ${{ github.workspace }}/crates/poly-core
+          POLYPACK_ENGINE_CRATE: ${{ github.workspace }}/crates/polypack-core
         run: |
           set -uo pipefail
           LOGS="$RUNNER_TEMP/embedded-logs"
           FIXTURE="$RUNNER_TEMP/fixture"
-          POLY="$RUNNER_TEMP/poly-bin/poly"
+          POLYPACK="$RUNNER_TEMP/polypack-bin/polypack"
           rm -rf "$LOGS" "$FIXTURE"
           mkdir -p "$LOGS"
-          chmod +x "$POLY"
-          "$POLY" init "$FIXTURE" > "$LOGS/init.log" 2>&1
-          "$POLY" doctor --json > "$LOGS/doctor.jsonl" 2>&1 || true
+          chmod +x "$POLYPACK"
+          "$POLYPACK" init "$FIXTURE" > "$LOGS/init.log" 2>&1
+          "$POLYPACK" doctor --json > "$LOGS/doctor.jsonl" 2>&1 || true
 
           start=$SECONDS
           (
             cd "$FIXTURE"
-            "$POLY" build --target "$TARGET_ID" --json
+            "$POLYPACK" build --target "$TARGET_ID" --json
           ) 2>&1 | tee "$LOGS/build.jsonl"
           rc=${PIPESTATUS[0]}
           echo "$rc" > "$LOGS/build.rc"
@@ -284,9 +284,9 @@ jobs:
               echo "- 构建 + 校验 + 冒烟耗时：$(cat "$LOGS/duration.txt")s"
             fi
             if [ -f "$LOGS/build.rc" ]; then
-              echo "- \`poly build\` 退出码：$(cat "$LOGS/build.rc")"
+              echo "- \`polypack build\` 退出码：$(cat "$LOGS/build.rc")"
             else
-              echo "- \`poly build\` 未执行完（无退出码）"
+              echo "- \`polypack build\` 未执行完（无退出码）"
             fi
             echo ""
             echo "### 实际执行（REAL：verified 事件）"

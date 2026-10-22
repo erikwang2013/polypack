@@ -6,7 +6,7 @@
 .DESCRIPTION
     Runs a plain cargo release build. That is enough for the MSI test: it feeds
     the resulting exe into PolyPack's existing WiX packager (crate
-    `poly-bundle`), which produces the MSI that gets installed, launched and
+    `polypack-bundle`), which produces the MSI that gets installed, launched and
     uninstalled. The Tauri CLI is optional (see README).
 
     Prerequisites: Rust (MSVC toolchain), Visual Studio C++ build tools,
@@ -16,7 +16,7 @@ $ErrorActionPreference = "Stop"
 
 $root = Split-Path -Parent $MyInvocation.MyCommand.Path
 $manifest = Join-Path $root "src-tauri\Cargo.toml"
-$exe = Join-Path $root "src-tauri\target\release\poly-msi-sample.exe"
+$exe = Join-Path $root "src-tauri\target\release\polypack-msi-sample.exe"
 
 Push-Location $root
 try {
@@ -35,7 +35,7 @@ try {
 
     Write-Host "Built: $exe"
     Write-Host "Smoke: & `"$exe`" --smoke"
-    Write-Host "       (writes %TEMP%\poly-msi-sample-smoke.txt and exits automatically)"
+    Write-Host "       (writes %TEMP%\polypack-msi-sample-smoke.txt and exits automatically)"
 } finally {
     Pop-Location
 }

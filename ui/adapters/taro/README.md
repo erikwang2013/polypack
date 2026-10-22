@@ -7,13 +7,13 @@ ROADMAP §6 RendererAdapter 契约的小程序族装配层（T-M3-05）：Taro �
 ui/adapters/taro/
 ├── src/
 │   ├── index.js         # createAdapter：mount / platformStyle / capabilities / degradations / router
-│   ├── capabilities.js  # 目标 → Taro 编译平台映射 + 能力矩阵 + 降级分支（对照 poly-targets 内建声明）
-│   ├── tokens.js        # 最小 token 集 + platformStyle 蒙皮（同源 poly init 模板 tokens.css）
+│   ├── capabilities.js  # 目标 → Taro 编译平台映射 + 能力矩阵 + 降级分支（对照 polypack-targets 内建声明）
+│   ├── tokens.js        # 最小 token 集 + platformStyle 蒙皮（同源 polypack init 模板 tokens.css）
 │   ├── routes.js        # 生命周期映射表（onLoad/onShow/… → React 语义）+ 声明式路由（页面清单校验）
 │   ├── apiguard.js      # 宿主 API 白名单：构建期扫描（DOM 全局 / 白名单外 Taro API 即拒）
 │   ├── example.js       # 示例页面组件树（原语注入；react 依赖）
 │   └── …                # 装配层零 react 依赖：无 node_modules 也能导入 src/index.js
-├── bin/check-api.mjs    # 白名单预检 CLI（poly-bundle 小程序打包器的编译前命令）
+├── bin/check-api.mjs    # 白名单预检 CLI（polypack-bundle 小程序打包器的编译前命令）
 └── test/                # node:test 测试（36 项；无 react 时 4 项代理渲染跳过、不失败）
 ```
 
@@ -34,7 +34,7 @@ adapter.router().navigateTo("pages/about/index?a=1");    // 声明式路由：�
 - **runtime 显式注入**：装配层不臆测宿主（devtools / CI 无需真装 `@tarojs/taro`），
   生产注入 `@tarojs/taro` + `config()`（读 `app.config.js`），测试注入桩。
 - **能力矩阵**：四目标基线均为触屏 / 有安全区 / 有系统返回手势，与
-  `crates/poly-targets/src/builtin.rs`（L2 小程序族，`ui = "taro"`）逐一对照。
+  `crates/polypack-targets/src/builtin.rs`（L2 小程序族，`ui = "taro"`）逐一对照。
 - **降级分支闭合集**：`no-direct-dom`（沙箱恒真：视图经 Taro 组件树，DOM 直连构建期拒绝）、
   `lifecycle-mapping`（沙箱恒真：生命周期经 routes.js 映射表接线）、`compact-spacing`（小屏）、
   `back-affordance`（无系统返回手势的容器形态）。
@@ -48,7 +48,7 @@ adapter.router().navigateTo("pages/about/index?a=1");    // 声明式路由：�
 | `forbidden-global` | DOM / 浏览器全局 | `document` / `window` / `localStorage` / `fetch` … |
 | `taro-api` | 白名单外的 `Taro.<name>`（含裸下标形态） | `Taro.request` / `Taro['createSelectorQuery']` |
 
-构造样本 / 文档示例走同行标记 `poly:allow-api` 放行（同 poly-core scan 的行内标记口径）。
+构造样本 / 文档示例走同行标记 `polypack:allow-api` 放行（同 polypack-core scan 的行内标记口径）。
 v0 口径：行级词边界匹配（无 parser 依赖）；`import { x } from "@tarojs/taro"` 的裸解构不在扫描面。
 
 ## 测试（`npm test` / `node --test`）

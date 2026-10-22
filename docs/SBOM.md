@@ -8,20 +8,20 @@
 | --- | --- |
 | 每个产物一份 SPDX 2.3、一份 CycloneDX 1.5 与一份 in-toto Statement provenance | 不是 SLSA 认证，不声明任何 SLSA 等级 |
 | 依赖图来自 `cargo metadata --locked --offline`，与 `Cargo.lock` 对齐 | 不联网、不接 Sigstore / Rekor、不做远程证明 |
-| 确定性输出：同一输入二跑字节一致 | 不替代制品签名；签名 / 校验和仍由 `poly sign` / `poly verify` 负责 |
+| 确定性输出：同一输入二跑字节一致 | 不替代制品签名；签名 / 校验和仍由 `polypack sign` / `polypack verify` 负责 |
 
 ## 2. 生成
 
 先构建，再让 `verify` 为暂存产物生成 SBOM：
 
 ```bash
-poly build --target web
-poly verify --sbom --target web
+polypack build --target web
+polypack verify --sbom --target web
 # JSON 事件流（自动化用）
-poly verify --sbom --target web --json
+polypack verify --sbom --target web --json
 ```
 
-`--sbom` 可以与其他校验器同时使用；没有暂存产物的目标会明确告警并跳过，不会生成空 SBOM。生成失败返回 `poly::E_VERIFY_0003`，不会静默降级。
+`--sbom` 可以与其他校验器同时使用；没有暂存产物的目标会明确告警并跳过，不会生成空 SBOM。生成失败返回 `polypack::E_VERIFY_0003`，不会静默降级。
 
 ## 3. 输出布局
 
@@ -43,7 +43,7 @@ poly verify --sbom --target web --json
 
 ## 5. 发布回执
 
-`poly release` 用与 SBOM 相同的产物集合摘要算法计算 `sbom_digest` 并写入回执；回执可选字段，旧回执没有该字段时按缺省处理。这样发布记录和 SBOM 引用同一组产物摘要。
+`polypack release` 用与 SBOM 相同的产物集合摘要算法计算 `sbom_digest` 并写入回执；回执可选字段，旧回执没有该字段时按缺省处理。这样发布记录和 SBOM 引用同一组产物摘要。
 
 ## 6. 样例与测试
 
@@ -59,7 +59,7 @@ jq -r '._type' docs/samples/sbom/web/site.intoto.jsonl     # https://in-toto.io/
 验收测试：
 
 ```bash
-cargo test -p poly-cli --test sbom
+cargo test -p polypack-cli --test sbom
 node tools/check-docs.mjs
 ```
 
@@ -67,4 +67,4 @@ node tools/check-docs.mjs
 
 | 错误码 | 含义 |
 | --- | --- |
-| `poly::E_VERIFY_0003` | SBOM 生成失败（缺 `Cargo.lock` / 离线 `cargo metadata` 失败 / 产物摘要失败）；先跑 `poly build` 再重试 |
+| `polypack::E_VERIFY_0003` | SBOM 生成失败（缺 `Cargo.lock` / 离线 `cargo metadata` 失败 / 产物摘要失败）；先跑 `polypack build` 再重试 |

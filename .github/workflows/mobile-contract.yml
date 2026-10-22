@@ -2,7 +2,7 @@
 #
 # - **mock 模式（默认，每提交 / PR）**：不依赖 Android SDK 与 Xcode 的真实产物，断言打包 /
 #   签名链的命令组装与结构契约（`cargo test` 全绿，缺工具处按测试内 SKIP 纪律打印后通过）。
-# - **真实模式（每夜 18:37 UTC + 手动触发）**：`POLY_CONTRACT_REAL=1`，装齐工具链（Android
+# - **真实模式（每夜 18:37 UTC + 手动触发）**：`POLYPACK_CONTRACT_REAL=1`，装齐工具链（Android
 #   build-tools + bundletool；rustup Apple triple）后真跑打包链，产物（.aab / .ipa）随作业
 #   留档 14 天。真跑失败即红——绝不静默降级。
 #
@@ -10,7 +10,7 @@
 # `hosts = [Macos]` 的目标在 Linux 上无从真跑（Linux 发起走远程农场，T-M2-13）。
 #
 # watchOS 腿（ENV-11 / T-M7-05、T-M7-06）同在 macos-14，仅每夜 / 手动：先用 simulator SDK
-# 真编译 watchOS 模板，再 `poly build --target watchos` 走 archive → `export/Payload`。
+# 真编译 watchOS 模板，再 `polypack build --target watchos` 走 archive → `export/Payload`。
 # 无 Apple 签名凭据时 sign / `codesign-verify` 如实告警未签名；打包产物与结构是硬门，
 # 绝不把 package / xcodebuild 的 SKIP 当绿。
 
@@ -34,7 +34,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       # schedule / 手动触发 = 真实模式；push / PR = mock（空串即 mock）
-      POLY_CONTRACT_REAL: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && '1' || '' }}
+      POLYPACK_CONTRACT_REAL: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && '1' || '' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -48,14 +48,14 @@ jobs:
 
       # 真实模式才装 Android 工具链：mock 腿保持零第三方依赖、秒级完成
       - name: JDK 17（真跑：bundletool / apksigner 需 java）
-        if: env.POLY_CONTRACT_REAL == '1'
+        if: env.POLYPACK_CONTRACT_REAL == '1'
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: "17"
 
       - name: Android SDK（cmdline-tools + sdkmanager）
-        if: env.POLY_CONTRACT_REAL == '1'
+        if: env.POLYPACK_CONTRACT_REAL == '1'
         uses: android-actions/setup-android@v4
         with:
           # 许可仍由 action 自带（它喂 10 个 y 进 stdin；38688497283 实证「All SDK package licenses accepted」），
@@ -64,11 +64,11 @@ jobs:
           log-accepted-android-sdk-licenses: "false"
 
       - name: build-tools / platform 与 bundletool（真跑）
-        if: env.POLY_CONTRACT_REAL == '1'
+        if: env.POLYPACK_CONTRACT_REAL == '1'
         run: |
           sdkmanager "platforms;android-36" "build-tools;36.0.0"
           # 打包器按 AndroidInputs.bundletool → $POLYPACK_BUNDLETOOL → PATH → ~/.cache/polypack/tools/
-          # 依次解析（crates/poly-bundle/src/tools.rs）：落缓存目录即被自动发现。
+          # 依次解析（crates/polypack-bundle/src/tools.rs）：落缓存目录即被自动发现。
           mkdir -p "$HOME/.cache/polypack/tools"
           # -f：404 直接在下载步失败，别把错误页当 jar 拖到 java 那步才现形
           curl -fsSL -o "$HOME/.cache/polypack/tools/bundletool-all.jar" \
@@ -81,23 +81,23 @@ jobs:
           # 写死 /tmp 的上传 glob 会空转（dispatch 38690074497 ios 腿实证：IPA 真落在 /var/folders 下）。
           TMPDIR: ${{ runner.temp }}
         run: |
-          cargo test -p poly-bundle --test packagers_android --no-fail-fast -- --nocapture
-          cargo test -p poly-bundle --test packagers_android_tv --no-fail-fast -- --nocapture
-          cargo test -p poly-sign --no-fail-fast -- --nocapture
-          cargo test -p poly-cli --test contract_m2 --no-fail-fast -- --nocapture
+          cargo test -p polypack-bundle --test packagers_android --no-fail-fast -- --nocapture
+          cargo test -p polypack-bundle --test packagers_android_tv --no-fail-fast -- --nocapture
+          cargo test -p polypack-sign --no-fail-fast -- --nocapture
+          cargo test -p polypack-cli --test contract_m2 --no-fail-fast -- --nocapture
           # T-M4-04/05：Android TV / Fire TV 同链契约与 Leanback 清单（mock 每提交、真跑每夜；
           # 设备冒烟腿无 AVD 时 SKIP-with-print——CI 侧设备面归 tv-smoke 工作流，T-M4-13）
-          cargo test -p poly-cli --test contract_m4_tv --no-fail-fast -- --nocapture
+          cargo test -p polypack-cli --test contract_m4_tv --no-fail-fast -- --nocapture
 
       - name: 留产物（真跑；测试失败也留，便于定位）
-        if: ${{ always() && env.POLY_CONTRACT_REAL == '1' }}
+        if: ${{ always() && env.POLYPACK_CONTRACT_REAL == '1' }}
         uses: actions/upload-artifact@v4
         with:
           name: android-real-artifacts
           # 产物在 `.polypack/`（隐藏目录）：v4 默认跳过隐藏文件，须显式打开
           include-hidden-files: true
           path: |
-            ${{ runner.temp }}/poly-contract-m2-android-*/.polypack/packages/android/**
+            ${{ runner.temp }}/polypack-contract-m2-android-*/.polypack/packages/android/**
           # error 条件已满足：dispatch 38692194578 该腿真落盘并上传 9,770 B（.aab + .apks + 未签名 apk）。
           # 此后空上传=真异常。
           if-no-files-found: error
@@ -107,7 +107,7 @@ jobs:
     name: ios / macos-14
     runs-on: macos-14
     env:
-      POLY_CONTRACT_REAL: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && '1' || '' }}
+      POLYPACK_CONTRACT_REAL: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && '1' || '' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -120,11 +120,11 @@ jobs:
         uses: Swatinem/rust-cache@v2
 
       - name: Apple 交叉编译 target（真跑）
-        if: env.POLY_CONTRACT_REAL == '1'
+        if: env.POLYPACK_CONTRACT_REAL == '1'
         run: rustup target add aarch64-apple-ios aarch64-apple-ios-sim x86_64-apple-ios aarch64-apple-tvos aarch64-apple-tvos-sim
 
       - name: Xcode 留痕（真跑）
-        if: env.POLY_CONTRACT_REAL == '1'
+        if: env.POLYPACK_CONTRACT_REAL == '1'
         run: xcodebuild -version
 
       - name: ios 打包 / 签名链测试（mock 或真跑）
@@ -133,24 +133,24 @@ jobs:
           # 写死 /tmp 的上传 glob 会空转（dispatch 38690074497 ios 腿实证：IPA 真落在 /var/folders 下）。
           TMPDIR: ${{ runner.temp }}
         run: |
-          cargo test -p poly-bundle --test packagers_ios --no-fail-fast -- --nocapture
-          cargo test -p poly-bundle --test ios_real_run --no-fail-fast -- --nocapture
-          cargo test -p poly-sign --test ios_sign --no-fail-fast -- --nocapture
-          cargo test -p poly-cli --test contract_m2 --no-fail-fast -- --nocapture
+          cargo test -p polypack-bundle --test packagers_ios --no-fail-fast -- --nocapture
+          cargo test -p polypack-bundle --test ios_real_run --no-fail-fast -- --nocapture
+          cargo test -p polypack-sign --test ios_sign --no-fail-fast -- --nocapture
+          cargo test -p polypack-cli --test contract_m2 --no-fail-fast -- --nocapture
           # 真生成器输出 × Apple 编译：另两条 iOS 腿编译的都是**夹具手写**三件套，这一条才覆盖
           # 「真 uniffi 产物过得了 swiftc」（bridge.yml 在 ubuntu 只管生成，无 swiftc）
-          cargo test -p poly-cli --test ios_bindings_typecheck --no-fail-fast -- --nocapture
+          cargo test -p polypack-cli --test ios_bindings_typecheck --no-fail-fast -- --nocapture
 
       - name: 留产物（真跑；测试失败也留，便于定位）
-        if: ${{ always() && env.POLY_CONTRACT_REAL == '1' }}
+        if: ${{ always() && env.POLYPACK_CONTRACT_REAL == '1' }}
         uses: actions/upload-artifact@v4
         with:
           name: ios-real-artifacts
           # `.polypack` 是隐藏目录：v4 默认跳过隐藏文件，须显式打开
           include-hidden-files: true
           path: |
-            ${{ runner.temp }}/poly-ios-real-*/export/**
-            ${{ runner.temp }}/poly-contract-m2-ios-*/.polypack/packages/ios/**
+            ${{ runner.temp }}/polypack-ios-real-*/export/**
+            ${{ runner.temp }}/polypack-contract-m2-ios-*/.polypack/packages/ios/**
           # error 只在「所有 glob 皆空」时触发：首路（打包器真跑的 IPA）已实证必然命中
           # （dispatch 38690074497：4804 字节 3 条目），故此处空上传=真异常。CLI 侧那路仍是如实 NOTE。
           if-no-files-found: error
@@ -182,33 +182,33 @@ jobs:
       - name: 真编译 watchOS 模板（simulator SDK，禁签名）
         run: |
           set -euo pipefail
-          LOGS="$RUNNER_TEMP/poly-watchos-logs"
+          LOGS="$RUNNER_TEMP/polypack-watchos-logs"
           APP="$RUNNER_TEMP/polypack-watch"
           mkdir -p "$LOGS"
-          POLY="$GITHUB_WORKSPACE/target/debug/poly"
-          cargo build -p poly-cli
-          "$POLY" init --target watchos "$APP"
+          POLYPACK="$GITHUB_WORKSPACE/target/debug/polypack"
+          cargo build -p polypack-cli
+          "$POLYPACK" init --target watchos "$APP"
           cd "$APP"
           xcodebuild -project PolyPackWatch.xcodeproj -scheme PolyPackWatch \
             -sdk watchsimulator \
             -destination 'generic/platform=watchOS Simulator' \
-            -derivedDataPath "$RUNNER_TEMP/poly-watch-derived-data" \
+            -derivedDataPath "$RUNNER_TEMP/polypack-watch-derived-data" \
             build CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY= \
             | tee "$LOGS/xcodebuild-simulator.log"
           grep -q 'BUILD SUCCEEDED' "$LOGS/xcodebuild-simulator.log"
 
-      - name: poly build --target watchos（archive → export/Payload；结构硬门）
+      - name: polypack build --target watchos（archive → export/Payload；结构硬门）
         env:
           # macOS 的 std::env::temp_dir() 取 $TMPDIR；与 xcodebuild 临时目录对齐。
           TMPDIR: ${{ runner.temp }}
         run: |
           set -euo pipefail
-          LOGS="$RUNNER_TEMP/poly-watchos-logs"
+          LOGS="$RUNNER_TEMP/polypack-watchos-logs"
           APP="$RUNNER_TEMP/polypack-watch"
-          POLY="$GITHUB_WORKSPACE/target/debug/poly"
+          POLYPACK="$GITHUB_WORKSPACE/target/debug/polypack"
           mkdir -p "$LOGS"
           cd "$APP"
-          "$POLY" build --target watchos --json | tee "$LOGS/build.jsonl"
+          "$POLYPACK" build --target watchos --json | tee "$LOGS/build.jsonl"
 
           grep -q '"event":"packaged"' "$LOGS/build.jsonl"
           grep -q '"format":"watch"' "$LOGS/build.jsonl"
@@ -241,7 +241,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: mobile-watchos-evidence
-          path: ${{ runner.temp }}/poly-watchos-logs/**
+          path: ${{ runner.temp }}/polypack-watchos-logs/**
           include-hidden-files: true
           if-no-files-found: error
           retention-days: 14

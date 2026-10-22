@@ -1,7 +1,7 @@
 name: release
 
-# 预编译 `poly` 二进制：tag `v*` 推送时构建三宿主产物并附加到 GitHub Release。
-# 源码安装仍是主路径（`cargo install --path crates/poly-cli`）；本工作流只解决
+# 预编译 `polypack` 二进制：tag `v*` 推送时构建三宿主产物并附加到 GitHub Release。
+# 源码安装仍是主路径（`cargo install --path crates/polypack-cli`）；本工作流只解决
 # 「没有 Rust 工具链的用户如何拿到 CLI」这一分发缺口。
 #
 # 可选签名：配置 MINISIGN_SECRET_KEY（base64 编码的 minisign 私钥文件）后，
@@ -52,9 +52,9 @@ jobs:
         run: |
           set -euo pipefail
           version=$(cargo metadata --no-deps --format-version 1 \
-            | jq -r '.packages[] | select(.name == "poly-cli") | .version')
+            | jq -r '.packages[] | select(.name == "polypack-cli") | .version')
           if [ "v$version" != "${GITHUB_REF_NAME}" ]; then
-            echo "tag ${GITHUB_REF_NAME} 与 poly-cli 版本 v$version 不一致" >&2
+            echo "tag ${GITHUB_REF_NAME} 与 polypack-cli 版本 v$version 不一致" >&2
             exit 1
           fi
           echo "版本一致：v$version"
@@ -62,8 +62,8 @@ jobs:
       - name: 构建缓存
         uses: Swatinem/rust-cache@v2
 
-      - name: 构建 poly（release）
-        run: cargo build --release -p poly-cli --bin poly
+      - name: 构建 polypack（release）
+        run: cargo build --release -p polypack-cli --bin polypack
 
       - name: 打包（Unix）
         if: runner.os != 'Windows'
@@ -71,23 +71,23 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p dist
-          cp target/release/poly "dist/poly-${{ matrix.target }}"
-          tar -C dist -czf "dist/poly-${{ matrix.target }}.tar.gz" "poly-${{ matrix.target }}"
-          rm "dist/poly-${{ matrix.target }}"
+          cp target/release/polypack "dist/polypack-${{ matrix.target }}"
+          tar -C dist -czf "dist/polypack-${{ matrix.target }}.tar.gz" "polypack-${{ matrix.target }}"
+          rm "dist/polypack-${{ matrix.target }}"
 
       - name: 打包（Windows）
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path dist | Out-Null
-          Copy-Item target/release/poly.exe "dist/poly-${{ matrix.target }}.exe"
-          Compress-Archive -Path "dist/poly-${{ matrix.target }}.exe" -DestinationPath "dist/poly-${{ matrix.target }}.zip" -Force
-          Remove-Item "dist/poly-${{ matrix.target }}.exe"
+          Copy-Item target/release/polypack.exe "dist/polypack-${{ matrix.target }}.exe"
+          Compress-Archive -Path "dist/polypack-${{ matrix.target }}.exe" -DestinationPath "dist/polypack-${{ matrix.target }}.zip" -Force
+          Remove-Item "dist/polypack-${{ matrix.target }}.exe"
 
       - name: 上传构建产物
         uses: actions/upload-artifact@v4
         with:
-          name: poly-${{ matrix.target }}
+          name: polypack-${{ matrix.target }}
           path: dist/*
           if-no-files-found: error
 
@@ -106,8 +106,8 @@ jobs:
       - name: 安装打包工具
         run: sudo apt-get update -qq && sudo apt-get install -y -qq squashfs-tools
 
-      - name: 构建 poly（release）
-        run: cargo build --release -p poly-cli --bin poly
+      - name: 构建 polypack（release）
+        run: cargo build --release -p polypack-cli --bin polypack
 
       - name: 构建 .deb
         shell: bash
@@ -115,8 +115,8 @@ jobs:
           set -euo pipefail
           version="${RELEASE_VERSION#v}"
           mkdir -p dist
-          packaging/linux/build-deb.sh target/release/poly "$version" \
-            "dist/polypack-cli_${version}_amd64.deb" amd64
+          packaging/linux/build-deb.sh target/release/polypack "$version" \
+            "dist/polypack_${version}_amd64.deb" amd64
 
       - name: 下载 appimagetool
         shell: bash
@@ -131,24 +131,24 @@ jobs:
         run: |
           set -euo pipefail
           version="${RELEASE_VERSION#v}"
-          packaging/linux/build-appimage.sh target/release/poly "$version" \
-            /tmp/appimagetool "dist/poly-${version}-x86_64.AppImage"
+          packaging/linux/build-appimage.sh target/release/polypack "$version" \
+            /tmp/appimagetool "dist/polypack-${version}-x86_64.AppImage"
 
       - name: 验证 Linux 包
         shell: bash
         run: |
           set -euo pipefail
           version="${RELEASE_VERSION#v}"
-          dpkg-deb -I "dist/polypack-cli_${version}_amd64.deb"
+          dpkg-deb -I "dist/polypack_${version}_amd64.deb"
           chmod +x dist/*.AppImage
           (cd /tmp && rm -rf squashfs-root && \
-            "$GITHUB_WORKSPACE/dist/poly-${version}-x86_64.AppImage" --appimage-extract >/dev/null && \
+            "$GITHUB_WORKSPACE/dist/polypack-${version}-x86_64.AppImage" --appimage-extract >/dev/null && \
             ./squashfs-root/AppRun --version)
 
       - name: 上传 Linux 安装包
         uses: actions/upload-artifact@v4
         with:
-          name: poly-linux-packages
+          name: polypack-linux-packages
           path: dist/*
           if-no-files-found: error
 
@@ -164,8 +164,8 @@ jobs:
       - name: 构建缓存
         uses: Swatinem/rust-cache@v2
 
-      - name: 构建 poly（release）
-        run: cargo build --release -p poly-cli --bin poly
+      - name: 构建 polypack（release）
+        run: cargo build --release -p polypack-cli --bin polypack
 
       - name: 构建 MSI
         shell: pwsh
@@ -184,9 +184,9 @@ jobs:
             throw 'WiX v3 (candle.exe / light.exe) not found'
           }
           & (Join-Path $wix 'candle.exe') -arch x64 "-dVersion=$base" "-dSourceDir=$PWD\target\release" `
-            "-dIconDir=$PWD\packaging\icons" packaging\windows\poly.wxs -out dist\poly.wixobj
+            "-dIconDir=$PWD\packaging\icons" packaging\windows\polypack.wxs -out dist\polypack.wixobj
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          & (Join-Path $wix 'light.exe') dist\poly.wixobj -out "dist\poly-$version-x86_64.msi"
+          & (Join-Path $wix 'light.exe') dist\polypack.wixobj -out "dist\polypack-$version-x86_64.msi"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: 安装 / 运行 / 卸载冒烟
@@ -196,18 +196,18 @@ jobs:
           $msi = Get-ChildItem dist\*.msi | Select-Object -First 1
           if (-not $msi) { throw 'MSI not built' }
           Start-Process msiexec.exe -ArgumentList @('/i', $msi.FullName, '/qn', '/norestart') -Wait
-          $exe = Join-Path $env:ProgramFiles 'PolyPack\poly.exe'
-          if (-not (Test-Path $exe)) { throw "installed poly.exe not found: $exe" }
+          $exe = Join-Path $env:ProgramFiles 'polypack\polypack.exe'
+          if (-not (Test-Path $exe)) { throw "installed polypack.exe not found: $exe" }
           & $exe --version
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           Start-Process msiexec.exe -ArgumentList @('/x', $msi.FullName, '/qn', '/norestart') -Wait
           Start-Sleep -Seconds 2
-          if (Test-Path (Join-Path $env:ProgramFiles 'PolyPack')) { throw 'uninstall residue' }
+          if (Test-Path (Join-Path $env:ProgramFiles 'polypack')) { throw 'uninstall residue' }
 
       - name: 上传 Windows 安装包
         uses: actions/upload-artifact@v4
         with:
-          name: poly-windows-installer
+          name: polypack-windows-installer
           path: dist/*.msi
           if-no-files-found: error
 
@@ -223,8 +223,8 @@ jobs:
       - name: 构建缓存
         uses: Swatinem/rust-cache@v2
 
-      - name: 构建 poly（release）
-        run: cargo build --release -p poly-cli --bin poly
+      - name: 构建 polypack（release）
+        run: cargo build --release -p polypack-cli --bin polypack
 
       - name: 构建 .pkg
         shell: bash
@@ -233,22 +233,23 @@ jobs:
           version="${RELEASE_VERSION#v}"
           base="${version%%-*}"
           mkdir -p dist
-          packaging/macos/build-pkg.sh target/release/poly "$base" \
-            "dist/poly-${version}-aarch64.pkg"
+          packaging/macos/build-pkg.sh target/release/polypack "$base" \
+            "dist/polypack-${version}-aarch64.pkg"
 
       - name: 安装并运行冒烟
         shell: bash
         run: |
           set -euo pipefail
           sudo installer -pkg dist/*.pkg -target /
-          /usr/local/bin/poly --version
-          sudo rm -f /usr/local/bin/poly
+          /usr/local/bin/polypack --version
+          sudo rm -f /usr/local/bin/polypack
+          sudo rm -rf /usr/local/polypack
           sudo pkgutil --forget dev.polypack.cli || true
 
       - name: 上传 macOS 安装包
         uses: actions/upload-artifact@v4
         with:
-          name: poly-macos-pkg
+          name: polypack-macos-pkg
           path: dist/*.pkg
           if-no-files-found: error
 
@@ -319,15 +320,15 @@ jobs:
 
       - name: 用安装脚本安装刚发布的 Linux 资产
         env:
-          POLY_VERSION: ${{ github.ref_name }}
-          POLY_INSTALL_DIR: ${{ runner.temp }}/poly-bin
+          POLYPACK_VERSION: ${{ github.ref_name }}
+          POLYPACK_INSTALL_DIR: ${{ runner.temp }}/polypack-bin
         shell: bash
         run: |
           set -euo pipefail
           bash scripts/install.sh
-          installed=$("$POLY_INSTALL_DIR/poly" --version)
+          installed=$("$POLYPACK_INSTALL_DIR/polypack" --version)
           echo "$installed"
-          expected="poly ${POLY_VERSION#v}"
+          expected="polypack ${POLYPACK_VERSION#v}"
           if [ "$installed" != "$expected" ]; then
             echo "安装版本不符：期望 $expected，实际 $installed" >&2
             exit 1
