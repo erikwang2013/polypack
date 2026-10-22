@@ -6,6 +6,8 @@
     <Package InstallerVersion="500" Compressed="yes" InstallScope="perMachine" />
     <MajorUpgrade DowngradeErrorMessage="A newer PolyPack CLI is already installed." />
     <MediaTemplate EmbedCab="yes" />
+    <Icon Id="PaxIcon" SourceFile="$(var.IconDir)\pax.ico" />
+    <Property Id="ARPPRODUCTICON" Value="PaxIcon" />
     <Directory Id="TARGETDIR" Name="SourceDir">
       <Directory Id="ProgramFiles64Folder">
         <Directory Id="INSTALLDIR" Name="PolyPack">
