@@ -39,7 +39,7 @@ The interaction budget is < 50 ms; the paint/load numbers are reported for conte
 
 ## Donation QR codes
 
-`assets/donate/wechat.svg` and `alipay.svg` are **placeholders**. Replace them with the maintainer's public receive-code images; see `assets/donate/README.md`. The modal only zooms the local image and sends no payment data.
+`assets/img/weixinpay.png` and `assets/img/alipay.png` are the maintainer-provided public receive codes. The modal only zooms the local image and sends no payment data.
 
 ## Stats
 
