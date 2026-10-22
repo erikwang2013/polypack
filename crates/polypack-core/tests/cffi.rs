@@ -195,7 +195,7 @@ fn cache_key_is_identical_across_engine_and_host_pipeline() {
     // golden：std 与 no_std 编译的是同一函数（无 cfg 分支），值由本常量钉死。
     assert_eq!(
         engine_key.as_str(),
-        "263bcee0a06fbd80a257e7194b63af7ee5f9e7265f00ceb20a72d66c721754fb",
+        "e80466bab809b0173a5903e9ad471520351f7f016b0bdb7b0ae970ed16a6674a",
         "缓存键公式变化必须同步更新 golden 并递增 polypack-cache 的 KEY_DOMAIN"
     );
 }

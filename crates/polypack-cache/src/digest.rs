@@ -17,7 +17,7 @@ use serde::{Deserialize, Serialize};
 use crate::error::CacheError;
 
 /// 缓存键域前缀 + 键格式版本：改动键的构造方式时必须递增。
-const KEY_DOMAIN: &str = "polypack-cache/v1";
+const KEY_DOMAIN: &str = "polypack-cache/v2";
 /// 目录树摘要域前缀：与字节摘要隔离，避免不同用途的摘要互相碰撞。
 #[cfg(feature = "std")]
 const TREE_DOMAIN: &str = "polypack-tree/v1";

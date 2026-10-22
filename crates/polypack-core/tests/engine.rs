@@ -11,7 +11,7 @@
 use polypack_core::engine::{CacheInputs, Digest, cache_key, parse_job_spec, parse_target_spec};
 
 /// 固定输入的缓存键：任何一侧（std / no_std）漂移即红。
-const GOLDEN_KEY: &str = "263bcee0a06fbd80a257e7194b63af7ee5f9e7265f00ceb20a72d66c721754fb";
+const GOLDEN_KEY: &str = "e80466bab809b0173a5903e9ad471520351f7f016b0bdb7b0ae970ed16a6674a";
 
 const TARGET_JSON: &str = r#"{
   "id": "linux",
