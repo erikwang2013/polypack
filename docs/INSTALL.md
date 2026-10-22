@@ -41,6 +41,19 @@ install -m 0755 "poly-$TARGET" "$HOME/.local/bin/poly"
 
 Windows 资产是 `.zip`，解压后把 `poly-x86_64-pc-windows-msvc.exe` 放到 PATH 中并改名为 `poly.exe`。
 
+### 3.1 桌面安装器
+
+Release 还会附带由 GitHub Actions 在三宿主原生构建的安装器：
+
+| 平台 | 资产 | 安装 |
+| --- | --- | --- |
+| Debian / Ubuntu | `polypack-cli_<version>_amd64.deb` | `sudo dpkg -i polypack-cli_<version>_amd64.deb` |
+| 通用 Linux | `poly-<version>-x86_64.AppImage` | `chmod +x` 后直接运行 |
+| Windows | `poly-<version>-x86_64.msi` | 双击或在 PowerShell 执行 `msiexec /i <msi>` |
+| macOS arm64 | `poly-<version>-aarch64.pkg` | `sudo installer -pkg <pkg> -target /` |
+
+安装器目前未做商业代码签名：Windows SmartScreen 可能提示未知发布者；macOS Gatekeeper 可能要求右键打开或在“隐私与安全性”中允许。需要正式签名 / 公证时由维护者配置证书后重发。
+
 ## 4. 校验和
 
 每个 Release 附带 `SHA256SUMS.txt`。下载资产与校验和后，在资产同目录执行：

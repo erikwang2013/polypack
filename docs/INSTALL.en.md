@@ -41,6 +41,19 @@ install -m 0755 "poly-$TARGET" "$HOME/.local/bin/poly"
 
 The Windows asset is a `.zip`; extract `poly-x86_64-pc-windows-msvc.exe`, place it on PATH, and rename it to `poly.exe`.
 
+### 3.1 Desktop installers
+
+Releases also include native installers built by GitHub Actions on all three hosts:
+
+| Platform | Asset | Install |
+| --- | --- | --- |
+| Debian / Ubuntu | `polypack-cli_<version>_amd64.deb` | `sudo dpkg -i polypack-cli_<version>_amd64.deb` |
+| Generic Linux | `poly-<version>-x86_64.AppImage` | `chmod +x` and run |
+| Windows | `poly-<version>-x86_64.msi` | Double-click, or `msiexec /i <msi>` in PowerShell |
+| macOS arm64 | `poly-<version>-aarch64.pkg` | `sudo installer -pkg <pkg> -target /` |
+
+The installers are currently unsigned: Windows SmartScreen may warn about an unknown publisher, and macOS Gatekeeper may require right-click-open or an Allow action in Privacy & Security. Maintainers can re-release with code signing / notarization once certificates are configured.
+
 ## 4. Checksums
 
 Every Release ships `SHA256SUMS.txt`. Download the asset plus the checksum file, then run this in the same directory:
