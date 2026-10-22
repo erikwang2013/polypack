@@ -7,9 +7,9 @@ Notable changes are recorded here; since v1.0.0, tags and releases follow `vX.Y.
 ## [Unreleased]
 
 ### Added
-- **下载目录页**：新增 `site/downloads/` 双语下载页，集中列出 Linux deb / AppImage、Windows MSI、macOS pkg、便携压缩包、SHA-256 校验与系统要求；首页导航与下载区直接进入该页，sitemap / 检查门禁同步。
+- **下载目录页**：新增 `site/downloads/` 双语下载页，v1.16.0 的 deb / AppImage / MSI / pkg、便携压缩包与 SHA-256 清单直接放在该目录；首页只保留进入下载目录的入口，站内不再指向 GitHub Release 下载；sitemap 与检查门禁同步（校验本地文件、拒绝 release 下载链接、二进制不占页面体积预算）。
 
-*Download directory page: adds the bilingual `site/downloads/` page with Linux deb / AppImage, Windows MSI, macOS pkg, portable archives, SHA-256 verification and system requirements; the home nav and download section link to it, with sitemap/check gates updated.*
+*Download directory page: adds the bilingual `site/downloads/` page and hosts the v1.16.0 deb / AppImage / MSI / pkg, portable archives and SHA-256 manifest in that directory; the home page only links to it and the site no longer points at GitHub Release downloads; sitemap and gates now verify local files, reject release download links, and exclude binaries from the page size budget.*
 
 ## [1.16.0] — 2026-10-22
 

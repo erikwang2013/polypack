@@ -26,9 +26,9 @@
     "@type": "ItemList",
     "name": "PolyPack v1.16.0 downloads",
     "itemListElement": [
-      { "@type": "SoftwareApplication", "name": "PolyPack Linux deb", "operatingSystem": "Linux", "softwareVersion": "1.16.0", "downloadUrl": "https://github.com/erikwang2013/polypack/releases/download/v1.16.0/polypack-cli_1.16.0_amd64.deb" },
-      { "@type": "SoftwareApplication", "name": "PolyPack Windows MSI", "operatingSystem": "Windows", "softwareVersion": "1.16.0", "downloadUrl": "https://github.com/erikwang2013/polypack/releases/download/v1.16.0/poly-1.16.0-x86_64.msi" },
-      { "@type": "SoftwareApplication", "name": "PolyPack macOS pkg", "operatingSystem": "macOS", "softwareVersion": "1.16.0", "downloadUrl": "https://github.com/erikwang2013/polypack/releases/download/v1.16.0/poly-1.16.0-aarch64.pkg" }
+      { "@type": "SoftwareApplication", "name": "PolyPack Linux deb", "operatingSystem": "Linux", "softwareVersion": "1.16.0", "downloadUrl": "https://package.erik.xyz/polypack/downloads/polypack-cli_1.16.0_amd64.deb" },
+      { "@type": "SoftwareApplication", "name": "PolyPack Windows MSI", "operatingSystem": "Windows", "softwareVersion": "1.16.0", "downloadUrl": "https://package.erik.xyz/polypack/downloads/poly-1.16.0-x86_64.msi" },
+      { "@type": "SoftwareApplication", "name": "PolyPack macOS pkg", "operatingSystem": "macOS", "softwareVersion": "1.16.0", "downloadUrl": "https://package.erik.xyz/polypack/downloads/poly-1.16.0-aarch64.pkg" }
     ]
   }
   </script>
@@ -62,7 +62,7 @@
           <p class="lead" data-zh="v1.16.0 · Linux / macOS / Windows 原生安装器与便携二进制。选择你的平台，安装后用 poly --version 验证。" data-en="v1.16.0 · native installers and portable binaries for Linux / macOS / Windows. Pick a platform and verify with poly --version.">v1.16.0 · Linux / macOS / Windows 原生安装器与便携二进制。选择你的平台，安装后用 poly --version 验证。</p>
           <div class="hero-actions">
             <a class="btn btn-primary" href="#installers" data-zh="安装器下载" data-en="Installer downloads">安装器下载</a>
-            <a class="btn btn-ghost" href="https://github.com/erikwang2013/polypack/releases/tag/v1.16.0" target="_blank" rel="noopener" data-zh="Release 页面 ↗" data-en="Release page ↗">Release 页面 ↗</a>
+            <a class="btn btn-ghost" href="#verify" data-zh="SHA-256 校验" data-en="SHA-256 checksums">SHA-256 校验</a>
           </div>
         </div>
         <img class="download-pet" src="../assets/img/pax-knock.svg" alt="Pax 敲击包裹" width="180" height="180">
@@ -78,28 +78,28 @@
           <article class="card download-card">
             <div class="download-card-head"><span class="download-icon">🐧</span><div><h3>Debian / Ubuntu</h3><p class="small">x86_64 · .deb</p></div></div>
             <p data-zh="适用于 Debian、Ubuntu 及其衍生发行版；安装到 /usr/bin/poly。" data-en="For Debian, Ubuntu and derivatives; installs to /usr/bin/poly.">适用于 Debian、Ubuntu 及其衍生发行版；安装到 /usr/bin/poly。</p>
-            <a class="btn btn-primary" href="https://github.com/erikwang2013/polypack/releases/download/v1.16.0/polypack-cli_1.16.0_amd64.deb" rel="noopener" data-zh="下载 .deb (x86_64)" data-en="Download .deb (x86_64)">下载 .deb (x86_64)</a>
+            <a class="btn btn-primary" href="polypack-cli_1.16.0_amd64.deb" download rel="noopener" data-zh="下载 .deb (x86_64)" data-en="Download .deb (x86_64)">下载 .deb (x86_64)</a>
             <div class="code-card"><div class="code-head"><span>bash</span><button class="copy" type="button">Copy</button></div><pre><code>sudo dpkg -i polypack-cli_1.16.0_amd64.deb
 poly --version</code></pre></div>
           </article>
           <article class="card download-card">
             <div class="download-card-head"><span class="download-icon">🐧</span><div><h3>AppImage</h3><p class="small">x86_64 · .AppImage</p></div></div>
             <p data-zh="无需安装，chmod +x 后直接运行；适合任意现代 Linux 发行版。" data-en="No installation: chmod +x and run. Works on most modern Linux distributions.">无需安装，chmod +x 后直接运行；适合任意现代 Linux 发行版。</p>
-            <a class="btn btn-primary" href="https://github.com/erikwang2013/polypack/releases/download/v1.16.0/poly-1.16.0-x86_64.AppImage" rel="noopener" data-zh="下载 AppImage" data-en="Download AppImage">下载 AppImage</a>
+            <a class="btn btn-primary" href="poly-1.16.0-x86_64.AppImage" download rel="noopener" data-zh="下载 AppImage" data-en="Download AppImage">下载 AppImage</a>
             <div class="code-card"><div class="code-head"><span>bash</span><button class="copy" type="button">Copy</button></div><pre><code>chmod +x poly-1.16.0-x86_64.AppImage
 ./poly-1.16.0-x86_64.AppImage --version</code></pre></div>
           </article>
           <article class="card download-card">
             <div class="download-card-head"><span class="download-icon">🪟</span><div><h3>Windows</h3><p class="small">x86_64 · .msi</p></div></div>
             <p data-zh="安装到 Program Files\\PolyPack 并加入 PATH；支持静默安装 / 卸载。" data-en="Installs to Program Files\\PolyPack and adds it to PATH; supports silent install / uninstall.">安装到 Program Files\PolyPack 并加入 PATH；支持静默安装 / 卸载。</p>
-            <a class="btn btn-primary" href="https://github.com/erikwang2013/polypack/releases/download/v1.16.0/poly-1.16.0-x86_64.msi" rel="noopener" data-zh="下载 .msi" data-en="Download .msi">下载 .msi</a>
+            <a class="btn btn-primary" href="poly-1.16.0-x86_64.msi" download rel="noopener" data-zh="下载 .msi" data-en="Download .msi">下载 .msi</a>
             <div class="code-card"><div class="code-head"><span>PowerShell</span><button class="copy" type="button">Copy</button></div><pre><code>msiexec /i poly-1.16.0-x86_64.msi
 poly --version</code></pre></div>
           </article>
           <article class="card download-card">
             <div class="download-card-head"><span class="download-icon">🍎</span><div><h3>macOS</h3><p class="small">Apple Silicon · .pkg</p></div></div>
             <p data-zh="安装到 /usr/local/bin/poly；未签名，首次运行可能需在“隐私与安全性”允许。" data-en="Installs to /usr/local/bin/poly; unsigned, so the first run may require an Allow action in Privacy & Security.">安装到 /usr/local/bin/poly；未签名，首次运行可能需在“隐私与安全性”允许。</p>
-            <a class="btn btn-primary" href="https://github.com/erikwang2013/polypack/releases/download/v1.16.0/poly-1.16.0-aarch64.pkg" rel="noopener" data-zh="下载 .pkg (arm64)" data-en="Download .pkg (arm64)">下载 .pkg (arm64)</a>
+            <a class="btn btn-primary" href="poly-1.16.0-aarch64.pkg" download rel="noopener" data-zh="下载 .pkg (arm64)" data-en="Download .pkg (arm64)">下载 .pkg (arm64)</a>
             <div class="code-card"><div class="code-head"><span>bash</span><button class="copy" type="button">Copy</button></div><pre><code>sudo installer -pkg poly-1.16.0-aarch64.pkg -target /
 poly --version</code></pre></div>
           </article>
@@ -113,10 +113,10 @@ poly --version</code></pre></div>
         <h2 data-zh="压缩包" data-en="Archives">压缩包</h2>
         <p class="lead" data-zh="解压即用，适合 CI、容器或不想安装到系统目录的用户。" data-en="Unpack and run: for CI, containers, or users who prefer not to install system-wide.">解压即用，适合 CI、容器或不想安装到系统目录的用户。</p>
         <div class="grid grid-2 download-list">
-          <article class="card download-card"><h3>Linux x86_64</h3><p class="small">tar.gz · glibc 2.39+</p><a class="btn btn-light" href="https://github.com/erikwang2013/polypack/releases/download/v1.16.0/poly-x86_64-unknown-linux-gnu.tar.gz" rel="noopener">Download ↓</a></article>
-          <article class="card download-card"><h3>macOS arm64</h3><p class="small">tar.gz · Apple Silicon</p><a class="btn btn-light" href="https://github.com/erikwang2013/polypack/releases/download/v1.16.0/poly-aarch64-apple-darwin.tar.gz" rel="noopener">Download ↓</a></article>
-          <article class="card download-card"><h3>Windows x86_64</h3><p class="small">zip · Windows 10/11</p><a class="btn btn-light" href="https://github.com/erikwang2013/polypack/releases/download/v1.16.0/poly-x86_64-pc-windows-msvc.zip" rel="noopener">Download ↓</a></article>
-          <article class="card download-card"><h3 data-zh="校验和" data-en="Checksums">校验和</h3><p class="small">SHA256SUMS.txt</p><a class="btn btn-light" href="https://github.com/erikwang2013/polypack/releases/download/v1.16.0/SHA256SUMS.txt" rel="noopener">Download ↓</a></article>
+          <article class="card download-card"><h3>Linux x86_64</h3><p class="small">tar.gz · glibc 2.39+</p><a class="btn btn-light" href="poly-x86_64-unknown-linux-gnu.tar.gz" download rel="noopener">Download ↓</a></article>
+          <article class="card download-card"><h3>macOS arm64</h3><p class="small">tar.gz · Apple Silicon</p><a class="btn btn-light" href="poly-aarch64-apple-darwin.tar.gz" download rel="noopener">Download ↓</a></article>
+          <article class="card download-card"><h3>Windows x86_64</h3><p class="small">zip · Windows 10/11</p><a class="btn btn-light" href="poly-x86_64-pc-windows-msvc.zip" download rel="noopener">Download ↓</a></article>
+          <article class="card download-card"><h3 data-zh="校验和" data-en="Checksums">校验和</h3><p class="small">SHA256SUMS.txt</p><a class="btn btn-light" href="SHA256SUMS.txt" download rel="noopener">Download ↓</a></article>
         </div>
       </div>
     </section>
@@ -126,8 +126,7 @@ poly --version</code></pre></div>
         <p class="eyebrow" data-zh="校验" data-en="VERIFY">校验</p>
         <h2 data-zh="下载后先校验" data-en="Verify before running">下载后先校验</h2>
         <div class="split">
-          <div class="code-card"><div class="code-head"><span>Linux / macOS</span><button class="copy" type="button">Copy</button></div><pre><code>curl -fsSLO https://github.com/erikwang2013/polypack/releases/download/v1.16.0/SHA256SUMS.txt
-sha256sum --check --ignore-missing SHA256SUMS.txt
+          <div class="code-card"><div class="code-head"><span>Linux / macOS</span><button class="copy" type="button">Copy</button></div><pre><code>sha256sum --check --ignore-missing SHA256SUMS.txt
 # macOS:
 shasum -a 256 -c SHA256SUMS.txt</code></pre></div>
           <div class="code-card"><div class="code-head"><span>Windows PowerShell</span><button class="copy" type="button">Copy</button></div><pre><code>Get-FileHash .\\poly-1.16.0-x86_64.msi -Algorithm SHA256
@@ -155,7 +154,7 @@ shasum -a 256 -c SHA256SUMS.txt</code></pre></div>
     <div class="wrap">
       <div class="footer-bottom">
         <span>© 2026 Erik · PolyPack</span>
-        <span><a href="../index.html" data-zh="返回首页" data-en="Back to home">返回首页</a> · <a href="https://github.com/erikwang2013/polypack/releases" target="_blank" rel="noopener" data-zh="历史版本" data-en="All releases">历史版本</a> · <a href="https://erik.xyz" target="_blank" rel="noopener">艾瑞可 erik ↗</a></span>
+        <span><a href="../index.html" data-zh="返回首页" data-en="Back to home">返回首页</a> · <a href="https://erik.xyz" target="_blank" rel="noopener">艾瑞可 erik ↗</a></span>
       </div>
     </div>
   </footer>

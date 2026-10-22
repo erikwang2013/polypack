@@ -5,7 +5,7 @@
     <loc>https://package.erik.xyz/polypack/</loc>
     <xhtml:link rel="alternate" hreflang="zh-CN" href="https://package.erik.xyz/polypack/"/>
     <xhtml:link rel="alternate" hreflang="en" href="https://package.erik.xyz/polypack/?lang=en"/>
-    <lastmod>2026-10-21</lastmod>
+    <lastmod>2026-10-23</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
   </url>
@@ -13,7 +13,7 @@
     <loc>https://package.erik.xyz/polypack/?lang=en</loc>
     <xhtml:link rel="alternate" hreflang="zh-CN" href="https://package.erik.xyz/polypack/"/>
     <xhtml:link rel="alternate" hreflang="en" href="https://package.erik.xyz/polypack/?lang=en"/>
-    <lastmod>2026-10-21</lastmod>
+    <lastmod>2026-10-23</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
   </url>
@@ -21,7 +21,7 @@
     <loc>https://package.erik.xyz/polypack/downloads/</loc>
     <xhtml:link rel="alternate" hreflang="zh-CN" href="https://package.erik.xyz/polypack/downloads/"/>
     <xhtml:link rel="alternate" hreflang="en" href="https://package.erik.xyz/polypack/downloads/?lang=en"/>
-    <lastmod>2026-10-22</lastmod>
+    <lastmod>2026-10-23</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.95</priority>
   </url>
@@ -29,7 +29,7 @@
     <loc>https://package.erik.xyz/polypack/downloads/?lang=en</loc>
     <xhtml:link rel="alternate" hreflang="zh-CN" href="https://package.erik.xyz/polypack/downloads/"/>
     <xhtml:link rel="alternate" hreflang="en" href="https://package.erik.xyz/polypack/downloads/?lang=en"/>
-    <lastmod>2026-10-22</lastmod>
+    <lastmod>2026-10-23</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
   </url>

@@ -43,7 +43,7 @@
     "operatingSystem": "Linux, macOS, Windows",
     "softwareVersion": "1.16.0",
     "license": "https://www.apache.org/licenses/LICENSE-2.0",
-    "downloadUrl": "https://github.com/erikwang2013/polypack/releases/tag/v1.16.0",
+    "downloadUrl": "https://package.erik.xyz/polypack/downloads/",
     "codeRepository": "https://github.com/erikwang2013/polypack",
     "author": { "@type": "Person", "name": "Erik", "url": "https://erik.xyz" },
     "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
@@ -204,7 +204,7 @@ poly --version</code></pre></div>
           <p class="small" data-zh="强制 SHA-256 校验；配置 MINISIGN 公钥后可启用严格签名验证。" data-en="Mandatory SHA-256 verification; strict minisign verification is available with a configured public key.">强制 SHA-256 校验；配置 MINISIGN 公钥后可启用严格签名验证。</p>
         </div>
         <div class="install-panel" id="panel-windows" role="tabpanel" aria-labelledby="tab-windows" hidden>
-          <div class="code-card"><div class="code-head"><span>PowerShell</span><button class="copy" type="button">Copy</button></div><pre><code># Download poly-x86_64-pc-windows-msvc.zip from the release page,
+          <div class="code-card"><div class="code-head"><span>PowerShell</span><button class="copy" type="button">Copy</button></div><pre><code># Download poly-x86_64-pc-windows-msvc.zip from downloads/,
 # verify SHA256SUMS.txt, then add poly.exe to PATH.
 poly --version</code></pre></div>
         </div>
@@ -252,23 +252,9 @@ poly preview --dry-run --target android --device android-phone</code></pre></div
     <section class="section" id="download">
       <div class="wrap">
         <p class="eyebrow" data-zh="下载" data-en="DOWNLOAD">下载</p>
-        <h2 data-zh="拿到你的 poly" data-en="Get your poly">拿到你的 poly</h2>
-        <p class="lead" data-zh="所有二进制由 GitHub Actions 在 Linux、macOS 与 Windows 上构建，并附 SHA-256 校验和。" data-en="Every binary is built by GitHub Actions on Linux, macOS and Windows, with SHA-256 checksums.">所有二进制由 GitHub Actions 在 Linux、macOS 与 Windows 上构建，并附 SHA-256 校验和。</p>
-        <div class="grid grid-4 download-grid">
-          <article class="card"><h3 data-zh="Linux x86_64" data-en="Linux x86_64">Linux x86_64</h3><p class="small">tar.gz</p><a class="btn btn-light" href="https://github.com/erikwang2013/polypack/releases/download/v1.16.0/poly-x86_64-unknown-linux-gnu.tar.gz" rel="noopener">Download ↓</a></article>
-          <article class="card"><h3 data-zh="macOS arm64" data-en="macOS arm64">macOS arm64</h3><p class="small">tar.gz</p><a class="btn btn-light" href="https://github.com/erikwang2013/polypack/releases/download/v1.16.0/poly-aarch64-apple-darwin.tar.gz" rel="noopener">Download ↓</a></article>
-          <article class="card"><h3 data-zh="Windows x86_64" data-en="Windows x86_64">Windows x86_64</h3><p class="small">zip</p><a class="btn btn-light" href="https://github.com/erikwang2013/polypack/releases/download/v1.16.0/poly-x86_64-pc-windows-msvc.zip" rel="noopener">Download ↓</a></article>
-          <article class="card"><h3 data-zh="校验和" data-en="Checksums">校验和</h3><p class="small">SHA256SUMS.txt</p><a class="btn btn-light" href="https://github.com/erikwang2013/polypack/releases/download/v1.16.0/SHA256SUMS.txt" rel="noopener">Download ↓</a></article>
-        </div>
-        <p class="small"><a class="btn btn-light" href="downloads/" data-zh="进入下载页面 →" data-en="Go to the download page →">进入下载页面 →</a> <a href="https://github.com/erikwang2013/polypack/releases/tag/v1.16.0" target="_blank" rel="noopener" data-zh="Release 页面 →" data-en="Release page →">Release 页面 →</a></p>
-        <h3 data-zh="桌面安装器" data-en="Desktop installers" style="margin-top:34px">桌面安装器</h3>
-        <div class="grid grid-4 download-grid">
-          <article class="card"><h3>Debian / Ubuntu</h3><p class="small">.deb</p><a class="btn btn-light" href="https://github.com/erikwang2013/polypack/releases/download/v1.16.0/polypack-cli_1.16.0_amd64.deb" rel="noopener">Download ↓</a></article>
-          <article class="card"><h3>AppImage</h3><p class="small">x86_64</p><a class="btn btn-light" href="https://github.com/erikwang2013/polypack/releases/download/v1.16.0/poly-1.16.0-x86_64.AppImage" rel="noopener">Download ↓</a></article>
-          <article class="card"><h3>Windows</h3><p class="small">.msi</p><a class="btn btn-light" href="https://github.com/erikwang2013/polypack/releases/download/v1.16.0/poly-1.16.0-x86_64.msi" rel="noopener">Download ↓</a></article>
-          <article class="card"><h3>macOS arm64</h3><p class="small">.pkg</p><a class="btn btn-light" href="https://github.com/erikwang2013/polypack/releases/download/v1.16.0/poly-1.16.0-aarch64.pkg" rel="noopener">Download ↓</a></article>
-        </div>
-
+        <h2 data-zh="下载都在下载目录" data-en="All downloads live in one place">下载都在下载目录</h2>
+        <p class="lead" data-zh="安装器、便携压缩包与 SHA-256 校验和统一放在站内下载目录。" data-en="Installers, portable archives and SHA-256 checksums are all in the site download directory.">安装器、便携压缩包与 SHA-256 校验和统一放在站内下载目录。</p>
+        <p><a class="btn btn-primary" href="downloads/" data-zh="进入下载目录 →" data-en="Open downloads →">进入下载目录 →</a></p>
         <img src="assets/img/pax-knock.svg" alt="" width="96" height="96" loading="lazy" class="reveal">
       </div>
     </section>
