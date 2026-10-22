@@ -77,9 +77,31 @@ for (const file of ['assets/img/weixinpay.png', 'assets/img/alipay.png']) {
 }
 ok('donation QR images present');
 
-// 7) Size budget (local assets only; keeps first paint predictable).
+// 7) Downloads are served from site/downloads/, never from the release page.
+const DOWNLOADS = [
+  'polypack-cli_1.16.0_amd64.deb',
+  'poly-1.16.0-x86_64.AppImage',
+  'poly-1.16.0-x86_64.msi',
+  'poly-1.16.0-aarch64.pkg',
+  'poly-x86_64-unknown-linux-gnu.tar.gz',
+  'poly-aarch64-apple-darwin.tar.gz',
+  'poly-x86_64-pc-windows-msvc.zip',
+  'SHA256SUMS.txt',
+];
+for (const file of DOWNLOADS) {
+  const full = path.join(SITE, 'downloads', file);
+  if (!fs.existsSync(full)) bad(`missing download file: downloads/${file}`);
+  else if (fs.statSync(full).size < (file === 'SHA256SUMS.txt' ? 100 : 1_000_000)) bad(`downloads/${file} looks truncated`);
+}
+const externalDownloads = pages.filter((page) => /releases\/(download|tag)/.test(page.html)).map((page) => page.rel);
+if (externalDownloads.length) bad(`external release download links in: ${externalDownloads.join(', ')}`);
+else ok('all downloads are local to site/downloads/');
+
+// 8) Size budget for page assets; release binaries are excluded (downloaded, not painted).
 const budget = 4 * 1024 * 1024;
+const binary = /\.(?:deb|AppImage|msi|pkg|tar\.gz|zip)$/;
 const size = (dir) => fs.readdirSync(dir, { withFileTypes: true }).reduce((sum, entry) => {
+  if (entry.isFile() && binary.test(entry.name)) return sum;
   const p = path.join(dir, entry.name);
   return sum + (entry.isDirectory() ? size(p) : fs.statSync(p).size);
 }, 0);
