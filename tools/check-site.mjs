@@ -58,7 +58,7 @@ if (remoteScripts.length || remoteCss.length) bad(`remote runtime assets found: 
 else ok('no remote runtime assets (three.js is vendored)');
 
 // 5) JS syntax.
-for (const file of ['js/site.js', 'js/three-effects.js']) {
+for (const file of ['js/site.js', 'js/three-worker.js']) {
   const result = spawnSync(process.execPath, ['--check', path.join(SITE, file)], { encoding: 'utf8' });
   if (result.status !== 0) bad(`${file}: ${result.stderr.trim() || 'syntax error'}`);
 }

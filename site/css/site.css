@@ -82,19 +82,19 @@ h3 { margin: 0 0 8px; font-size: 20px; }
 /* hero */
 .hero { position: relative; overflow: hidden; background: radial-gradient(1100px 600px at 78% 18%, #12344a 0%, transparent 58%), linear-gradient(160deg, var(--navy) 0%, #0a1a2c 58%, #07111f 100%); color: var(--white); }
 .hero::before {
-  content: ""; position: absolute; inset: 0; pointer-events: none;
+  content: ""; position: absolute; inset: 0; z-index: 0; pointer-events: none;
   background-image: linear-gradient(rgba(148,163,184,.055) 1px, transparent 1px), linear-gradient(90deg, rgba(148,163,184,.055) 1px, transparent 1px);
   background-size: 56px 56px;
   mask-image: radial-gradient(80% 70% at 50% 40%, #000 20%, transparent 76%);
   -webkit-mask-image: radial-gradient(80% 70% at 50% 40%, #000 20%, transparent 76%);
 }
 .hero::after {
-  content: ""; position: absolute; width: 520px; height: 520px; right: -120px; top: -120px; border-radius: 50%;
+  content: ""; position: absolute; z-index: 2; width: 520px; height: 520px; right: -120px; top: -120px; border-radius: 50%;
   background: radial-gradient(circle, rgba(34,211,238,.16), transparent 65%); pointer-events: none;
 }
 .hero h1 > span { display: block; }
-#bg-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; opacity: .9; pointer-events: none; }
-.hero-inner { position: relative; z-index: 1; display: grid; grid-template-columns: 1.15fr .85fr; align-items: center; gap: 38px; min-height: min(760px, 88vh); padding: 74px 0 64px; }
+#bg-canvas { position: absolute; inset: 0; z-index: 1; width: 100%; height: 100%; display: block; opacity: .95; pointer-events: none; }
+.hero-inner { position: relative; z-index: 2; display: grid; grid-template-columns: 1.15fr .85fr; align-items: center; gap: 38px; min-height: min(760px, 88vh); padding: 74px 0 64px; }
 .hero h1 { margin: 0 0 18px; font-size: clamp(40px, 7vw, 82px); letter-spacing: -.045em; }
 .hero .grad { background: linear-gradient(100deg, var(--brand-3), #6ee7b7 55%, #fde68a); -webkit-background-clip: text; background-clip: text; color: transparent; }
 .hero p.hero-lead { max-width: 620px; margin: 0 0 28px; color: #cbd5e1; font-size: clamp(16px, 2vw, 20px); }
