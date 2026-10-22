@@ -57,7 +57,8 @@ detect_target() {
       die "unsupported operating system: $os (supported: Linux x86_64, macOS arm64, Windows x86_64 Git Bash)"
       ;;
   esac
-  ASSET="polypack-${TARGET}.${ASSET_EXT}"
+  ASSET_PREFIX="polypack"
+  ASSET="${ASSET_PREFIX}-${TARGET}.${ASSET_EXT}"
 }
 
 resolve_tag() {
@@ -88,13 +89,17 @@ base_url() {
   fi
 }
 
-fetch() {
+try_fetch() {
   local url="$1" dest="$2"
   local -a args=(-fsSL --retry 3 --retry-delay 2)
   case "$url" in
     https://*) args+=(--proto '=https' --tlsv1.2) ;;
   esac
-  curl "${args[@]}" -o "$dest" "$url" || die "download failed: $url"
+  curl "${args[@]}" -o "$dest" "$url"
+}
+
+fetch() {
+  try_fetch "$@" || die "download failed: $1"
 }
 
 sha256_of() {
@@ -140,7 +145,7 @@ extract_archive() {
     tar.gz)
       need tar
       tar -xzf "$ARCHIVE" -C "$WORKDIR"
-      BIN_SRC="$WORKDIR/polypack-${TARGET}"
+      BIN_SRC="$WORKDIR/${ASSET_PREFIX}-${TARGET}"
       ;;
     zip)
       if command -v unzip >/dev/null 2>&1; then
@@ -152,7 +157,7 @@ extract_archive() {
       else
         die "no zip extractor found (need unzip or powershell.exe + cygpath)"
       fi
-      BIN_SRC="$WORKDIR/polypack-${TARGET}.exe"
+      BIN_SRC="$WORKDIR/${ASSET_PREFIX}-${TARGET}.exe"
       ;;
     *)
       die "unsupported archive type: ${ASSET_EXT}"
@@ -185,7 +190,13 @@ main() {
   SIG_FILE="$WORKDIR/SHA256SUMS.txt.minisig"
 
   log "installing polypack ${TAG} for ${TARGET}"
-  fetch "${BASE}/${ASSET}" "$ARCHIVE"
+  if ! try_fetch "${BASE}/${ASSET}" "$ARCHIVE"; then
+    # shortcut: pre-rename releases only have the poly-* asset name, drop after v1.16.0
+    ASSET_PREFIX="poly"
+    ASSET="${ASSET_PREFIX}-${TARGET}.${ASSET_EXT}"
+    log "new asset missing; falling back to legacy ${ASSET}"
+    fetch "${BASE}/${ASSET}" "$ARCHIVE"
+  fi
   fetch "${BASE}/SHA256SUMS.txt" "$SUMS_FILE"
   verify_signature
   verify_checksum

@@ -13,9 +13,9 @@ Notable changes are recorded here; since v1.0.0, tags and releases follow `vX.Y.
 
 ### Changed
 - **统一命名为 polypack**：CLI 命令与二进制、workspace crate、发布资产（deb / AppImage / MSI / pkg / tar.gz / zip）、环境变量、安装脚本与全部文档统一使用 `polypack` / `polypack-*` / `POLYPACK_*`；安装目录改为 `polypack`（Linux `/opt/polypack`、macOS `/usr/local/polypack`、Windows `%ProgramFiles%\polypack`、脚本 `~/.local/polypack/bin`）。
-- **站点**：下载页四个安装器保持一排展示，按 `navigator.platform` / UA 检测访问端并把主下载按钮指向对应本地文件；左上角 logo 换成 Pax 徽章并加大；首页 hero 与统计在常见桌面视口内一屏展示。
+- **站点**：下载页四个安装器保持一排展示，按 `navigator.platform` / UA 检测访问端并把主下载按钮指向对应本地文件；增加百度网盘备用下载（提取码 3128）；左上角 logo 换成 Pax 徽章并加大；首页 hero 与统计在常见桌面视口内一屏展示。
 
-*Unified polypack naming: CLI command and binary, workspace crates, release assets (deb / AppImage / MSI / pkg / tar.gz / zip), environment variables, installers and all docs now use `polypack` / `polypack-*` / `POLYPACK_*`; install directories are `polypack` (Linux `/opt/polypack`, macOS `/usr/local/polypack`, Windows `%ProgramFiles%\polypack`, script `~/.local/polypack/bin`). Site: the four installer cards stay on one row, platform detection points the primary download button at the matching local file, the header logo is the larger Pax badge, and the hero plus stats fit one desktop viewport.*
+*Unified polypack naming: CLI command and binary, workspace crates, release assets (deb / AppImage / MSI / pkg / tar.gz / zip), environment variables, installers and all docs now use `polypack` / `polypack-*` / `POLYPACK_*`; install directories are `polypack` (Linux `/opt/polypack`, macOS `/usr/local/polypack`, Windows `%ProgramFiles%\polypack`, script `~/.local/polypack/bin`). Site: the four installer cards stay on one row, platform detection points the primary download button at the matching local file, a Baidu Netdisk mirror is listed (access code 3128), the header logo is the larger Pax badge, and the hero plus stats fit one desktop viewport.*
 
 ## [1.16.0] — 2026-10-22
 
