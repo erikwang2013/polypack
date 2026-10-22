@@ -4,12 +4,18 @@
 版本号自 v1.0.0 起按语义化版本递增（tag 与 GitHub Release 名称一致，见 [README](README.md#路线图)）。
 Notable changes are recorded here; since v1.0.0, tags and releases follow `vX.Y.Z` semantic increments.
 
-## [Unreleased]
+## [2.0.0] — 2026-10-23
+
+### Breaking
+- `poly` 命令与二进制已移除，统一使用 `polypack`；自动化脚本、别名与安装路径需要同步修改。安装目录改为 `polypack`，旧目录不会自动迁移。
+- 缓存键域升级到 `polypack-cache/v2`，升级后首次构建会重新生成缓存。
+
+*The `poly` command and binary are removed in favour of `polypack`; scripts, aliases and install paths must be updated. Install directories are now `polypack` and are not migrated automatically. The cache key domain moves to `polypack-cache/v2`, so the first build after upgrading repopulates the cache.*
 
 ### Added
-- **下载目录页**：新增 `site/downloads/` 双语下载页，v1.16.0 的 deb / AppImage / MSI / pkg、便携压缩包与 SHA-256 清单直接放在该目录；首页只保留进入下载目录的入口，站内不再指向 GitHub Release 下载；sitemap 与检查门禁同步（校验本地文件、拒绝 release 下载链接、二进制不占页面体积预算）。
+- **下载目录页**：新增 `site/downloads/` 双语下载页，v2.0.0 的 deb / AppImage / MSI / pkg、便携压缩包与 SHA-256 清单直接放在该目录；首页只保留进入下载目录的入口，站内不再指向 GitHub Release 下载；sitemap 与检查门禁同步（校验本地文件、拒绝 release 下载链接、二进制不占页面体积预算）。
 
-*Download directory page: adds the bilingual `site/downloads/` page and hosts the v1.16.0 deb / AppImage / MSI / pkg, portable archives and SHA-256 manifest in that directory; the home page only links to it and the site no longer points at GitHub Release downloads; sitemap and gates now verify local files, reject release download links, and exclude binaries from the page size budget.*
+*Download directory page: adds the bilingual `site/downloads/` page and hosts the v2.0.0 deb / AppImage / MSI / pkg, portable archives and SHA-256 manifest in that directory; the home page only links to it and the site no longer points at GitHub Release downloads; sitemap and gates now verify local files, reject release download links, and exclude binaries from the page size budget.*
 
 ### Changed
 - **统一命名为 polypack**：CLI 命令与二进制、workspace crate、发布资产（deb / AppImage / MSI / pkg / tar.gz / zip）、环境变量、安装脚本与全部文档统一使用 `polypack` / `polypack-*` / `POLYPACK_*`；安装目录改为 `polypack`（Linux `/opt/polypack`、macOS `/usr/local/polypack`、Windows `%ProgramFiles%\polypack`、脚本 `~/.local/polypack/bin`）。

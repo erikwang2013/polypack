@@ -11,7 +11,7 @@
 # installed. There is no unverified or unsigned fallback.
 #
 # Environment:
-#   POLYPACK_VERSION             release tag (v1.13.1 or 1.13.1); default: latest
+#   POLYPACK_VERSION             release tag (v2.0.0 or 2.0.0); default: latest
 #   POLYPACK_INSTALL_DIR         install directory; default: ~/.local/polypack/bin
 #   POLYPACK_REPO                GitHub repo; default: erikwang2013/polypack
 #   POLYPACK_RELEASE_BASE_URL    override release download base (mirrors / tests)
@@ -191,7 +191,7 @@ main() {
 
   log "installing polypack ${TAG} for ${TARGET}"
   if ! try_fetch "${BASE}/${ASSET}" "$ARCHIVE"; then
-    # shortcut: pre-rename releases only have the poly-* asset name, drop after v1.16.0
+    # shortcut: pre-rename releases only have the poly-* asset name, drop after v1.16.x
     ASSET_PREFIX="poly"
     ASSET="${ASSET_PREFIX}-${TARGET}.${ASSET_EXT}"
     log "new asset missing; falling back to legacy ${ASSET}"

@@ -926,7 +926,7 @@ rect.c-bg-rect { fill: var(--bg); }</style><rect class="c-bg-rect" width="100%" 
         <!-- Transition labels -->
 
         <g data-detail="context" data-edge-from="dev" data-edge-to="build" data-edge-label="polypack build" data-edge-key="1" data-edge-id="dev-build">
-          <rect x="294.5" y="191" width="61" height="16" rx="4" class="c-mask"/>
+          <rect x="284.7" y="191" width="80.60000000000001" height="16" rx="4" class="c-mask"/>
           <text x="325" y="202" class="t-backend" font-size="8" text-anchor="middle">polypack build</text>
         </g>
         <g data-detail="context" data-edge-from="build" data-edge-to="verify" data-edge-label="artifacts ready" data-edge-key="2" data-edge-id="build-verify">

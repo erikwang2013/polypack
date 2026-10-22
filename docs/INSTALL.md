@@ -32,7 +32,7 @@ polypack --version
 从 GitHub Release 手动下载对应资产并解压：
 
 ```bash
-TAG=v1.16.0
+TAG=v2.0.0
 TARGET=x86_64-unknown-linux-gnu
 curl -fsSLO "https://github.com/erikwang2013/polypack/releases/download/$TAG/polypack-$TARGET.tar.gz"
 tar -xzf "polypack-$TARGET.tar.gz"
@@ -78,7 +78,7 @@ bash install.sh
 
 | 变量 | 默认值 | 作用 |
 | --- | --- | --- |
-| `POLYPACK_VERSION` | 最新 Release | 指定 tag（`v1.16.0` 或 `1.16.0`） |
+| `POLYPACK_VERSION` | 最新 Release | 指定 tag（`v2.0.0` 或 `2.0.0`） |
 | `POLYPACK_INSTALL_DIR` | `~/.local/polypack/bin` | 安装目录 |
 | `POLYPACK_REPO` | `erikwang2013/polypack` | GitHub 仓库 |
 | `POLYPACK_RELEASE_BASE_URL` | GitHub Release URL | 镜像 / 离线测试基础 URL |
@@ -94,7 +94,7 @@ bash install.sh
 | 检查项 | 现状 | 结论 |
 | --- | --- | --- |
 | workspace crate `publish` | 全部为 `false` | `cargo install polypack-cli` 不可用 |
-| 根清单版本 | `1.16.0` | 已与最新 tag 对齐 |
+| 根清单版本 | `2.0.0` | 已与最新 tag 对齐 |
 | 发布审计 | `cargo package --list` 9/9 通过；`cargo publish --dry-run` 被 `publish = false` 拒绝 | 审计已完成，实际发布关闭 |
 | 名称可用性 | `polypack-cli`、`polypack-core` 已被他人占用 | 发布前需改名或取得所有权 |
 | crates.io token | 仓库与 CI 均无 | 未配置发布 secret |
