@@ -167,10 +167,13 @@ jobs:
       - name: 构建 poly（release）
         run: cargo build --release -p poly-cli --bin poly
 
-      - name: 定位 WiX v3
+      - name: 构建 MSI
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
+          $version = $env:RELEASE_VERSION.TrimStart('v')
+          $base = ($version -split '-')[0]
+          New-Item -ItemType Directory -Force dist | Out-Null
           $candidates = @(
             (Join-Path ${env:ProgramFiles(x86)} 'WiX Toolset v3.14\bin'),
             (Join-Path ${env:ProgramFiles(x86)} 'WiX Toolset v3.11\bin'),
@@ -180,17 +183,6 @@ jobs:
           if (-not $wix -or -not (Test-Path (Join-Path $wix 'light.exe'))) {
             throw 'WiX v3 (candle.exe / light.exe) not found'
           }
-          $wix | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-
-      - name: 构建 MSI
-        shell: pwsh
-        run: |
-          $ErrorActionPreference = 'Stop'
-          $version = $env:RELEASE_VERSION.TrimStart('v')
-          $base = ($version -split '-')[0]
-          New-Item -ItemType Directory -Force dist | Out-Null
-          $wix = (Get-Content $env:GITHUB_PATH | Where-Object { $_ -match 'WiX Toolset' } |
-            Select-Object -Last 1).Trim()
           & (Join-Path $wix 'candle.exe') -arch x64 "-dVersion=$base" "-dSourceDir=$PWD\target\release" \
             packaging\windows\poly.wxs -out dist\poly.wixobj
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
