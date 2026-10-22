@@ -35,7 +35,7 @@ The interaction budget is < 50 ms; the paint/load numbers are reported for conte
 
 ## SEO
 
-`index.html` includes canonical, hreflang, Open Graph/Twitter cards, JSON-LD `SoftwareApplication`, semantic headings, alt text and a skip link. `robots.txt` and `sitemap.xml` point at `https://erik.xyz/polypack/`; change the canonical host if the site is deployed elsewhere.
+`index.html` includes canonical, hreflang, Open Graph/Twitter cards, JSON-LD `SoftwareApplication`, semantic headings, alt text and a skip link. `robots.txt` and `sitemap.xml` point at `https://package.erik.xyz/polypack/`; change the canonical host if the site is deployed elsewhere.
 
 ## Donation QR codes
 
