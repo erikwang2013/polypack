@@ -46,6 +46,10 @@ The interaction budget is < 50 ms; the paint/load numbers are reported for conte
 
 The footer uses the Busuanzi page-view snippet. It requires the site to be served over HTTP(S); it is intentionally not loaded from local files.
 
+## Social preview
+
+The canonical bilingual social preview is kept in `docs/assets/og/` (`cover.svg`, `cover.png`, `pax.png`). `site/assets/og/` is the deployed copy used by the Open Graph/Twitter tags; `tools/check-site.mjs` fails if the copies drift. For the GitHub repository preview, upload `docs/assets/og/cover.png` under Settings → Social preview.
+
 ## Deploy
 
 Upload the contents of `site/` to any static host (GitHub Pages, nginx, object storage). Keep the directory structure intact. If hosting at a subpath, update the canonical/OG URLs in `index.html` and `sitemap.xml`; relative asset paths already work at any subpath.

@@ -98,7 +98,20 @@ const externalDownloads = pages.filter((page) => /releases\/(download|tag)/.test
 if (externalDownloads.length) bad(`external release download links in: ${externalDownloads.join(', ')}`);
 else ok('all downloads are local to site/downloads/');
 
-// 8) Size budget for page assets; release binaries are excluded (downloaded, not painted).
+// 8) The canonical social preview lives in docs/assets/og; site/ holds the deployed copy.
+const OG_FILES = ['cover.svg', 'cover.png', 'pax.png'];
+for (const file of OG_FILES) {
+  const canonical = path.join(ROOT, 'docs', 'assets', 'og', file);
+  const deployed = path.join(SITE, 'assets', 'og', file);
+  if (!fs.existsSync(canonical)) bad(`missing canonical social preview: docs/assets/og/${file}`);
+  else if (!fs.existsSync(deployed)) bad(`missing deployed social preview: assets/og/${file}`);
+  else if (!fs.readFileSync(canonical).equals(fs.readFileSync(deployed))) {
+    bad(`assets/og/${file} drifted from docs/assets/og/${file}; copy it over`);
+  }
+}
+ok('social preview matches docs/assets/og (cover.svg/png + pax.png)');
+
+// 9) Size budget for page assets; release binaries are excluded (downloaded, not painted).
 const budget = 4 * 1024 * 1024;
 const binary = /\.(?:deb|AppImage|msi|pkg|tar\.gz|zip)$/;
 const size = (dir) => fs.readdirSync(dir, { withFileTypes: true }).reduce((sum, entry) => {
