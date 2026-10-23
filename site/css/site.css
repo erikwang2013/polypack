@@ -113,6 +113,8 @@ h3 { margin: 0 0 8px; font-size: 20px; }
 .btn-ghost:hover { border-color: var(--brand-3); color: var(--white); }
 .btn-light { background: var(--white); color: var(--ink); border-color: var(--line); }
 .btn-light:hover { color: var(--ink); border-color: var(--brand); }
+.btn-mirror { background: #f59e0b; color: #2b1600; }
+.btn-mirror:hover { background: #fbbf24; color: #2b1600; }
 .hero-pet { position: relative; justify-self: center; width: min(330px, 100%); filter: drop-shadow(0 30px 60px rgba(34,211,238,.18)); animation: float 6s ease-in-out infinite; }
 .hero-pet img { width: 100%; }
 .hero-stats { position: relative; z-index: 1; flex: 0 0 auto; display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: rgba(148,163,184,.16); border-top: 1px solid rgba(148,163,184,.16); }
@@ -140,6 +142,11 @@ h3 { margin: 0 0 8px; font-size: 20px; }
 .pet-strip { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 20px; }
 .pet-strip img { width: 56px; height: 56px; transition: transform .2s ease; }
 .pet-strip img:hover { transform: translateY(-4px) rotate(-3deg); }
+.mirror-banner { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin: 0 0 28px; padding: 16px 20px; border: 1px solid #fcd34d; border-radius: 14px; background: linear-gradient(100deg, #fffbeb, #fef3c7); }
+.mirror-banner strong { display: block; color: #78350f; font-size: 17px; }
+.mirror-banner .small { color: #92400e; }
+.mirror-code { display: inline-block; padding: 1px 6px; border-radius: 6px; background: #fff7ed; color: #92400e; font: 700 13px var(--mono); }
+.mirror-inline { color: #b45309; font: 700 13px var(--mono); }
 .note { border-left: 3px solid var(--brand); background: #ecfeff; color: #164e63; padding: 14px 16px; border-radius: 0 12px 12px 0; font-size: 14px; }
 
 /* timeline */
@@ -251,6 +258,7 @@ h3 { margin: 0 0 8px; font-size: 20px; }
   .pet-top img { width: 46px; height: 46px; }
 }
 @media (max-width: 720px) {
+  .mirror-banner { flex-direction: column; align-items: flex-start; }
   .hero-actions { flex-direction: column; align-items: stretch; }
   .hero-actions .btn { width: 100%; }
 }
