@@ -1519,7 +1519,7 @@ dependencies = [
 
 [[package]]
 name = "polypack-bundle"
-version = "2.0.0"
+version = "2.0.1"
 dependencies = [
  "flate2",
  "md-5",
@@ -1533,7 +1533,7 @@ dependencies = [
 
 [[package]]
 name = "polypack-cache"
-version = "2.0.0"
+version = "2.0.1"
 dependencies = [
  "blake3",
  "hmac 0.12.1",
@@ -1548,7 +1548,7 @@ dependencies = [
 
 [[package]]
 name = "polypack-cli"
-version = "2.0.0"
+version = "2.0.1"
 dependencies = [
  "base64 0.22.1",
  "blake3",
@@ -1572,7 +1572,7 @@ dependencies = [
 
 [[package]]
 name = "polypack-core"
-version = "2.0.0"
+version = "2.0.1"
 dependencies = [
  "polypack-cache",
  "polypack-targets",
@@ -1587,7 +1587,7 @@ dependencies = [
 
 [[package]]
 name = "polypack-plugin"
-version = "2.0.0"
+version = "2.0.1"
 dependencies = [
  "base64 0.22.1",
  "blake3",
@@ -1603,7 +1603,7 @@ dependencies = [
 
 [[package]]
 name = "polypack-publish"
-version = "2.0.0"
+version = "2.0.1"
 dependencies = [
  "base64 0.22.1",
  "blake3",
@@ -1623,7 +1623,7 @@ dependencies = [
 
 [[package]]
 name = "polypack-sign"
-version = "2.0.0"
+version = "2.0.1"
 dependencies = [
  "base64 0.22.1",
  "keyring",
@@ -1638,7 +1638,7 @@ dependencies = [
 
 [[package]]
 name = "polypack-targets"
-version = "2.0.0"
+version = "2.0.1"
 dependencies = [
  "schemars",
  "serde",
@@ -1648,7 +1648,7 @@ dependencies = [
 
 [[package]]
 name = "polypack-toolchain"
-version = "2.0.0"
+version = "2.0.1"
 dependencies = [
  "serde",
  "thiserror",

@@ -15,22 +15,22 @@
 
   const TARGETS = {
     windows: {
-      href: 'polypack-2.0.0-x86_64.msi',
+      href: 'polypack-2.0.1-x86_64.msi',
       zh: '下载 Windows 安装包', en: 'Download for Windows',
       labelZh: 'Windows x86_64 · MSI', labelEn: 'Windows x86_64 · MSI',
     },
     macos: {
-      href: 'polypack-2.0.0-aarch64.pkg',
+      href: 'polypack-2.0.1-aarch64.pkg',
       zh: '下载 macOS 安装包', en: 'Download for macOS',
       labelZh: 'macOS Apple Silicon · pkg', labelEn: 'macOS Apple Silicon · pkg',
     },
     'linux-deb': {
-      href: 'polypack_2.0.0_amd64.deb',
+      href: 'polypack_2.0.1_amd64.deb',
       zh: '下载 Debian / Ubuntu 包', en: 'Download for Debian / Ubuntu',
       labelZh: 'Debian / Ubuntu x86_64 · deb', labelEn: 'Debian / Ubuntu x86_64 · deb',
     },
     linux: {
-      href: 'polypack-2.0.0-x86_64.AppImage',
+      href: 'polypack-2.0.1-x86_64.AppImage',
       zh: '下载 AppImage', en: 'Download AppImage',
       labelZh: 'Linux x86_64 · AppImage', labelEn: 'Linux x86_64 · AppImage',
     },

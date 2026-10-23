@@ -80,10 +80,10 @@ ok('donation QR images present');
 
 // 7) Downloads are served from site/downloads/, never from the release page.
 const DOWNLOADS = [
-  'polypack_2.0.0_amd64.deb',
-  'polypack-2.0.0-x86_64.AppImage',
-  'polypack-2.0.0-x86_64.msi',
-  'polypack-2.0.0-aarch64.pkg',
+  'polypack_2.0.1_amd64.deb',
+  'polypack-2.0.1-x86_64.AppImage',
+  'polypack-2.0.1-x86_64.msi',
+  'polypack-2.0.1-aarch64.pkg',
   'polypack-x86_64-unknown-linux-gnu.tar.gz',
   'polypack-aarch64-apple-darwin.tar.gz',
   'polypack-x86_64-pc-windows-msvc.zip',

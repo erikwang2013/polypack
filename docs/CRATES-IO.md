@@ -6,9 +6,9 @@
 
 ## 1. 结论
 
-- workspace 版本已从 `0.0.0` 提升到 `2.0.0`，`Cargo.lock` 同步；`polypack --version` 与最新 tag 一致。
+- workspace 版本已从 `0.0.0` 提升到 `2.0.1`，`Cargo.lock` 同步；`polypack --version` 与最新 tag 一致。
 - 9 个 crate 的 `description`、`license`、`repository`、`readme`、`keywords`、`categories` 已齐备。`readme` 继承根 `README.md`，`keywords` / `categories` 在根清单统一声明。
-- workspace 内部 path 依赖已补 `version = "2.0.0"`；没有版本号时 `cargo package` 会拒绝打包（path dependency without version）。
+- workspace 内部 path 依赖已补 `version = "2.0.1"`；没有版本号时 `cargo package` 会拒绝打包（path dependency without version）。
 - 所有 crate 仍为 `publish = false`。未发布、未上传、未使用 crates.io token。
 - 两个名称在 crates.io 已被他人占用：`polypack-cli`、`polypack-core`；其余 7 个可用。发布前必须改名或取得所有权，属维护者决策。
 - `cargo package --list` 9/9 通过（内容清单审计）；`cargo publish --dry-run` 因 `publish = false` 被拒绝，这是预期的发布闸门，不是元数据错误。
@@ -31,7 +31,7 @@
 
 | 字段 | 来源 | 当前值 / 状态 |
 | --- | --- | --- |
-| `version` | `[workspace.package]` | `2.0.0` |
+| `version` | `[workspace.package]` | `2.0.1` |
 | `description` | 各 crate `Cargo.toml` | 9/9 已填写 |
 | `license` | `[workspace.package]` | `Apache-2.0`（crates.io 必需） |
 | `repository` | `[workspace.package]` | `https://github.com/erikwang2013/polypack` |
@@ -45,8 +45,8 @@
 
 | 阻塞项 | 证据 | 状态 / 解除条件 |
 | --- | --- | --- |
-| 版本为 `0.0.0` | 根清单原值；`polypack --version` 会输出 `0.0.0` | 已解除：提升为 `2.0.0` |
-| path 依赖无 `version` | `cargo package` 报 “all dependencies must have a version specified when packaging” | 已解除：workspace 依赖补 `2.0.0` |
+| 版本为 `0.0.0` | 根清单原值；`polypack --version` 会输出 `0.0.0` | 已解除：提升为 `2.0.1` |
+| path 依赖无 `version` | `cargo package` 报 “all dependencies must have a version specified when packaging” | 已解除：workspace 依赖补 `2.0.1` |
 | `publish = false` | 9/9 crate 均设置 | 开放：维护者批准发布计划后单独提交移除 |
 | `polypack-cli` 名称占用 | crates.io 现有 0.5.0，owner 非本仓库 | 开放：改名为 `polypack-cli`（可用）或取得所有权 |
 | `polypack-core` 名称占用 | crates.io 现有 0.0.1，owner 非本仓库 | 开放：改名为 `polypack-engine`（可用）或取得所有权 |
@@ -95,10 +95,10 @@ cargo publish -p polypack-cli
 | 3 | 移除发布闸门 | 单独提交删除 `publish = false` | 9/9 crate 可发布，且 CI 仍全绿 |
 | 4 | 测试 | `cargo test --workspace --no-fail-fast` | 全绿 |
 | 5 | Lint | `cargo clippy --workspace --all-targets -- -D warnings` | 全绿 |
-| 6 | 版本一致 | `cargo run -p polypack-cli -- --version` | 输出 `2.0.0`，与 `[workspace.package].version` 一致 |
+| 6 | 版本一致 | `cargo run -p polypack-cli -- --version` | 输出 `2.0.1`，与 `[workspace.package].version` 一致 |
 | 7 | 拓扑 dry-run | `cargo publish --dry-run -p <crate>` | 按 §2 顺序全部通过 |
 | 8 | 正式发布 | `cargo publish -p <crate>` | 按 §2 顺序成功，索引可见后才继续 |
-| 9 | 安装验证 | `cargo install polypack-cli --version 2.0.0 --locked` | 安装 bin `polypack`，`polypack --version` 输出 `2.0.0` |
+| 9 | 安装验证 | `cargo install polypack-cli --version 2.0.1 --locked` | 安装 bin `polypack`，`polypack --version` 输出 `2.0.1` |
 
 ## 7. 版本与 tag 策略
 

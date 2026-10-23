@@ -41,7 +41,7 @@
     "name": "PolyPack",
     "applicationCategory": "DeveloperApplication",
     "operatingSystem": "Linux, macOS, Windows",
-    "softwareVersion": "2.0.0",
+    "softwareVersion": "2.0.1",
     "license": "https://www.apache.org/licenses/LICENSE-2.0",
     "downloadUrl": "https://package.erik.xyz/polypack/downloads/",
     "codeRepository": "https://github.com/erikwang2013/polypack",
@@ -85,7 +85,7 @@
           <h1><span data-zh="多端打包，" data-en="Package once,">多端打包，</span><span class="grad" data-zh="一次送达。" data-en="deliver everywhere.">一次送达。</span></h1>
           <p class="hero-lead" data-zh="把 Rust 核心、React UI 适配层与 49 个目标平台串成一条可验证、可签名、可自托管的构建流水线。" data-en="One verifiable, signable, self-hostable pipeline for a Rust core, React UI adapters, and 49 target platforms.">把 Rust 核心、React UI 适配层与 49 个目标平台串成一条可验证、可签名、可自托管的构建流水线。</p>
           <div class="hero-actions">
-            <a class="btn btn-primary" href="downloads/" data-zh="下载 v2.0.0" data-en="Download v2.0.0">下载 v2.0.0</a>
+            <a class="btn btn-primary" href="downloads/" data-zh="下载 v2.0.1" data-en="Download v2.0.1">下载 v2.0.1</a>
             <a class="btn btn-ghost" href="#install" data-zh="快速开始" data-en="Get started">快速开始</a>
             <a class="btn btn-ghost" href="https://github.com/erikwang2013/polypack" target="_blank" rel="noopener">GitHub ↗</a>
           </div>
@@ -119,7 +119,7 @@
             </div>
           </div>
           <div>
-            <div class="note" data-zh="从 v1.0 到 v2.0：49 个目标、插件沙箱、农场 v1、签名发布、SBOM、OTA、设备预览与签名插件索引都已落地。" data-en="From v1.0 to v2.0: 49 targets, the plugin sandbox, farm v1, signed releases, SBOM, OTA, device preview and a signed plugin index have all landed.">从 v1.0 到 v2.0：49 个目标、插件沙箱、农场 v1、签名发布、SBOM、OTA、设备预览与签名插件索引都已落地。</div>
+            <div class="note" data-zh="从 v1.0 到 v2.1：49 个目标、插件沙箱、农场 v1、签名发布、SBOM、OTA、设备预览与签名插件索引都已落地。" data-en="From v1.0 to v2.1: 49 targets, the plugin sandbox, farm v1, signed releases, SBOM, OTA, device preview and a signed plugin index have all landed.">从 v1.0 到 v2.1：49 个目标、插件沙箱、农场 v1、签名发布、SBOM、OTA、设备预览与签名插件索引都已落地。</div>
           </div>
         </div>
         <figure class="figure reveal">
@@ -178,6 +178,7 @@
         <p class="eyebrow" data-zh="版本日志" data-en="CHANGELOG">版本日志</p>
         <h2 data-zh="最近发布了什么" data-en="What shipped recently">最近发布了什么</h2>
         <div class="grid grid-2">
+          <article class="card release reveal"><span class="tag">v2.0.1 · 2026-10-23</span><h3 data-zh="网盘入口 + 安全修复" data-en="Mirror entry + security fix">网盘入口 + 安全修复</h3><ul><li data-zh="下载页与首页突出百度网盘下载，提取码 3128。" data-en="Baidu Netdisk downloads are now prominent on the download page and home page, access code 3128.">下载页与首页突出百度网盘下载，提取码 3128。</li><li data-zh="ctutils 升级到 0.4.5，修复 RUSTSEC-2026-0385。" data-en="ctutils upgraded to 0.4.5, fixing RUSTSEC-2026-0385.">ctutils 升级到 0.4.5，修复 RUSTSEC-2026-0385。</li><li data-zh="全部文档图片与 v2.0.1 站点信息同步。" data-en="All docs, images and v2.0.1 site metadata synced.">全部文档图片与 v2.0.1 站点信息同步。</li></ul></article>
           <article class="card release reveal"><span class="tag">v2.0.0 · 2026-10-23</span><h3 data-zh="全量改名 polypack，平台感知下载" data-en="polypack rename + platform-aware downloads">全量改名 polypack，平台感知下载</h3><ul><li data-zh="CLI、9 个 crate、安装器与归档统一为 polypack；命令改为 polypack，安装目录默认 polypack。" data-en="CLI, all nine crates, installers and archives now use polypack; the command is polypack and install dirs default to polypack.">CLI、9 个 crate、安装器与归档统一为 polypack；命令改为 polypack，安装目录默认 polypack。</li><li data-zh="下载页自动识别 Windows / macOS / Linux 并直达对应安装包，保留四个平台卡片与百度网盘备用。" data-en="The download page detects Windows / macOS / Linux and links the matching installer, keeping all four platform cards plus a Baidu mirror.">下载页自动识别 Windows / macOS / Linux 并直达对应安装包，保留四个平台卡片与百度网盘备用。</li><li data-zh="三宿主安装器与 SHA-256 清单重建；首页一屏展示与更大的 Pax 徽章。" data-en="Rebuilt three-host installers and SHA-256 manifest; one-screen hero and a larger Pax badge.">三宿主安装器与 SHA-256 清单重建；首页一屏展示与更大的 Pax 徽章。</li></ul></article>
           <article class="card release reveal"><span class="tag">v1.16.0 · 2026-10-22</span><h3 data-zh="原生桌面安装器" data-en="Native desktop installers">原生桌面安装器</h3><ul><li data-zh="Linux .deb / .AppImage、Windows .msi、macOS .pkg，由 GitHub Actions 三宿主构建。" data-en="Linux .deb / .AppImage, Windows .msi and macOS .pkg built natively by GitHub Actions.">Linux .deb / .AppImage、Windows .msi、macOS .pkg，由 GitHub Actions 三宿主构建。</li><li data-zh="安装后自动执行 polypack --version 冒烟；Pax 作为安装器预览图标。" data-en="Post-install polypack --version smoke; Pax is the installer preview icon.">安装后自动执行 polypack --version 冒烟；Pax 作为安装器预览图标。</li><li data-zh="安装器未做商业签名，SmartScreen / Gatekeeper 可能提示。" data-en="Installers are unsigned; SmartScreen / Gatekeeper may warn.">安装器未做商业签名，SmartScreen / Gatekeeper 可能提示。</li></ul></article>
           <article class="card release reveal"><span class="tag">v1.15.0 · 2026-10-21</span><h3 data-zh="环境槽用户入口" data-en="Environment-slot entry points">环境槽用户入口</h3><ul><li data-zh="polypack env-provide 工具：凭据隐藏上传、授权门户、硬件与试用表单。" data-en="An env-provide helper: hidden credential upload, authorization portals, hardware and trial forms.">polypack env-provide 工具：凭据隐藏上传、授权门户、硬件与试用表单。</li><li data-zh="文档 / 图片全量同步，20 对文档门禁。" data-en="Full docs/image sync with a 20-pair docs gate.">文档 / 图片全量同步，20 对文档门禁。</li><li data-zh="安装示例与版本引用更新到 v1.15.0。" data-en="Install examples and version references updated to v1.15.0.">安装示例与版本引用更新到 v1.15.0。</li></ul></article>
@@ -200,7 +201,7 @@
           <button class="tab" id="tab-source" role="tab" aria-selected="false" aria-controls="panel-source" data-zh="源码" data-en="Source">源码</button>
         </div>
         <div class="install-panel" id="panel-linux" role="tabpanel" aria-labelledby="tab-linux">
-          <div class="code-card"><div class="code-head"><span>bash · release v2.0.0</span><button class="copy" type="button">Copy</button></div><pre><code>curl -fsSL https://raw.githubusercontent.com/erikwang2013/polypack/v2.0.0/scripts/install.sh | bash
+          <div class="code-card"><div class="code-head"><span>bash · release v2.0.1</span><button class="copy" type="button">Copy</button></div><pre><code>curl -fsSL https://raw.githubusercontent.com/erikwang2013/polypack/v2.0.1/scripts/install.sh | bash
 polypack --version</code></pre></div>
           <p class="small" data-zh="强制 SHA-256 校验；配置 MINISIGN 公钥后可启用严格签名验证。" data-en="Mandatory SHA-256 verification; strict minisign verification is available with a configured public key.">强制 SHA-256 校验；配置 MINISIGN 公钥后可启用严格签名验证。</p>
         </div>
@@ -215,7 +216,7 @@ cd polypack
 cargo install --path crates/polypack-cli
 polypack doctor</code></pre></div>
         </div>
-        <p class="small" data-zh-html="需要一个可用的 Rust 工具链（MSRV 1.98）。完整说明见 <a href=&quot;https://github.com/erikwang2013/polypack/blob/v2.0.0/docs/INSTALL.md&quot; target=&quot;_blank&quot; rel=&quot;noopener&quot;>docs/INSTALL</a>。" data-en-html="A Rust toolchain (MSRV 1.98) is required for source builds. See <a href=&quot;https://github.com/erikwang2013/polypack/blob/v2.0.0/docs/INSTALL.en.md&quot; target=&quot;_blank&quot; rel=&quot;noopener&quot;>docs/INSTALL</a> for the full guide.">需要一个可用的 Rust 工具链（MSRV 1.98）。完整说明见 <a href="https://github.com/erikwang2013/polypack/blob/v2.0.0/docs/INSTALL.md" target="_blank" rel="noopener">docs/INSTALL</a>。</p>
+        <p class="small" data-zh-html="需要一个可用的 Rust 工具链（MSRV 1.98）。完整说明见 <a href=&quot;https://github.com/erikwang2013/polypack/blob/v2.0.1/docs/INSTALL.md&quot; target=&quot;_blank&quot; rel=&quot;noopener&quot;>docs/INSTALL</a>。" data-en-html="A Rust toolchain (MSRV 1.98) is required for source builds. See <a href=&quot;https://github.com/erikwang2013/polypack/blob/v2.0.1/docs/INSTALL.en.md&quot; target=&quot;_blank&quot; rel=&quot;noopener&quot;>docs/INSTALL</a> for the full guide.">需要一个可用的 Rust 工具链（MSRV 1.98）。完整说明见 <a href="https://github.com/erikwang2013/polypack/blob/v2.0.1/docs/INSTALL.md" target="_blank" rel="noopener">docs/INSTALL</a>。</p>
       </div>
     </section>
 
