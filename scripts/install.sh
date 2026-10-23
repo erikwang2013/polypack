@@ -89,17 +89,13 @@ base_url() {
   fi
 }
 
-try_fetch() {
+fetch() {
   local url="$1" dest="$2"
   local -a args=(-fsSL --retry 3 --retry-delay 2)
   case "$url" in
     https://*) args+=(--proto '=https' --tlsv1.2) ;;
   esac
-  curl "${args[@]}" -o "$dest" "$url"
-}
-
-fetch() {
-  try_fetch "$@" || die "download failed: $1"
+  curl "${args[@]}" -o "$dest" "$url" || die "download failed: $url"
 }
 
 sha256_of() {
@@ -190,13 +186,7 @@ main() {
   SIG_FILE="$WORKDIR/SHA256SUMS.txt.minisig"
 
   log "installing polypack ${TAG} for ${TARGET}"
-  if ! try_fetch "${BASE}/${ASSET}" "$ARCHIVE"; then
-    # shortcut: pre-rename releases only have the poly-* asset name, drop after v1.16.x
-    ASSET_PREFIX="poly"
-    ASSET="${ASSET_PREFIX}-${TARGET}.${ASSET_EXT}"
-    log "new asset missing; falling back to legacy ${ASSET}"
-    fetch "${BASE}/${ASSET}" "$ARCHIVE"
-  fi
+  fetch "${BASE}/${ASSET}" "$ARCHIVE"
   fetch "${BASE}/SHA256SUMS.txt" "$SUMS_FILE"
   verify_signature
   verify_checksum
