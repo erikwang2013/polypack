@@ -12,6 +12,8 @@
 >
 > **Note on diagram labels:** the embedded diagrams are labeled in Chinese (the project's primary language). English-labeled variants are available under `docs/assets/en/`.
 
+> **2026-10-23 · v2.0.1**: surfaces the Baidu Netdisk download entry (code 3128); fixes RUSTSEC-2026-0385 in `ctutils` (0.4.5); regenerates diagrams, Pax assets, installer/GUI icons and the social cover.
+>
 > **2026-10-23 · v2.0.0**: renamed everything to `polypack` — CLI command, all nine crates, installers, archives and environment variables now use `polypack` / `POLYPACK_*`; install directories default to `polypack`. The download page adds platform detection and a Baidu mirror; see [CHANGELOG](CHANGELOG.md).
 
 ---

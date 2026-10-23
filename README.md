@@ -10,6 +10,8 @@
 >
 > **2026-10-21 · v1.15.0**：M9 收口——SBOM、多应用工作区、`release --changed`、OTA、商店元数据、GUI、设备预览协议、签名插件索引（`polypack plugin add/search`）与农场加固已交付；ENV-01/07/11/12/15/16/17/18 已关闭。仍需你提供的凭据 / 授权 / 硬件 / 真人试用入口见 [ENV-PROVIDE](docs/ENV-PROVIDE.md)。新增命令：`polypack history`、`polypack update`、`polypack preview`、`polypack deploy line-liff`、`polypack verify --sbom`、`polypack plugin add|search`。
 
+> **2026-10-23 · v2.0.1**：下载页突出百度网盘入口（提取码 3128）；修复 `ctutils` 的 RUSTSEC-2026-0385 安全公告（升级 0.4.5）；重新生成文档图示、Pax、安装器/GUI 图标与社交封面。
+>
 > **2026-10-23 · v2.0.0**：全量改名为 `polypack`——CLI 命令、9 个 crate、安装器、归档与环境变量统一到 `polypack` / `POLYPACK_*`；安装目录默认为 `polypack`。下载页新增平台识别与百度网盘备用，详见 [CHANGELOG](CHANGELOG.md)。
 
 ---

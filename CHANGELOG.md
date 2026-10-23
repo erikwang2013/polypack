@@ -4,6 +4,18 @@
 版本号自 v1.0.0 起按语义化版本递增（tag 与 GitHub Release 名称一致，见 [README](README.md#路线图)）。
 Notable changes are recorded here; since v1.0.0, tags and releases follow `vX.Y.Z` semantic increments.
 
+## [2.0.1] — 2026-10-23
+
+### Fixed
+- **RUSTSEC-2026-0385**：升级 `ctutils` 0.4.3 → 0.4.5，修复常量时间掩码 / `u128` 比较可能泄漏密值的问题；`cargo deny check advisories` 通过。
+
+*RUSTSEC-2026-0385: upgrades `ctutils` 0.4.3 → 0.4.5 to fix non-constant-time mask generation and `u128` comparisons that could leak secrets; `cargo deny check advisories` passes.*
+
+### Changed
+- **站点网盘入口**：下载页 Hero 与安装器上方新增高亮百度网盘按钮/横幅（提取码 3128），首页下载区同步突出；重新生成文档图示、Pax、安装器/GUI 图标与 1200×630 社交封面到 v2.0.1。
+
+*Site mirror: adds prominent Baidu Netdisk buttons/banner in the download hero and above the installers (access code 3128), and highlights the mirror on the home download section; regenerates diagrams, Pax assets, installer/GUI icons and the 1200×630 social cover for v2.0.1.*
+
 ## [2.0.0] — 2026-10-23
 
 ### Breaking
