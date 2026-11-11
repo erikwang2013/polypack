@@ -396,11 +396,18 @@ The complete plan (per-platform support detail, risks, and mitigations) lives in
 
 Cross-host builds (Linux origin → macOS worker produces an IPA) — deployment, credential model, and signature verification — are documented in **[docs/FARM.en.md](docs/FARM.en.md)**.
 
-## License
+## 项目授权 / Project License
 
-[Apache-2.0](LICENSE) (the `LICENSE` file is in place; contribution rules formalize with the code).
+Copyright (c) 2026 erik <erik@erik.xyz> — https://erik.xyz
 
-<!-- assets-license:start -->
+- 本项目仅供个人学习、研究使用。
+- 未经作者书面授权，禁止任何形式的商业使用（包括但不限于商业部署、付费服务、二次销售、SaaS 运营及以本项目为基础提供商业服务）。
+- 商业授权请联系 **erik@erik.xyz**。
+- 未经授权的商业使用，作者将在全球范围内依法追究法律责任，并保留终身追责的权利。
+- 第三方组件仍遵循其各自原有的许可证；视觉资产适用仓库内的 ASSETS-LICENSE.md（如适用）。
+
+**English:** This project is provided for personal study and research only. Commercial use of any kind requires prior written authorization from the author (erik@erik.xyz). Unauthorized commercial use will be pursued for legal liability worldwide, and the author reserves the right to pursue such liability for life. Third-party components remain under their original licenses; visual assets are governed by ASSETS-LICENSE.md where applicable.
+
 ## Visual Assets License
 
 The project pets, images, icons and emoji/expression forms in this repository
@@ -410,6 +417,6 @@ transmission or commercial use is permitted without prior written permission.
 For commercial licensing contact **erik@erik.xyz**. See
 [ASSETS-LICENSE.md](ASSETS-LICENSE.md).
 
-> The code remains under the repository's existing licence (Apache-2.0). Third-party
-> assets (e.g. the Go Gopher where explicitly noted) keep their original licences.
+> The code follows the Project License above. Third-party assets (e.g. the Go
+> Gopher where explicitly noted) keep their original licences.
 <!-- assets-license:end -->
